@@ -1,0 +1,12 @@
+/.direnv/
+/target/
+/.idea/
+xcuserdata
+.DS_STORE
+
+# Nix
+result
+result-*
+
+# DMG
+*.dmg

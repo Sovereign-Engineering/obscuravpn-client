@@ -1,0 +1,52 @@
+body {
+  /* show eye pleasing background color instead of white */
+  background-color: #141517;
+  margin: 0;
+  overflow-y: hidden;
+  /* disable text interaction by default */
+  -webkit-user-select: none; /* Safari */
+  user-select: none; /* Standard  */
+}
+
+/* fallback scrollbar is inspired by Firefox's dark scrollbar */
+
+::-webkit-scrollbar {
+  width: 15px
+}
+
+::-webkit-scrollbar-track {
+  background: #121212;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #505050
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: grey
+}
+
+.simplebar-vertical {
+  background-clip: 'padding-box';
+}
+
+.row {
+  display: flex;
+  align-items: flex-end;
+  & > div {
+    flex-grow: 1;
+  }
+}
+
+.rowCenter {
+  display: flex;
+  align-items: center;
+  & > div {
+    flex-grow: 1;
+  }
+}
+
+.embeddedInput {
+  display: inline-block;
+  margin: auto 5px;
+}

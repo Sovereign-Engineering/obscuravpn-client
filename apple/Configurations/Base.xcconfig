@@ -1,0 +1,4 @@
+#include? "buildversion.xcconfig"
+#include "bundle-ids.xcconfig"
+
+MACOSX_DEPLOYMENT_TARGET = 13.0

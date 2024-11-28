@@ -1,0 +1,9 @@
+{
+    "recommendations": [
+        "tamasfe.even-better-toml",
+        "oliversturm.fix-json",
+        "tauri-apps.tauri-vscode",
+        "vadimcn.vscode-lldb",
+        "github.vscode-github-actions"
+    ]
+}

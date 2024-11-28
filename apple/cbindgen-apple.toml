@@ -1,0 +1,11 @@
+# NOTE: This is a `cbindgen` config that's specific to the apple platforms, as
+# only those platformw will have the TargetConditionals.h system header
+# necessary to reliably detect between macOS and iPhone targets.
+#
+# See:
+#   find /Applications/Xcode.app/Contents/Developer/Platforms -name 'TargetConditionals\.h'
+
+sys_includes = ["TargetConditionals.h"]
+
+[defines]
+"target_os = macos" = "TARGET_OS_OSX"

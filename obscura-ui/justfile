@@ -1,0 +1,8 @@
+setup:
+	pnpm install --frozen-lockfile
+
+build: setup
+	pnpm run build
+
+start: setup
+	pnpm start

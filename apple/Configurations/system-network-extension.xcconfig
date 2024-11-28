@@ -1,0 +1,6 @@
+PRODUCT_BUNDLE_IDENTIFIER = $(OBSCURA_SYSTEM_NETWORK_EXTENSION_PRODUCT_BUNDLE_IDENTIFIER)
+INFOPLIST_KEY_CFBundleDisplayName = Obscura Network Extension
+INFOPLIST_FILE = system-network-extension/Info.plist
+GENERATE_INFOPLIST_FILE = YES
+
+CODE_SIGN_ENTITLEMENTS = system-network-extension/entitlements.entitlements

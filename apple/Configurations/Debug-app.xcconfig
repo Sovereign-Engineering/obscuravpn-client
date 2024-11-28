@@ -1,0 +1,8 @@
+// Avoid accidental checkins:
+// git update-index --skip-worktree apple/Configurations/Debug*.xcconfig
+// git update-index --no-skip-worktree apple/Configurations/Debug*.xcconfig
+
+#include "Debug.xcconfig"
+#include "app.xcconfig"
+
+PROVISIONING_PROFILE_SPECIFIER =

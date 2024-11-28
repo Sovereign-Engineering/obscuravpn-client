@@ -1,0 +1,358 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 54;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		CA016413314BAAAB3AB4761B /* Cargo.toml in Sources */ = {isa = PBXBuildFile; fileRef = CAF9DEE597793EF4668187A5 /* Cargo.toml */; settings = {COMPILER_FLAGS = "--bin 'obscuravpn-client'"; }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXBuildRule section */
+		CAF4DEE59779AC6C1400ACA8 /* PBXBuildRule */ = {
+			isa = PBXBuildRule;
+			compilerSpec = com.apple.compilers.proxy.script;
+			dependencyFile = "$(DERIVED_FILE_DIR)/$(ARCHS)-$(EXECUTABLE_NAME).d";
+			filePatterns = "*/Cargo.toml";
+			fileType = pattern.proxy;
+			inputFiles = (
+				"$(SRCROOT)/xcodescripts/cargo-build-static-lib.bash",
+			);
+			isEditable = 0;
+			name = "Cargo project build";
+			outputFiles = (
+				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_NAME)",
+				"$(TARGET_BUILD_DIR)/$(PUBLIC_HEADERS_FOLDER_PATH)/$(EXECUTABLE_NAME).h",
+				"$(TARGET_BUILD_DIR)/$(PUBLIC_HEADERS_FOLDER_PATH)/module.modulemap",
+			);
+			runOncePerArchitecture = 0;
+			script = "exec \"${SCRIPT_INPUT_FILE_0}\"\n";
+		};
+/* End PBXBuildRule section */
+
+/* Begin PBXFileReference section */
+		C90161AC2BE01A9B005B14AF /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		C90161AD2BE01A9B005B14AF /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		C90161AE2BE01A9B005B14AF /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
+		CA0090E2379FFD96F1473BE9 /* libobscuravpn-client.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libobscuravpn-client.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		CA01272F0B60B8156098F4D0 /* obscuravpn-client */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "obscuravpn-client"; sourceTree = BUILT_PRODUCTS_DIR; };
+		CAF9DEE597793EF4668187A5 /* Cargo.toml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = Cargo.toml; path = ../Cargo.toml; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		C90161AB2BE01A9B005B14AF /* Configurations */ = {
+			isa = PBXGroup;
+			children = (
+				C90161AE2BE01A9B005B14AF /* Base.xcconfig */,
+				C90161AC2BE01A9B005B14AF /* Debug.xcconfig */,
+				C90161AD2BE01A9B005B14AF /* Release.xcconfig */,
+			);
+			path = Configurations;
+			sourceTree = "<group>";
+		};
+		CAF0DEE59779D65BC3C892A8 = {
+			isa = PBXGroup;
+			children = (
+				C90161AB2BE01A9B005B14AF /* Configurations */,
+				CAF9DEE597793EF4668187A5 /* Cargo.toml */,
+				CAF1DEE5977922869D176AE5 /* Products */,
+				CAF2DEE5977998AF0B5890DB /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		CAF1DEE5977922869D176AE5 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				CA0090E2379FFD96F1473BE9 /* libobscuravpn-client.a */,
+				CA01272F0B60B8156098F4D0 /* obscuravpn-client */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		CAF2DEE5977998AF0B5890DB /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		CA0090E2379FB3AB1D86918A /* obscuravpn-client.a (static library) */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CA0006912554B3AB1D86918A /* Build configuration list for PBXNativeTarget "obscuravpn-client.a (static library)" */;
+			buildPhases = (
+				C9CFB0122BE9A36D008B27D6 /* Run Script */,
+			);
+			buildRules = (
+				CAF4DEE59779AC6C1400ACA8 /* PBXBuildRule */,
+			);
+			dependencies = (
+			);
+			name = "obscuravpn-client.a (static library)";
+			productName = "libobscuravpn-client.a";
+			productReference = CA0090E2379FFD96F1473BE9 /* libobscuravpn-client.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+		CA01272F0B60AAAB3AB4761B /* obscuravpn-client (standalone executable) */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CA0106912554AAAB3AB4761B /* Build configuration list for PBXNativeTarget "obscuravpn-client (standalone executable)" */;
+			buildPhases = (
+				CA0108875302AAAB3AB4761B /* Sources */,
+			);
+			buildRules = (
+				CAF4DEE59779AC6C1400ACA8 /* PBXBuildRule */,
+			);
+			dependencies = (
+			);
+			name = "obscuravpn-client (standalone executable)";
+			productName = "obscuravpn-client";
+			productReference = CA01272F0B60B8156098F4D0 /* obscuravpn-client */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		CAF3DEE59779E04653AD465F /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1510;
+				TargetAttributes = {
+					CA0090E2379FB3AB1D86918A = {
+						CreatedOnToolsVersion = 9.2;
+						ProvisioningStyle = Automatic;
+					};
+					CA01272F0B60AAAB3AB4761B = {
+						CreatedOnToolsVersion = 9.2;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = CAF6DEE5977980E02D6C7F57 /* Build configuration list for PBXProject "obscuravpn-client" */;
+			compatibilityVersion = "Xcode 11.4";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = CAF0DEE59779D65BC3C892A8;
+			productRefGroup = CAF1DEE5977922869D176AE5 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				CA0090E2379FB3AB1D86918A /* obscuravpn-client.a (static library) */,
+				CA01272F0B60AAAB3AB4761B /* obscuravpn-client (standalone executable) */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		C9CFB0122BE9A36D008B27D6 /* Run Script */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/xcodescripts/cargo-build-static-lib.bash",
+				"$(SRCROOT)/../Cargo.toml",
+				"$(SRCROOT)/cbindgen-apple.toml",
+			);
+			name = "Run Script";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/$(EXECUTABLE_NAME)",
+				"$(BUILT_PRODUCTS_DIR)/$(PUBLIC_HEADERS_FOLDER_PATH)/$(EXECUTABLE_NAME).h",
+				"$(BUILT_PRODUCTS_DIR)/$(PUBLIC_HEADERS_FOLDER_PATH)/module.modulemap",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "exec \"${SCRIPT_INPUT_FILE_0}\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		CA0108875302AAAB3AB4761B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CA016413314BAAAB3AB4761B /* Cargo.toml in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		9643049A2BEEFBAE00B3119B /* Debug (Dev Server) */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = C90161AC2BE01A9B005B14AF /* Debug.xcconfig */;
+			buildSettings = {
+				"ADDITIONAL_SDKS[sdk=i*]" = macosx;
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CARGO_TARGET_DIR = "$(PROJECT_TEMP_DIR)/cargo_target";
+				CARGO_XCODE_BUILD_PROFILE = debug;
+				CARGO_XCODE_FEATURES = "";
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "obscuravpn-client";
+				RUSTUP_TOOLCHAIN = "";
+				SDKROOT = macosx;
+				SUPPORTS_MACCATALYST = YES;
+			};
+			name = "Debug (Dev Server)";
+		};
+		9643049B2BEEFBAE00B3119B /* Debug (Dev Server) */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CARGO_XCODE_CARGO_DEP_FILE_NAME = libobscuravpn_client.d;
+				CARGO_XCODE_CARGO_FILE_NAME = libobscuravpn_client.a;
+				INSTALL_GROUP = "";
+				INSTALL_MODE_FLAG = "";
+				INSTALL_OWNER = "";
+				PRODUCT_NAME = "obscuravpn-client";
+				PUBLIC_HEADERS_FOLDER_PATH = "include/$(PRODUCT_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "macosx iphonesimulator iphoneos";
+			};
+			name = "Debug (Dev Server)";
+		};
+		9643049C2BEEFBAE00B3119B /* Debug (Dev Server) */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CARGO_XCODE_CARGO_DEP_FILE_NAME = "obscuravpn-client.d";
+				CARGO_XCODE_CARGO_FILE_NAME = "obscuravpn-client";
+				PRODUCT_NAME = "obscuravpn-client";
+				SUPPORTED_PLATFORMS = macosx;
+			};
+			name = "Debug (Dev Server)";
+		};
+		CA0090CB90CFB3AB1D86918A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CARGO_XCODE_CARGO_DEP_FILE_NAME = libobscuravpn_client.d;
+				CARGO_XCODE_CARGO_FILE_NAME = libobscuravpn_client.a;
+				INSTALL_GROUP = "";
+				INSTALL_MODE_FLAG = "";
+				INSTALL_OWNER = "";
+				PRODUCT_NAME = "obscuravpn-client";
+				PUBLIC_HEADERS_FOLDER_PATH = "include/$(PRODUCT_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "macosx iphonesimulator iphoneos";
+			};
+			name = Release;
+		};
+		CA00F9CAE54CB3AB1D86918A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CARGO_XCODE_CARGO_DEP_FILE_NAME = libobscuravpn_client.d;
+				CARGO_XCODE_CARGO_FILE_NAME = libobscuravpn_client.a;
+				INSTALL_GROUP = "";
+				INSTALL_MODE_FLAG = "";
+				INSTALL_OWNER = "";
+				PRODUCT_NAME = "obscuravpn-client";
+				PUBLIC_HEADERS_FOLDER_PATH = "include/$(PRODUCT_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "macosx iphonesimulator iphoneos";
+			};
+			name = Debug;
+		};
+		CA0190CB90CFAAAB3AB4761B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CARGO_XCODE_CARGO_DEP_FILE_NAME = "obscuravpn-client.d";
+				CARGO_XCODE_CARGO_FILE_NAME = "obscuravpn-client";
+				PRODUCT_NAME = "obscuravpn-client";
+				SUPPORTED_PLATFORMS = macosx;
+			};
+			name = Release;
+		};
+		CA01F9CAE54CAAAB3AB4761B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CARGO_XCODE_CARGO_DEP_FILE_NAME = "obscuravpn-client.d";
+				CARGO_XCODE_CARGO_FILE_NAME = "obscuravpn-client";
+				PRODUCT_NAME = "obscuravpn-client";
+				SUPPORTED_PLATFORMS = macosx;
+			};
+			name = Debug;
+		};
+		CAF7A11709B13CC16B37690B /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = C90161AD2BE01A9B005B14AF /* Release.xcconfig */;
+			buildSettings = {
+				"ADDITIONAL_SDKS[sdk=i*]" = macosx;
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CARGO_TARGET_DIR = "$(PROJECT_TEMP_DIR)/cargo_target";
+				CARGO_XCODE_BUILD_PROFILE = release;
+				CARGO_XCODE_FEATURES = "";
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				PRODUCT_NAME = "obscuravpn-client";
+				RUSTUP_TOOLCHAIN = "";
+				SDKROOT = macosx;
+				SUPPORTS_MACCATALYST = YES;
+			};
+			name = Release;
+		};
+		CAF8A11709B1228BE02872F8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = C90161AD2BE01A9B005B14AF /* Release.xcconfig */;
+			buildSettings = {
+				"ADDITIONAL_SDKS[sdk=i*]" = macosx;
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CARGO_TARGET_DIR = "$(PROJECT_TEMP_DIR)/cargo_target";
+				CARGO_XCODE_BUILD_PROFILE = debug;
+				CARGO_XCODE_FEATURES = "";
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "obscuravpn-client";
+				RUSTUP_TOOLCHAIN = "";
+				SDKROOT = macosx;
+				SUPPORTS_MACCATALYST = YES;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		CA0006912554B3AB1D86918A /* Build configuration list for PBXNativeTarget "obscuravpn-client.a (static library)" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CA0090CB90CFB3AB1D86918A /* Release */,
+				CA00F9CAE54CB3AB1D86918A /* Debug */,
+				9643049B2BEEFBAE00B3119B /* Debug (Dev Server) */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CA0106912554AAAB3AB4761B /* Build configuration list for PBXNativeTarget "obscuravpn-client (standalone executable)" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CA0190CB90CFAAAB3AB4761B /* Release */,
+				CA01F9CAE54CAAAB3AB4761B /* Debug */,
+				9643049C2BEEFBAE00B3119B /* Debug (Dev Server) */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CAF6DEE5977980E02D6C7F57 /* Build configuration list for PBXProject "obscuravpn-client" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CAF7A11709B13CC16B37690B /* Release */,
+				CAF8A11709B1228BE02872F8 /* Debug */,
+				9643049A2BEEFBAE00B3119B /* Debug (Dev Server) */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = CAF3DEE59779E04653AD465F /* Project object */;
+}

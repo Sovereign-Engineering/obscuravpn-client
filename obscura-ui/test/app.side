@@ -1,0 +1,52 @@
+{
+  "id": "529843c0-88a3-4fb7-80a3-975a787ff46b",
+  "version": "2.0",
+  "name": "app",
+  "url": "http://localhost:4173",
+  "tests": [{
+    "id": "bb9aee64-c308-466b-8c43-1d2f36af8fab",
+    "name": "Home",
+    "commands": [{
+      "id": "b87f571c-cc67-4a2f-b1bf-ef8659fcae8f",
+      "comment": "",
+      "command": "click",
+      "target": "css=.mantine-Header-root",
+      "targets": [
+        ["css=.mantine-Header-root", "css:finder"],
+        ["xpath=//div[@id='root']/div/div/div[2]/div/div/div/div/header", "xpath:idRelative"],
+        ["xpath=//header", "xpath:position"]
+      ],
+      "value": ""
+    }, {
+      "id": "f14457d8-930a-450d-be13-6d516f1efc67",
+      "comment": "",
+      "command": "click",
+      "target": "css=.mantine-UnstyledButton-root > svg > path",
+      "targets": [
+        ["css=.mantine-UnstyledButton-root > svg > path", "css:finder"]
+      ],
+      "value": ""
+    }, {
+      "id": "cb3457e6-bb62-4a90-b2b9-6f1cbc7b116a",
+      "comment": "",
+      "command": "click",
+      "target": "css=.mantine-Header-root",
+      "targets": [
+        ["css=.mantine-Header-root", "css:finder"],
+        ["xpath=//div[@id='root']/div/div/div[2]/div/div/div/div/header", "xpath:idRelative"],
+        ["xpath=//header", "xpath:position"]
+      ],
+      "value": ""
+    }]
+  }],
+  "suites": [{
+    "id": "3978000a-1561-4886-a0e0-8fcce207708e",
+    "name": "Default Suite",
+    "persistSession": false,
+    "parallel": false,
+    "timeout": 300,
+    "tests": ["bb9aee64-c308-466b-8c43-1d2f36af8fab"]
+  }],
+  "urls": ["http://localhost:4173/"],
+  "plugins": []
+}

@@ -1,0 +1,21 @@
+accepted = [
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "MIT",
+    "MPL-2.0",
+    "OpenSSL",
+    "Unicode-DFS-2016",
+    "WTFPL",
+    "Zlib",
+]
+
+# DO NOT attempt to lookup licensing information from https://clearlydefined.io
+no-clearly-defined = true
+
+[obscuravpn-api]
+accepted = ["PolyForm-Noncommercial-1.0.0"]
+
+[obscuravpn-client]
+accepted = ["PolyForm-Noncommercial-1.0.0"]

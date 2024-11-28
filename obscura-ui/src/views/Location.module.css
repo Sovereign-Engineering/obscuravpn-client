@@ -1,0 +1,24 @@
+.locationCardConnected, .locationCardNotConnected {
+    cursor: pointer;
+}
+
+.locationCardNotConnected:hover:not(:has(.favoriteBtn:hover)) {
+    background-color: light-dark(#f5f5f5, var(--mantine-color-dark-4));
+    @mixin light {
+        border-color: var(--mantine-color-teal-5) !important;
+        border-width: 1px !important;
+    }
+}
+
+.locationCardNotConnected:active:not(:has(.favoriteBtn:active)) {
+    transform: translateY(2px);
+}
+
+.locationCardConnected {
+    border-color: var(--mantine-primary-color-filled) !important;
+    border-width: 2px !important;
+}
+
+.locationCardConnected, .locationCardDisabled {
+    cursor: not-allowed;
+}

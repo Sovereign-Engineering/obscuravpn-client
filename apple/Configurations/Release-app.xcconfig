@@ -1,0 +1,4 @@
+#include "Release.xcconfig"
+#include "app.xcconfig"
+
+PROVISIONING_PROFILE_SPECIFIER = Developer ID: VPN Client App

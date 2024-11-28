@@ -1,0 +1,18 @@
+// Avoid accidental checkins:
+// git update-index --skip-worktree apple/Configurations/Debug*.xcconfig
+// git update-index --no-skip-worktree apple/Configurations/Debug*.xcconfig
+
+#include "Base.xcconfig"
+
+DEVELOPMENT_TEAM = 5G943LR562
+
+OBSCURA_APP_PRODUCT_BUNDLE_IDENTIFIER = net.obscura.vpn-client-app
+
+CODE_SIGN_IDENTITY = Apple Development
+CODE_SIGN_STYLE = Automatic
+
+ENABLE_HARDENED_RUNTIME = NO
+
+OBSCURA_PACKET_TUNNEL_PROVIDER_ENTITLEMENT = packet-tunnel-provider
+
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) DEBUG

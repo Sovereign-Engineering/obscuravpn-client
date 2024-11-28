@@ -1,0 +1,2 @@
+#include "Release.xcconfig"
+#include "app-network-extension.xcconfig"

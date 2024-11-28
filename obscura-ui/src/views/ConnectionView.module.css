@@ -1,0 +1,15 @@
+.connectionProgressBarGroup {
+    justify-content: center !important;
+
+    @media (min-width: 600px) {
+        justify-content: space-between !important;
+    }
+}
+
+.trafficVulnerableProgressBar {
+    width: calc(100vw * 0.33);
+
+    @media (min-width: 700px) {
+        width: 325px;
+    }
+}

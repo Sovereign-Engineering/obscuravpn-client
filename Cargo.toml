@@ -1,0 +1,53 @@
+[package]
+name = "obscuravpn-client"
+version = "0.1.0"
+edition = "2021"
+license = "PolyForm-Noncommercial-1.0.0"
+
+[lib]
+crate-type = ["lib", "staticlib"]
+
+[profile.release]
+codegen-units = 1
+debug = "line-tables-only"
+lto = true
+panic = "abort"
+
+[profile.dev]
+panic = "abort"
+
+[dependencies]
+anyhow = { version = "1.0.75", features = ["backtrace"] }
+futures = "0.3.29"
+quinn = "0.11.6"
+tokio = { version = "1.40", features = ["full"] }
+uuid = { version = "1.11.0", features = ["v4", "serde"] }
+clap = { version = "4.4.10", features = ["derive"] }
+rand = "0.8.5"
+boringtun = "0.6.0"
+base64 = "0.21.7"
+etherparse = "0.13.0"
+tun = {  version = "0.6.1", features = ["async"] }
+async-trait = "0.1.77"
+socket2 = { version = "0.5.5", features = ["all"] }
+thiserror = "1.0.56"
+include_dir = "0.7.3"
+serde_json = "1.0.114"
+serde = { version = "1.0.197", features = ["derive"] }
+chrono = "0.4.37"
+lazy_static = "1.4.0"
+tempfile = "3.10.1"
+strum = { version = "0.26.2", features = ["derive"] }
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+tokio-util = "0.7.11"
+ipnetwork = "0.16.0"
+bytes = "1"
+
+[dependencies.obscuravpn-api]
+git = "https://github.com/Sovereign-Engineering/obscuravpn-api.git"
+rev = "1e7f0a1873a5997a672bd2157e9d4f9714683c7d"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+oslog = "0.2.0"
+tracing-oslog = "0.1.2"

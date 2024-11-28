@@ -1,0 +1,36 @@
+name: Checks
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - '**'
+  push:
+    branches:
+      - 'main'
+concurrency:
+  # group is workflow specific and based on the branch (e.g. PRs) or tag
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # we don't want to cancel checks on the main branch
+  cancel-in-progress: ${{ github.ref_name != 'main' }}
+
+jobs:
+  build_all:
+    name: Build All
+    runs-on: macos-14
+    steps:
+      - name: git checkout
+        uses: actions/checkout@v3
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+        with:
+          use-flakehub: false # Only upload to GitHub Actions cache
+      - name: Build Nix
+        shell: bash
+        run: |
+          nix flake check \
+            --keep-going \
+            --no-update-lock-file \
+            --print-build-logs \
+            --show-trace

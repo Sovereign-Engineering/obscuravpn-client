@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="258"
+   height="354"
+   viewBox="0 0 258 354"
+   fill="none"
+   version="1.1"
+   id="svg69"
+   sodipodi:docname="thinking-mascot.svg"
+   inkscape:version="1.4 (e7c3feb1, 2024-10-09)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs69" />
+  <sodipodi:namedview
+     id="namedview69"
+     pagecolor="#686868"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="1.4857228"
+     inkscape:cx="36.009409"
+     inkscape:cy="161.201"
+     inkscape:window-width="1712"
+     inkscape:window-height="966"
+     inkscape:window-x="0"
+     inkscape:window-y="43"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg69" />
+  <path
+     d="M60 0V12H72V0H60Z"
+     fill="#FF6025"
+     id="path1" />
+  <path
+     d="M210 0V12H222V0H210Z"
+     fill="#FF6025"
+     id="path2" />
+  <path
+     d="M60 12V30H72V12H60Z"
+     fill="black"
+     id="path3" />
+  <path
+     d="M210 12V30H222V12H210Z"
+     fill="black"
+     id="path4" />
+  <path
+     d="M222 30H210H72H60H12V42H45H48H78H234H246V30H222Z"
+     fill="black"
+     id="path5" />
+  <path
+     d="M48 42V54H60H78V42H48Z"
+     fill="#FFEBE3"
+     id="path6" />
+  <path
+     d="M78 42V54H234V42H78Z"
+     fill="#FF6025"
+     id="path7" />
+  <path
+     d="M24 54V66H36V57V54H24Z"
+     fill="#FF6025"
+     id="path8" />
+  <path
+     d="M78 54H60V66H222H234V54H78Z"
+     fill="#FFC7B2"
+     id="path9" />
+  <path
+     d="M24 78V90H36V81V78H24Z"
+     fill="#FF6025"
+     id="path10" />
+  <path
+     d="M24 132V144H36V135V132H24Z"
+     fill="#FF6025"
+     id="path11" />
+  <path
+     d="M24 156V168H36V159V156H24Z"
+     fill="#FF6025"
+     id="path12" />
+  <path
+     d="M222 66V174H231H234V66H222Z"
+     fill="#FFC7B2"
+     id="path13" />
+  <path
+     d="M0 42V186H12V42H0Z"
+     fill="black"
+     id="path14" />
+  <path
+     d="M45 42H12V186H48V42H45ZM36 57V66H24V54H36V57ZM36 81V90H24V78H36V81ZM36 135V144H24V132H36V135ZM36 159V168H24V156H36V159Z"
+     fill="#FFC7B2"
+     id="path15" />
+  <path
+     d="M234 42V54V66V174V186H246V42H234Z"
+     fill="#FF6025"
+     id="path16" />
+  <path
+     d="M246 42V186H258V42H246Z"
+     fill="black"
+     id="path17" />
+  <path
+     d="M12 186V198H24V186H12Z"
+     fill="black"
+     id="path18" />
+  <path
+     d="M24 186V198H48V186H24Z"
+     fill="#FFC7B2"
+     id="path19" />
+  <path
+     d="M72 186V198H174V189V186H72Z"
+     fill="#FFC7B2"
+     id="path20" />
+  <path
+     d="M192 186V198H204V186H192Z"
+     fill="#FFC7B2"
+     id="path21" />
+  <path
+     d="M204 186V198H216H228V186H204Z"
+     fill="#FF6025"
+     id="path22" />
+  <path
+     d="M234 186H228V198H246V186H234Z"
+     fill="black"
+     id="path23" />
+  <path
+     d="M24 197.75V209.75H36H48V197.75H24Z"
+     fill="black"
+     id="path24" />
+  <path
+     d="M216 198V210H228V198H216Z"
+     fill="black"
+     id="path25" />
+  <path
+     d="M36 209.75V221.75H48V209.75H36Z"
+     fill="black"
+     id="path26" />
+  <path
+     d="M24 209.75V221.75H36V209.75H24Z"
+     fill="black"
+     id="path27" />
+  <path
+     d="M216 210V222V234V246V258H228V210H216Z"
+     fill="#FF6025"
+     id="path28" />
+  <path
+     d="M228 210V258H240V210H228Z"
+     fill="black"
+     id="path29" />
+  <path
+     d="M216 258V270H228V258H216Z"
+     fill="black"
+     id="path30" />
+  <path
+     d="M72 210V300H84V210H72Z"
+     fill="#FFC7B2"
+     id="path31" />
+  <path
+     d="M84 210V300H192V213V210H84Z"
+     fill="#D54D1A"
+     id="path32" />
+  <path
+     d="M48 240V312H60V240H48Z"
+     fill="#FFC7B2"
+     id="path33" />
+  <path
+     d="M231 174H60V54H48V240H60V312H204V222H216V198H192V186H234V174H231ZM192 213V300H72V210H192V213ZM174 189V198H72V186H174V189Z"
+     fill="#FF6025"
+     id="path34" />
+  <path
+     d="M36 221.75V233.75V323.75H48V233.75V221.75H36Z"
+     fill="black"
+     id="path35" />
+  <path
+     d="M84 312V324H168V312H84Z"
+     fill="black"
+     id="path36" />
+  <path
+     d="M204 222V312V324H216V270V258V246V234V222H204Z"
+     fill="black"
+     id="path37" />
+  <path
+     d="M60 312V342H72V312H60Z"
+     fill="#FFC7B2"
+     id="path38" />
+  <path
+     d="M180 312V342H192V312H180Z"
+     fill="#FFC7B2"
+     id="path39" />
+  <path
+     d="M48 312V354H60V342V312H48Z"
+     fill="black"
+     id="path40" />
+  <path
+     d="M60 342V354H72V342H60Z"
+     fill="black"
+     id="path41" />
+  <path
+     d="M72 312V342V354H84V324V312H72Z"
+     fill="black"
+     id="path42" />
+  <path
+     d="M168 312V324V354H180V342V312H168Z"
+     fill="black"
+     id="path43" />
+  <path
+     d="M180 342V354H192V342H180Z"
+     fill="black"
+     id="path44" />
+  <path
+     d="M192 312V342V354H204V324V312H192Z"
+     fill="black"
+     id="path45" />
+  <path
+     d="M48 197.75H60V209.75H48V197.75Z"
+     fill="black"
+     id="path46" />
+  <path
+     d="M36 209.75H48V221.75H36V209.75Z"
+     fill="#D54D1A"
+     id="path47" />
+  <path
+     d="M48 197.75H60V209.75H48V197.75Z"
+     fill="black"
+     id="path48" />
+  <path
+     d="M48 221.75H60V233.75H48V221.75Z"
+     fill="black"
+     id="path49" />
+  <path
+     d="M36 221.75H48V233.75H36V221.75Z"
+     fill="black"
+     id="path50" />
+  <path
+     d="M60 185.75H72V197.75H60V185.75Z"
+     fill="black"
+     id="path51" />
+  <path
+     d="M72 173.75H84V185.75H72V173.75Z"
+     fill="black"
+     id="path52" />
+  <path
+     d="M84 173.75H96V185.75H84V173.75Z"
+     fill="black"
+     id="path53" />
+  <path
+     d="M84 185.75H96V197.75H84V185.75Z"
+     fill="black"
+     id="path54" />
+  <path
+     d="M72 185.75H84V197.75H72V185.75Z"
+     fill="#D54D1A"
+     id="path55" />
+  <path
+     d="M72 197.75H84V209.75H72V197.75Z"
+     fill="#D54D1A"
+     id="path56" />
+  <path
+     d="M60 197.75H72V209.75H60V197.75Z"
+     fill="#D54D1A"
+     id="path57" />
+  <path
+     d="M84 197.75H96V209.75H84V197.75Z"
+     fill="black"
+     id="path58" />
+  <path
+     d="M72 209.75H84V221.75H72V209.75Z"
+     fill="black"
+     id="path59" />
+  <path
+     d="M60 221.75H72V233.75H60V221.75Z"
+     fill="black"
+     id="path60" />
+  <path
+     d="M60 209.75H72V221.75H60V209.75Z"
+     fill="#D54D1A"
+     id="path61" />
+  <path
+     d="M48 209.75H60V221.75H48V209.75Z"
+     fill="#D54D1A"
+     id="path62" />
+  <rect
+     style="fill:#ffffff"
+     id="rect69"
+     width="161.99754"
+     height="107.99946"
+     x="60.000687"
+     y="66.000679"
+     inkscape:label="faceBg" />
+  <path
+     d="M103 89.75H91V101.75H103V89.75Z"
+     fill="black"
+     id="path63" />
+  <path
+     d="M115 89.75H103V101.75H115V89.75Z"
+     fill="black"
+     id="path64" />
+  <path
+     d="M127 89.75H115V101.75H127V89.75Z"
+     fill="black"
+     id="path65" />
+  <path
+     d="M180 89.75H168V101.75H180V89.75Z"
+     fill="black"
+     id="path66" />
+  <path
+     d="M192 89.75H180V101.75H192V89.75Z"
+     fill="black"
+     id="path67" />
+  <path
+     d="M204 89.75H192V101.75H204V89.75Z"
+     fill="black"
+     id="path68" />
+  <path
+     d="M159 142.75H135V154.75H159V142.75Z"
+     fill="black"
+     id="path69" />
+</svg>

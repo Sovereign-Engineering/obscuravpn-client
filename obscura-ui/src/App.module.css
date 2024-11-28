@@ -1,0 +1,60 @@
+.simpleBar {
+    max-height: 100vh;
+}
+
+.simpleBar :global(.simplebar-scrollbar)::before {
+    background-color: light-dark(black, white) !important;
+}
+
+.navLink {
+    display: block;
+    width: 100%;
+    padding: var(--mantine-spacing-xs);
+    border-radius: var(--mantine-radius-md);
+    color: light-dark(var(--mantine-color-black), var(--mantine-color-dark-0));
+    text-decoration: none;
+    will-change: transform;
+}
+
+.navLink:hover:active {
+    transform: translateY(2px);
+}
+
+.navLinkActive {
+    background-color: light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-5));
+}
+
+.navLinkInactive:hover {
+    background-color: light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-6));
+}
+
+.titleBarAdjustedHeight {
+    /* used inspect element to find the first part of this calc value */
+    height: calc(var(--_section-height, calc(100dvh - var(--app-shell-header-offset, 0px) - var(--app-shell-footer-offset, 0px))) - var(--titlebar-height)) !important;
+    margin-top: var(--titlebar-height);
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    margin-top: var(--titlebar-height);
+}
+
+.headerRightItems {
+    margin-left: auto;
+}
+
+.appShell main {
+    background-color: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-8));
+}
+
+.mediaQuery {
+    display: none;
+}
+
+.footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}

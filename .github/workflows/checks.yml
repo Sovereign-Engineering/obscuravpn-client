@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - 'main'
+
 concurrency:
   # group is workflow specific and based on the branch (e.g. PRs) or tag
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -26,6 +27,7 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@main
         with:
           use-flakehub: false # Only upload to GitHub Actions cache
+
       - name: Build Nix
         shell: bash
         run: |
@@ -34,3 +36,32 @@ jobs:
             --no-update-lock-file \
             --print-build-logs \
             --show-trace
+
+  sync:
+    name: Sync
+    if: |
+      github.repository == 'sovereign-engineering/obscuravpn-client-internal'
+      && github.ref == 'refs/heads/main'
+    needs: build_all
+    runs-on: ubuntu-22.04
+    environment: sync
+    steps:
+      - name: git checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # We need all history to check for internal commits.
+      - name: Check Restricted Commits
+        run: |
+          echo "Ensuring that we have full history."
+          git log --pretty=oneline 5a25968c93bda974d63f9f96e2be38d7277d0993
+          echo "Ensuring that internal history is not present in HEAD."
+          ! git merge-base --is-ancestor 5a25968c93bda974d63f9f96e2be38d7277d0993 HEAD
+      - name: Push to Public
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.OBSCURA_CLIENT_SSH_KEY }}
+        run: |
+          echo "$SSH_PRIVATE_KEY" > "$RUNNER_TEMP/ssh-private-key"
+          chmod 600 "$RUNNER_TEMP/ssh-private-key"
+          export GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/ssh-private-key"
+
+          git push git@github.com:Sovereign-Engineering/obscuravpn-client.git HEAD:main

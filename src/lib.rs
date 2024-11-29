@@ -1,6 +1,9 @@
 pub mod client_state;
 pub mod config;
 pub mod errors;
+mod ffi_helpers;
+mod manager;
+mod manager_cmd;
 pub mod net;
 pub mod network_config;
 pub mod quicwg;

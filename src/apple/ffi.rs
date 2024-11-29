@@ -1,13 +1,12 @@
 use std::sync::{Arc, LazyLock, OnceLock};
 use tokio::runtime::Runtime;
 
-use crate::apple::manager_cmd::ManagerCmd;
-use crate::apple::manager_cmd::ManagerCmdErrorCode;
 use crate::errors::ConnectErrorCode;
-
-use super::ffi_helpers::*;
-use super::manager::Manager;
-use super::manager::TunnelArgs;
+use crate::ffi_helpers::*;
+use crate::manager::Manager;
+use crate::manager::TunnelArgs;
+use crate::manager_cmd::ManagerCmd;
+use crate::manager_cmd::ManagerCmdErrorCode;
 
 /// cbindgen:ignore
 static MACOS_LOG_INIT: std::sync::Once = std::sync::Once::new();

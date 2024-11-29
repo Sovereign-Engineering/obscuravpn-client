@@ -6,9 +6,8 @@ use serde::{Deserialize, Serialize};
 use strum::IntoStaticStr;
 use uuid::Uuid;
 
+use crate::manager::{Manager, ManagerTrafficStats, Status};
 use crate::{config::ConfigSaveError, errors::ApiError};
-
-use super::manager::{Manager, ManagerTrafficStats, Status};
 
 /// High-level json command error codes, which are actionable for frontends.
 /// Actionable means any of:

@@ -1,10 +1,20 @@
 import { Autocomplete, Button, TextInput, Title } from '@mantine/core';
 import React, { useRef, useState } from 'react';
 import { jsonFfiCmd } from "../tauri/commands";
+import { localStorageGet, LocalStorageKey, localStorageSet } from '../common/localStorage';
+
+const defaultApiUrls = ['https://v1.api.prod.obscura.net/api', 'https://v1.api.staging.obscura.net/api', 'http://localhost:8080/api']
 
 export default function DevSetApiUrl(): React.ReactElement {
     let [output, setOutput] = useState("");
     let inputRef = useRef();
+
+    let apiUrls = [...defaultApiUrls];
+    let lastCustomApiUrl = localStorageGet(LocalStorageKey.LastCustomApiUrl);
+    if (lastCustomApiUrl !== null && !defaultApiUrls.includes(lastCustomApiUrl)) {
+        apiUrls.push(lastCustomApiUrl);
+    }
+    let [apiUrlOptions, setApiUrlOptions] = useState(apiUrls);
 
     return <>
         <Title order={4}>Set Backend URL</Title>
@@ -27,6 +37,10 @@ export default function DevSetApiUrl(): React.ReactElement {
                         } else if (!URL.canParse(inputRef.current!.value)) {
                             throw new Error("Must be valid URL.");
                         }
+                        if (!defaultApiUrls.includes(url)) {
+                            let lastCustomApiUrl = localStorageSet(LocalStorageKey.LastCustomApiUrl, url);
+                            setApiUrlOptions([...defaultApiUrls, url]);
+                        }
                         await jsonFfiCmd("setApiUrl", { url });
                     } catch (e) {
                         setOutput(`${e}`);
@@ -37,7 +51,7 @@ export default function DevSetApiUrl(): React.ReactElement {
             <Autocomplete
                 ref={inputRef}
                 defaultValue={``}
-                data={['https://v1.api.prod.obscura.net/api', 'https://v1.api.staging.obscura.net/api', 'http://localhost:8080/api']}
+                data={apiUrlOptions}
             />
             <Button type="submit">Set API URL</Button>
             {output && <input type="text" value={output} disabled />}

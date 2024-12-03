@@ -35,12 +35,14 @@ struct AccountStatusItem: View {
         }
         .task {
             while true {
+                if let appState = self.startupModel.appState {
+                    self.accountDaysTillExpiry = appState.accountDaysTillExpiry
+                }
                 do {
                     try await Task.sleep(seconds: 5)
                 } catch {
                     return
                 }
-                self.accountDaysTillExpiry = self.startupModel.appState!.accountDaysTillExpiry
             }
         }
     }

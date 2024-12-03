@@ -1,17 +1,25 @@
 import { countries } from 'countries-list'
+import { Exit } from './api';
 
-export function countryCodeToFlagEmoji(countryCode) {
+/// Returns a string containing the country flag emoji.
+//
+// countryCode is a two character country code.
+export function countryCodeToFlagEmoji(countryCode: string): string {
     return countryCode
         .toUpperCase()
         .replace(/./g, char => {
-            let codePoint = char.codePointAt(0)
-                - "A".codePointAt(0)
-                + "🇦".codePointAt(0);
+            let codePoint = char.codePointAt(0)!
+                - "A".codePointAt(0)!
+                + "🇦".codePointAt(0)!;
             return String.fromCodePoint(codePoint)
         });
 }
 
-export function exitsSortComparator(connectedToExitId, lastChosenExitId, pinnedExitsList) {
+export function exitsSortComparator(
+    connectedToExitId: string,
+    lastChosenExitId: string,
+    pinnedExitsList: string,
+): (l: Exit, r: Exit) => number {
     const pinnedExits = new Set(pinnedExitsList);
     return (left, right) => {
         if (left.id === connectedToExitId) return -1;
@@ -32,7 +40,7 @@ export function exitsSortComparator(connectedToExitId, lastChosenExitId, pinnedE
         const leftCountryName = leftCountry.name;
         const rightCountryName = rightCountry.name;
 
-        return rightIsPinned - leftIsPinned || continentCmp(leftContinent, rightContinent) || leftCountryName.localeCompare(rightCountryName) || left.city_name.localeCompare(right.city_name) || left.id.localCompare(right.id);
+        return rightIsPinned - leftIsPinned || continentCmp(leftContinent, rightContinent) || leftCountryName.localeCompare(rightCountryName) || left.city_name.localeCompare(right.city_name) || left.id.localeCompare(right.id);
     }
 }
 
@@ -46,6 +54,6 @@ const continentRankings = [
     'AN',
 ];
 
-export function continentCmp(left, right) {
+export function continentCmp(left: string, right: string): number {
     return continentRankings.indexOf(left) - continentRankings.indexOf(right);
 }

@@ -1,5 +1,11 @@
 import { AccountId } from "./accountUtils";
 
+export interface Exit {
+    id: string,
+    country_code: string,
+    city_name: string,
+}
+
 export interface AccountInfo {
     id: AccountId,
     active: boolean,

@@ -26,6 +26,14 @@ export class UseAsyncState<T> {
     refresh: () => void;
 
     setValue(version: number, value: T, callbacks?: RefreshCallback<T>[]): boolean {
+        for (let callback of callbacks ?? []) {
+            try {
+                callback(value);
+            } catch (cbError) {
+                console.error("Refresh callback failed", cbError);
+            }
+        }
+
         if (version < this.valueVersion) {
             return false;
         }
@@ -35,25 +43,10 @@ export class UseAsyncState<T> {
         this.error = undefined;
         this.valueVersion = version;
 
-        for (let callback of callbacks ?? []) {
-            try {
-                callback(value);
-            } catch (cbError) {
-                console.error("Refresh callback failed", cbError);
-            }
-        }
         return true;
     }
 
     setError(version: number, error: unknown, callbacks?: RefreshCallback<T>[]): boolean {
-        if (version < this.loadVersion) {
-            return false;
-        }
-
-        this.value = undefined;
-        this.error = normalizeError(error);
-        this.valueVersion = version;
-
         for (let callback of callbacks ?? []) {
             try {
                 callback(undefined, error);
@@ -61,6 +54,14 @@ export class UseAsyncState<T> {
                 console.error("Refresh callback failed", cbError);
             }
         }
+
+        if (version < this.loadVersion) {
+            return false;
+        }
+
+        this.value = undefined;
+        this.error = normalizeError(error);
+        this.valueVersion = version;
 
         return true;
     }

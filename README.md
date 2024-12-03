@@ -20,13 +20,13 @@ The network extension manages the virtual device and maintains the tunnel using 
 1. [Install `rustup`](https://rustup.rs/).
 1. [Setup Nix](#nix-setup)
 1. Open the main Xcode project
-  ```bash
-  nix develop --print-build-logs --command just xcode-open
-  ```
+    ```bash
+    nix develop --print-build-logs --command just xcode-open
+    ```
 1. In Xcode, login with an account with membership in "Sovereign Engineering Inc."
 1. Register development machine in Apple Developer portal (can be done in Xcode)
 1. [Enable system extension developer mode](#enabling-system-extension-developer-mode)
-1. Setup Developer ID provisioning profile and codesigning for `Prod Client`
+1. Setup Developer ID provisioning profile and codesigning for `Prod Client` build scheme
     1. Go to https://developer.apple.com/account/resources/profiles/list
         - Download "Developer ID: System Network Extension"
         - Download "Developer ID: VPN Client App"
@@ -256,7 +256,7 @@ To confirm that the Developer ID provisioning profile and codesigning are set up
 
 ## Linux
 
-> [!NOTE]
+> [!WARNING]
 > As of 2024-07-04, the Linux client is not maintained.
 
 ```bash

@@ -6,7 +6,11 @@ use std::{
 };
 
 use futures::FutureExt;
-use obscuravpn_api::{cmd::Cmd, types::OneExit, Client, ClientError};
+use obscuravpn_api::{
+    cmd::{Cmd, GetAccountInfo},
+    types::{AccountInfo, OneExit},
+    Client, ClientError,
+};
 use serde::{Deserialize, Serialize};
 use tokio::{
     sync::watch::{channel, Receiver, Sender},
@@ -16,6 +20,7 @@ use tokio::{
 use uuid::Uuid;
 
 use crate::{
+    client_state::ClientStateAccount,
     config::{Config, ConfigLoadError, ConfigSaveError},
     errors::ApiError,
     quicwg::{QuicWgConn, QuicWgTrafficStats},
@@ -46,12 +51,22 @@ pub struct Status {
     pub pinned_exits: Vec<String>,
     pub last_chosen_exit: Option<String>,
     pub api_url: Option<String>,
+    pub account: Option<ClientStateAccount>,
 }
 
 impl Status {
-    fn new(version: Uuid, vpn_status: VpnStatus, config: Config) -> Self {
+    fn new(version: Uuid, vpn_status: VpnStatus, config: Config, account: Option<ClientStateAccount>) -> Self {
         let Config { account_id, api_url, in_new_account_flow, pinned_exits, last_chosen_exit, .. } = config;
-        Self { version, vpn_status, account_id, in_new_account_flow, pinned_exits, last_chosen_exit, api_url }
+        Self {
+            version,
+            vpn_status,
+            account_id,
+            in_new_account_flow,
+            pinned_exits,
+            last_chosen_exit,
+            api_url,
+            account,
+        }
     }
 }
 
@@ -112,7 +127,7 @@ impl Manager {
     pub fn new(config_dir: PathBuf, old_config_dir: PathBuf, user_agent: String) -> Result<Arc<Self>, ConfigLoadError> {
         let client_state = ClientState::new(config_dir, old_config_dir, user_agent)?;
         let config = client_state.get_config();
-        let initial_status = Status::new(Uuid::new_v4(), VpnStatus::Disconnected {}, config);
+        let initial_status = Status::new(Uuid::new_v4(), VpnStatus::Disconnected {}, config, None);
         Ok(Self {
             client_state: client_state.into(),
             tunnel_state: Arc::new(RwLock::new(TunnelState::Disconnected { conn_id: Uuid::new_v4() })),
@@ -280,7 +295,8 @@ impl Manager {
         self.status_watch.send_if_modified(|status| {
             let config = self.client_state.get_config();
             let vpn_status = new_vpn_status.unwrap_or_else(|| status.vpn_status.clone());
-            let mut new_status = Status::new(status.version, vpn_status, config);
+            let account = self.client_state.get_account();
+            let mut new_status = Status::new(status.version, vpn_status, config, account);
             if new_status == *status {
                 return false;
             }
@@ -329,6 +345,17 @@ impl Manager {
 
     pub async fn api_request<C: Cmd>(&self, cmd: C) -> Result<C::Output, ApiError> {
         self.client_state.api_request(cmd).await
+    }
+
+    pub async fn get_account_info(&self) -> Result<AccountInfo, ApiError> {
+        let account_info = self.api_request(GetAccountInfo()).await?;
+        self.update_account_info(&account_info);
+        Ok(account_info)
+    }
+
+    pub fn update_account_info(&self, account_info: &AccountInfo) {
+        self.client_state.update_account_info(account_info);
+        self.update_status_if_changed(None);
     }
 }
 

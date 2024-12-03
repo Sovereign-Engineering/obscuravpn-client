@@ -74,6 +74,7 @@ pub enum ManagerCmd {
     SetInNewAccountFlow { value: bool },
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ManagerCmdOk {
@@ -100,7 +101,7 @@ impl ManagerCmd {
                 Ok(()) => Ok(ManagerCmdOk::Empty),
                 Err(err) => Err((&err).into()),
             },
-            ManagerCmd::ApiGetAccountInfo {} => match manager.api_request(GetAccountInfo()).await {
+            ManagerCmd::ApiGetAccountInfo {} => match manager.get_account_info().await {
                 Ok(account_info) => Ok(ManagerCmdOk::ApiGetAccountInfo(account_info)),
                 Err(err) => Err((&err).into()),
             },

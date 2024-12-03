@@ -20,6 +20,8 @@ struct NeStatus: Codable, Equatable {
     var inNewAccountFlow: Bool
     var pinnedExits: [String]
     var lastChosenExit: String?
+    var apiUrl: String
+    var account: AccountStatus?
 
     static func == (left: NeStatus, right: NeStatus) -> Bool {
         return left.version == right.version

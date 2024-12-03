@@ -5,11 +5,30 @@ import UserNotifications
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "StatusMenu")
 
+func getAccountStatusItemText(_ account: AccountStatus?) -> String? {
+    guard let account = account else { return nil }
+    guard let days = account.daysTillExpiry else { return nil }
+    if !account.expiringSoon() {
+        return nil
+    }
+    if days > 3 {
+        return "Account expires soon"
+    }
+    if days > 1 {
+        return "Account expires in \(days) days"
+    }
+    if days == 1 {
+        return "Accounts expires in in 1 day"
+    }
+    return account.accountInfo.active ? "Account expires today" : "Account is expired"
+}
+
 // https://multi.app/blog/pushing-the-limits-nsstatusitem
 final class StatusItemManager: ObservableObject {
     private var hostingView: NSHostingView<StatusItem>?
     private var statusItem: NSStatusItem?
     private var debuggingMenuItem: NSMenuItem?
+    private var accountMenuItem: NSMenuItem?
 
     private var sizePassthrough = PassthroughSubject<CGSize, Never>()
     private var sizeCancellable: AnyCancellable?
@@ -41,11 +60,25 @@ final class StatusItemManager: ObservableObject {
         showWindowMenuItem.image = image
         menu.addItem(showWindowMenuItem)
 
-        let accountMenuItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-        let accountHostingView = MenuItemView(AccountStatusItem())
-        accountMenuItem.view = accountHostingView
-        accountMenuItem.target = self
-        menu.addItem(accountMenuItem)
+        self.accountMenuItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        self.accountMenuItem!.isHidden = true
+        menu.addItem(self.accountMenuItem!)
+
+        Task {
+            while true {
+                if let appState = StartupModel.shared.appState {
+                    self.accountMenuItem!.title = getAccountStatusItemText(appState.status.account) ?? ""
+                } else {
+                    self.accountMenuItem!.title = ""
+                }
+                self.accountMenuItem!.isHidden = self.accountMenuItem!.title.isEmpty
+                do {
+                    try await Task.sleep(seconds: 5)
+                } catch {
+                    return
+                }
+            }
+        }
 
         menu.addItem(NSMenuItem.separator())
         if #available(macOS 14.0, *) {

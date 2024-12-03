@@ -1,4 +1,28 @@
-struct AccountInfo: Decodable, Encodable {
+struct AccountStatus: Codable, Equatable {
+    var accountInfo: AccountInfo
+    var daysTillExpiry: UInt64?
+    var lastUpdatedSec: UInt64
+
+    enum CodingKeys: String, CodingKey {
+        case accountInfo = "account_info"
+        case daysTillExpiry = "days_till_expiry"
+        case lastUpdatedSec = "last_updated_sec"
+    }
+
+    func expiringSoon() -> Bool {
+        if let daysTillExpiry = self.daysTillExpiry {
+            return daysTillExpiry <= 10
+        } else {
+            return false
+        }
+    }
+
+    static func == (left: AccountStatus, right: AccountStatus) -> Bool {
+        return left.lastUpdatedSec == right.lastUpdatedSec
+    }
+}
+
+struct AccountInfo: Codable {
     let id: String
     let active: Bool
     let topUp: TopUpInfo?
@@ -12,7 +36,7 @@ struct AccountInfo: Decodable, Encodable {
     }
 }
 
-struct TopUpInfo: Decodable, Encodable {
+struct TopUpInfo: Codable {
     let creditExpiresAt: Int64
 
     enum CodingKeys: String, CodingKey {
@@ -20,7 +44,7 @@ struct TopUpInfo: Decodable, Encodable {
     }
 }
 
-struct SubscriptionInfo: Decodable, Encodable {
+struct SubscriptionInfo: Codable {
     let status: SubscriptionStatus
     let currentPeriodStart: Int64
     let currentPeriodEnd: Int64
@@ -34,7 +58,7 @@ struct SubscriptionInfo: Decodable, Encodable {
     }
 }
 
-enum SubscriptionStatus: String, Decodable, Encodable {
+enum SubscriptionStatus: String, Codable {
     case active
     case canceled
     case incomplete

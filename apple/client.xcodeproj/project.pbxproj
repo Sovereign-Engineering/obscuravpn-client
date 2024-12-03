@@ -64,11 +64,11 @@
 		96516AC32BF928DD00576562 /* build in Resources */ = {isa = PBXBuildFile; fileRef = 96516AC22BF928DD00576562 /* build */; };
 		96615E292C598A9600120DEF /* CwlSysctl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96615E282C598A9600120DEF /* CwlSysctl.swift */; };
 		967D0C862C41A1E500FD0767 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 967D0C852C41A1E500FD0767 /* Constants.swift */; };
+		968B02B92CFF5B7B0053D0EF /* Account.swift in Sources */ = {isa = PBXBuildFile; fileRef = 968B02B82CFF5B7B0053D0EF /* Account.swift */; };
+		968B02BA2CFF5B7B0053D0EF /* Account.swift in Sources */ = {isa = PBXBuildFile; fileRef = 968B02B82CFF5B7B0053D0EF /* Account.swift */; };
 		96C9205B2CD549B1002C85EA /* BandwidthStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C9205A2CD549B1002C85EA /* BandwidthStatus.swift */; };
 		96C920692CD91D96002C85EA /* String.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C920682CD91D94002C85EA /* String.swift */; };
 		96C9206A2CD91D96002C85EA /* String.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C920682CD91D94002C85EA /* String.swift */; };
-		96C920882CEE4BA8002C85EA /* Account.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C920872CEE4BA8002C85EA /* Account.swift */; };
-		96C920BA2CF624E4002C85EA /* AccountStatusItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C920B92CF624DD002C85EA /* AccountStatusItem.swift */; };
 		A082F8232C46BF5B002AF810 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A082F8222C46BF5B002AF810 /* Sparkle */; };
 		C90161572BE011B2005B14AF /* libobscuravpn-client.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C90161542BE01159005B14AF /* libobscuravpn-client.a */; };
 /* End PBXBuildFile section */
@@ -162,10 +162,9 @@
 		96516AC22BF928DD00576562 /* build */ = {isa = PBXFileReference; lastKnownFileType = folder; name = build; path = "../obscura-ui/build"; sourceTree = "<group>"; };
 		96615E282C598A9600120DEF /* CwlSysctl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CwlSysctl.swift; sourceTree = "<group>"; };
 		967D0C852C41A1E500FD0767 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
+		968B02B82CFF5B7B0053D0EF /* Account.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Account.swift; sourceTree = "<group>"; };
 		96C9205A2CD549B1002C85EA /* BandwidthStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BandwidthStatus.swift; sourceTree = "<group>"; };
 		96C920682CD91D94002C85EA /* String.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = String.swift; sourceTree = "<group>"; };
-		96C920872CEE4BA8002C85EA /* Account.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Account.swift; sourceTree = "<group>"; };
-		96C920B92CF624DD002C85EA /* AccountStatusItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountStatusItem.swift; sourceTree = "<group>"; };
 		A06E85A62C2ECA680087C8C8 /* bundle-ids.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "bundle-ids.xcconfig"; sourceTree = "<group>"; };
 		A06E85A92C2ECA680087C8C8 /* app.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = app.xcconfig; sourceTree = "<group>"; };
 		A06E85AA2C2ECA680087C8C8 /* buildversion.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = buildversion.xcconfig; sourceTree = "<group>"; };
@@ -244,7 +243,6 @@
 		30761C202B6EB17100E5F60D /* client */ = {
 			isa = PBXGroup;
 			children = (
-				96C920872CEE4BA8002C85EA /* Account.swift */,
 				3096BFF72CECD4BA003D062E /* extensions */,
 				9623252A2C8BACBC008A9B76 /* StatusItem */,
 				35230C272C775FF1007ECFEC /* Notifications.swift */,
@@ -320,6 +318,7 @@
 		30EF74BF2BFFC2A90095439F /* shared */ = {
 			isa = PBXGroup;
 			children = (
+				968B02B82CFF5B7B0053D0EF /* Account.swift */,
 				96C920682CD91D94002C85EA /* String.swift */,
 				35230C182C764F0D007ECFEC /* Swift.swift */,
 				35230C152C764B97007ECFEC /* Concurrency.swift */,
@@ -348,7 +347,6 @@
 		9623252A2C8BACBC008A9B76 /* StatusItem */ = {
 			isa = PBXGroup;
 			children = (
-				96C920B92CF624DD002C85EA /* AccountStatusItem.swift */,
 				962325172C875B3E008A9B76 /* StatusMenu.swift */,
 				962325222C8A3B58008A9B76 /* MenuItemView.swift */,
 				962325202C88D4E8008A9B76 /* ObscuraToggle.swift */,
@@ -548,7 +546,6 @@
 			files = (
 				3096E0222BDC1FFB0026DE7F /* ScriptMessageHandlers.swift in Sources */,
 				30EF74C12BFFE48C0095439F /* FfiCb.swift in Sources */,
-				96C920BA2CF624E4002C85EA /* AccountStatusItem.swift in Sources */,
 				309B467D2C4C152900A1B00F /* StringError.swift in Sources */,
 				352D58E02C4AE796002F3404 /* ObservableValue.swift in Sources */,
 				962325232C8A3B58008A9B76 /* MenuItemView.swift in Sources */,
@@ -567,6 +564,7 @@
 				35A6F2542C6121C2004E1A7C /* time.swift in Sources */,
 				300452782C49BC90000B78F7 /* Json.swift in Sources */,
 				356D94272C48368100135DF9 /* CheckForUpdatesView.swift in Sources */,
+				968B02B92CFF5B7B0053D0EF /* Account.swift in Sources */,
 				35A6F2522C611DD1004E1A7C /* DebugBundle.swift in Sources */,
 				96615E292C598A9600120DEF /* CwlSysctl.swift in Sources */,
 				30EF74CD2C02244C0095439F /* NetworkExtensionIpc.swift in Sources */,
@@ -574,7 +572,6 @@
 				30761C222B6EB17100E5F60D /* ClientApp.swift in Sources */,
 				967D0C862C41A1E500FD0767 /* Constants.swift in Sources */,
 				30920D7D2C207379008690C3 /* TunnelProvider.swift in Sources */,
-				96C920882CEE4BA8002C85EA /* Account.swift in Sources */,
 				3096E0462BF0F5870026DE7F /* app_state.swift in Sources */,
 				30C5320A2CC9558000936E1F /* WatchableValue.swift in Sources */,
 				3096E0402BEFC6770026DE7F /* command.swift in Sources */,
@@ -610,6 +607,7 @@
 				309B467E2C4C152900A1B00F /* StringError.swift in Sources */,
 				309BA90C2C446125000A7428 /* NetworkSettings.swift in Sources */,
 				300452792C49BC90000B78F7 /* Json.swift in Sources */,
+				968B02BA2CFF5B7B0053D0EF /* Account.swift in Sources */,
 				309BA90A2C443978000A7428 /* RustFfi.swift in Sources */,
 				30EF74C22BFFE86B0095439F /* FfiCb.swift in Sources */,
 				96C9206A2CD91D96002C85EA /* String.swift in Sources */,

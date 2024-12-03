@@ -9,7 +9,6 @@ class AppState: ObservableObject {
     private let configQueue: DispatchQueue = .init(label: "config queue")
     private let osStatus: WatchableValue<OsStatus>
     @Published var status: NeStatus
-    @Published var accountDaysTillExpiry = AccountDaysTillExpiry(days: nil)
 
     init(
         _ manager: NETunnelProviderManager,
@@ -49,43 +48,6 @@ class AppState: ObservableObject {
                     try await self.ping()
                 } catch {
                     Self.logger.error("Ping failed \(error.localizedDescription, privacy: .public)")
-                }
-            }
-        }
-
-        Task { @MainActor in
-            while true {
-                do {
-                    if self.status.accountId == nil {
-                        try! await Task.sleep(seconds: 60)
-                        // if the user logged out
-                        self.accountDaysTillExpiry.days = nil
-                        continue
-                    }
-                    let accountInfo = try await getAccountInfo(self.manager)
-                    let isRenewing = accountInfo.subscription != nil && !accountInfo.subscription!.cancelAtPeriodEnd
-                    let topUpExpiresAt = accountInfo.topUp?.creditExpiresAt ?? 0
-                    let subscriptionExpires = accountInfo.subscription?.currentPeriodEnd ?? 0
-
-                    if !accountInfo.active {
-                        self.accountDaysTillExpiry.days = 0
-                    } else if isRenewing {
-                        self.accountDaysTillExpiry.days = nil
-                    } else if accountInfo.subscription == nil {
-                        // just use top-up
-                        let secondsPart = (accountInfo.topUp?.creditExpiresAt ?? Int64(Date().timeIntervalSince1970)) - Int64(Date().timeIntervalSince1970)
-                        self.accountDaysTillExpiry.days = secondsPart / 86400
-                    } else if accountInfo.topUp == nil {
-                        // just use subscription
-                        self.accountDaysTillExpiry.days = (subscriptionExpires - Int64(Date().timeIntervalSince1970)) / 86400
-                    } else {
-                        // use max from both
-                        self.accountDaysTillExpiry.days = (max(topUpExpiresAt, subscriptionExpires) - Int64(Date().timeIntervalSince1970)) / 86400
-                    }
-                    await self.accountPollSleep(daysTillExpiry: self.accountDaysTillExpiry.days, subscriptionExpiry: subscriptionExpires)
-                } catch {
-                    Self.logger.error("apiGetAccountInfo failed \(error.localizedDescription, privacy: .public)")
-                    try! await Task.sleep(seconds: 60)
                 }
             }
         }

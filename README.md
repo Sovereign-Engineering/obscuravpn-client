@@ -20,13 +20,13 @@ The network extension manages the virtual device and maintains the tunnel using 
 1. [Install `rustup`](https://rustup.rs/).
 1. [Setup Nix](#nix-setup)
 1. Open the main Xcode project
-  ```bash
-  nix develop --print-build-logs --command just xcode-open
-  ```
+    ```bash
+    nix develop --print-build-logs --command just xcode-open
+    ```
 1. In Xcode, login with an account with membership in "Sovereign Engineering Inc."
 1. Register development machine in Apple Developer portal (can be done in Xcode)
 1. [Enable system extension developer mode](#enabling-system-extension-developer-mode)
-1. Setup Developer ID provisioning profile and codesigning for `Prod Client`
+1. Setup Developer ID provisioning profile and codesigning for `Prod Client` build scheme
     1. Go to https://developer.apple.com/account/resources/profiles/list
         - Download "Developer ID: System Network Extension"
         - Download "Developer ID: VPN Client App"
@@ -227,23 +227,6 @@ To accomplish this:
 
   If you do this, you can omit the `nix develop ... --command` parts, as `cd`-ing into the repository directory will set up your environment variables with the correct tools as long as you've `direnv allow`-ed the directory.
 
-### Overriding the API server URL
-
-1. Start the app at least once and login. A config file will be automatically created at
-
-    `/Library/Application Support/obscura-vpn/system-network-extension/config.json`
-
-2. Quit the app (via the top-right status menu bar so that the app quits fully)
-3. Wait for the network extension to stop, or kill it using `sudo kill -9 $(pgrep net.obscura.vpn-client-app.system-network-extension)`
-4. Set the `"api_url"` key in the config file
-    - prod: `"https://v1.api.prod.obscura.net/api"`
-    - localhost: `"http://localhost:12345/api"`
-    - staging: `"https://v1.api.staging.obscura.net/api"` (internal only)
-
-    To quickly replace the `api_url`, you can use `./bin/update-config-url.sh http://localhost:12345/api`
-
-5. Start the app again
-
 ### Confirming "Developer ID" Setup
 
 To confirm that the Developer ID provisioning profile and codesigning are set up correctly (required for the `Prod Client` build scheme):
@@ -256,7 +239,7 @@ To confirm that the Developer ID provisioning profile and codesigning are set up
 
 ## Linux
 
-> [!NOTE]
+> [!WARNING]
 > As of 2024-07-04, the Linux client is not maintained.
 
 ```bash

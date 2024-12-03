@@ -64,17 +64,22 @@ class ViewModeManager: ObservableObject {
     }
 }
 
-func getBadgeText(_ daysToExpiry: Int64) -> String {
-    if daysToExpiry > 3 {
+func getBadgeText(_ account: AccountStatus?) -> String? {
+    guard let account = account else { return nil }
+    guard let days = account.daysTillExpiry else { return nil }
+    if !account.expiringSoon() {
+        return nil
+    }
+    if days > 3 {
         return "expires soon"
     }
-    if daysToExpiry > 1 {
-        return "exp. in \(daysToExpiry)d"
+    if days > 1 {
+        return "exp. in \(days)d"
     }
-    if daysToExpiry == 1 {
+    if days == 1 {
         return "exp. in 1d"
     }
-    return "expired"
+    return account.accountInfo.active ? "exp. today" : "expired"
 }
 
 struct ContentView: View {
@@ -94,13 +99,13 @@ struct ContentView: View {
 
     init(appState: AppState) {
         self.appState = appState
-
         let forceHide = appState.status.accountId == nil || appState.status.inNewAccountFlow
         self.loginViewShown = forceHide
         self.splitViewVisibility = forceHide ? .detailOnly : .automatic
     }
 
     var body: some View {
+        let accountBadge = getBadgeText(self.appState.status.account)
         NavigationSplitView(
             columnVisibility: self.$splitViewVisibility,
             sidebar: {
@@ -108,17 +113,15 @@ struct ContentView: View {
                     let label = Label(view.name.capitalized, systemImage: view.systemImageName)
                         .listItemTint(Color("ObscuraOrange"))
                     // hide badge if we simply do not know if should be shown
-                    // guard let vpnStatus = self.getVpnStatus() else { return }
-                    if view.name == "account" && self.appState.accountDaysTillExpiry.expiringSoon() {
+                    if view.name == "account" && accountBadge != nil {
                         label
-                            .badge(Text(getBadgeText(self.appState.accountDaysTillExpiry.days!))
+                            .badge(Text(accountBadge!)
                                 .monospacedDigit()
-                                .foregroundColor(self.appState.accountDaysTillExpiry.days! <= 3 ? .red : .yellow)
+                                .foregroundColor(self.appState.status.account!.daysTillExpiry! <= 3 ? .red : .yellow)
                                 .bold()
                             )
                             // this has to be here, otherwise the label color is system accent default
                             .listItemTint(Color("ObscuraOrange"))
-
                     } else {
                         label
                     }

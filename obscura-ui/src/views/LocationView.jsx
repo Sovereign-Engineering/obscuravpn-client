@@ -5,12 +5,12 @@ import { useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsPin, BsPinFill, BsShieldFillCheck, BsShieldFillExclamation } from 'react-icons/bs';
 
+import * as commands from '../bridge/commands';
 import { AppContext, ConnectingStrings, ExitsContext } from '../common/appContext';
 import { countryCodeToFlagEmoji, exitsSortComparator } from '../common/exitUtils';
 import { NotificationId } from '../common/notifIds';
 import BoltBadgeAuto from '../components/BoltBadgeAuto';
 import ObscuraChip from '../components/ObscuraChip';
-import * as commands from '../tauri/commands';
 
 import commonClasses from '../common/common.module.css';
 import classes from './Location.module.css';

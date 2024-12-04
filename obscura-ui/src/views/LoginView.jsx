@@ -7,10 +7,10 @@ import { Trans, useTranslation } from 'react-i18next';
 import { FaExternalLinkAlt } from 'react-icons/fa';
 
 import AppIcon from '../../../apple/client/Assets.xcassets/AppIcon.appiconset/icon_128x128.png';
+import * as commands from '../bridge/commands';
 import * as ObscuraAccount from '../common/accountUtils';
 import { HEADER_TITLE } from '../common/utils';
 import DecoOrangeTop from '../res/deco/deco-orange-top.svg';
-import * as commands from '../tauri/commands';
 import classes from './LoginView.module.css';
 
 export default function LogIn({ accountNumber, accountActive }) {

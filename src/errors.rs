@@ -26,6 +26,7 @@ pub enum ConnectErrorCode {
     AccountExpired,
     ApiRateLimitExceeded,
     ApiError,
+    NoLongerSupported,
     Other,
 }
 
@@ -38,8 +39,9 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
                 ApiError::NoAccountId => Self::Other,
                 ApiError::ApiClient(err) => match err {
                     ClientError::ApiError(err) => match err.body.error {
-                        TunnelLimitExceeded {} => Self::NoSlotsLeft,
                         AccountExpired {} => Self::AccountExpired,
+                        NoLongerSupported {} => Self::NoLongerSupported,
+                        TunnelLimitExceeded {} => Self::NoSlotsLeft,
                         RateLimitExceeded {} => Self::ApiRateLimitExceeded,
                         BadRequest {}
                         | InternalError {}

@@ -176,12 +176,17 @@ function NoExitServers() {
     async function refetch() {
         try {
             setIsLoading(true);
+            console.log("Fetching exits");
             await fetchExitList();
         } catch (error) {
+          let message = error instanceof commands.CommandError
+            ? t(error.i18nKey())
+            : t('exitServerFetchResolution');
+
           notifications.show({
             id: 'failedToFetchExitServers',
             title: t('failedToFetchExitServers'),
-            message: t('exitServerFetchResolution'),
+            message,
             color: 'red',
           });
         } finally {

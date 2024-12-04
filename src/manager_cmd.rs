@@ -20,10 +20,11 @@ use crate::{config::ConfigSaveError, errors::ApiError};
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum ManagerCmdErrorCode {
-    ConfigSaveError,
+    ApiError,
+    ApiNoLongerSupported,
     ApiRateLimitExceeded,
     ApiSignupLimitExceeded,
-    ApiError,
+    ConfigSaveError,
     Other,
 }
 
@@ -41,6 +42,7 @@ impl From<&ApiError> for ManagerCmdErrorCode {
             ApiError::NoAccountId => Self::ApiError,
             ApiError::ApiClient(err) => match err {
                 ClientError::ApiError(err) => match err.body.error {
+                    ApiErrorKind::NoLongerSupported {} => Self::ApiNoLongerSupported,
                     ApiErrorKind::RateLimitExceeded {} => Self::ApiRateLimitExceeded,
                     ApiErrorKind::SignupLimitExceeded {} => Self::ApiSignupLimitExceeded,
                     ApiErrorKind::InternalError {}

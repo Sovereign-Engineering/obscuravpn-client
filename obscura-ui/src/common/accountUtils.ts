@@ -75,7 +75,7 @@ const enum ObscuraAccountErrorCode {
   INVALID_CHECKSUM = "invalidChecksum",
 };
 
-class ObscuraAccountIdError extends Error {
+export class ObscuraAccountIdError extends Error {
   public readonly code: string;
 
   constructor(code: ObscuraAccountErrorCode, message: string) {

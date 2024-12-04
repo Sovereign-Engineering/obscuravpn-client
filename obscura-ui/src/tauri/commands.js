@@ -1,6 +1,11 @@
 async function WKWebViewInvoke(command, args) {
     const commandJson = JSON.stringify({ [command]: args });
-    const resultJson = await window.webkit.messageHandlers.commandBridge.postMessage(commandJson);
+    let resultJson;
+    try {
+        resultJson = await window.webkit.messageHandlers.commandBridge.postMessage(commandJson);
+    } catch (e) {
+        throw new CommandError(e.message);
+    }
     return JSON.parse(resultJson);
 }
 
@@ -13,6 +18,18 @@ async function invoke(command, args) {
         console.error(`Command ${command}(${JSON.stringify(args)}) resulted in error: ${e}`);
         // rethrow error
         throw e;
+    }
+}
+
+export class CommandError extends Error {
+    constructor(code) {
+        // HACK: We should put some "human readable" message into the message field but lots of code currently just hopes to find specific error codes in the message field. So until we hunt down all of those just put the code in the message as well. Don't write new code that treats `message` as machine readable.
+        super(code);
+        this.code = code;
+    }
+
+    i18nKey() {
+        return `ipcError-${this.code}`;
     }
 }
 

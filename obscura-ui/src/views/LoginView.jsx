@@ -52,9 +52,14 @@ export default function LogIn({ accountNumber, accountActive }) {
           });
         }, 10_000);
       } catch (e) {
+        let message = e instanceof commands.CommandError
+          ? t(e.i18nKey())
+          : e instanceof ObscuraAccount.ObscuraAccountIdError
+          ? t(e.code)
+          : e.message;
         notifications.show({
           title: t('Error Logging In'),
-          message: t(e.code || e.message),
+          message,
           color: 'red'
         });
         setTimeout(() => setLoginWaiting(false), 500);

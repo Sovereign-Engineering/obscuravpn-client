@@ -2,21 +2,23 @@ import { ActionIcon, Button, Group, JsonInput, Stack, Text, TextInput, Title } f
 import { useInterval } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { relaunch } from '@tauri-apps/api/process';
-import { useContext, useEffect, useRef, useState } from 'react';
+import Cookies from 'js-cookie';
+import React, { useContext, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { IoLogOutOutline } from 'react-icons/io5';
-import { IS_WK_WEB_VIEW } from '../common/utils';
 import { AppContext } from '../common/appContext';
+import { IS_WK_WEB_VIEW } from '../common/utils';
+import DevSendCommand from '../components/DevSendCommand';
+import DevSetApiUrl from '../components/DevSetApiUrl';
 import * as commands from '../tauri/commands';
 import { RUNNING_IN_TAURI } from '../tauri/SystemProvider';
-import DevSendCommand from '../components/DevSendCommand';
-import Cookies from 'js-cookie';
-import DevSetApiUrl from '../components/DevSetApiUrl';
 
 export default function DeveloperViewer() {
+    const { t } = useTranslation();
     const { vpnConnected, connectionInProgress, appStatus, osStatus } = useContext(AppContext);
     const [trafficStats, setTrafficStats] = useState({});
     const [exitServers, setExitServers] = useState([]);
-    const cookieToDeleteRef = useRef(null);
+    const cookieToDeleteRef = useRef<HTMLInputElement | null>(null);
 
     const trafficStatsInterval = useInterval(async () => {
         setTrafficStats(await commands.getTrafficStats());
@@ -30,6 +32,14 @@ export default function DeveloperViewer() {
         };
     }, []);
 
+    const logoutOnclick = async () => {
+        try {
+            commands.logout();
+        } catch (e) {
+            notifications.show({ title: 'logoutFailed', message: e.type === 'logoutFailed' ? t('pleaseReportError') : '' });
+        }
+    }
+
     return <Stack p={20}>
         <Title order={3}>Developer View</Title>
         <Title order={4}>Current Status</Title>
@@ -38,7 +48,7 @@ export default function DeveloperViewer() {
         <Title order={4}>React variables</Title>
         <Text>vpn is connected: <b>{vpnConnected ? 'Yes' : 'No'}</b></Text>
         <Text>connection in progress: <b>{connectionInProgress ?? 'No'}</b></Text>
-        {IS_WK_WEB_VIEW && <><Button title='Preferences such as whether the user has been onboarded or if the app has tried to register as a login item' onClick={() => commands.developerResetUserDefaults().then(() => notifications.show({ title: 'Successfully Removed UserDefault Keys', color: 'green' }))}>Reset app UserDefaults</Button></>}
+        {IS_WK_WEB_VIEW && <><Button title='Preferences such as whether the user has been onboarded or if the app has tried to register as a login item' onClick={() => commands.developerResetUserDefaults().then(() => notifications.show({ title: 'Successfully Removed UserDefault Keys', color: 'green', message: '' }))}>Reset app UserDefaults</Button></>}
         {RUNNING_IN_TAURI && <Button onClick={relaunch}>Relaunch</Button>}
         <DevSetApiUrl />
         <Title order={4}>Traffic Stats</Title>
@@ -47,8 +57,8 @@ export default function DeveloperViewer() {
         <Title order={4}>Exit Servers</Title>
         <JsonInput value={JSON.stringify(exitServers, null, 4)} contentEditable={false} rows={4} />
         <Group gap={10}>
-            <ActionIcon title='logout' variant='default' onClick={() => commands.logout().catch(e => notifications.show({ title: 'logoutFailed', message: e.type === 'logoutFailed' ? t('pleaseReportError') : '' }))
-            } size={30}>
+            <ActionIcon title='logout' variant='default' size={30}
+                onClick={logoutOnclick}>
                 <IoLogOutOutline />
             </ActionIcon>
             <Text>Logout</Text>
@@ -58,8 +68,10 @@ export default function DeveloperViewer() {
         <Title order={4}>Cookies</Title>
         <Text>{JSON.stringify(Cookies.get(), null, 4)}</Text>
         <Group>
-        <TextInput ref={cookieToDeleteRef} placeholder='cookieName' />
-        <Button onClick={() => Cookies.remove(cookieToDeleteRef.current.value)}>Delete Cookie</Button>
+            <TextInput ref={cookieToDeleteRef} placeholder='cookieName' />
+            <Button onClick={() => {
+                if (cookieToDeleteRef.current !== null) Cookies.remove(cookieToDeleteRef.current.value)
+            }}>Delete Cookie</Button>
         </Group>
     </Stack>;
 }

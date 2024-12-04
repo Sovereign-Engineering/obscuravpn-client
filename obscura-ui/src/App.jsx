@@ -16,7 +16,6 @@ import { AppContext, ConnectingStrings, ExitsContext } from './common/appContext
 import { useLoadable } from './common/useLoadable';
 import { NOTIF_VPN_DISCONNECT_CONNECT } from './common/notifIds';
 import { HEADER_TITLE, IS_DEVELOPMENT, IS_WK_WEB_VIEW, VERSION, getLatestState, trueTypeOf, useCookie } from './common/utils';
-import LanguageHeaders from './components/LanguageHeaders';
 import { ScrollToTop } from './components/ScrollToTop';
 import { UserPrefs } from './components/UserPrefs';
 import * as commands from './tauri/commands';
@@ -394,8 +393,6 @@ export default function () {
         </Group>
 
         <Group className={classes.headerRightItems} h='110%'>
-          <LanguageHeaders i18n={i18n} />
-
           {IS_DEVELOPMENT &&
             <ActionIcon title='logout' variant='default' onClick={() => commands.logout().catch(e => notifications.show({ title: 'logoutFailed', message: e.type === 'logoutFailed' ? t('pleaseReportError') : '' }))
             } size={30}>

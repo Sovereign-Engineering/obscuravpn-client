@@ -307,26 +307,44 @@ impl ClientState {
     }
 
     pub fn update_account_info(&self, account_info: &AccountInfo) {
-        let system_time = SystemTime::now();
-        let days_till_expiry = compute_days_till_expiry(account_info, system_time);
+        let response_time = SystemTime::now();
+        let last_updated_sec = response_time.duration_since(UNIX_EPOCH).unwrap_or(Duration::ZERO).as_secs();
+        let days_till_expiry = compute_days_till_expiry(account_info, response_time);
         let mut inner = self.lock();
-        let last_updated_sec = system_time.duration_since(UNIX_EPOCH).unwrap().as_secs();
         inner.account = Some(ClientStateAccount { account_info: account_info.clone(), days_till_expiry, last_updated_sec })
     }
 }
 
-fn compute_days_till_expiry(account_info: &AccountInfo, timestamp_sec: SystemTime) -> Option<u64> {
-    let is_renewing = account_info.subscription.as_ref().map(|sub| !sub.cancel_at_period_end).unwrap_or(false);
-    let top_up_end = account_info.top_up.as_ref().map(|top_up| top_up.credit_expires_at).unwrap_or(0);
-    let subscription_end = account_info.subscription.as_ref().map(|sub| sub.current_period_end).unwrap_or(0);
+fn parse_api_timestamp(timestamp_s: i64) -> SystemTime {
+    if let Ok(timestamp_s) = u64::try_from(timestamp_s) {
+        UNIX_EPOCH + Duration::from_secs(timestamp_s)
+    } else {
+        tracing::error!(
+            message_id = "Chiiji6o",
+            timestamp_s,
+            "Can't convert timestamp to SystemTime, assuming far past.",
+        );
+        UNIX_EPOCH
+    }
+}
 
+fn compute_days_till_expiry(account_info: &AccountInfo, now: SystemTime) -> Option<u64> {
     if !account_info.active {
         return Some(0);
     }
-    if is_renewing {
+    if account_info.subscription.as_ref().is_some_and(|sub| !sub.cancel_at_period_end) {
         return None;
     }
-    let max_expiry = UNIX_EPOCH + Duration::from_secs(top_up_end.max(subscription_end) as u64);
-    // if max_expiry < system_time, assume expired
-    Some(max_expiry.duration_since(timestamp_sec).map_or(0, |d| d.as_secs() / 86400))
+
+    let top_up_end = account_info.top_up.as_ref().map(|top_up| parse_api_timestamp(top_up.credit_expires_at));
+    let subscription_end = account_info.subscription.as_ref().map(|sub| parse_api_timestamp(sub.current_period_end));
+
+    let Some(end) = top_up_end.max(subscription_end) else {
+        // The account is active but we don't know why. Assume it will never expire.
+        return None;
+    };
+
+    let until_expiry = end.duration_since(now).unwrap_or(Duration::ZERO);
+
+    Some(until_expiry.as_secs() / 3600 / 24)
 }

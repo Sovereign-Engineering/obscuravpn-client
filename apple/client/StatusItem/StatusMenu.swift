@@ -64,7 +64,7 @@ final class StatusItemManager: ObservableObject {
         self.accountMenuItem!.isHidden = true
         menu.addItem(self.accountMenuItem!)
 
-        Task {
+        Task { @MainActor in
             while true {
                 if let appState = StartupModel.shared.appState {
                     self.accountMenuItem!.title = getAccountStatusItemText(appState.status.account) ?? ""

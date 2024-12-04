@@ -1,11 +1,10 @@
-import { ActionIcon, Button, Group, JsonInput, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Button, Group, JsonInput, Stack, Text, TextInput, Title } from '@mantine/core';
 import { useInterval } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { relaunch } from '@tauri-apps/api/process';
 import Cookies from 'js-cookie';
-import React, { useContext, useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { IoLogOutOutline } from 'react-icons/io5';
 import { AppContext } from '../common/appContext';
 import { IS_WK_WEB_VIEW } from '../common/utils';
 import DevSendCommand from '../components/DevSendCommand';
@@ -32,14 +31,6 @@ export default function DeveloperViewer() {
         };
     }, []);
 
-    const logoutOnclick = async () => {
-        try {
-            commands.logout();
-        } catch (e) {
-            notifications.show({ title: 'logoutFailed', message: e.type === 'logoutFailed' ? t('pleaseReportError') : '' });
-        }
-    }
-
     return <Stack p={20}>
         <Title order={3}>Developer View</Title>
         <Title order={4}>Current Status</Title>
@@ -56,13 +47,6 @@ export default function DeveloperViewer() {
         <JsonInput value={JSON.stringify(trafficStats, null, 4)} contentEditable={false} rows={6} />
         <Title order={4}>Exit Servers</Title>
         <JsonInput value={JSON.stringify(exitServers, null, 4)} contentEditable={false} rows={4} />
-        <Group gap={10}>
-            <ActionIcon title='logout' variant='default' size={30}
-                onClick={logoutOnclick}>
-                <IoLogOutOutline />
-            </ActionIcon>
-            <Text>Logout</Text>
-        </Group>
         <DevSendCommand />
         <Button onClick={() => commands.setInNewAccountFlow(true)}>setInNewAccountFlow</Button>
         <Title order={4}>Cookies</Title>

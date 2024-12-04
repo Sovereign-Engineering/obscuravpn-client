@@ -1,11 +1,11 @@
-import { ActionIcon, AppShell, AppShellAside, AppShellHeader, AppShellMain, AppShellNavbar, AppShellSection, Burger, Button, Divider, Group, Image, Modal, Space, Text, Title, useComputedColorScheme, useMantineColorScheme } from '@mantine/core';
-import { useDisclosure, useHotkeys, useInterval } from '@mantine/hooks';
+import { ActionIcon, AppShell, AppShellAside, AppShellHeader, AppShellMain, AppShellNavbar, AppShellSection, Burger, Divider, Group, Image, Modal, Space, Text, Title, useComputedColorScheme, useMantineColorScheme } from '@mantine/core';
+import { useDisclosure, useHotkeys } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import React, { useEffect, useRef, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Trans, useTranslation } from 'react-i18next';
 import { BsMoonStarsFill } from 'react-icons/bs';
-import { IoLogOutOutline, IoSunnySharp } from 'react-icons/io5';
+import { IoSunnySharp } from 'react-icons/io5';
 import { NavLink, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import SimpleBar from 'simplebar-react';
 import 'simplebar-react/dist/simplebar.min.css';
@@ -13,9 +13,9 @@ import 'simplebar-react/dist/simplebar.min.css';
 import AppIcon from '../../apple/client/Assets.xcassets/AppIcon.appiconset/icon_128x128.png';
 import classes from './App.module.css';
 import { AppContext, ConnectingStrings, ExitsContext } from './common/appContext';
+import { NotificationId } from './common/notifIds';
 import { useLoadable } from './common/useLoadable';
-import { NOTIF_VPN_DISCONNECT_CONNECT } from './common/notifIds';
-import { HEADER_TITLE, IS_DEVELOPMENT, IS_WK_WEB_VIEW, VERSION, getLatestState, trueTypeOf, useCookie } from './common/utils';
+import { HEADER_TITLE, IS_WK_WEB_VIEW, useCookie } from './common/utils';
 import { ScrollToTop } from './components/ScrollToTop';
 import { UserPrefs } from './components/UserPrefs';
 import * as commands from './tauri/commands';
@@ -23,12 +23,8 @@ import { tauriLogError, useSystemContext } from './tauri/SystemProvider';
 // imported views need to be added to the `views` list variable
 import { Account, Connection, DeveloperView, FallbackAppRender, Help, Location, LogIn, Settings, SplashScreen } from './views';
 
-// defined in Rust side
-const DAEMON_UNRESPONSIVE = 'DaemonUnresponsive';
-const NOTIF_UPDATE = 'updateNotif';
-
 export default function () {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   // check if using custom titlebar to adjust other components
   const { usingCustomTitleBar, osPlatform, loading: systemProviderLoading } = useSystemContext();
 
@@ -42,7 +38,6 @@ export default function () {
   const toggleDesktopNav = () => setDesktopNavOpened(o => !o);
 
   // MISCELLANEOUS
-  const updateInProgress = useRef(false);
   const scrollbarRef = useRef(null);
 
   // App State
@@ -101,8 +96,8 @@ export default function () {
       await commands.connect(exit);
     } catch (e) {
       if (!ignoreConnectingErrors.current && e.message !== 'tunnelNotDisconnected') {
-        notifications.hide('vpnError');
-        notifications.show({ title: t('Error Connecting'), message: t('vpnError-' + e.message), color: 'red', id: 'vpnError', autoClose: false });
+        notifications.hide(NotificationId.VPN_ERROR);
+        notifications.show({ title: t('Error Connecting'), message: t('vpnError-' + e.message), color: 'red', id: NotificationId.VPN_ERROR, autoClose: false });
         // see https://linear.app/soveng/issue/OBS-775/not-starting-tunnel-because-it-isnt-disconnected-connecting#comment-e98a7150
         setConnectionInProgress(ConnectingStrings.UNSET);
       }
@@ -145,9 +140,9 @@ export default function () {
   function notifyVpnError(errorEnum) {
     // see enum JsVpnError in commands.swift
     if (errorEnum !== null) {
-      notifications.hide('vpnError');
+      notifications.hide(NotificationId.VPN_ERROR);
       notifications.show({
-        id: 'vpnError',
+        id: NotificationId.VPN_ERROR,
         withCloseButton: false,
         color: 'red',
         title: t('Error'),
@@ -164,9 +159,9 @@ export default function () {
     if (vpnStatus.connected !== undefined) {
       setVpnConnected(true);
       setConnectionInProgress();
-      notifications.hide('vpnError');
+      notifications.hide(NotificationId.VPN_ERROR);
       notifications.update({
-        id: NOTIF_VPN_DISCONNECT_CONNECT,
+        id: NotificationId.VPN_DISCONNECT_CONNECT,
         color: 'green',
         autoClose: 1000
       });
@@ -393,12 +388,6 @@ export default function () {
         </Group>
 
         <Group className={classes.headerRightItems} h='110%'>
-          {IS_DEVELOPMENT &&
-            <ActionIcon title='logout' variant='default' onClick={() => commands.logout().catch(e => notifications.show({ title: 'logoutFailed', message: e.type === 'logoutFailed' ? t('pleaseReportError') : '' }))
-            } size={30}>
-              <IoLogOutOutline />
-            </ActionIcon>}
-
           <ActionIcon id='toggle-theme' title={osPlatform === 'darwin' ? '⌘ + J' : 'ctrl + J'} variant='default' onClick={() => toggleColorScheme()} size={30}>
             {colorScheme === 'dark' ? <IoSunnySharp size='1.5em' /> : <BsMoonStarsFill />}
           </ActionIcon>
@@ -425,27 +414,4 @@ export default function () {
       </AppShellAside>
     </AppShell>
   </>;
-}
-
-function StartDaemonButton({ t }) {
-  return <Button onClick={() => commands.start_daemon().then(() =>
-    notifications.update({
-      id: DAEMON_UNRESPONSIVE,
-      title: t('daemonStarted'),
-      message: t('postDaemonStartMsg'),
-      color: 'green'
-    })
-  ).catch(e => {
-    notifications.update({ id: DAEMON_UNRESPONSIVE, message: t(e.type) })
-  })}>{t('startDaemon')}</Button>;
-}
-
-function getTimeStamp() {
-  const currentDate = new Date();
-  let hours = currentDate.getHours();
-  var ampm = hours >= 12 ? 'pm' : 'am';
-  let minutes = currentDate.getMinutes();
-  minutes = minutes < 10 ? '0' + minutes : minutes;
-  const timeStamp = `${hours}:${minutes} ${ampm}`;
-  return timeStamp;
 }

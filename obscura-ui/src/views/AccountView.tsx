@@ -1,6 +1,6 @@
-import { Anchor, Box, Button, Group, Loader, Paper, Stack, Text, ThemeIcon, useComputedColorScheme, useMantineTheme } from '@mantine/core';
+import { Anchor, Box, Button, Code, Group, Loader, Paper, Stack, Text, ThemeIcon, useComputedColorScheme, useMantineTheme } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import React, { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsCheckCircleFill, BsExclamationTriangleFill } from 'react-icons/bs';
 import { IoLogOutOutline } from 'react-icons/io5';
@@ -8,6 +8,7 @@ import { MdAutorenew } from 'react-icons/md';
 import * as ObscuraAccount from '../common/accountUtils';
 import { AccountInfo, getActiveSubscription, isRenewing, paidUntil, paidUntilDays } from '../common/api';
 import { AppContext } from '../common/appContext';
+import { normalizeError } from '../common/utils';
 import { AccountNumberDisplay } from '../components/AccountNumberDisplay';
 import * as commands from '../tauri/commands';
 
@@ -28,7 +29,8 @@ export default function Account() {
         try {
             await commands.logout();
         } catch (e) {
-            notifications.show({ title: t('logOutFailed'), message: e.type === 'logoutFailed' ? t('pleaseReportError') : '' });
+            const error = normalizeError(e);
+            notifications.show({ title: t('logOutFailed'), message: <Text>{t('pleaseReportError')}<br /><Code>{error.message}</Code></Text> });
         }
     }
 
@@ -36,7 +38,7 @@ export default function Account() {
         <Stack align='center' p={20} gap='xl' mt='sm'>
             {accountInfo && <AccountStatusCard accountInfo={accountInfo} />}
             {accountId && <Box w='90%'>
-                <AccountNumberDisplay accountId={appStatus?.accountId} />
+                <AccountNumberDisplay accountId={accountId} />
             </Box>}
             <FooterSection accountInfo={accountInfo} />
             <Box w='90%'>
@@ -201,9 +203,10 @@ function RecheckButton() {
                 setAccountRefreshing(true);
                 await pollAccount();
             } catch (e) {
+                const error = normalizeError(e);
                 notifications.show({
                     title: t('Account Error'),
-                    message: t(e.message),
+                    message: t(error.message),
                     color: "red",
                 });
             } finally {

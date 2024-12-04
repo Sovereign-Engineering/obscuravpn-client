@@ -1,6 +1,6 @@
 import Cookies from 'js-cookie';
 import localforage from 'localforage';
-import { useEffect, useLayoutEffect, useState } from 'react';
+import { Dispatch, SetStateAction, useEffect, useLayoutEffect, useState } from 'react';
 import packageJson from '../../package.json';
 export { localforage };
 
@@ -9,7 +9,7 @@ export const VERSION = packageJson.version;
 export const IS_DEVELOPMENT = import.meta.env.MODE === 'development';
 export const IS_WK_WEB_VIEW = window.webkit !== undefined;
 
-export function useCookie(key, defaultValue, { expires = 365000, sameSite = 'lax', path = '/' } = {}) {
+export function useCookie(key: string, defaultValue: string, { expires = 365000, sameSite = 'lax', path = '/' } = {}) {
     // cookie expires in a millenia
     // sameSite != 'strict' because the cookie is not read for sensitive actions
     // synchronous
@@ -21,37 +21,13 @@ export function useCookie(key, defaultValue, { expires = 365000, sameSite = 'lax
     return [state, setState];
 }
 
-export function trueTypeOf(obj) {
-    return Object.prototype.toString.call(obj).slice(8, -1).toLowerCase()
-    /*
-        []              -> array
-        {}              -> object
-        ''              -> string
-        new Date()      -> date
-        1               -> number
-        function () {}  -> function
-        async function () {}  -> asyncfunction
-        /test/i         -> regexp
-        true            -> boolean
-        null            -> null
-        trueTypeOf()    -> undefined
-    */
-}
-
-
-function* flattenFiles(entries) {
-    for (const entry of entries) {
-        entry.children === null ? yield entry.path : yield* fileSaveFiles(entry.children);
-    }
-}
-
 // const getExtensionTests = ['/.test/.ext', './asdf.mz', '/asdf/qwer.maz', 'asdf.mm', 'sdf/qwer.ww', './.asdf.mz', '/asdf/.qwer.maz', '.asdf.mm', 'sdf/.qwer.ww', './asdf', '/adsf/qwer', 'asdf', 'sdf/qewr', './.asdf', '/adsf/.qwer', '.asdf', 'sdf/.qewr']
 
-function getExtension(path) {
+function getExtension(path: string) {
     // Modified from https://stackoverflow.com/a/12900504/7732434
     // get filename from full path that uses '\\' or '/' for seperators
-    var basename = path.split(/[\\/]/).pop(),
-        pos = basename.lastIndexOf('.');
+    var basename = path.split(/[\\/]/).pop()!;
+    var pos = basename.lastIndexOf('.');
     // if `.` is not in the basename
     if (pos < 0) return '';
     // extract extension including `.`
@@ -59,15 +35,15 @@ function getExtension(path) {
 }
 
 // show browser / native notification
-export function notify(title, body) {
+export function notify(title: string, body: string | undefined) {
     new Notification(title, { body: body || "", });
 }
 
-export function sleep(ms) {
+export function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-export function downloadFile(filename, content, contentType = 'text/plain') {
+export function downloadFile(filename: string, content: BlobPart, contentType = 'text/plain') {
     const element = document.createElement('a');
     const file = new Blob([content], { type: contentType });
     element.href = URL.createObjectURL(file);
@@ -76,13 +52,11 @@ export function downloadFile(filename, content, contentType = 'text/plain') {
     element.click();
 }
 
-Math.clamp = (num, min, max) => Math.min(Math.max(num, min), max);
-
 export function isPromise(v: unknown): v is PromiseLike<unknown> {
     return !!v && (typeof v == "object" || typeof v == "function") && "then" in v;
 }
 
-export function arraysEqual(a, b) {
+export function arraysEqual<T>(a: T[], b: T[]) {
     if (a === b) return true;
     if (a == null || b == null) return false;
     if (a.length !== b.length) return false;
@@ -99,7 +73,7 @@ export function arraysEqual(a, b) {
 }
 
 // https://reactjs.org/docs/hooks-custom.html
-export function useLocalForage(key, defaultValue) {
+export function useLocalForage<T>(key: string, defaultValue: T) {
     // only supports primitives, arrays, and {} objects
     const [state, setState] = useState(defaultValue);
     const [loading, setLoading] = useState(true);
@@ -108,14 +82,14 @@ export function useLocalForage(key, defaultValue) {
     useLayoutEffect(() => {
         let allow = true;
         localforage.getItem(key)
-            .then(value => {
+            .then((value: T | null) => {
                 if (value === null) throw '';
                 if (allow) setState(value);
             }).catch(() => localforage.setItem(key, defaultValue))
             .then(() => {
                 if (allow) setLoading(false);
             });
-        return () => allow = false;
+        return () => { allow = false; }
     }, []);
     // useLayoutEffect does not like Promise return values.
     useEffect(() => {
@@ -132,22 +106,22 @@ export function useLocalForage(key, defaultValue) {
  * @param {A} setter the setState method of the state you want the latest value of
  * @returns the state which was passed to the setter's action
  */
-export function getLatestState(setter) {
+export function getLatestState<S>(setter: Dispatch<SetStateAction<S>>) {
     let v;
     setter(value => {
         v = value;
         return value;
-});
+    });
     return v;
 }
 
-export function percentEncodeQuery(params) {
+export function percentEncodeQuery(params: Record<string, string>) {
     return Object.entries(params)
         .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
         .join('&');
 }
 
-const DEFAULT_ERROR_MSG = "An unexpected error has occured.";
+const DEFAULT_ERROR_MSG = "An unexpected error has occurred.";
 
 export function normalizeError(error: unknown): Error {
     if (error instanceof Error) {

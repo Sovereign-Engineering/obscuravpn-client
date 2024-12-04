@@ -38,7 +38,7 @@
           fileset = lib.fileset.unions [ ./obscura-ui/package.json ./obscura-ui/package-lock.json ];
         }) { };
 
-        shellFiles = lib.sources.sourceFilesBySuffices ./. [ ".bash" ".sh" ];
+        shellFiles = lib.sources.sourceFilesBySuffices ./. [ ".bash" ".sh" ".shellcheckrc" ];
 
         swiftFiles = lib.sources.sourceFilesBySuffices (lib.fileset.toSource {
           root = ./.;
@@ -52,7 +52,8 @@
             craneLib.cargoClippy (rustArgs // { cargoClippyExtraArgs = "--all-features --all-targets -- -Dwarnings"; });
 
           shellcheck = pkgs.runCommand "shellcheck" { nativeBuildInputs = [ pkgs.shellcheck ]; } ''
-            shellcheck -- ${shellFiles}/**/*.{bash,sh}
+            shopt -s globstar
+            shellcheck -P ${shellFiles} -- ${shellFiles}/**/*.{bash,sh}
             touch "$out"
           '';
 

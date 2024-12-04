@@ -7,4 +7,4 @@
 # So we want the best chance of succeeding or the user will unknowingly be using a stale web server. The only way to reliably free up the port is to kill what is listening on it.
 
 # TODO: remove magic 1420 port
-kill $(lsof -ti "tcp:1420")
+kill "$(lsof -ti 'tcp:1420')"

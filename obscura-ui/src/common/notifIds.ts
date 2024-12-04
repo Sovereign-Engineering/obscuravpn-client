@@ -1,1 +1,4 @@
-export const NOTIF_VPN_DISCONNECT_CONNECT = 'vpnDisconnectConnect';
+export enum NotificationId {
+    VPN_DISCONNECT_CONNECT = 'vpnDisconnectConnect',
+    VPN_ERROR = 'vpnError'
+}

@@ -54,7 +54,7 @@ function generateAccountId(): BigInt {
   let rand = new BigUint64Array(1);
   while (1) {
     window.crypto.getRandomValues(rand);
-    let n = rand[0];
+    let n = rand[0]!;
     if (n < MAX_ID) {
       return n;
     }
@@ -107,13 +107,12 @@ function normalizeAccountIdInput(id: string): string {
   return id.replace(/[^\d]/g, "");
 }
 
-export function formatPartialAccountId(id: string): string {
-  id = normalizeAccountIdInput(id);
-  if (id.length >= USER_ACCOUNT_NUMBER_LEN) {
-    return `${id.slice(0, 4)} - ${id.slice(4, 8)} - ${id.slice(8, 12)} - ${id.slice(12, 16)} - ${id.slice(16)}`;
-  } else {
-    return id.replace(ACCOUNT_ID_CHUNK_RE, "$& - ");
+export function formatPartialAccountId(accountId: string): string {
+  accountId = normalizeAccountIdInput(accountId);
+  if (accountId.length >= USER_ACCOUNT_NUMBER_LEN) {
+    return `${accountId.slice(0, 4)} - ${accountId.slice(4, 8)} - ${accountId.slice(8, 12)} - ${accountId.slice(12, 16)} - ${accountId.slice(16)}`;
   }
+  return accountId.replace(ACCOUNT_ID_CHUNK_RE, "$& - ");
 }
 
 const OBSCURA_WEBPAGE = 'https://obscura.net';

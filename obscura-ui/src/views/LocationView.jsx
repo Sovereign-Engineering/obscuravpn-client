@@ -7,7 +7,7 @@ import { BsPin, BsPinFill, BsShieldFillCheck, BsShieldFillExclamation } from 're
 
 import { AppContext, ConnectingStrings, ExitsContext } from '../common/appContext';
 import { countryCodeToFlagEmoji, exitsSortComparator } from '../common/exitUtils';
-import { NOTIF_VPN_DISCONNECT_CONNECT } from '../common/notifIds';
+import { NotificationId } from '../common/notifIds';
 import BoltBadgeAuto from '../components/BoltBadgeAuto';
 import ObscuraChip from '../components/ObscuraChip';
 import * as commands from '../tauri/commands';
@@ -30,7 +30,7 @@ export default function LocationView() {
                 title: t('connectingToCity', { city: n.city_name }),
                 autoClose: 15_000,
                 color: 'yellow',
-                id: NOTIF_VPN_DISCONNECT_CONNECT
+                id: NotificationId.VPN_DISCONNECT_CONNECT
             });
             await vpnDisconnectConnect(n.id);
         } else {

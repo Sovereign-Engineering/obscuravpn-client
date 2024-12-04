@@ -42,9 +42,9 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
          - disable network access (e.g. turn off wifi)
          - start a tunnel
          - any IPC that should result in handleAppMessage getting called will fail.
-         This is not redundant with the `abort` in stopTunnel, because in the case described above `stopTunnel` is not called.
+         This is not redundant with the `exit` in stopTunnel, because in the case described above `stopTunnel` is not called.
          */
-        abort()
+        exit(0)
     }
 
     override func startTunnel(options: [String: NSObject]?) async throws {
@@ -89,7 +89,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         /*
          Hack to avoid macos bugs where no methods of self are called after stopTunnel including deinit.
          */
-        abort()
+        exit(0)
     }
 
     override func handleAppMessage(_ msg: Data, completionHandler: ((Data?) -> Void)?) {

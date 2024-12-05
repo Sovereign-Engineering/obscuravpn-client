@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { ErrorBoundary } from 'react-error-boundary';
 import App from './App';
 import Providers from './Providers';
-import { tauriLogError } from './tauri/SystemProvider';
+import { logReactError } from './bridge/SystemProvider';
 import { FallbackAppRender } from './views';
 // for internationalization (translations)
 import './translations/i18n';
@@ -18,7 +18,7 @@ root.render(
         onReset={details => {
           location.pathname = '/';
         }}
-        onError={tauriLogError}>
+        onError={logReactError}>
         <App />
       </ErrorBoundary>
     </Providers>

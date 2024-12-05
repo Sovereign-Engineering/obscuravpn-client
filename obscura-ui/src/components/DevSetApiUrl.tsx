@@ -1,13 +1,13 @@
-import { Autocomplete, Button, TextInput, Title } from '@mantine/core';
+import { Autocomplete, Button, Title } from '@mantine/core';
 import React, { useRef, useState } from 'react';
-import { jsonFfiCmd } from "../tauri/commands";
+import { jsonFfiCmd } from "../bridge/commands";
 import { localStorageGet, LocalStorageKey, localStorageSet } from '../common/localStorage';
 
 const defaultApiUrls = ['https://v1.api.prod.obscura.net/api', 'https://v1.api.staging.obscura.net/api', 'http://localhost:8080/api']
 
-export default function DevSetApiUrl(): React.ReactElement {
+export default function DevSetApiUrl() {
     let [output, setOutput] = useState("");
-    let inputRef = useRef();
+    let inputRef = useRef<HTMLInputElement>(null);
 
     let apiUrls = [...defaultApiUrls];
     let lastCustomApiUrl = localStorageGet(LocalStorageKey.LastCustomApiUrl);

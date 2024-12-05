@@ -23,7 +23,6 @@
 		30920DAE2C3DC174008690C3 /* InfoDict.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30920DAC2C3DC174008690C3 /* InfoDict.swift */; };
 		30920DAF2C3DC174008690C3 /* InfoDict.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30920DAC2C3DC174008690C3 /* InfoDict.swift */; };
 		3096BFF92CECD50F003D062E /* NEVPNStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3096BFF82CECD50F003D062E /* NEVPNStatus.swift */; };
-		3096E0202BDC18320026DE7F /* webview_content in Resources */ = {isa = PBXBuildFile; fileRef = 3096E01F2BDC18320026DE7F /* webview_content */; };
 		3096E0222BDC1FFB0026DE7F /* ScriptMessageHandlers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3096E0212BDC1FFB0026DE7F /* ScriptMessageHandlers.swift */; };
 		3096E0402BEFC6770026DE7F /* command.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3096E03F2BEFC6770026DE7F /* command.swift */; };
 		3096E0462BF0F5870026DE7F /* app_state.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3096E0452BF0F5860026DE7F /* app_state.swift */; };
@@ -113,7 +112,7 @@
 
 /* Begin PBXFileReference section */
 		300452772C49BC90000B78F7 /* Json.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Json.swift; sourceTree = "<group>"; };
-		30761C1E2B6EB17100E5F60D /* Obscura VPN (Debug).app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Obscura VPN (Debug).app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		30761C1E2B6EB17100E5F60D /* Obscura VPN (Debug Dev Server).app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Obscura VPN (Debug Dev Server).app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		30761C212B6EB17100E5F60D /* ClientApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientApp.swift; sourceTree = "<group>"; };
 		30761C232B6EB17100E5F60D /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		30761C252B6EB17200E5F60D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -129,7 +128,6 @@
 		30920D992C3D51EC008690C3 /* entitlements.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = entitlements.entitlements; sourceTree = "<group>"; };
 		30920DAC2C3DC174008690C3 /* InfoDict.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoDict.swift; sourceTree = "<group>"; };
 		3096BFF82CECD50F003D062E /* NEVPNStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NEVPNStatus.swift; sourceTree = "<group>"; };
-		3096E01F2BDC18320026DE7F /* webview_content */ = {isa = PBXFileReference; lastKnownFileType = folder; path = webview_content; sourceTree = "<group>"; };
 		3096E0212BDC1FFB0026DE7F /* ScriptMessageHandlers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScriptMessageHandlers.swift; sourceTree = "<group>"; };
 		3096E03F2BEFC6770026DE7F /* command.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = command.swift; sourceTree = "<group>"; };
 		3096E0452BF0F5860026DE7F /* app_state.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = app_state.swift; sourceTree = "<group>"; };
@@ -219,7 +217,6 @@
 				96516AC22BF928DD00576562 /* build */,
 				C90161A52BE01A8E005B14AF /* Configurations */,
 				C901614E2BE01159005B14AF /* obscuravpn-client.xcodeproj */,
-				3096E01F2BDC18320026DE7F /* webview_content */,
 				30761C202B6EB17100E5F60D /* client */,
 				3098C1902B921489008877AA /* system-network-extension */,
 				30EF74BF2BFFC2A90095439F /* shared */,
@@ -233,7 +230,7 @@
 		30761C1F2B6EB17100E5F60D /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				30761C1E2B6EB17100E5F60D /* Obscura VPN (Debug).app */,
+				30761C1E2B6EB17100E5F60D /* Obscura VPN (Debug Dev Server).app */,
 				3098C18E2B921489008877AA /* net.obscura.vpn-client-app.system-network-extension.systemextension */,
 				30920D932C3D51EC008690C3 /* App Network Extension.appex */,
 			);
@@ -407,7 +404,7 @@
 				A082F8222C46BF5B002AF810 /* Sparkle */,
 			);
 			productName = client;
-			productReference = 30761C1E2B6EB17100E5F60D /* Obscura VPN (Debug).app */;
+			productReference = 30761C1E2B6EB17100E5F60D /* Obscura VPN (Debug Dev Server).app */;
 			productType = "com.apple.product-type.application";
 		};
 		30920D922C3D51EC008690C3 /* App Network Extension */ = {
@@ -518,7 +515,6 @@
 			files = (
 				30761C292B6EB17200E5F60D /* Preview Assets.xcassets in Resources */,
 				96516AC32BF928DD00576562 /* build in Resources */,
-				3096E0202BDC18320026DE7F /* webview_content in Resources */,
 				30761C262B6EB17200E5F60D /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -626,63 +622,6 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		30761C2B2B6EB17200E5F60D /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
-				CLANG_WARN_BOOL_CONVERSION = YES;
-				CLANG_WARN_COMMA = YES;
-				CLANG_WARN_CONSTANT_CONVERSION = YES;
-				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
-				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_EMPTY_BODY = YES;
-				CLANG_WARN_ENUM_CONVERSION = YES;
-				CLANG_WARN_INFINITE_RECURSION = YES;
-				CLANG_WARN_INT_CONVERSION = YES;
-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
-				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
-				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
-				CLANG_WARN_SUSPICIOUS_MOVE = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CLANG_WARN_UNREACHABLE_CODE = YES;
-				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-				GCC_WARN_UNDECLARED_SELECTOR = YES;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				GCC_WARN_UNUSED_FUNCTION = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
-				MTL_FAST_MATH = YES;
-				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = macosx;
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-			};
-			name = Debug;
-		};
 		30761C2C2B6EB17200E5F60D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -737,28 +676,6 @@
 			};
 			name = Release;
 		};
-		30761C2E2B6EB17200E5F60D /* Debug */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReference = C92777D22C248A740058BBFB /* Debug-app.xcconfig */;
-			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_ASSET_PATHS = "\"client/Preview Content\"";
-				ENABLE_PREVIEWS = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/../Frameworks",
-				);
-				OBSCURA_MAGIC_NO_NIX = "";
-				PRODUCT_NAME = "$(TARGET_NAME) (Debug)";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-			};
-			name = Debug;
-		};
 		30761C2F2B6EB17200E5F60D /* Release */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = C9D486352C123078007D5F2F /* Release-app.xcconfig */;
@@ -781,7 +698,7 @@
 			};
 			name = Release;
 		};
-		30920D9D2C3D51EC008690C3 /* Debug */ = {
+		30920D9E2C3D51EC008690C3 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = C96FFC952C3DD5DC00D87937 /* Debug-app-network-extension.xcconfig */;
 			buildSettings = {
@@ -797,23 +714,6 @@
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
-		};
-		30920D9E2C3D51EC008690C3 /* Debug (Dev Server) */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReference = C96FFC952C3DD5DC00D87937 /* Debug-app-network-extension.xcconfig */;
-			buildSettings = {
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/../Frameworks",
-					"@executable_path/../../../../Frameworks",
-				);
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-			};
-			name = "Debug (Dev Server)";
 		};
 		30920D9F2C3D51EC008690C3 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -831,28 +731,6 @@
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
-		};
-		3098C19B2B921489008877AA /* Debug */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReference = C96FFC8F2C3DD2FD00D87937 /* Debug-system-network-extension.xcconfig */;
-			buildSettings = {
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSSystemExtensionUsageDescription = "";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/../Frameworks",
-					"@executable_path/../../../../Frameworks",
-				);
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(PROJECT_DIR)/libobscuravpn_client",
-				);
-				PRODUCT_NAME = "$(inherited)";
-				SKIP_INSTALL = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-			};
-			name = Debug;
 		};
 		3098C19C2B921489008877AA /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -876,7 +754,7 @@
 			};
 			name = Release;
 		};
-		964304952BEEF6D000B3119B /* Debug (Dev Server) */ = {
+		964304952BEEF6D000B3119B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -932,9 +810,9 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) LOAD_DEV_SERVER";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
-			name = "Debug (Dev Server)";
+			name = Debug;
 		};
-		964304962BEEF6D000B3119B /* Debug (Dev Server) */ = {
+		964304962BEEF6D000B3119B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = C92777D22C248A740058BBFB /* Debug-app.xcconfig */;
 			buildSettings = {
@@ -954,9 +832,9 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
-			name = "Debug (Dev Server)";
+			name = Debug;
 		};
-		964304972BEEF6D000B3119B /* Debug (Dev Server) */ = {
+		964304972BEEF6D000B3119B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = C96FFC8F2C3DD2FD00D87937 /* Debug-system-network-extension.xcconfig */;
 			buildSettings = {
@@ -976,7 +854,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
-			name = "Debug (Dev Server)";
+			name = Debug;
 		};
 /* End XCBuildConfiguration section */
 
@@ -984,8 +862,7 @@
 		30761C192B6EB17100E5F60D /* Build configuration list for PBXProject "client" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				30761C2B2B6EB17200E5F60D /* Debug */,
-				964304952BEEF6D000B3119B /* Debug (Dev Server) */,
+				964304952BEEF6D000B3119B /* Debug */,
 				30761C2C2B6EB17200E5F60D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -994,8 +871,7 @@
 		30761C2D2B6EB17200E5F60D /* Build configuration list for PBXNativeTarget "Obscura VPN" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				30761C2E2B6EB17200E5F60D /* Debug */,
-				964304962BEEF6D000B3119B /* Debug (Dev Server) */,
+				964304962BEEF6D000B3119B /* Debug */,
 				30761C2F2B6EB17200E5F60D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -1004,8 +880,7 @@
 		30920DA22C3D51EC008690C3 /* Build configuration list for PBXNativeTarget "App Network Extension" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				30920D9D2C3D51EC008690C3 /* Debug */,
-				30920D9E2C3D51EC008690C3 /* Debug (Dev Server) */,
+				30920D9E2C3D51EC008690C3 /* Debug */,
 				30920D9F2C3D51EC008690C3 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -1014,8 +889,7 @@
 		3098C19A2B921489008877AA /* Build configuration list for PBXNativeTarget "System Network Extension" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				3098C19B2B921489008877AA /* Debug */,
-				964304972BEEF6D000B3119B /* Debug (Dev Server) */,
+				964304972BEEF6D000B3119B /* Debug */,
 				3098C19C2B921489008877AA /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;

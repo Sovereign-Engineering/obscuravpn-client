@@ -243,9 +243,6 @@ struct WebView: NSViewRepresentable {
         #if LOAD_DEV_SERVER
             let urlRequest = URLRequest(url: URL(string: "http://localhost:1420/")!)
             self.webView.load(urlRequest)
-        #elseif DEBUG
-            let url = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "webview_content")!
-            self.webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
         #else
             // see the Prod Client scheme
             let url = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "build")!

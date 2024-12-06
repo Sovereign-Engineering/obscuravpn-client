@@ -1,5 +1,5 @@
 import { ActionIcon, CopyButton, Group, Text, useComputedColorScheme } from '@mantine/core';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsClipboardFill } from 'react-icons/bs';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';

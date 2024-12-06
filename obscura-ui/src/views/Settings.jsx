@@ -4,11 +4,11 @@ import { t } from 'i18next';
 import { useState } from 'react';
 import { BsMoonStarsFill } from 'react-icons/bs';
 import { IoSunnySharp } from 'react-icons/io5';
-import * as commands from '../bridge/commands';
-import { useSystemContext } from '../bridge/SystemProvider';
-import AnimatedChevron from '../components/AnimatedChevron';
-import DebuggingArchive from '../components/DebuggingArchive';
-import Licenses from '../components/Licenses';
+import AnimatedChevron from '../components/AnimatedChevron.tsx';
+import DebuggingArchive from '../components/DebuggingArchive.tsx';
+import Licenses from '../components/Licenses.tsx';
+import * as commands from '../tauri/commands';
+import { useSystemContext } from '../tauri/SystemProvider';
 
 export default function Settings() {
     // null (clean ready state) | in-progress | error(msg) (retry state)

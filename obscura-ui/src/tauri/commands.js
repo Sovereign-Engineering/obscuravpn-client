@@ -1,18 +1,17 @@
-import { normalizeError } from '../common/utils';
-
-async function WKWebViewInvoke(command: string, args: Object) {
+async function WKWebViewInvoke(command, args) {
     const commandJson = JSON.stringify({ [command]: args });
     let resultJson;
     try {
         resultJson = await window.webkit.messageHandlers.commandBridge.postMessage(commandJson);
     } catch (e) {
-        throw new CommandError(normalizeError(e).message);
+        throw new CommandError(e.message);
     }
     return JSON.parse(resultJson);
 }
 
-async function invoke(command: string, args: Object = {}) {
+async function invoke(command, args) {
     // all commands are logged for wkwebview according to ContentView.swift
+    if (args === undefined) args = {};
     try {
         return await WKWebViewInvoke(command, args);
     } catch (e) {
@@ -23,9 +22,7 @@ async function invoke(command: string, args: Object = {}) {
 }
 
 export class CommandError extends Error {
-    code: string
-
-    constructor(code: string) {
+    constructor(code) {
         // HACK: We should put some "human readable" message into the message field but lots of code currently just hopes to find specific error codes in the message field. So until we hunt down all of those just put the code in the message as well. Don't write new code that treats `message` as machine readable.
         super(code);
         this.code = code;
@@ -36,11 +33,11 @@ export class CommandError extends Error {
     }
 }
 
-export function readContents(path: string) {
-    return invoke('read_contents', { path });
+export function readContents(path) {
+    return invoke('read_contents', { path }, false);
 }
 
-export function showItemInFolder(path: string) {
+export function showItemInFolder(path) {
     return invoke('show_item_in_folder', { path });
 }
 
@@ -48,13 +45,13 @@ export function checkForUpdate() {
     return invoke('check_for_update');
 }
 
-export function installUpdate(newVersion: string) {
+export function installUpdate(newVersion) {
     return invoke('install_update', { newVersion });
 }
 
 // VPN Client Specific Commands
 
-export async function jsonFfiCmd(cmd: string, arg = {}, timeoutMs: number | null = 10_000) {
+export async function jsonFfiCmd(cmd, arg = {}, timeoutMs=10_000) {
     let jsonCmd = JSON.stringify(({ [cmd]: arg }));
     return await invoke('jsonFfiCmd', {
         cmd: jsonCmd,
@@ -74,7 +71,7 @@ export async function osStatus(lastOsStatusId = null) {
     return await invoke('getOsStatus', { knownVersion: lastOsStatusId });
 }
 
-export function login(accountId: string, validate = false) {
+export function login(accountId, validate = false) {
     return jsonFfiCmd('login', { accountId, validate });
 }
 
@@ -139,10 +136,10 @@ export function getAccount() {
     return jsonFfiCmd('apiGetAccountInfo');
 }
 
-export function setInNewAccountFlow(value: boolean) {
+export function setInNewAccountFlow(value) {
     return jsonFfiCmd('setInNewAccountFlow', { value });
 }
 
-export function setPinnedExits(newPinnedExits: string[]) {
+export function setPinnedExits(newPinnedExits) {
     return jsonFfiCmd('setPinnedExits', { exits: newPinnedExits });
 }

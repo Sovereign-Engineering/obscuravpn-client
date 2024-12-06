@@ -58,6 +58,7 @@
     "importantNotice_one": "{{ notice }}",
     "importantNotice_other": " - {{ notice }}",
     "installingUpdate": "Installing update v{{ v }}",
+    "ipcError-apiError": "API request failed. Please make sure you are connected to the internet and no other VPN or firewall is running.",
     "ipcError-apiNoLongerSupported": "This client is too old, please update to the latest version for this functionality.",
     "ipcError-apiRateLimitExceeded": "API rate-limit exceeded. Please try again later.",
     "ipcError-apiSignupLimitExceeded": "Sign up limit exceeded. Please try again in a few hours.",

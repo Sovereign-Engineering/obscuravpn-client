@@ -1,4 +1,6 @@
+import { AccountId } from 'src/common/accountUtils';
 import { normalizeError } from '../common/utils';
+import { AccountInfo } from 'src/common/api';
 
 async function WKWebViewInvoke(command: string, args: Object) {
     const commandJson = JSON.stringify({ [command]: args });
@@ -54,7 +56,7 @@ export function installUpdate(newVersion: string) {
 
 // VPN Client Specific Commands
 
-export async function jsonFfiCmd(cmd: string, arg = {}, timeoutMs: number | null = 10_000) {
+export async function jsonFfiCmd(cmd: string, arg = {}, timeoutMs: number | null = 10_000): Promise<unknown> {
     let jsonCmd = JSON.stringify(({ [cmd]: arg }));
     return await invoke('jsonFfiCmd', {
         cmd: jsonCmd,
@@ -74,7 +76,7 @@ export async function osStatus(lastOsStatusId = null) {
     return await invoke('getOsStatus', { knownVersion: lastOsStatusId });
 }
 
-export function login(accountId: string, validate = false) {
+export function login(accountId: AccountId, validate = false) {
     return jsonFfiCmd('login', { accountId, validate });
 }
 
@@ -134,9 +136,9 @@ export function getExitServers() {
     return jsonFfiCmd('apiListExit');
 }
 
-export function getAccount() {
+export async function getAccount(): Promise<AccountInfo> {
     /* see obscuravpn-api/src/types.rs:AccountInfo */
-    return jsonFfiCmd('apiGetAccountInfo');
+    return await jsonFfiCmd('apiGetAccountInfo') as AccountInfo;
 }
 
 export function setInNewAccountFlow(value: boolean) {

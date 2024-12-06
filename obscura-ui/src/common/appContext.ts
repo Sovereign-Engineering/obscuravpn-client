@@ -40,8 +40,9 @@ interface AppStatus {
     apiUrl: string
 }
 
-interface AppContext {
+interface IAppContext {
     vpnConnected: boolean,
+    toggleVpnConnection: () => Promise<void>,
     vpnConnect: (exit?: string) => Promise<void>,
     vpnDisconnect: () => Promise<void>,
     vpnDisconnectConnect: (exit: string) => Promise<void>,
@@ -52,7 +53,7 @@ interface AppContext {
     connectionInProgress: ConnectionInProgress
 }
 
-export const AppContext = createContext(null as any as AppContext);
+export const AppContext = createContext(null as any as IAppContext);
 
 export enum ConnectionInProgress {
     CONNECTING = 'Connecting',
@@ -82,9 +83,9 @@ export function isConnecting(connectionInProgress: string) {
     return false;
 }
 
-interface ExitsContext {
+interface IExitsContext {
   fetchExitList: () => Promise<void>,
   exitList: Exit[],
 }
 
-export const ExitsContext = createContext(null as any as ExitsContext);
+export const ExitsContext = createContext(null as any as IExitsContext);

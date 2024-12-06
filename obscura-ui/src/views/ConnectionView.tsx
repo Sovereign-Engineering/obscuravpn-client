@@ -10,7 +10,7 @@ import { MdLanguage, MdLaptopMac, MdOutlineWifiOff } from 'react-icons/md';
 
 import { CHECK_STATUS_WEBPAGE } from '../common/accountUtils';
 import { AppContext, ConnectingStrings, ExitsContext, isConnecting } from '../common/appContext';
-import { countryCodeToFlagEmoji, exitsSortComparator } from '../common/exitUtils';
+import { exitsSortComparator, getExitCountryFlag } from '../common/exitUtils';
 import { useCookie } from '../common/utils';
 import BoltBadgeAuto from '../components/BoltBadgeAuto';
 import ObscuraChip from '../components/ObscuraChip';
@@ -453,7 +453,7 @@ function LocationConnect({ cityConnectingTo, setCityConnectingTo }: LocationConn
                             >
                                 {selectedExit === null ? <Text>{internetAvailable ? t('selectLocation') : t('noInternet')}</Text> :
                                     <Group gap='xs'>
-                                        <Text size='lg'>{countryCodeToFlagEmoji(selectedExit.country_code)} {selectedExit.city_name}</Text>
+                                        <Text size='lg'>{getExitCountryFlag(selectedExit)} {selectedExit.city_name}</Text>
                                     </Group>}
                             </Button>
                         </Group>
@@ -586,7 +586,7 @@ function CityOptions({ exitList, pinnedExitsSet, lastChosenExit, onExitSelect }:
                     onClick={() => onExitSelect(exit)}
                     {...getMouseHoverProps(key)}>
                     <Group gap='xs' justify='space-between'>
-                        <Text size='lg'>{countryCodeToFlagEmoji(exit.country_code)} {exit.city_name}</Text>
+                        <Text size='lg'>{getExitCountryFlag(exit)} {exit.city_name}</Text>
                         <ItemRightSection exitId={exit.id} hoverKey={key} />
                     </Group >
                 </Combobox.Option >
@@ -618,7 +618,7 @@ function CityOptions({ exitList, pinnedExitsSet, lastChosenExit, onExitSelect }:
                 onClick={() => onExitSelect(exit)}
                 {...getMouseHoverProps(key)}>
                 <Group gap='xs' justify='space-between'>
-                    <Text size='lg'>{countryCodeToFlagEmoji(exit.country_code)} {exit.city_name}</Text>
+                    <Text size='lg'>{getExitCountryFlag(exit)} {exit.city_name}</Text>
                     <ItemRightSection exitId={exit.id} hoverKey={key} showIconIfPinned />
                 </Group >
             </Combobox.Option >

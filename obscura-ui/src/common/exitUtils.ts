@@ -1,19 +1,22 @@
+import { TCountryCode } from 'countries-list';
 import { Exit, getExitCountry } from './api';
 
-/// Returns a string containing the country flag emoji.
-//
-// countryCode is a two character country code.
-export function countryCodeToFlagEmoji(countryCode: string): string {
-    return countryCode
-        .toUpperCase()
-        .replace(/./g, char => {
-            let codePoint = char.codePointAt(0)!
-                - "A".codePointAt(0)!
-                + "🇦".codePointAt(0)!;
-            return String.fromCodePoint(codePoint)
-        });
+/** returns a string containing the country flag emoji. */
+function getCountryFlag(countryCode: TCountryCode): string {
+  return countryCode
+      .replace(/./g, char => {
+          let codePoint = char.codePointAt(0)!
+              - "A".codePointAt(0)!
+              + "🇦".codePointAt(0)!;
+          return String.fromCodePoint(codePoint)
+      });
 }
 
+export function getExitCountryFlag(exit: Exit): string {
+  return getCountryFlag(getExitCountry(exit).iso2);
+}
+
+/** returns a sort comparator for Exit[] given some parameters */
 export function exitsSortComparator(
     connectedToExitId: string | null,
     lastChosenExitId: string | null,

@@ -112,7 +112,7 @@
 
 /* Begin PBXFileReference section */
 		300452772C49BC90000B78F7 /* Json.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Json.swift; sourceTree = "<group>"; };
-		30761C1E2B6EB17100E5F60D /* Obscura VPN (Debug Dev Server).app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Obscura VPN (Debug Dev Server).app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		30761C1E2B6EB17100E5F60D /* Obscura VPN (Debug).app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Obscura VPN (Debug).app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		30761C212B6EB17100E5F60D /* ClientApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientApp.swift; sourceTree = "<group>"; };
 		30761C232B6EB17100E5F60D /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		30761C252B6EB17200E5F60D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -230,7 +230,7 @@
 		30761C1F2B6EB17100E5F60D /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				30761C1E2B6EB17100E5F60D /* Obscura VPN (Debug Dev Server).app */,
+				30761C1E2B6EB17100E5F60D /* Obscura VPN (Debug).app */,
 				3098C18E2B921489008877AA /* net.obscura.vpn-client-app.system-network-extension.systemextension */,
 				30920D932C3D51EC008690C3 /* App Network Extension.appex */,
 			);
@@ -404,7 +404,7 @@
 				A082F8222C46BF5B002AF810 /* Sparkle */,
 			);
 			productName = client;
-			productReference = 30761C1E2B6EB17100E5F60D /* Obscura VPN (Debug Dev Server).app */;
+			productReference = 30761C1E2B6EB17100E5F60D /* Obscura VPN (Debug).app */;
 			productType = "com.apple.product-type.application";
 		};
 		30920D922C3D51EC008690C3 /* App Network Extension */ = {
@@ -828,7 +828,7 @@
 					"@executable_path/../Frameworks",
 				);
 				OBSCURA_MAGIC_NO_NIX = "";
-				PRODUCT_NAME = "$(TARGET_NAME) (Debug Dev Server)";
+				PRODUCT_NAME = "$(TARGET_NAME) (Debug)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};

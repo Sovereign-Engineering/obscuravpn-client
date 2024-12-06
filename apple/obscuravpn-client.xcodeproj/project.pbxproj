@@ -191,7 +191,7 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		9643049A2BEEFBAE00B3119B /* Debug (Dev Server) */ = {
+		9643049A2BEEFBAE00B3119B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = C90161AC2BE01A9B005B14AF /* Debug.xcconfig */;
 			buildSettings = {
@@ -207,9 +207,9 @@
 				SDKROOT = macosx;
 				SUPPORTS_MACCATALYST = YES;
 			};
-			name = "Debug (Dev Server)";
+			name = Debug;
 		};
-		9643049B2BEEFBAE00B3119B /* Debug (Dev Server) */ = {
+		9643049B2BEEFBAE00B3119B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CARGO_XCODE_CARGO_DEP_FILE_NAME = libobscuravpn_client.d;
@@ -222,9 +222,9 @@
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "macosx iphonesimulator iphoneos";
 			};
-			name = "Debug (Dev Server)";
+			name = Debug;
 		};
-		9643049C2BEEFBAE00B3119B /* Debug (Dev Server) */ = {
+		9643049C2BEEFBAE00B3119B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CARGO_XCODE_CARGO_DEP_FILE_NAME = "obscuravpn-client.d";
@@ -232,7 +232,7 @@
 				PRODUCT_NAME = "obscuravpn-client";
 				SUPPORTED_PLATFORMS = macosx;
 			};
-			name = "Debug (Dev Server)";
+			name = Debug;
 		};
 		CA0090CB90CFB3AB1D86918A /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -249,21 +249,6 @@
 			};
 			name = Release;
 		};
-		CA00F9CAE54CB3AB1D86918A /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CARGO_XCODE_CARGO_DEP_FILE_NAME = libobscuravpn_client.d;
-				CARGO_XCODE_CARGO_FILE_NAME = libobscuravpn_client.a;
-				INSTALL_GROUP = "";
-				INSTALL_MODE_FLAG = "";
-				INSTALL_OWNER = "";
-				PRODUCT_NAME = "obscuravpn-client";
-				PUBLIC_HEADERS_FOLDER_PATH = "include/$(PRODUCT_NAME)";
-				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "macosx iphonesimulator iphoneos";
-			};
-			name = Debug;
-		};
 		CA0190CB90CFAAAB3AB4761B /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -273,16 +258,6 @@
 				SUPPORTED_PLATFORMS = macosx;
 			};
 			name = Release;
-		};
-		CA01F9CAE54CAAAB3AB4761B /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CARGO_XCODE_CARGO_DEP_FILE_NAME = "obscuravpn-client.d";
-				CARGO_XCODE_CARGO_FILE_NAME = "obscuravpn-client";
-				PRODUCT_NAME = "obscuravpn-client";
-				SUPPORTED_PLATFORMS = macosx;
-			};
-			name = Debug;
 		};
 		CAF7A11709B13CC16B37690B /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -301,24 +276,6 @@
 			};
 			name = Release;
 		};
-		CAF8A11709B1228BE02872F8 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReference = C90161AD2BE01A9B005B14AF /* Release.xcconfig */;
-			buildSettings = {
-				"ADDITIONAL_SDKS[sdk=i*]" = macosx;
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				CARGO_TARGET_DIR = "$(PROJECT_TEMP_DIR)/cargo_target";
-				CARGO_XCODE_BUILD_PROFILE = debug;
-				CARGO_XCODE_FEATURES = "";
-				ENABLE_USER_SCRIPT_SANDBOXING = NO;
-				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_NAME = "obscuravpn-client";
-				RUSTUP_TOOLCHAIN = "";
-				SDKROOT = macosx;
-				SUPPORTS_MACCATALYST = YES;
-			};
-			name = Debug;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -326,8 +283,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CA0090CB90CFB3AB1D86918A /* Release */,
-				CA00F9CAE54CB3AB1D86918A /* Debug */,
-				9643049B2BEEFBAE00B3119B /* Debug (Dev Server) */,
+				9643049B2BEEFBAE00B3119B /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -336,8 +292,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CA0190CB90CFAAAB3AB4761B /* Release */,
-				CA01F9CAE54CAAAB3AB4761B /* Debug */,
-				9643049C2BEEFBAE00B3119B /* Debug (Dev Server) */,
+				9643049C2BEEFBAE00B3119B /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -346,8 +301,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CAF7A11709B13CC16B37690B /* Release */,
-				CAF8A11709B1228BE02872F8 /* Debug */,
-				9643049A2BEEFBAE00B3119B /* Debug (Dev Server) */,
+				9643049A2BEEFBAE00B3119B /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

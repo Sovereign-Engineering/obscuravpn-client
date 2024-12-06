@@ -1,8 +1,8 @@
 import '@fontsource/open-sans';
 import { MemoryRouter } from 'react-router-dom';
+import { SystemProvider } from './bridge/SystemProvider';
+import { TitleBar } from './bridge/TitleBar';
 import Mantine from './components/Mantine';
-import { SystemProvider } from './tauri/SystemProvider';
-import { TitleBar } from './tauri/TitleBar';
 
 export default function ({ children }) {
     return <>

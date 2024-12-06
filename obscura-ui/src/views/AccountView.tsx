@@ -1,16 +1,16 @@
 import { Anchor, Box, Button, Code, Group, Loader, Paper, Stack, Text, ThemeIcon, useComputedColorScheme, useMantineTheme } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsCheckCircleFill, BsExclamationTriangleFill } from 'react-icons/bs';
 import { IoLogOutOutline } from 'react-icons/io5';
 import { MdAutorenew } from 'react-icons/md';
+import * as commands from '../bridge/commands';
 import * as ObscuraAccount from '../common/accountUtils';
 import { AccountInfo, getActiveSubscription, isRenewing, paidUntil, paidUntilDays } from '../common/api';
 import { AppContext } from '../common/appContext';
 import { normalizeError } from '../common/utils';
 import { AccountNumberDisplay } from '../components/AccountNumberDisplay';
-import * as commands from '../tauri/commands';
 
 export default function Account() {
     const { t } = useTranslation();

@@ -10,12 +10,12 @@ import '@mantine/notifications/styles.css';
 import { ColorSchemeScript, MantineProvider, createTheme } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
 import { Notifications } from '@mantine/notifications';
+import React, { PropsWithChildren } from 'react';
 
-export default function Mantine({ children }) {
+export default function Mantine({ children }: PropsWithChildren) {
     // override theme for Mantine (default props and styles)
     // https://mantine.dev/theming/mantine-provider/
     const theme = createTheme({
-        loader: 'oval',
         fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI Variable Text, Segoe UI, Roboto, Helvetica, Arial, sans-serif, Apple Color Emoji, Segoe UI Emoji',
         fontFamilyMonospace: 'source-code-pro, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace',
         // for each component's mantine docs, "Styles API" contains the inner elements that are available to style
@@ -50,7 +50,7 @@ export default function Mantine({ children }) {
 
     return <>
         <ColorSchemeScript defaultColorScheme='auto' />
-        <MantineProvider defaultColorScheme='auto' theme={theme} withNormalizeCSS withCSSVariables>
+        <MantineProvider defaultColorScheme='auto' theme={theme}>
             <ModalsProvider>
                 <Notifications />
                 {children}

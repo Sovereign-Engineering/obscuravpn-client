@@ -1,5 +1,9 @@
 import Cocoa
+import OSLog
 import SwiftUI
+import UserNotifications
+
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "ObscuraToggle")
 
 enum ToggleLabels: String {
     case connected = "Connected"
@@ -40,9 +44,28 @@ struct ObscuraToggle: View {
         default:
             Task {
                 self.toggleLabel = ToggleLabels.connecting
-                try? await self.startupModel.appState?.enableTunnel(TunnelArgs())
-                self.isToggled = true
-                self.toggleLabel = ToggleLabels.connected
+                do {
+                    try await self.startupModel.appState?.enableTunnel(TunnelArgs())
+                    self.isToggled = true
+                    self.toggleLabel = ToggleLabels.connected
+                } catch {
+                    logger.error("Failed to connect from status menu \(error, privacy: .public)")
+
+                    self.toggleLabel = ToggleLabels.notConnected
+
+                    let content = UNMutableNotificationContent()
+                    content.title = "Tunnel failed to connect"
+                    content.body = "An error occurred while connecting to the tunnel."
+                    content.interruptionLevel = .active
+                    content.sound = UNNotificationSound.defaultCritical
+                    displayNotification(
+                        UNNotificationRequest(
+                            identifier: "obscura-connect-failed",
+                            content: content,
+                            trigger: nil
+                        )
+                    )
+                }
                 self.allowToggleSync = true
             }
         }

@@ -121,6 +121,7 @@ impl ClientState {
     pub fn set_api_url(&self, url: Option<String>) -> Result<(), ConfigSaveError> {
         let mut inner = self.lock();
         Self::change_config(&mut inner, move |config| config.api_url = url)?;
+        inner.cached_api_client = None;
         Ok(())
     }
 

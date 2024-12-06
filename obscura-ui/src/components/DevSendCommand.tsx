@@ -1,10 +1,10 @@
 import { Button, JsonInput, Title } from '@mantine/core';
 import React, { useRef, useState } from 'react';
-import { jsonFfiCmd } from "../tauri/commands";
+import { jsonFfiCmd } from "../bridge/commands";
 
-export default function DevSendCommand(): React.ReactElement {
+export default function DevSendCommand() {
     let [output, setOutput] = useState("");
-    let inputRef = useRef();
+    let inputRef = useRef<HTMLTextAreaElement>(null);
 
     return <>
         <Title order={4}>Send Command</Title>

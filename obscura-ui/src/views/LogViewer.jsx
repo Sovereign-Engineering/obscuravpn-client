@@ -6,8 +6,8 @@ import { appWindow } from '@tauri-apps/api/window';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { IoArrowDown } from 'react-icons/io5';
-import { useSystemContext } from '../tauri/SystemProvider';
-import * as commands from '../tauri/commands';
+import { useSystemContext } from '../bridge/SystemProvider';
+import * as commands from '../bridge/commands';
 
 export default function LogViewer() {
     const { t } = useTranslation();

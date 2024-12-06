@@ -1,16 +1,29 @@
 import { createContext } from 'react';
-import { AccountInfo } from './api';
 import { AccountId } from './accountUtils';
+import { AccountInfo, Exit } from './api';
+
+export enum NEVPNStatus {
+    invalid = 'invalid',
+    disconnected = 'disconnected',
+    connecting = 'connecting',
+    connected = 'connected',
+    reasserting = 'reasserting',
+    disconnecting = 'disconnecting'
+}
 
 interface OsStatus {
     version: string,
     internetAvailable: boolean,
-    osVpnStatus: object, // TODO
+    osVpnStatus: NEVPNStatus,
     srcVersion: string
 }
 
+interface ConnectedStatus {
+    exit: Exit
+}
+
 interface VpnStatus {
-    connected: object, // TODO
+    connected: ConnectedStatus,
     connecting: object, // TODO
     disconnected: object, // TODO
     reconnecting: {
@@ -69,7 +82,9 @@ export function isConnecting(connectionInProgress: string) {
     return false;
 }
 
-export const ExitsContext = createContext({
-    fetchExitList: null,
-    exitList: [],
-});
+interface ExitsContext {
+  fetchExitList: () => Promise<void>,
+  exitList: Exit[],
+}
+
+export const ExitsContext = createContext(null as any as ExitsContext);

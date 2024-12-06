@@ -29,3 +29,6 @@ indent_size = tab
 
 [*.yml]
 indent_size = 2
+
+[*{.ts,tsx,js,jsx,json}]
+indent_size = 2

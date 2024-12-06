@@ -1,8 +1,7 @@
-// component example
-import { Anchor, Button, Combobox, Divider, Group, Image, Paper, Progress, ScrollArea, Space, Stack, Text, ThemeIcon, Title, useComputedColorScheme, useMantineTheme } from '@mantine/core';
+import { Anchor, Button, Combobox, DefaultMantineColor, Divider, Group, Image, Paper, Progress, ScrollArea, Space, Stack, StyleProp, Text, ThemeIcon, Title, useCombobox, useComputedColorScheme, useMantineTheme } from '@mantine/core';
 import { useInterval, useToggle } from '@mantine/hooks';
-import { continents, countries } from 'countries-list';
-import { useContext, useEffect, useState } from 'react';
+import { continents } from 'countries-list';
+import { Dispatch, ReactNode, SetStateAction, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsChevronDown, BsPinFill } from 'react-icons/bs';
 import { FaExternalLinkAlt } from 'react-icons/fa';
@@ -36,6 +35,7 @@ import MascotNoInternet from '../res/mascots/no-internet-mascot.svg';
 import MascotNotConnected from '../res/mascots/not-connected-mascot.svg';
 import ObscuraIconHappy from '../res/obscura-icon-happy.svg';
 
+import { Exit, getExitCountry } from '../common/api';
 import commonClasses from '../common/common.module.css';
 import classes from './ConnectionView.module.css';
 
@@ -49,7 +49,7 @@ export default function Connection() {
     const { vpnConnected, connectionInProgress, osStatus, vpnConnect, vpnDisconnect } = useContext(AppContext);
     const { internetAvailable } = osStatus;
     const connectionTransition = connectionInProgress !== ConnectingStrings.UNSET;
-    const [cityConnectingTo, setCityConnectingTo] = useState(null);
+    const [cityConnectingTo, setCityConnectingTo] = useState<string | null>(null);
 
     useEffect(() => {
         if (!vpnConnected && !isConnecting(connectionInProgress)) {
@@ -89,7 +89,7 @@ export default function Connection() {
     }
 
     // qc: Quick Connect
-    const qcBtnAction = e => vpnConnected ? vpnDisconnect() : vpnConnect();
+    const qcBtnAction = (_: MouseEvent) => vpnConnected ? vpnDisconnect() : vpnConnect();
     const qcBtnDisabled = !internetAvailable || connectionTransition;
     const primaryBtnDisconnectProps = (vpnConnected && connectionInProgress !== ConnectingStrings.reconnecting) ? theme.other.buttonDisconnectProps : {};
 
@@ -180,7 +180,7 @@ function ConnectionProgressBar() {
                     {connectingProgressBars[0]}
                     <Stack gap='0' align='center'>
                         <ThemeIcon variant='transparent' c='white'>
-                            <Image src={ObscuraIconHappy} size={20} />
+                            <Image src={ObscuraIconHappy} w={20} />
                         </ThemeIcon>
                         <Text size='xs' c='white'>Obscura</Text>
                     </Stack>
@@ -204,7 +204,14 @@ function ConnectionProgressBar() {
     );
 }
 
-function usePulsingProgress({ activated, bars = 2, inactiveColor, w }) {
+interface PulsingProgressProps {
+  activated: boolean,
+  bars: number,
+  inactiveColor: StyleProp<DefaultMantineColor>,
+  w: number
+}
+
+function usePulsingProgress({ activated, bars = 2, inactiveColor, w }: PulsingProgressProps) {
     const activeLength = 50;
     const segmentSize = activeLength / 2;
     const values = Array.from({ length: (bars + 1) * (100 / activeLength * bars) }, (_, i) => i * segmentSize);
@@ -226,9 +233,9 @@ function usePulsingProgress({ activated, bars = 2, inactiveColor, w }) {
         return () => stop();
     }, [activated, start, stop]);
 
-    const progressComponents = [];
+    const progressComponents: ReactNode[] = [];
 
-    const ProgressSection = ({ value, threshold }) => {
+    const ProgressSection = ({ value, threshold }: { value: number, threshold: number }) => {
         return <Progress.Section bg={!activated || (value >= threshold - activeLength && value <= threshold) ? undefined : inactiveColor} value={25} />
     }
 
@@ -364,16 +371,19 @@ function Mascot() {
     return <Image src={getMascot()} maw={90} />;
 }
 
-function LocationConnect({ cityConnectingTo, setCityConnectingTo }) {
+interface LocationConnectProps {
+  cityConnectingTo: string | null,
+  setCityConnectingTo: Dispatch<SetStateAction<string | null>>
+}
+
+function LocationConnect({ cityConnectingTo, setCityConnectingTo }: LocationConnectProps) {
     const { t } = useTranslation();
     const { exitList } = useContext(ExitsContext);
     const { appStatus, vpnConnect, vpnConnected, vpnDisconnectConnect, connectionInProgress, osStatus } = useContext(AppContext);
     const { internetAvailable } = osStatus;
-    const { lastChosenExit, pinnedExits } = appStatus;
+    const { lastChosenExit, pinnedExits } = appStatus!;
     const currentlyConnectedTo = appStatus?.vpnStatus.connected?.exit;
     const pinnedExitsSet = new Set(pinnedExits);
-
-    const [opened, setOpened] = useState(false);
 
     const getPreferredExitId = () => {
         if (currentlyConnectedTo !== undefined) return currentlyConnectedTo.id;
@@ -382,7 +392,7 @@ function LocationConnect({ cityConnectingTo, setCityConnectingTo }) {
         return null;
     }
 
-    const [selectedExit, setSelectedExit] = useState(null);
+    const [selectedExit, setSelectedExit] = useState<Exit | null>(null);
 
     const setDefaultExit = () => {
         const exit = exitList.find(loc => loc.id === getPreferredExitId());
@@ -401,15 +411,19 @@ function LocationConnect({ cityConnectingTo, setCityConnectingTo }) {
     // need to disable both combo (forces a collapsed dropdown) and button (non-clickable)
     const comboDisabled = !internetAvailable || connectionInProgress !== ConnectingStrings.UNSET;
     const showLastChosenLabel = lastChosenExit !== null && exitList !== null && selectedExit?.id === lastChosenExit && !vpnConnected && !isConnecting(connectionInProgress);
-    const showPinned = pinnedExitsSet.has(selectedExit?.id) && (vpnConnected || isConnecting(connectionInProgress));
+    const showPinned = selectedExit !== null && pinnedExitsSet.has(selectedExit.id) && (vpnConnected || isConnecting(connectionInProgress));
+
+    const combobox = useCombobox({
+        onDropdownClose: () => combobox.resetSelectedOption(),
+    });
+
     return (
         <>
             <LocationConnectTopCaption cityConnectingTo={cityConnectingTo} />
             <Space />
             <Group gap='xs'>
                 <Combobox
-                    opened={opened}
-                    onClose={() => setOpened(false)}
+                    store={combobox}
                     position='bottom-start'
                     withArrow={false}
                     shadow='md'
@@ -423,7 +437,7 @@ function LocationConnect({ cityConnectingTo, setCityConnectingTo }) {
                                 size='lg'
                                 variant='default'
                                 justify='space-between'
-                                onClick={() => setOpened(o => !o)}
+                                onClick={() => combobox.toggleDropdown()}
                                 flex={1}
                                 rightSection={<Group gap='xs'>
                                     {showLastChosenLabel && <ObscuraChip>{t('lastChosen')}</ObscuraChip>}
@@ -431,7 +445,7 @@ function LocationConnect({ cityConnectingTo, setCityConnectingTo }) {
                                     <BsChevronDown
                                         size={16}
                                         style={{
-                                            transform: opened ? 'rotate(-180deg)' : null,
+                                            transform: combobox.dropdownOpened ? 'rotate(-180deg)' : undefined,
                                             transition: 'transform 200ms ease-in-out'
                                         }}
                                     />
@@ -448,9 +462,8 @@ function LocationConnect({ cityConnectingTo, setCityConnectingTo }) {
                     <Combobox.Dropdown>
                         <Combobox.Options>
                             <ScrollArea.Autosize type='always' mah={200} hidden={false} pt={10}>
-                                <CityOptions exitList={exitList} onExitSelect={exit => {
+                                <CityOptions exitList={exitList} onExitSelect={(exit: Exit) => {
                                     setSelectedExit(exit);
-                                    setOpened(false);
                                     setCityConnectingTo(exit.city_name);
                                     if (vpnConnected) {
                                         vpnDisconnectConnect(exit.id);
@@ -462,13 +475,13 @@ function LocationConnect({ cityConnectingTo, setCityConnectingTo }) {
                         </Combobox.Options>
                     </Combobox.Dropdown>
                 </Combobox>
-                <LocationConnectRightButton dropdownOpened={opened} selectedExit={selectedExit} setCityConnectingTo={setCityConnectingTo} />
+                <LocationConnectRightButton dropdownOpened={combobox.dropdownOpened} selectedExit={selectedExit} setCityConnectingTo={setCityConnectingTo} />
             </Group>
         </>
     );
 }
 
-function LocationConnectTopCaption({ cityConnectingTo }) {
+function LocationConnectTopCaption({ cityConnectingTo }: { cityConnectingTo: string | null }) {
     const { t } = useTranslation();
     const { vpnConnected, connectionInProgress } = useContext(AppContext);
     if (vpnConnected && connectionInProgress !== ConnectingStrings.changingLocations)
@@ -482,7 +495,13 @@ function LocationConnectTopCaption({ cityConnectingTo }) {
     return <Space h='lg' />;
 }
 
-function LocationConnectRightButton({ dropdownOpened, selectedExit, setCityConnectingTo }) {
+interface LocationConnectRightButtonProps {
+  dropdownOpened: boolean,
+  selectedExit: Exit | null,
+  setCityConnectingTo: (cityName: string) => void
+}
+
+function LocationConnectRightButton({ dropdownOpened, selectedExit, setCityConnectingTo }: LocationConnectRightButtonProps) {
     const { t } = useTranslation();
     const theme = useMantineTheme();
     const { vpnConnect, vpnDisconnect, vpnConnected, connectionInProgress, osStatus } = useContext(AppContext);
@@ -497,7 +516,7 @@ function LocationConnectRightButton({ dropdownOpened, selectedExit, setCityConne
             onClick={() => {
                 if (vpnConnected || connectionInProgress === ConnectingStrings.connecting) {
                     vpnDisconnect();
-                } else {
+                } else if (selectedExit !== null) {
                     setCityConnectingTo(selectedExit.city_name);
                     vpnConnect(selectedExit.id);
                 }
@@ -507,15 +526,28 @@ function LocationConnectRightButton({ dropdownOpened, selectedExit, setCityConne
     );
 }
 
-function CityOptions({ exitList, pinnedExitsSet, lastChosenExit, onExitSelect }) {
+interface CityOptionsProps {
+  exitList: Exit[],
+  pinnedExitsSet: Set<string>,
+  lastChosenExit: string,
+  onExitSelect: (exit: Exit) => void
+}
+
+interface ItemRightSectionProps {
+    exitId: string,
+    hoverKey: string,
+    showIconIfPinned?: boolean
+}
+
+function CityOptions({ exitList, pinnedExitsSet, lastChosenExit, onExitSelect }: CityOptionsProps) {
     const { t } = useTranslation();
-    const [hoveredOption, setHoveredKey] = useState(null);
+    const [hoveredOption, setHoveredKey] = useState<string | null>(null);
 
-    if (exitList === null || exitList.size === 0) return;
+    if (exitList === null || exitList.length === 0) return;
 
-    const result = [];
+    const result: ReactNode[] = [];
 
-    const ItemRightSection = ({ exitId, hoverKey = null, showIconIfPinned = false }) => {
+    const ItemRightSection = ({ exitId, hoverKey, showIconIfPinned = false }: ItemRightSectionProps) => {
         // would normally use one line returns, but a mix of logic and JSX in one line is really ugly
         if (!!hoverKey && hoveredOption === hoverKey)
             return <Text size='sm' c='gray'>{t('clickToConnect')}</Text>;
@@ -527,7 +559,7 @@ function CityOptions({ exitList, pinnedExitsSet, lastChosenExit, onExitSelect })
             return <ThemeIcon variant='transparent' c='dimmed'><BsPinFill /></ThemeIcon>;
     }
 
-    const resetHoverKey = itemKey => {
+    const resetHoverKey = (itemKey: string) => {
         setHoveredKey(value => {
             // avoid any render race condition (confirmed it's possible without this check)
             if (value === itemKey) return null;
@@ -535,7 +567,7 @@ function CityOptions({ exitList, pinnedExitsSet, lastChosenExit, onExitSelect })
         })
     }
 
-    const getMouseHoverProps = (itemKey) => {
+    const getMouseHoverProps = (itemKey: string) => {
         return { onMouseEnter: () => setHoveredKey(itemKey), onMouseLeave: () => resetHoverKey(itemKey) };
     }
 
@@ -568,7 +600,7 @@ function CityOptions({ exitList, pinnedExitsSet, lastChosenExit, onExitSelect })
     exitList.sort(exitsSortComparator(null, null, []));
 
     for (const exit of exitList) {
-        const continent = countries[exit.country_code.toUpperCase()].continent;
+        const continent = getExitCountry(exit).continent;
         if (!insertedContinents.has(continent)) {
             if (insertedContinents.size > 0) {
                 result.push(<Divider key={`divider-${continent}`} my={10} />);

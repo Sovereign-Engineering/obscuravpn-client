@@ -1,5 +1,4 @@
-import { countries } from 'countries-list'
-import { Exit } from './api';
+import { Exit, getExitCountry } from './api';
 
 /// Returns a string containing the country flag emoji.
 //
@@ -16,9 +15,9 @@ export function countryCodeToFlagEmoji(countryCode: string): string {
 }
 
 export function exitsSortComparator(
-    connectedToExitId: string,
-    lastChosenExitId: string,
-    pinnedExitsList: string,
+    connectedToExitId: string | null,
+    lastChosenExitId: string | null,
+    pinnedExitsList: string[],
 ): (l: Exit, r: Exit) => number {
     const pinnedExits = new Set(pinnedExitsList);
     return (left, right) => {
@@ -31,8 +30,8 @@ export function exitsSortComparator(
         const leftIsPinned = pinnedExits.has(left.id) ? 1 : 0;
         const rightIsPinned = pinnedExits.has(right.id) ? 1 : 0;
 
-        const leftCountry = countries[left.country_code.toUpperCase()];
-        const rightCountry = countries[right.country_code.toUpperCase()];
+        const leftCountry = getExitCountry(left);
+        const rightCountry = getExitCountry(right);
 
         const leftContinent = leftCountry.continent;
         const rightContinent = rightCountry.continent;

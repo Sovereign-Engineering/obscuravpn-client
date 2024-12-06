@@ -1,9 +1,17 @@
+import { countries, ICountry, TCountryCode } from "countries-list";
 import { AccountId } from "./accountUtils";
 
 export interface Exit {
     id: string,
-    country_code: string,
+    country_code: string, // lowercase TCountryCode
     city_name: string,
+}
+
+export function getExitCountry(exit: Exit): ICountry {
+  if (exit.country_code.length !== 2) {
+    console.warn(`Exit ${exit.id} (${exit.city_name}) does not have a country code of length 2 (got ${exit.country_code})`);
+  }
+  return countries[exit.country_code.toUpperCase() as TCountryCode];
 }
 
 export interface AccountInfo {

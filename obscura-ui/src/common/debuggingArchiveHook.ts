@@ -1,7 +1,7 @@
 import { notifications } from '@mantine/notifications';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { debuggingArchive } from '../bridge/commands';
+import { debuggingArchive } from '../tauri/commands';
 
 type ArchiveState = { inProgress: boolean, error?: Error };
 

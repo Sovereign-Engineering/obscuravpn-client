@@ -1,4 +1,4 @@
-import { Menu, Text } from '@mantine/core';
+import { Menu, Text, UnstyledButton } from '@mantine/core';
 import { useInterval } from '@mantine/hooks';
 import { appWindow } from '@tauri-apps/api/window';
 import { useEffect, useState } from 'react';
@@ -16,8 +16,8 @@ if (IS_WK_WEB_VIEW) {
 }
 
 export function TitleBar() {
-  const { usingCustomTitleBar } = useSystemContext();
-  if (!usingCustomTitleBar) return <></>;
+  const { usingCustomTitlebar } = useSystemContext();
+  if (!usingCustomTitlebar) return <></>;
   const { t } = useTranslation();
   const [maximized, setMaximized] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);

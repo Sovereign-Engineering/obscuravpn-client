@@ -1,9 +1,9 @@
 import { ActionIcon, Affix, Transition, useComputedColorScheme } from '@mantine/core';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { IoArrowUp } from 'react-icons/io5';
 
 export function ScrollToTop({ scroller, bottom = 10 }) {
-  const [scrollY, setScrollY] = useState(scroller.scrollTop);
+  const [scrollY, setScrollY] = useState();
   const colorScheme = useComputedColorScheme();
 
   const handleScroll = () => {

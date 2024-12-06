@@ -12,13 +12,14 @@ import 'simplebar-react/dist/simplebar.min.css';
 // src imports
 import AppIcon from '../../apple/client/Assets.xcassets/AppIcon.appiconset/icon_128x128.png';
 import classes from './App.module.css';
-import * as commands from './bridge/commands';
-import { logReactError, useSystemContext } from './bridge/SystemProvider';
 import { AppContext, ConnectingStrings, ExitsContext } from './common/appContext';
 import { NotificationId } from './common/notifIds';
 import { useLoadable } from './common/useLoadable';
 import { HEADER_TITLE, IS_WK_WEB_VIEW, useCookie } from './common/utils';
 import { ScrollToTop } from './components/ScrollToTop';
+import { UserPrefs } from './components/UserPrefs';
+import * as commands from './tauri/commands';
+import { tauriLogError, useSystemContext } from './tauri/SystemProvider';
 // imported views need to be added to the `views` list variable
 import { Account, Connection, DeveloperView, FallbackAppRender, Help, Location, LogIn, Settings, SplashScreen } from './views';
 
@@ -362,16 +363,18 @@ export default function () {
       <AppShellMain p={0}>
         {usingCustomTitleBar && <Space h='xl' />}
         <SimpleBar scrollableNodeProps={{ ref: scrollbarRef }} autoHide={false} className={classes.simpleBar}>
-          <AppContext.Provider value={appContext}>
-            <ExitsContext.Provider value={exitsContext}>
-              <ErrorBoundary FallbackComponent={FallbackAppRender} onReset={(details) => resetState(details)} onError={logReactError}>
-                <Routes>
-                  <Route exact path='/' element={<Navigate to={views[0].path} />} />
-                  {views.map((view, index) => <Route key={index} exact={view.exact} path={view.path} element={<view.component />} />)}
-                </Routes>
-              </ErrorBoundary>
-            </ExitsContext.Provider>
-          </AppContext.Provider>
+          <UserPrefs>
+            <AppContext.Provider value={appContext}>
+              <ExitsContext.Provider value={exitsContext}>
+                <ErrorBoundary FallbackComponent={FallbackAppRender} onReset={(details) => resetState(details)} onError={tauriLogError}>
+                  <Routes>
+                    <Route exact path='/' element={<Navigate to={views[0].path} />} />
+                    {views.map((view, index) => <Route key={index} exact={view.exact} path={view.path} element={<view.component />} />)}
+                  </Routes>
+                </ErrorBoundary>
+              </ExitsContext.Provider>
+            </AppContext.Provider>
+          </UserPrefs>
           <ScrollToTop scroller={scrollbarRef.current} bottom={20} />
         </SimpleBar>
       </AppShellMain>

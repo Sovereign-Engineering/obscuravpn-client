@@ -21,6 +21,19 @@ export function useCookie(key: string, defaultValue: string, { expires = 365000,
     return [state, setState];
 }
 
+// const getExtensionTests = ['/.test/.ext', './asdf.mz', '/asdf/qwer.maz', 'asdf.mm', 'sdf/qwer.ww', './.asdf.mz', '/asdf/.qwer.maz', '.asdf.mm', 'sdf/.qwer.ww', './asdf', '/adsf/qwer', 'asdf', 'sdf/qewr', './.asdf', '/adsf/.qwer', '.asdf', 'sdf/.qewr']
+
+function getExtension(path: string) {
+    // Modified from https://stackoverflow.com/a/12900504/7732434
+    // get filename from full path that uses '\\' or '/' for seperators
+    var basename = path.split(/[\\/]/).pop()!;
+    var pos = basename.lastIndexOf('.');
+    // if `.` is not in the basename
+    if (pos < 0) return '';
+    // extract extension including `.`
+    return basename.slice(pos);
+}
+
 // show browser / native notification
 export function notify(title: string, body: string | undefined) {
     new Notification(title, { body: body || "", });

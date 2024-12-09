@@ -1,6 +1,6 @@
 import Cookies from 'js-cookie';
 import localforage from 'localforage';
-import { Dispatch, SetStateAction, useEffect, useLayoutEffect, useState } from 'react';
+import { Dispatch, ForwardedRef, RefCallback, SetStateAction, useEffect, useLayoutEffect, useState } from 'react';
 export { localforage };
 
 export const HEADER_TITLE = 'Obscura VPN';
@@ -116,4 +116,18 @@ export function normalizeError(error: unknown): Error {
     return new Error(DEFAULT_ERROR_MSG, {
         cause: error,
     });
+}
+
+export function multiRef<T>(...refs: ForwardedRef<T>[]): RefCallback<T> {
+  return value => {
+    return refs.forEach((ref) => {
+      if (ref !== null) {
+        if (typeof ref === 'function') {
+          ref(value);
+        } else {
+          ref.current = value
+        }
+      }
+    });
+  };
 }

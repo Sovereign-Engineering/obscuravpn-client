@@ -62,12 +62,19 @@ function generateAccountId(): BigInt {
   throw err`unreachable`;
 }
 
-export function generateAccountNumber() {
+export function generateAccountNumber(): AccountId {
   const accountID = generateAccountId().toString().padStart(ACCOUNT_ID_LENGTH, '0');
-  return accountID + String(checkDigit(accountID));
+  return accountID + String(checkDigit(accountID)) as any as AccountId;
 }
 
-export interface AccountId { readonly Type: unique symbol };
+export interface AccountId {
+  readonly Type: unique symbol
+};
+
+/// The raw formatting of an account ID.
+export function accountIdToString(id: AccountId): string {
+	return id as any as string;
+}
 
 const enum ObscuraAccountErrorCode {
   TOO_SHORT = "tooShort",

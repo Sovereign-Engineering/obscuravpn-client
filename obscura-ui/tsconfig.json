@@ -13,6 +13,7 @@
     "moduleResolution": "bundler",
     "noUncheckedIndexedAccess": true,
     "strict": true,
+    "target": "ES2021",
     "types": [
       "vite/client",
       "vite-plugin-svgr/client"

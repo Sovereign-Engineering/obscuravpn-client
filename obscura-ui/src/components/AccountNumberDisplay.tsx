@@ -1,5 +1,5 @@
 import { ActionIcon, CopyButton, Group, Text, useComputedColorScheme } from '@mantine/core';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsClipboardFill } from 'react-icons/bs';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
@@ -18,7 +18,7 @@ export function AccountNumberDisplay({ accountId }: { accountId: ObscuraAccount.
                 <ActionIcon variant='subtle' title={showAccountNumber ? t('hide account number') : t('show account number')} onClick={() => setShowAccountNumber(!showAccountNumber)}>
                     {showAccountNumber ? <FaEyeSlash size='1em' /> : <FaEye size='1em' />}
                 </ActionIcon>
-                <CopyButton value={accountId.toString()}>
+                <CopyButton value={ObscuraAccount.accountIdToString(accountId)}>
                     {({ copied, copy }) => (
                         <ActionIcon c={copied ? 'green' : 'orange'} variant='subtle' title={t('copy account number')} onClick={copy}>
                             <BsClipboardFill size='1em' />
@@ -29,7 +29,7 @@ export function AccountNumberDisplay({ accountId }: { accountId: ObscuraAccount.
             </Group>
             <Text ff='monospace'>
                 {showAccountNumber
-                    ? ObscuraAccount.formatPartialAccountId(accountId.toString())
+                    ? ObscuraAccount.formatPartialAccountId(ObscuraAccount.accountIdToString(accountId))
                     : 'XXXX - XXXX - XXXX - XXXX - XXXX'}
             </Text>
         </>

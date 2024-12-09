@@ -1,5 +1,5 @@
 import { Autocomplete, Button, Title } from '@mantine/core';
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { jsonFfiCmd } from "../bridge/commands";
 import { localStorageGet, LocalStorageKey, localStorageSet } from '../common/localStorage';
 
@@ -31,13 +31,13 @@ export default function DevSetApiUrl() {
                 setOutput('');
                 (async () => {
                     try {
-                        let url = inputRef.current!.value
+                        let url: string | null = inputRef.current!.value
                         if (url === '') {
                             url = null;
                         } else if (!URL.canParse(inputRef.current!.value)) {
                             throw new Error("Must be valid URL.");
                         }
-                        if (!defaultApiUrls.includes(url)) {
+                        if (url !== null && !defaultApiUrls.includes(url)) {
                             let lastCustomApiUrl = localStorageSet(LocalStorageKey.LastCustomApiUrl, url);
                             setApiUrlOptions([...defaultApiUrls, url]);
                         }

@@ -2,9 +2,9 @@ import { ActionIcon, Anchor, Group, Image, Stack, Text, Title, Tooltip, useCompu
 import { useContext } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { SiDiscord, SiMatrix } from 'react-icons/si';
-import { AppContext } from '../common/appContext.js';
-import { percentEncodeQuery } from '../common/utils.js';
-import DebuggingArchive from '../components/DebuggingArchive.js';
+import { AppContext } from '../common/appContext';
+import { percentEncodeQuery } from '../common/utils';
+import DebuggingArchive from '../components/DebuggingArchive';
 import MascotThinking from '../res/mascots/thinking-mascot.svg';
 
 const EMAIL = 'support@obscura.net';

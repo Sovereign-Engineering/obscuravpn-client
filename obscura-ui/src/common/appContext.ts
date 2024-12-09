@@ -11,32 +11,31 @@ export enum NEVPNStatus {
     disconnecting = 'disconnecting'
 }
 
-interface OsStatus {
+export interface OsStatus {
     version: string,
     internetAvailable: boolean,
     osVpnStatus: NEVPNStatus,
     srcVersion: string
 }
 
-interface ConnectedStatus {
-    exit: Exit
-}
-
-interface VpnStatus {
-    connected: ConnectedStatus,
-    connecting: object, // TODO
-    disconnected: object, // TODO
-    reconnecting: {
-        err: unknown,
+export interface VpnStatus {
+    connected?: {
+      exit: Exit
+    },
+    connecting: {},
+    disconnected: {},
+    reconnecting?: {
+        err: string,
     },
 }
 
-interface AppStatus {
+export interface AppStatus {
     version: string,
     vpnStatus: VpnStatus,
     accountId: AccountId,
     pinnedExits: Array<string>,
     lastChosenExit: string,
+    inNewAccountFlow: boolean,
     apiUrl: string
 }
 
@@ -47,7 +46,7 @@ interface IAppContext {
     vpnDisconnect: () => Promise<void>,
     vpnDisconnectConnect: (exit: string) => Promise<void>,
     pollAccount: () => Promise<void>,
-    appStatus: AppStatus | null,
+    appStatus: AppStatus,
     osStatus: OsStatus,
     accountInfo: AccountInfo | null,
     connectionInProgress: ConnectionInProgress
@@ -56,28 +55,19 @@ interface IAppContext {
 export const AppContext = createContext(null as any as IAppContext);
 
 export enum ConnectionInProgress {
-    CONNECTING = 'Connecting',
-    RECONNECTING = 'Reconnecting',
-    DISCONNECTING = 'Disconnecting',
+    Connecting = 'Connecting',
+    Reconnecting = 'Reconnecting',
+    Disconnecting = 'Disconnecting',
     // UI exclusives:
-    CHANGING_LOCATIONS = 'Changing Locations',
+    ChangingLocations = 'Changing Locations',
     UNSET = 'UNSET'
 }
 
-export const ConnectingStrings = {
-    connecting: 'Connecting',
-    reconnecting: 'Reconnecting',
-    disconnecting: 'Disconnecting',
-    // UI exclusives:
-    changingLocations: 'Changing Locations',
-    UNSET: undefined
-}
-
-export function isConnecting(connectionInProgress: string) {
+export function isConnecting(connectionInProgress: ConnectionInProgress) {
     switch (connectionInProgress) {
-        case ConnectingStrings.connecting:
-        case ConnectingStrings.reconnecting:
-        case ConnectingStrings.changingLocations:
+        case ConnectionInProgress.Connecting:
+        case ConnectionInProgress.Reconnecting:
+        case ConnectionInProgress.ChangingLocations:
             return true;
     }
     return false;
@@ -85,7 +75,7 @@ export function isConnecting(connectionInProgress: string) {
 
 interface IExitsContext {
   fetchExitList: () => Promise<void>,
-  exitList: Exit[],
+  exitList: Exit[] | null,
 }
 
 export const ExitsContext = createContext(null as any as IExitsContext);

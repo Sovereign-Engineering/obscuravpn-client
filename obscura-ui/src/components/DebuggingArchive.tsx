@@ -1,5 +1,4 @@
 import { Alert, Button, Container, Group, Loader, Text } from '@mantine/core';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDebuggingArchive } from '../common/debuggingArchiveHook';
 

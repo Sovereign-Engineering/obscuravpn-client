@@ -4,11 +4,10 @@ import { ErrorBoundary } from 'react-error-boundary';
 import App from './App';
 import Providers from './Providers';
 import { logReactError } from './bridge/SystemProvider';
+import './translations/i18n'; // for internationalization (translations)
 import { FallbackAppRender } from './views';
-// for internationalization (translations)
-import './translations/i18n';
 
-const root = createRoot(document.getElementById('root'));
+const root = createRoot(document.getElementById('root')!);
 root.render(
   <React.StrictMode>
     <Providers>

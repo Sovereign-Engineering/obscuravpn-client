@@ -3,7 +3,6 @@ import react from '@vitejs/plugin-react';
 import svgr from 'vite-plugin-svgr';
 // import topLevelAwait from 'vite-plugin-top-level-await';
 import { visualizer } from 'rollup-plugin-visualizer';
-import removeConsole from 'vite-plugin-remove-console';
 // https://vitejs.dev/config/
 // https://tauri.app/v1/guides/getting-started/setup/vite#create-the-frontend
 export default defineConfig({
@@ -18,7 +17,6 @@ export default defineConfig({
     //   promiseImportName: i => `__TLA_${i}`
     // }),
     visualizer(),
-    // removeConsole({includes: ['log', 'assert', 'info', 'error']})
   ],
   // prevent vite from obscuring rust errors
   clearScreen: false,

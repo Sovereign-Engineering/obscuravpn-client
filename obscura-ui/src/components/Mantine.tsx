@@ -10,7 +10,7 @@ import '@mantine/notifications/styles.css';
 import { ColorSchemeScript, MantineProvider, createTheme } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
 import { Notifications } from '@mantine/notifications';
-import React, { PropsWithChildren } from 'react';
+import { PropsWithChildren } from 'react';
 
 export default function Mantine({ children }: PropsWithChildren) {
     // override theme for Mantine (default props and styles)

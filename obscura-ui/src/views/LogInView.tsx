@@ -15,7 +15,7 @@ import classes from './LoginView.module.css';
 
 interface LogInProps {
   accountNumber: ObscuraAccount.AccountId,
-  accountActive: boolean
+  accountActive?: boolean
 }
 
 export default function LogIn({ accountNumber, accountActive }: LogInProps) {
@@ -132,7 +132,7 @@ const ANIMATION_HEIGHT = 20;
 
 interface AccountGenerationProps {
   generatedAccountId: ObscuraAccount.AccountId,
-  accountActive: boolean,
+  accountActive?: boolean,
   loading: boolean
 }
 
@@ -196,9 +196,10 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
 function AccountId({ accountId }: { accountId: ObscuraAccount.AccountId }) {
   // every 4 digits, add a -
   let result = [];
-  for (let i = 0; i < accountId.length; i += 1) {
-    result.push(<DigitsWheel key={i} digit={accountId.charAt(i)} />)
-    if (i % 4 === 3 && i !== accountId.length - 1) {
+  const accountIdStr = ObscuraAccount.accountIdToString(accountId);
+  for (let i = 0; i < accountIdStr.length; i += 1) {
+    result.push(<DigitsWheel key={i} digit={accountIdStr.charAt(i)} />)
+    if (i % 4 === 3 && i !== accountIdStr.length - 1) {
       result.push(<span>&nbsp;-&nbsp;</span>);
     }
   }

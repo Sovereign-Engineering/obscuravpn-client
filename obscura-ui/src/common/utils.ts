@@ -7,7 +7,7 @@ export const HEADER_TITLE = 'Obscura VPN';
 export const IS_DEVELOPMENT = import.meta.env.MODE === 'development';
 export const IS_WK_WEB_VIEW = window.webkit !== undefined;
 
-export function useCookie(key: string, defaultValue: string, options: Cookies.CookieAttributes = {}): [string, Dispatch<SetStateAction<string>>] {
+export function useCookie(key: string, defaultValue: string, options: Cookies.CookieAttributes = { expires: 365000, sameSite: 'lax', path: '/' }): [string, Dispatch<SetStateAction<string>>] {
     // cookie expires in a millenia
     // sameSite != 'strict' because the cookie is not read for sensitive actions
     // synchronous

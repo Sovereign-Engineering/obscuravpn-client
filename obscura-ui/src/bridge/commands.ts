@@ -1,7 +1,7 @@
-import { AccountId } from 'src/common/accountUtils';
+import { AccountId } from '../common/accountUtils';
+import { AccountInfo, Exit } from '../common/api';
+import { AppStatus } from '../common/appContext';
 import { normalizeError } from '../common/utils';
-import { AccountInfo, Exit } from 'src/common/api';
-import { AppStatus } from 'src/common/appContext';
 
 async function WKWebViewInvoke(command: string, args: Object) {
     const commandJson = JSON.stringify({ [command]: args });

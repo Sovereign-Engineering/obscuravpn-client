@@ -16,7 +16,8 @@
     "target": "ES2021",
     "types": [
       "vite/client",
-      "vite-plugin-svgr/client"
+      "vite-plugin-svgr/client",
+      "@types/node"
     ]
   }
 }

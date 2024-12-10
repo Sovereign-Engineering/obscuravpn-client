@@ -2,12 +2,14 @@ import { ActionIcon, Affix, Transition, useComputedColorScheme } from '@mantine/
 import { useEffect, useState } from 'react';
 import { IoArrowUp } from 'react-icons/io5';
 
-export function ScrollToTop({ scroller, bottom = 10 }: { scroller: HTMLElement, bottom: number }) {
+export function ScrollToTop({ scroller, bottom = 10 }: { scroller: HTMLElement | null, bottom: number }) {
   const [scrollY, setScrollY] = useState<number>();
   const colorScheme = useComputedColorScheme();
 
   const handleScroll = () => {
-    setScrollY(scroller.scrollTop);
+    if (scroller !== null) {
+      setScrollY(scroller.scrollTop);
+    }
   };
 
   useEffect(() => {
@@ -23,7 +25,7 @@ export function ScrollToTop({ scroller, bottom = 10 }: { scroller: HTMLElement, 
     <Transition transition='slide-up' mounted={scrollY !== undefined && scrollY > 0}>
       {transitionStyles =>
         <ActionIcon style={transitionStyles} size='lg' variant={colorScheme === 'dark' ? 'light' : 'filled'}
-          onClick={() => scroller.scrollTo({ top: 0, behavior: 'smooth' })}>
+          onClick={() => scroller?.scrollTo({ top: 0, behavior: 'smooth' })}>
           <IoArrowUp size={25} />
         </ActionIcon>
       }

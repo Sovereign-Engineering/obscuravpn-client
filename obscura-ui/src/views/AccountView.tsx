@@ -23,7 +23,7 @@ export default function Account() {
     }, []);
 
     // vpnStatus is used because accountInfo will be null if pollAccount fails
-    let accountId = appStatus?.accountId;
+    let accountId = appStatus.accountId;
 
     const logOut = async () => {
         try {
@@ -59,7 +59,7 @@ interface AccountStatusProps {
 
 function AccountStatusCard({
     accountInfo,
-}: AccountStatusProps): React.ReactNode {
+}: AccountStatusProps) {
     if (!accountInfo.active) {
         return <AccountExpired accountInfo={accountInfo} />
     } else if (isRenewing(accountInfo)) {
@@ -74,7 +74,7 @@ function AccountStatusCard({
     return <FundYourAccount accountInfo={accountInfo} />;
 }
 
-function AutoRenewalActive({ accountInfo }: AccountStatusProps): React.ReactNode {
+function AutoRenewalActive({ accountInfo }: AccountStatusProps) {
     const { t } = useTranslation();
     return (
         <AccountStatusCardTemplate
@@ -90,7 +90,7 @@ interface ManageSubscriptionLinkProps {
     accountId: ObscuraAccount.AccountId,
 }
 
-function ManageSubscriptionLink({ accountId }: ManageSubscriptionLinkProps): React.ReactNode {
+function ManageSubscriptionLink({ accountId }: ManageSubscriptionLinkProps) {
     const { t } = useTranslation();
     // TODO: Call the API to get the Stripe URL and go directly there.
     return <Anchor href={ObscuraAccount.subscriptionUrl(accountId)} size='sm'>
@@ -98,7 +98,7 @@ function ManageSubscriptionLink({ accountId }: ManageSubscriptionLinkProps): Rea
     </Anchor>
 }
 
-function AutoRenewalPrompt({ accountInfo }: AccountStatusProps): React.ReactNode {
+function AutoRenewalPrompt({ accountInfo }: AccountStatusProps) {
     const { t } = useTranslation();
     const daysLeft = paidUntilDays(accountInfo);
     return (
@@ -116,7 +116,7 @@ function AutoRenewalPrompt({ accountInfo }: AccountStatusProps): React.ReactNode
     );
 }
 
-function AccountExpired({ accountInfo }: AccountStatusProps): React.ReactNode {
+function AccountExpired({ accountInfo }: AccountStatusProps) {
     const { t } = useTranslation();
     return (
         <AccountStatusCardTemplate showRecheck
@@ -130,7 +130,7 @@ function AccountExpired({ accountInfo }: AccountStatusProps): React.ReactNode {
     );
 }
 
-function AccountExpiringSoon({ accountInfo }: AccountStatusProps): React.ReactNode {
+function AccountExpiringSoon({ accountInfo }: AccountStatusProps) {
     const { t } = useTranslation();
     const daysLeft = paidUntilDays(accountInfo);
     return (
@@ -164,7 +164,7 @@ function AccountStatusCardTemplate({
     subtitle,
     anchor,
     showRecheck = false,
-}: AccountStatusCardTemplateProps): React.ReactNode {
+}: AccountStatusCardTemplateProps) {
     const colorScheme = useComputedColorScheme();
     return <Paper w='90%' p='md' radius='md' bg={colorScheme === 'light' ? 'gray.2' : 'dark.5'}>
         <Group>
@@ -220,7 +220,7 @@ interface FooterSectionProps {
     accountInfo: AccountInfo | null,
 }
 
-function FooterSection({ accountInfo }: FooterSectionProps): React.ReactNode {
+function FooterSection({ accountInfo }: FooterSectionProps) {
     const { t } = useTranslation();
     if (accountInfo === null) {
         return (

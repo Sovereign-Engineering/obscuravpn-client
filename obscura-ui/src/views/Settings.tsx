@@ -22,6 +22,7 @@ export default function Settings() {
         notifications.show({
             id: 'LOGIN_ITEM',
             title: t('registeringAsLoginItem'),
+            message: '',
             loading: true,
             color: 'yellow',
             autoClose: false

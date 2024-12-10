@@ -67,9 +67,9 @@ export function useLocalForage<T>(key: string, defaultValue: T) {
     useLayoutEffect(() => {
         let allow = true;
         localforage.getItem(key)
-            .then((value: T | null) => {
+            .then(value => {
                 if (value === null) throw '';
-                if (allow) setState(value);
+                if (allow) setState(value as T);
             }).catch(() => localforage.setItem(key, defaultValue))
             .then(() => {
                 if (allow) setLoading(false);

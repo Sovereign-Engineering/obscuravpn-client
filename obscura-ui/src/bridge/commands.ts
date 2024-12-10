@@ -1,6 +1,7 @@
 import { AccountId } from 'src/common/accountUtils';
 import { normalizeError } from '../common/utils';
-import { AccountInfo } from 'src/common/api';
+import { AccountInfo, Exit } from 'src/common/api';
+import { AppStatus } from 'src/common/appContext';
 
 async function WKWebViewInvoke(command: string, args: Object) {
     const commandJson = JSON.stringify({ [command]: args });
@@ -64,12 +65,12 @@ export async function jsonFfiCmd(cmd: string, arg = {}, timeoutMs: number | null
     })
 }
 
-export async function status(lastStatusId = null) {
+export async function status(lastStatusId: string | null = null): Promise<AppStatus> {
     return await jsonFfiCmd(
         'getStatus',
         { knownVersion: lastStatusId },
         null,
-    );
+    ) as AppStatus;
 }
 
 export async function osStatus(lastOsStatusId = null) {
@@ -84,7 +85,7 @@ export function logout() {
     return jsonFfiCmd('logout');
 }
 
-export function connect(exit = null) {
+export function connect(exit: string | null = null) {
     console.log(`got exit: ${JSON.stringify(exit)}`);
     let jsonTunnelArgs = JSON.stringify(({ exit }));
 
@@ -113,7 +114,13 @@ export function debuggingArchive() {
     return invoke('debuggingArchive');
 }
 
-export async function notices() {
+export interface Notice {
+  type: 'Error' | 'Warn' | 'Important',
+  content: string
+}
+
+
+export async function notices(): Promise<Notice[]>  {
     return [];
     // TODO
     return await invoke('notices');
@@ -128,12 +135,19 @@ export function developerResetUserDefaults() {
     return invoke('resetUserDefaults');
 }
 
-export function getTrafficStats() {
-    return jsonFfiCmd('getTrafficStats');
+export interface TrafficStats {
+    timestampMs: number,
+    connId: string,
+    txBytes: number,
+    rxBytes: number
 }
 
-export function getExitServers() {
-    return jsonFfiCmd('apiListExit');
+export async function getTrafficStats(): Promise<TrafficStats> {
+    return await jsonFfiCmd('getTrafficStats') as TrafficStats;
+}
+
+export async function getExitServers(): Promise<Exit[]> {
+    return await jsonFfiCmd('apiListExit') as Exit[];
 }
 
 export async function getAccount(): Promise<AccountInfo> {

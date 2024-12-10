@@ -1,4 +1,4 @@
-import { Center, Group, Loader, Space, Text } from '@mantine/core';
+import { Center, Group, Loader, Text } from '@mantine/core';
 export default function ({ text = '' }) {
     // filler
     return <Center style={{ height: '100vh', width: '100vw' }}>

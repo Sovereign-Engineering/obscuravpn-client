@@ -2,8 +2,9 @@ import { Button, Group, JsonInput, Stack, Text, TextInput, Title } from '@mantin
 import { useInterval } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import Cookies from 'js-cookie';
-import React, { useContext, useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Exit } from 'src/common/api';
 import * as commands from '../bridge/commands';
 import { AppContext } from '../common/appContext';
 import { IS_WK_WEB_VIEW } from '../common/utils';
@@ -14,7 +15,7 @@ export default function DeveloperViewer() {
     const { t } = useTranslation();
     const { vpnConnected, connectionInProgress, appStatus, osStatus } = useContext(AppContext);
     const [trafficStats, setTrafficStats] = useState({});
-    const [exitServers, setExitServers] = useState([]);
+    const [exitServers, setExitServers] = useState<Exit[]>([]);
     const cookieToDeleteRef = useRef<HTMLInputElement | null>(null);
 
     const trafficStatsInterval = useInterval(async () => {

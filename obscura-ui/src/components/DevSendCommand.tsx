@@ -1,5 +1,5 @@
 import { Button, JsonInput, Title } from '@mantine/core';
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { jsonFfiCmd } from "../bridge/commands";
 
 export default function DevSendCommand() {
@@ -26,7 +26,7 @@ export default function DevSendCommand() {
                         if (pairs.length !== 1) {
                             throw new Error("Command must have one top-level property.");
                         }
-                        let [[name, args]] = pairs;
+                        const [name, args] = pairs[0]!;
                         let r = await jsonFfiCmd(name, args as {});
                         setOutput(JSON.stringify(r, null, "\t"));
                     } catch (e) {
@@ -39,7 +39,7 @@ export default function DevSendCommand() {
                 ref={inputRef}
                 defaultValue={`{"getStatus": {}}`}
                 autosize
-                spellcheck="false" // Disable macOS pretty quotes.
+                spellCheck={false} // Disable macOS pretty quotes.
             />
             <Button type="submit">Run</Button>
             {output && <textarea value={output} disabled rows={output.split("\n").length} />}

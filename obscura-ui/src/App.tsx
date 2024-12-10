@@ -1,7 +1,7 @@
 import { ActionIcon, AppShell, AppShellAside, AppShellHeader, AppShellMain, AppShellNavbar, AppShellSection, Burger, Divider, Group, Image, Modal, Space, Text, Title, useComputedColorScheme, useMantineColorScheme } from '@mantine/core';
 import { useDisclosure, useHotkeys } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import React, { useEffect, useRef, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Trans, useTranslation } from 'react-i18next';
 import { BsMoonStarsFill } from 'react-icons/bs';
@@ -14,13 +14,21 @@ import AppIcon from '../../apple/client/Assets.xcassets/AppIcon.appiconset/icon_
 import classes from './App.module.css';
 import * as commands from './bridge/commands';
 import { logReactError, useSystemContext } from './bridge/SystemProvider';
-import { AppContext, ConnectingStrings, ExitsContext } from './common/appContext';
+import { AppContext, AppStatus, ConnectionInProgress, ExitsContext, OsStatus } from './common/appContext';
 import { NotificationId } from './common/notifIds';
 import { useLoadable } from './common/useLoadable';
-import { HEADER_TITLE, IS_WK_WEB_VIEW, useCookie } from './common/utils';
+import { HEADER_TITLE, IS_WK_WEB_VIEW, normalizeError, useCookie } from './common/utils';
 import { ScrollToTop } from './components/ScrollToTop';
 // imported views need to be added to the `views` list variable
+import { Exit } from './common/api';
 import { Account, Connection, DeveloperView, FallbackAppRender, Help, Location, LogIn, Settings, SplashScreen } from './views';
+
+interface View {
+  component: () => ReactNode,
+  path: string,
+  exact?: boolean,
+  name: string
+}
 
 export default function () {
   const { t } = useTranslation();
@@ -33,22 +41,23 @@ export default function () {
   useHotkeys([[osPlatform === 'darwin' ? 'mod+J' : 'ctrl+J', toggleColorScheme]]);
   const colorScheme = useComputedColorScheme();
   const [mobileNavOpened, { toggle: toggleMobileNav }] = useDisclosure();
-  const [desktopNavOpened, setDesktopNavOpened] = useCookie('desktop-nav-opened', true);
-  const toggleDesktopNav = () => setDesktopNavOpened(o => !o);
+  const [desktopNavOpenedCookie, setDesktopNavOpenedCookie] = useCookie('desktop-nav-opened', 'true');
+  const desktopNavOpened = desktopNavOpenedCookie === 'true';
+  const toggleDesktopNav = () => setDesktopNavOpenedCookie(o => o === 'true' ? 'false' : 'true');
 
   // MISCELLANEOUS
   const scrollbarRef = useRef(null);
 
   // App State
   const [vpnConnected, setVpnConnected] = useState(false);
-  const [connectionInProgress, setConnectionInProgress] = useState();
-  const [warningNotices, setWarningNotices] = useState([]);
-  const [importantNotices, setImportantNotices] = useState([]);
-  const [appStatus, setStatus] = useState(null);
-  const [osStatus, setOsStatus] = useState(null);
+  const [connectionInProgress, setConnectionInProgress] = useState<ConnectionInProgress>(ConnectionInProgress.UNSET);
+  const [warningNotices, setWarningNotices] = useState<string[]>([]);
+  const [importantNotices, setImportantNotices] = useState<string[]>([]);
+  const [appStatus, setStatus] = useState<AppStatus | null>(null);
+  const [osStatus, setOsStatus] = useState<OsStatus | null>(null);
   const ignoreConnectingErrors = useRef(false);
 
-  const views = [
+  const views: View[] = [
     { component: Connection, path: '/connection', name: t('Connection') },
     { component: DeveloperView, path: '/developer', name: 'Developer' },
     { component: Location, path: '/location', name: t('Location') },
@@ -64,8 +73,8 @@ export default function () {
   useEffect(() => {
     // reminder: errors are auto logged
     commands.notices().then(notices => {
-      const warnNotices = [];
-      const importantNotices = [];
+      const warnNotices: string[] = [];
+      const importantNotices: string[] = [];
       notices.forEach(notice => {
         const content = notice.content;
         switch (notice.type) {
@@ -86,26 +95,27 @@ export default function () {
     })
   }, []);
 
-  async function tryConnect(exit = null, changingLocation = false) {
+  async function tryConnect(exit: string | null = null, changingLocation = false) {
     if (!changingLocation) {
-      setConnectionInProgress(ConnectingStrings.connecting);
+      setConnectionInProgress(ConnectionInProgress.Connecting);
     }
     ignoreConnectingErrors.current = false;
     try {
       await commands.connect(exit);
     } catch (e) {
-      if (!ignoreConnectingErrors.current && e.message !== 'tunnelNotDisconnected') {
+      const error = normalizeError(e);
+      if (!ignoreConnectingErrors.current && error.message !== 'tunnelNotDisconnected') {
         notifications.hide(NotificationId.VPN_ERROR);
-        notifications.show({ title: t('Error Connecting'), message: t('vpnError-' + e.message), color: 'red', id: NotificationId.VPN_ERROR, autoClose: false });
+        notifications.show({ title: t('Error Connecting'), message: t('vpnError-' + error.message), color: 'red', id: NotificationId.VPN_ERROR, autoClose: false });
         // see https://linear.app/soveng/issue/OBS-775/not-starting-tunnel-because-it-isnt-disconnected-connecting#comment-e98a7150
-        setConnectionInProgress(ConnectingStrings.UNSET);
+        setConnectionInProgress(ConnectionInProgress.UNSET);
       }
     }
   }
 
   async function disconnectFromVpn() {
     ignoreConnectingErrors.current = true;
-    setConnectionInProgress(ConnectingStrings.disconnecting);
+    setConnectionInProgress(ConnectionInProgress.Disconnecting);
     setVpnConnected(false);
     await commands.disconnect();
   }
@@ -113,7 +123,7 @@ export default function () {
   async function toggleVpnConnection() {
     // this function no longer set the connection state
     // due to the backend command being async and not synchronous with status
-    const tryDisconnect = vpnConnected || connectionInProgress === ConnectingStrings.connecting || connectionInProgress === ConnectingStrings.reconnecting;
+    const tryDisconnect = vpnConnected || connectionInProgress === ConnectionInProgress.Connecting || connectionInProgress === ConnectionInProgress.Reconnecting;
     if (tryDisconnect) {
       await disconnectFromVpn();
     } else {
@@ -121,14 +131,16 @@ export default function () {
     }
   }
 
-  async function disconnectThenConnect(exitId) {
+  async function disconnectThenConnect(exitId: string) {
     if (vpnConnected) {
-      setConnectionInProgress(ConnectingStrings.changingLocations);
+      setConnectionInProgress(ConnectionInProgress.ChangingLocations);
       await commands.disconnectBlocking();
       notifications.update({
-        id: NOTIF_VPN_DISCONNECT_CONNECT,
+        id: NotificationId.VPN_DISCONNECT_CONNECT,
         color: 'white',
-        autoClose: 1000
+        autoClose: 10_000,
+        // keep same message
+        message: undefined
       });
       await tryConnect(exitId, true);
     }
@@ -136,7 +148,7 @@ export default function () {
 
   const [platform, setPlatform] = useState(IS_WK_WEB_VIEW ? 'macos' : undefined);
 
-  function notifyVpnError(errorEnum) {
+  function notifyVpnError(errorEnum: string) {
     // see enum JsVpnError in commands.swift
     if (errorEnum !== null) {
       notifications.hide(NotificationId.VPN_ERROR);
@@ -151,41 +163,38 @@ export default function () {
     }
   }
 
-  function handleNewStatus(newStatus) {
+  function handleNewStatus(newStatus: AppStatus) {
     const vpnStatus = newStatus.vpnStatus;
     if (vpnStatus === undefined) return;
 
     if (vpnStatus.connected !== undefined) {
       setVpnConnected(true);
-      setConnectionInProgress();
+      setConnectionInProgress(ConnectionInProgress.UNSET);
       notifications.hide(NotificationId.VPN_ERROR);
       notifications.update({
         id: NotificationId.VPN_DISCONNECT_CONNECT,
+        message: undefined,
         color: 'green',
         autoClose: 1000
       });
     } else if (vpnStatus.connecting !== undefined) {
       setVpnConnected(false);
       setConnectionInProgress(value => {
-        if (value === ConnectingStrings.changingLocations) return value;
-        return ConnectingStrings.connecting;
+        if (value === ConnectionInProgress.ChangingLocations) return value;
+        return ConnectionInProgress.Connecting;
       });
     } else if (vpnStatus.reconnecting !== undefined) {
-      setConnectionInProgress(ConnectingStrings.reconnecting);
+      setConnectionInProgress(ConnectionInProgress.Reconnecting);
       if (vpnStatus.reconnecting.err !== undefined) {
         console.error(`got error while reconnecting: ${vpnStatus.reconnecting.err}`);
         notifyVpnError(vpnStatus.reconnecting.err);
       }
     } else if (vpnStatus.disconnected !== undefined) {
       setConnectionInProgress(value => {
-        if (value === ConnectingStrings.changingLocations) return value;
-        return ConnectingStrings.UNSET;
+        if (value === ConnectionInProgress.ChangingLocations) return value;
+        return ConnectionInProgress.UNSET;
       });
       setVpnConnected(false);
-    }
-
-    if (platform === undefined) {
-      setPlatform(newStatus?.platform);
     }
   }
 
@@ -200,16 +209,14 @@ export default function () {
           let newStatus = await commands.status(knownStatusId);
           knownStatusId = newStatus.version;
           setStatus(newStatus);
-        } catch (e) {
-          console.error('command status failed', e.message || e.type);
-          notifications.show({ title: t('Error') + ' ' + t(e.type || t('Fetching Status')), message: e.message, color: 'red' });
-          // if (e.type === 'Unauthorized') {
-          //   try { await commands.logout(); } catch { }
-          // }
+        } catch (error) {
+          const e = normalizeError(error);
+          console.error('command status failed', e.message);
+          notifications.show({ title: t('Error') + ' ' + t('Fetching Status'), message: e.message, color: 'red' });
         }
       }
     })();
-    return () => keepAlive = false;
+    return () => { keepAlive = false; };
   }, []);
 
   useEffect(() => {
@@ -221,20 +228,21 @@ export default function () {
           let newOsStatus = await commands.osStatus(knownOsStatusId);
           knownOsStatusId = newOsStatus.version;
           setOsStatus(newOsStatus);
-        } catch (e) {
-          console.error('command osStatus failed', e.message || e.type);
-          notifications.show({ title: t('Error') + ' ' + t(e.type || t('Fetching OsStatus')), message: e.message, color: 'red' });
+        } catch (error) {
+          const e = normalizeError(error);
+          console.error('command osStatus failed', e.message);
+          notifications.show({ title: t('Error') + ' ' + t('Fetching OsStatus'), message: e.message, color: 'red' });
         }
       }
     })();
-    return () => keepAlive = false;
+    return () => { keepAlive = false; };
   }, []);
 
   useEffect(() => {
     if (appStatus !== null) handleNewStatus(appStatus);
   }, [appStatus]);
 
-  function resetState(details) {
+  function resetState() {
     // Useful for runtime rendering exceptions
     if (vpnConnected) toggleVpnConnection();
     if (window.location.pathname === '/connection') {
@@ -247,7 +255,13 @@ export default function () {
   // native driven navigation
   useEffect(() => {
     if (IS_WK_WEB_VIEW) {
-      const onNavUpdate = e => navigate(`/${e.detail}`);
+      const onNavUpdate = (e: Event) => {
+        if (e instanceof CustomEvent) {
+          navigate(`/${e.detail}`);
+        } else {
+          console.error('expected custom event for navigation purposes, got generic Event');
+        }
+      };
       window.addEventListener('navUpdate', onNavUpdate);
       return () => window.removeEventListener('navUpdate', onNavUpdate);
     }
@@ -270,7 +284,7 @@ export default function () {
   function NavLinks() {
     // TODO: useHotkeys and abstract this
     return views.map((view, index) =>
-      <NavLink align='left' to={view.path} key={index} end={view.exact} onClick={() => toggleMobileNav(false)}
+      <NavLink to={view.path} key={index} end={view.exact} onClick={() => toggleMobileNav()}
         className={({ isActive }) => classes.navLink + ' ' + (isActive ? classes.navLinkActive : classes.navLinkInactive)}>
         {/* TODO: Icons */}
         <Group><Text>{view.name ? view.name : view.name}</Text></Group>
@@ -281,9 +295,9 @@ export default function () {
   // hack for global styling the vertical simplebar based on state
   useEffect(() => {
     const el = document.getElementsByClassName('simplebar-vertical')[0];
-    if (el !== undefined) {
+    if (el instanceof HTMLElement) {
       el.style.marginTop = usingCustomTitleBar ? '100px' : '70px';
-      el.style.marginBottom = 0;
+      el.style.marginBottom = '0px';
     }
   }, [usingCustomTitleBar]);
 
@@ -326,6 +340,10 @@ export default function () {
     }
   }, [accountInfoError]);
 
+  if (loading) return <SplashScreen text={systemProviderLoading ? t('synchronizing') : t('appStatusLoading')} />;
+
+  if (!isLoggedIn || showAccountCreation) return <LogIn accountNumber={appStatus.accountId} accountActive={accountInfo?.active} />;
+
   const appContext = {
     accountInfo: accountInfo ?? null,
     appStatus,
@@ -340,23 +358,20 @@ export default function () {
   }
 
   const exitsContext = {
-    exitList: exitList ?? null,
+    exitList: exitList as Exit[] ?? null,
     fetchExitList,
   }
-
-  if (loading) return <SplashScreen text={systemProviderLoading ? 'Tauri loading' : t('appStatusLoading')} />;
-
-  if (!isLoggedIn || showAccountCreation) return <LogIn accountNumber={appStatus?.accountId} accountActive={accountInfo?.active} />;
 
   // <> is an alias for <React.Fragment>
   return <>
     {/* non closable notice */}
-    <Modal size='100%' overlayProps={{ backgroundOpacity: '70%' }} title={<Title order={5} style={{ color: 'orangered', letterSpacing: 1.5, textDecoration: 'bold' }}>{t('IMPORTANT NOTICE', { count: importantNotices.length })}</Title>} opened={importantNotices.length > 0} withCloseButton={false}>
+    <Modal size='100%' overlayProps={{ backgroundOpacity: 0.7 }} opened={importantNotices.length > 0} withCloseButton={false} onClose={() => { }}
+      title={<Title order={5} style={{ color: 'orangered', letterSpacing: 1.5, textDecoration: 'bold' }}>{t('IMPORTANT NOTICE', { count: importantNotices.length })}</Title>}>
       {importantNotices.map(notice => <Text style={{ marginBottom: 10 }}><Trans i18nKey='importantNotice' values={{ notice, count: importantNotices.length }} /></Text>)}
     </Modal>
     <AppShell padding='md'
       header={{ height: IS_WK_WEB_VIEW ? 0 : 60 }}
-      navbar={IS_WK_WEB_VIEW ? {} : { width: 200, breakpoint: 'sm', collapsed: { mobile: !mobileNavOpened, desktop: !desktopNavOpened } }}
+      navbar={IS_WK_WEB_VIEW ? undefined : { width: 200, breakpoint: 'sm', collapsed: { mobile: !mobileNavOpened, desktop: !desktopNavOpened } }}
       aside={{ width: 200, breakpoint: 'sm', collapsed: { desktop: true, mobile: true } }}
       className={classes.appShell}>
       <AppShellMain p={0}>
@@ -364,10 +379,10 @@ export default function () {
         <SimpleBar scrollableNodeProps={{ ref: scrollbarRef }} autoHide={false} className={classes.simpleBar}>
           <AppContext.Provider value={appContext}>
             <ExitsContext.Provider value={exitsContext}>
-              <ErrorBoundary FallbackComponent={FallbackAppRender} onReset={(details) => resetState(details)} onError={logReactError}>
+              <ErrorBoundary FallbackComponent={FallbackAppRender} onReset={_details => resetState()} onError={logReactError}>
                 <Routes>
-                  <Route exact path='/' element={<Navigate to={views[0].path} />} />
-                  {views.map((view, index) => <Route key={index} exact={view.exact} path={view.path} element={<view.component />} />)}
+                  {views[0] !== undefined && <Route path='/' element={<Navigate to={views[0].path} />} />}
+                  {views.map((view, index) => <Route key={index} path={view.path} element={<view.component />} />)}
                 </Routes>
               </ErrorBoundary>
             </ExitsContext.Provider>
@@ -391,7 +406,7 @@ export default function () {
         </Group>
       </AppShellHeader>}
 
-      {!IS_WK_WEB_VIEW && <AppShellNavbar className={classes.titleBarAdjustedHeight} height='100%' width={{ sm: 200 }} p='xs' hidden={!mobileNavOpened}>
+      {!IS_WK_WEB_VIEW && <AppShellNavbar className={classes.titleBarAdjustedHeight} h='100%' w={{ sm: 200 }} p='xs' hidden={!mobileNavOpened}>
         <AppShellSection grow><NavLinks /></AppShellSection>
         {/* Bottom of Navbar Example: https://mantine.dev/app-shell/?e=NavbarSection */}
         <AppShellSection>
@@ -406,7 +421,7 @@ export default function () {
         </AppShellSection>
       </AppShellNavbar>}
 
-      <AppShellAside className={classes.titleBarAdjustedHeight} p='md' width={{ sm: 200, lg: 300 }}>
+      <AppShellAside className={classes.titleBarAdjustedHeight} p='md' w={{ sm: 200, lg: 300 }}>
         <Text>Right Side. Use for help, support, quick action menu? For example, if we were building a trading app, we could use the aside for the trade parameters while leaving the main UI with the data</Text>
       </AppShellAside>
     </AppShell>

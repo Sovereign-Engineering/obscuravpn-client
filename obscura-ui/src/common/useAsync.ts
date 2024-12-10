@@ -23,7 +23,7 @@ export class UseAsyncState<T> {
 
     refreshToken: unknown;
     refreshCallbacks: RefreshCallback<T>[] | undefined;
-    refresh: () => void;
+    refresh: () => Promise<void>;
 
     setValue(version: number, value: T, callbacks?: RefreshCallback<T>[]): boolean {
         for (let callback of callbacks ?? []) {
@@ -102,7 +102,7 @@ export interface UseAsyncResult<T> {
     /// For example the render after `deps` change `value` and `error` will remain the same and `loading` will become `true`. This allows you to either hide the state value, or continue to use it at your discretion.
     loading: boolean,
 
-    refresh: () => void,
+    refresh: () => Promise<void>,
 }
 
 export function useAsync<T>({

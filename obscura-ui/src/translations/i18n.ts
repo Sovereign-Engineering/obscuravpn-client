@@ -3,12 +3,12 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 import { initReactI18next } from 'react-i18next';
 import en from './en.json';
 
-// this is exported in order to avoid hard coding supported languages in more than 1 place
-const resources = {
+export const defaultNS = 'translations';
+export const resources = {
   en: {
     translations: en
   }
-}
+};
 
 i18n
   .use(LanguageDetector)
@@ -18,13 +18,10 @@ i18n
     resources,
     fallbackLng: 'en',
     debug: false,
-
-    // have a common namespace used around the full app
-    ns: ['translations'],
-    defaultNS: 'translations',
-
-    keySeparator: false, // we use content as keys
-
+    ns: [defaultNS],
+    defaultNS: defaultNS,
+    // by default ".". "if working with a flat JSON, it's recommended to set this to false"
+    keySeparator: false,
     interpolation: {
       escapeValue: false
     }

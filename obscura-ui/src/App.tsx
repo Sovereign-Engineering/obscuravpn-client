@@ -44,9 +44,7 @@ export default function () {
   const [desktopNavOpenedCookie, setDesktopNavOpenedCookie] = useCookie('desktop-nav-opened', 'true');
   const desktopNavOpened = desktopNavOpenedCookie === 'true';
   const toggleDesktopNav = () => setDesktopNavOpenedCookie(o => o === 'true' ? 'false' : 'true');
-
-  // MISCELLANEOUS
-  const scrollbarRef = useRef(null);
+  const [scroller, setScroller] = useState<HTMLElement | null>(null);
 
   // App State
   const [vpnConnected, setVpnConnected] = useState(false);
@@ -374,7 +372,7 @@ export default function () {
       className={classes.appShell}>
       <AppShellMain p={0}>
         {usingCustomTitleBar && <Space h='xl' />}
-        <SimpleBar scrollableNodeProps={{ ref: scrollbarRef }} autoHide={false} className={classes.simpleBar}>
+        <SimpleBar scrollableNodeProps={{ ref: setScroller }} autoHide={false} className={classes.simpleBar}>
           <AppContext.Provider value={appContext}>
             <ExitsContext.Provider value={exitsContext}>
               <ErrorBoundary FallbackComponent={FallbackAppRender} onReset={_details => resetState()} onError={logReactError}>
@@ -385,7 +383,7 @@ export default function () {
               </ErrorBoundary>
             </ExitsContext.Provider>
           </AppContext.Provider>
-          <ScrollToTop scroller={scrollbarRef.current} bottom={20} />
+          <ScrollToTop scroller={scroller} bottom={20} />
         </SimpleBar>
       </AppShellMain>
 

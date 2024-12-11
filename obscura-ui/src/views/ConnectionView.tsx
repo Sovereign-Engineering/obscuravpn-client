@@ -382,28 +382,24 @@ function LocationConnect({ cityConnectingTo, setCityConnectingTo }: LocationConn
     const { appStatus, vpnConnect, vpnConnected, vpnDisconnectConnect, connectionInProgress, osStatus } = useContext(AppContext);
     const { internetAvailable } = osStatus;
     const { lastChosenExit, pinnedExits } = appStatus;
-    const currentlyConnectedTo = appStatus.vpnStatus.connected?.exit;
+    const connectedExit = appStatus.vpnStatus.connected?.exit;
     const pinnedExitsSet = new Set(pinnedExits);
 
-    const getPreferredExitId = () => {
-        if (currentlyConnectedTo !== undefined) return currentlyConnectedTo.id;
-        if (lastChosenExit !== null) return lastChosenExit;
-        if (pinnedExits.length > 0) return pinnedExits[0];
-        return null;
-    }
+    const getComboboxExit = () => {
+        if (connectedExit !== undefined) return connectedExit;
+        if (exitList === null) return;
+        if (lastChosenExit !== null) return exitList.find(loc => loc.id === lastChosenExit);
+        if (pinnedExits.length > 0) return exitList.find(loc => loc.id === pinnedExits[0]);
+    };
 
     const [selectedExit, setSelectedExit] = useState<Exit | null>(null);
 
     const setDefaultExit = () => {
-      if (exitList !== null) {
-        const exit = exitList.find(loc => loc.id === getPreferredExitId());
+        const exit = getComboboxExit();
         if (exit !== undefined) {
             setSelectedExit(exit);
         }
-      } else {
-        setSelectedExit(null);
-      }
-    }
+    };
 
     useEffect(() => {
         // i.e. when the exitList is loaded AND (we are strictly connected or strictly disconnected)

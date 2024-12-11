@@ -187,7 +187,12 @@ private func tunnelStatusCallback(isConnected: Bool) {
         return
     }
     logger.log("Tunnel status callback called. isConnected: \(isConnected, privacy: .public)")
-    inst.reasserting = !isConnected
+    if isConnected {
+        inst.reasserting = false
+    } else if #available(macOS 15, *) {
+        // macos 14 disconnects the tunnel if it stays on reasserting for 5min. This problem is exacerbated by unreliable sleep. 5min time awake can accumulate in less than an hour with the lid closed.
+        inst.reasserting = true
+    }
 }
 
 private func networkConfigCallback(ffiNetworkConfig: FfiBytes) {

@@ -360,7 +360,7 @@ export default function () {
 
   // <> is an alias for <React.Fragment>
   return <>
-    {/* non closable notice */}
+    {/* non-closable notice */}
     <Modal size='100%' overlayProps={{ backgroundOpacity: 0.7 }} opened={importantNotices.length > 0} withCloseButton={false} onClose={() => { }}
       title={<Title order={5} style={{ color: 'orangered', letterSpacing: 1.5, textDecoration: 'bold' }}>{t('IMPORTANT NOTICE', { count: importantNotices.length })}</Title>}>
       {importantNotices.map(notice => <Text style={{ marginBottom: 10 }}><Trans i18nKey='importantNotice' values={{ notice, count: importantNotices.length }} /></Text>)}

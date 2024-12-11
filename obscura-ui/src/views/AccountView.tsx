@@ -11,6 +11,7 @@ import { AccountInfo, getActiveSubscription, isRenewing, paidUntil, paidUntilDay
 import { AppContext } from '../common/appContext';
 import { normalizeError } from '../common/utils';
 import { AccountNumberDisplay } from '../components/AccountNumberDisplay';
+import { getErrorI18n } from '../common/danger';
 
 export default function Account() {
     const { t } = useTranslation();
@@ -107,7 +108,7 @@ function AutoRenewalPrompt({ accountInfo }: AccountStatusProps) {
             heading={
                 <Group justify='space-between'>
                     <Text fw={500}>{t('account-SubscriptionTurnOnRenewal')}</Text>
-                    <Text size='xs' fw={600}>{t('account-DaysLeft', { daysLeft })}</Text>
+                    <Text size='xs' fw={600}>{t('account-DaysRemaining', { daysLeft })}</Text>
                 </Group>
             }
             subtitle={t('account-SubscriptionAutoRenewSubtitle')}
@@ -139,7 +140,7 @@ function AccountExpiringSoon({ accountInfo }: AccountStatusProps) {
             heading={
                 <Group justify='space-between'>
                     <Text fw={500}>{t('account-ExpiresSoon')}</Text>
-                    <Text size='xs' fw={600}>{t('account-DaysLeft', { daysLeft })}</Text>
+                    <Text size='xs' fw={600}>{t('account-DaysRemaining', { daysLeft })}</Text>
                 </Group>
             }
             subtitle={t('account-GoToPayment')}
@@ -204,9 +205,11 @@ function RecheckButton() {
                 await pollAccount();
             } catch (e) {
                 const error = normalizeError(e);
+                const message = error instanceof commands.CommandError
+                ? getErrorI18n(t, error) : error.message;
                 notifications.show({
                     title: t('Account Error'),
-                    message: t(error.message),
+                    message: message,
                     color: "red",
                 });
             } finally {
@@ -247,7 +250,7 @@ function FooterSection({ accountInfo }: FooterSectionProps) {
             <Box w='90%'>
                 <Text mb='xs' fw={500}>{t('Expiration')}</Text>
                 <Text size='sm'>
-                    {t('Account is active.')}
+                    {t('Account is active')}
                 </Text>
             </Box>
         );

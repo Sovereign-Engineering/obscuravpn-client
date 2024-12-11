@@ -9,20 +9,20 @@ import { IoSunnySharp } from 'react-icons/io5';
 import { NavLink, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import SimpleBar from 'simplebar-react';
 import 'simplebar-react/dist/simplebar.min.css';
-// src imports
 import AppIcon from '../../apple/client/Assets.xcassets/AppIcon.appiconset/icon_128x128.png';
 import classes from './App.module.css';
 import * as commands from './bridge/commands';
 import { logReactError, useSystemContext } from './bridge/SystemProvider';
+import { Exit } from './common/api';
 import { AppContext, AppStatus, ConnectionInProgress, ExitsContext, OsStatus } from './common/appContext';
+import { getVpnError } from './common/danger';
 import { NotificationId } from './common/notifIds';
 import { useLoadable } from './common/useLoadable';
 import { HEADER_TITLE, IS_WK_WEB_VIEW, normalizeError, useCookie } from './common/utils';
 import { ScrollToTop } from './components/ScrollToTop';
-// imported views need to be added to the `views` list variable
-import { Exit } from './common/api';
 import { Account, Connection, DeveloperView, FallbackAppRender, Help, Location, LogIn, Settings, SplashScreen } from './views';
 
+// imported views need to be added to the `views` list variable
 interface View {
   component: () => ReactNode,
   path: string,
@@ -59,7 +59,7 @@ export default function () {
 
   const views: View[] = [
     { component: Connection, path: '/connection', name: t('Connection') },
-    { component: DeveloperView, path: '/developer', name: 'Developer' },
+    { component: DeveloperView, path: '/developer', name: t('Developer') },
     { component: Location, path: '/location', name: t('Location') },
     { component: Account, path: '/account', name: t('Account') },
     { component: Help, path: '/help', name: t('Help') },
@@ -106,7 +106,7 @@ export default function () {
       const error = normalizeError(e);
       if (!ignoreConnectingErrors.current && error.message !== 'tunnelNotDisconnected') {
         notifications.hide(NotificationId.VPN_ERROR);
-        notifications.show({ title: t('Error Connecting'), message: t('vpnError-' + error.message), color: 'red', id: NotificationId.VPN_ERROR, autoClose: false });
+        notifications.show({ title: t('Error Connecting'), message: getVpnError(t, error.message), color: 'red', id: NotificationId.VPN_ERROR, autoClose: false });
         // see https://linear.app/soveng/issue/OBS-775/not-starting-tunnel-because-it-isnt-disconnected-connecting#comment-e98a7150
         setConnectionInProgress(ConnectionInProgress.UNSET);
       }
@@ -146,8 +146,6 @@ export default function () {
     }
   }
 
-  const [platform, setPlatform] = useState(IS_WK_WEB_VIEW ? 'macos' : undefined);
-
   function notifyVpnError(errorEnum: string) {
     // see enum JsVpnError in commands.swift
     if (errorEnum !== null) {
@@ -157,7 +155,7 @@ export default function () {
         withCloseButton: false,
         color: 'red',
         title: t('Error'),
-        message: t(`vpnError-${errorEnum}`),
+        message: getVpnError(t, errorEnum),
         autoClose: 15_000
       });
     }
@@ -212,7 +210,7 @@ export default function () {
         } catch (error) {
           const e = normalizeError(error);
           console.error('command status failed', e.message);
-          notifications.show({ title: t('Error') + ' ' + t('Fetching Status'), message: e.message, color: 'red' });
+          notifications.show({ title: t('errorFetchingStatus'), message: e.message, color: 'red' });
         }
       }
     })();
@@ -231,7 +229,7 @@ export default function () {
         } catch (error) {
           const e = normalizeError(error);
           console.error('command osStatus failed', e.message);
-          notifications.show({ title: t('Error') + ' ' + t('Fetching OsStatus'), message: e.message, color: 'red' });
+          notifications.show({ title: t('errorFetchingOsStatus'), message: e.message, color: 'red' });
         }
       }
     })();

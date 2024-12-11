@@ -8,12 +8,12 @@ import { BsPin, BsPinFill, BsShieldFillCheck, BsShieldFillExclamation } from 're
 import * as commands from '../bridge/commands';
 import { Exit, getExitCountry } from '../common/api';
 import { AppContext, ConnectionInProgress, ExitsContext } from '../common/appContext';
-import { getExitCountryFlag, exitsSortComparator } from '../common/exitUtils';
+import commonClasses from '../common/common.module.css';
+import { getErrorI18n } from '../common/danger';
+import { exitsSortComparator, getExitCountryFlag } from '../common/exitUtils';
 import { NotificationId } from '../common/notifIds';
 import BoltBadgeAuto from '../components/BoltBadgeAuto';
 import ObscuraChip from '../components/ObscuraChip';
-
-import commonClasses from '../common/common.module.css';
 import classes from './Location.module.css';
 
 export default function LocationView() {
@@ -189,7 +189,7 @@ function NoExitServers() {
             await fetchExitList();
         } catch (error) {
           let message = error instanceof commands.CommandError
-            ? t(error.i18nKey())
+            ? getErrorI18n(t, error)
             : t('exitServerFetchResolution');
 
           notifications.show({

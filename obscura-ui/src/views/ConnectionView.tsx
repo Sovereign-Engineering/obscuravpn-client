@@ -58,14 +58,14 @@ export default function Connection() {
     }, [vpnConnected, connectionInProgress]);
 
     const getTitle = () => {
-        if (!internetAvailable) return t('Disconnected');
+        if (!internetAvailable) return t('disconnected');
         if (connectionTransition) {
             switch (connectionInProgress) {
                 case ConnectionInProgress.Connecting:
                 case ConnectionInProgress.ChangingLocations:
                     return t('connectingTo', { location: cityConnectingTo ?? 'Obscura' });
                 case ConnectionInProgress.Reconnecting:
-                    return t('Reconnecting to Obscura');
+                    return t('reconnectingObscura');
                 case ConnectionInProgress.Disconnecting:
                     return t('Disconnecting');
             }
@@ -85,7 +85,7 @@ export default function Connection() {
 
     const getButtonContent = () => {
         if (connectionTransition) return t(connectionInProgress) + '...'
-        return <Group gap={5}><BoltBadgeAuto />{t('Quick Connect')}</Group>;
+        return <Group gap={5}><BoltBadgeAuto />{t('QuickConnect')}</Group>;
     }
 
     // qc: Quick Connect
@@ -152,7 +152,7 @@ function ConnectionProgressBar() {
                     <ThemeIcon variant='transparent' c='white'>
                         <MdLaptopMac size={20} />
                     </ThemeIcon>
-                    <Text size='xs' c='white'>{t('Your device')}</Text>
+                    <Text size='xs' c='white'>{t('yourDevice')}</Text>
                 </Stack>
                 {
                     !internetAvailable && !isConnecting(connectionInProgress) &&
@@ -162,7 +162,7 @@ function ConnectionProgressBar() {
                             <ThemeIcon variant='transparent' c='red.6'>
                                 <MdOutlineWifiOff size={22} />
                             </ThemeIcon>
-                            <Text size='xs' c='red'>{t('No internet connection')}</Text>
+                            <Text size='xs' c='red'>{t('noInternet')}</Text>
                         </Stack>
                         <Progress w={80} value={0} h={2} bg={progressBg} />
                     </>
@@ -172,7 +172,7 @@ function ConnectionProgressBar() {
                     <Stack gap='xs' align='center' justify='flex-end' h={50}>
                         <Progress className={classes.trafficVulnerableProgressBar} value={100} color='red.6' h={2} bg={progressBg} />
                         <Text size='xs' c='red.6'>
-                            {t('Traffic is vulnerable')}
+                            {t('trafficVulnerable')}
                         </Text>
                     </Stack>
                 }

@@ -88,7 +88,11 @@ export class ObscuraAccountIdError extends Error {
   constructor(code: ObscuraAccountErrorCode, message: string) {
     super(message);
     this.name = 'ObscuraAccountError';
-    this.code = `accountIdError-${code}`;
+    this.code = code;
+  }
+
+  i18nKey() {
+    return `accountIdError-${this.code}`;
   }
 }
 

@@ -12,6 +12,7 @@ import * as ObscuraAccount from '../common/accountUtils';
 import { HEADER_TITLE, multiRef, normalizeError } from '../common/utils';
 import DecoOrangeTop from '../res/deco/deco-orange-top.svg';
 import classes from './LoginView.module.css';
+import { getErrorI18n, tUnsafe } from '../common/danger';
 
 interface LogInProps {
   accountNumber: ObscuraAccount.AccountId,
@@ -48,7 +49,7 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
       try {
         await commands.setInNewAccountFlow(false);
         await commands.login(ObscuraAccount.parseAccountIdInput(inputRef.current.value), true);
-        loginErrorTimeout.current = setTimeout(() => {
+        loginErrorTimeout.current = window.setTimeout(() => {
           setLoginWaiting(false);
           notifications.show({
             title: t('Error'),
@@ -59,9 +60,9 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
       } catch (e) {
         const error = normalizeError(e);
         const message = error instanceof commands.CommandError
-          ? t(error.i18nKey())
+          ? getErrorI18n(t, error)
           : error instanceof ObscuraAccount.ObscuraAccountIdError
-            ? t(error.code)
+            ? getErrorI18n(t, error)
             : error.message;
 
         notifications.show({
@@ -115,7 +116,7 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
               {
                 apiError &&
                 <Card shadow='sm' padding='lg' my={0} m={0} radius='md'>
-                  <Text c='red'>{t(apiError)}</Text>
+                  <Text c='red'>{tUnsafe(t, apiError)}</Text>
                 </Card>
               }
               <AccountNumberInput ref={inputRef} />
@@ -146,7 +147,7 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
   const rollAccountValue = (tries: number) => {
     if (tries === 0) return setValue(generatedAccountId);
     else setValue(ObscuraAccount.generateAccountNumber())
-    timeoutRef.current = setTimeout(() => rollAccountValue(loading ? tries : tries - 1), SPINNING_DURATION);
+    timeoutRef.current = window.setTimeout(() => rollAccountValue(loading ? tries : tries - 1), SPINNING_DURATION);
   }
 
   useEffect(() => {
@@ -280,7 +281,7 @@ const AccountNumberInput = forwardRef(function AccountNumberInput(props: {}, ref
       ObscuraAccount.parseAccountIdInput(value);
     } catch (e) {
       const error = normalizeError(e);
-      return t(error instanceof ObscuraAccount.ObscuraAccountIdError ? error.code : error.message);
+      return tUnsafe(t, error instanceof ObscuraAccount.ObscuraAccountIdError ? error.i18nKey() : error.message);
     }
     return null;
   }

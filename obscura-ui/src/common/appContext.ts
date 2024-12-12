@@ -29,11 +29,19 @@ export interface VpnStatus {
     },
 }
 
+export interface PinnedLocation {
+    country_code: string,
+    city_code: string,
+
+    // Seconds since UNIX epoch.
+    pinned_at: number,
+}
+
 export interface AppStatus {
     version: string,
     vpnStatus: VpnStatus,
     accountId: AccountId,
-    pinnedExits: Array<string>,
+    pinnedLocations: Array<PinnedLocation>,
     lastChosenExit: string,
     inNewAccountFlow: boolean,
     apiUrl: string

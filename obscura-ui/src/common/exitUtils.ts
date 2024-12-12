@@ -1,6 +1,7 @@
 import { TCountryCode } from 'countries-list';
 import { Exit, getExitCountry } from './api';
 import { randomChoice } from './utils';
+import { PinnedLocation } from 'src/common/appContext';
 
 /** returns a string containing the country flag emoji. */
 function getCountryFlag(countryCode: TCountryCode): string {
@@ -72,4 +73,13 @@ export function getRandomExitFromCity(exits: Exit[] | null, country_code: string
   } catch {
     throw error;
   }
+}
+
+export function exitLocation(exit: Exit): PinnedLocation {
+  let {city_code, country_code} = exit;
+  return {
+    city_code,
+    country_code,
+    pinned_at: 0,
+  };
 }

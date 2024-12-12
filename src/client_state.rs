@@ -22,6 +22,7 @@ use tokio::{net::UdpSocket, time::timeout};
 use uuid::Uuid;
 
 use crate::config::ConfigSaveError;
+use crate::config::PinnedLocation;
 use crate::{
     config::{self, Config, ConfigLoadError},
     errors::RelaySelectionError,
@@ -106,9 +107,72 @@ impl ClientState {
         self.lock().config.clone()
     }
 
-    pub fn set_pinned_exits(&self, exits: Vec<String>) -> Result<(), ConfigSaveError> {
+    pub fn maybe_migrate_pinned_exits(&self, exits: &obscuravpn_api::cmd::ExitList) -> anyhow::Result<()> {
         let mut inner = self.lock();
-        Self::change_config(&mut inner, move |config| config.pinned_exits = exits)?;
+        if inner.config.pinned_locations.is_some() {
+            return Ok(());
+        }
+
+        tracing::info!(
+            message_id = "aezee9No",
+            pinned_exits =? &inner.config.pinned_exits,
+            "Migrating pinned exits."
+        );
+
+        let exits_by_id = exits
+            .exits
+            .iter()
+            .map(|exit| (&exit.id, exit))
+            .collect::<std::collections::HashMap<_, _>>();
+
+        let mut duplicates = std::collections::HashSet::new();
+
+        let mut pinned_locations = Vec::new();
+        for pin in &inner.config.pinned_exits {
+            let Some(exit) = exits_by_id.get(pin) else {
+                tracing::warn!(
+                    message_id = "eich1Uo5",
+                    exit.id =? pin,
+                    "Pinned exit not in exit list, ignoring",
+                );
+                continue;
+            };
+
+            // While we should assume the possibility of duplicates in the pin list in general we will remove duplicates during the migration.
+            if !duplicates.insert((&exit.country_code, &exit.city_code)) {
+                tracing::info!(
+                    message_id = "ohPh5obi",
+                    exit.id = pin,
+                    exit.country_code = exit.country_code,
+                    exit.city_code = exit.city_code,
+                    "Duplicate exit for location ignored.",
+                );
+                continue;
+            }
+
+            pinned_locations.push(PinnedLocation {
+                country_code: exit.country_code.clone(),
+                city_code: exit.city_code.clone(),
+                pinned_at: SystemTime::UNIX_EPOCH,
+            });
+        }
+
+        tracing::info!(
+            message_id = "aca0CeiY",
+            pinned_locations =? pinned_locations,
+            "Pinned exits migration complete.",
+        );
+
+        Self::change_config(&mut inner, move |config| config.pinned_locations = Some(pinned_locations))?;
+
+        Ok(())
+    }
+
+    pub fn set_pinned_locations(&self, pinned_locations: Vec<PinnedLocation>) -> Result<(), ConfigSaveError> {
+        let mut inner = self.lock();
+        Self::change_config(&mut inner, move |config| {
+            config.pinned_locations = Some(pinned_locations);
+        })?;
         Ok(())
     }
 

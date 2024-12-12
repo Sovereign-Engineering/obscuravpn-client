@@ -9,8 +9,8 @@ import { IoIosEyeOff } from 'react-icons/io';
 import { MdLanguage, MdLaptopMac, MdOutlineWifiOff } from 'react-icons/md';
 
 import { CHECK_STATUS_WEBPAGE } from '../common/accountUtils';
-import { AppContext, ConnectionInProgress, ExitsContext, isConnecting } from '../common/appContext';
-import { CityNotFoundError, exitsSortComparator, getExitCountryFlag, getRandomExitFromCity } from '../common/exitUtils';
+import { AppContext, ConnectionInProgress, ExitsContext, isConnecting, PinnedLocation } from '../common/appContext';
+import { CityNotFoundError, exitLocation, exitsSortComparator, getExitCountryFlag, getRandomExitFromCity } from '../common/exitUtils';
 import { normalizeError, useCookie } from '../common/utils';
 import BoltBadgeAuto from '../components/BoltBadgeAuto';
 import ObscuraChip from '../components/ObscuraChip';
@@ -39,6 +39,7 @@ import { Exit, getCountry, getExitCountry } from '../common/api';
 import commonClasses from '../common/common.module.css';
 import classes from './ConnectionView.module.css';
 import { notifications } from '@mantine/notifications';
+import { KeyedSet } from '../common/KeyedSet';
 
 // Los Angeles, CA
 const BUTTON_WIDTH = 320;
@@ -382,15 +383,24 @@ function LocationConnect({ cityConnectingTo, setCityConnectingTo }: LocationConn
     const { exitList } = useContext(ExitsContext);
     const { appStatus, vpnConnect, vpnConnected, vpnDisconnectConnect, connectionInProgress, osStatus } = useContext(AppContext);
     const { internetAvailable } = osStatus;
-    const { lastChosenExit, pinnedExits } = appStatus;
+    const { lastChosenExit, pinnedLocations } = appStatus;
     const connectedExit = appStatus.vpnStatus.connected?.exit;
-    const pinnedExitsSet = new Set(pinnedExits);
+    const pinnedLocationSet = new KeyedSet(
+      loc => JSON.stringify([loc.country_code, loc.city_code]),
+      pinnedLocations,
+    );
 
     const getComboboxExit = () => {
         if (connectedExit !== undefined) return connectedExit;
         if (exitList === null) return;
         if (lastChosenExit !== null) return exitList.find(loc => loc.id === lastChosenExit);
-        if (pinnedExits.length > 0) return exitList.find(loc => loc.id === pinnedExits[0]);
+
+        let firstPin = pinnedLocations[0];
+        if (firstPin) {
+          return exitList.find(exit =>
+            exit.city_code == firstPin.city_code
+            && exit.country_code == firstPin.country_code);
+        }
     };
 
     const [selectedExit, setSelectedExit] = useState<Exit | null>(null);
@@ -412,7 +422,7 @@ function LocationConnect({ cityConnectingTo, setCityConnectingTo }: LocationConn
     // need to disable both combo (forces a collapsed dropdown) and button (non-clickable)
     const comboDisabled = !internetAvailable || connectionInProgress !== ConnectionInProgress.UNSET;
     const showLastChosenLabel = lastChosenExit !== null && exitList !== null && selectedExit?.id === lastChosenExit && !vpnConnected && !isConnecting(connectionInProgress);
-    const showPinned = selectedExit !== null && pinnedExitsSet.has(selectedExit.id) && (vpnConnected || isConnecting(connectionInProgress));
+    const showPinned = selectedExit !== null && pinnedLocationSet.has(exitLocation(selectedExit)) && (vpnConnected || isConnecting(connectionInProgress));
 
     const combobox = useCombobox({
         onDropdownClose: () => combobox.resetSelectedOption(),
@@ -491,7 +501,7 @@ function LocationConnect({ cityConnectingTo, setCityConnectingTo }: LocationConn
                                           });
                                         }
                                     }
-                                }} lastChosenExit={lastChosenExit} pinnedExitsSet={pinnedExitsSet} />
+                                }} lastChosenExit={lastChosenExit} pinnedLocationSet={pinnedLocationSet} />
                             </ScrollArea.Autosize>
                         </Combobox.Options>
                     </Combobox.Dropdown>
@@ -549,18 +559,18 @@ function LocationConnectRightButton({ dropdownOpened, selectedExit, setCityConne
 
 interface CityOptionsProps {
   exitList: Exit[] | null,
-  pinnedExitsSet: Set<string>,
+  pinnedLocationSet: KeyedSet<PinnedLocation, unknown>,
   lastChosenExit: string,
   onExitSelect: (country_code: string, city_code: string) => void
 }
 
 interface ItemRightSectionProps {
-    exitId: string,
+    exit: Exit,
     hoverKey: string,
     showIconIfPinned?: boolean
 }
 
-function CityOptions({ exitList, pinnedExitsSet, lastChosenExit, onExitSelect }: CityOptionsProps) {
+function CityOptions({ exitList, pinnedLocationSet, lastChosenExit, onExitSelect }: CityOptionsProps) {
     const { t } = useTranslation();
     const [hoveredOption, setHoveredKey] = useState<string | null>(null);
 
@@ -568,15 +578,15 @@ function CityOptions({ exitList, pinnedExitsSet, lastChosenExit, onExitSelect }:
 
     const result: ReactNode[] = [];
 
-    const ItemRightSection = ({ exitId, hoverKey, showIconIfPinned = false }: ItemRightSectionProps) => {
+    const ItemRightSection = ({ exit, hoverKey, showIconIfPinned = false }: ItemRightSectionProps) => {
         // would normally use one line returns, but a mix of logic and JSX in one line is really ugly
         if (!!hoverKey && hoveredOption === hoverKey)
             return <Text size='sm' c='gray'>{t('clickToConnect')}</Text>;
 
-        if (lastChosenExit === exitId)
+        if (lastChosenExit === exit.id)
             return <ObscuraChip>{t('lastChosen')}</ObscuraChip>;
 
-        if (showIconIfPinned && pinnedExitsSet.has(exitId))
+        if (showIconIfPinned && pinnedLocationSet.has(exitLocation(exit)))
             return <ThemeIcon variant='transparent' c='dimmed'><BsPinFill /></ThemeIcon>;
     }
 
@@ -595,7 +605,7 @@ function CityOptions({ exitList, pinnedExitsSet, lastChosenExit, onExitSelect }:
     // usually we'd conditionally render, however with the continent headings being optional, I decided
     //  to just push everything to a list. The alternative is returning <>{pinnedExits.length > 0 && {pinnedExits.maps(...)} }{result}</>
     const insertedCities = new Set(); // [COUNTRY_CODE, CITY]
-    const pinnedExits = exitList.filter(exit => pinnedExitsSet.has(exit.id));
+    const pinnedExits = exitList.filter(exit => pinnedLocationSet.has(exitLocation(exit)));
     if (pinnedExits.length > 0) {
         result.push(<Text key='pinned-heading' size='sm' c='gray' ml='md' fw={400}><BsPinFill size={11} /> {t('Pinned')}</Text>);
         for (const exit of pinnedExits) {
@@ -611,7 +621,7 @@ function CityOptions({ exitList, pinnedExitsSet, lastChosenExit, onExitSelect }:
                     {...getMouseHoverProps(key)}>
                     <Group gap='xs' justify='space-between'>
                         <Text size='lg'>{getExitCountryFlag(exit)} {exit.city_name}</Text>
-                        <ItemRightSection exitId={exit.id} hoverKey={key} />
+                        <ItemRightSection exit={exit} hoverKey={key} />
                     </Group >
                 </Combobox.Option >
               );
@@ -647,7 +657,7 @@ function CityOptions({ exitList, pinnedExitsSet, lastChosenExit, onExitSelect }:
                 {...getMouseHoverProps(key)}>
                 <Group gap='xs' justify='space-between'>
                     <Text size='lg'>{getExitCountryFlag(exit)} {exit.city_name}</Text>
-                    <ItemRightSection exitId={exit.id} hoverKey={key} showIconIfPinned />
+                    <ItemRightSection exit={exit} hoverKey={key} showIconIfPinned />
                 </Group >
             </Combobox.Option >
           );

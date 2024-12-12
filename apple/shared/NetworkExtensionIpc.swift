@@ -18,7 +18,7 @@ struct NeStatus: Codable, Equatable {
     var vpnStatus: NeVpnStatus
     var accountId: String?
     var inNewAccountFlow: Bool
-    var pinnedExits: [String]
+    var pinnedLocations: [PinnedLocation]
     var lastChosenExit: String?
     var apiUrl: String
     var account: AccountStatus?
@@ -26,6 +26,12 @@ struct NeStatus: Codable, Equatable {
     static func == (left: NeStatus, right: NeStatus) -> Bool {
         return left.version == right.version
     }
+}
+
+struct PinnedLocation: Codable, Equatable {
+    var country_code: String
+    var city_code: String
+    var pinned_at: Int8
 }
 
 enum NeVpnStatus: Codable {

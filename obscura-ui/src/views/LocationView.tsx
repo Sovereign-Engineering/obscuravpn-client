@@ -10,12 +10,13 @@ import { Exit, getCountry, getExitCountry } from '../common/api';
 import { AppContext, ConnectionInProgress, ExitsContext } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { getErrorI18n } from '../common/danger';
-import { CityNotFoundError, exitsSortComparator, getExitCountryFlag, getRandomExitFromCity } from '../common/exitUtils';
+import { CityNotFoundError, exitLocation, exitsSortComparator, getExitCountryFlag, getRandomExitFromCity } from '../common/exitUtils';
 import { NotificationId } from '../common/notifIds';
 import BoltBadgeAuto from '../components/BoltBadgeAuto';
 import ObscuraChip from '../components/ObscuraChip';
 import classes from './Location.module.css';
 import { normalizeError } from '../common/utils';
+import { KeyedSet } from '../common/KeyedSet';
 
 export default function LocationView() {
     const { t } = useTranslation();
@@ -61,28 +62,42 @@ export default function LocationView() {
     };
 
     const toggleExitPin = (exit: Exit) => {
-        if (exitList !== null) {
-            const cityExits = exitList.filter(loc => loc.country_code == exit.country_code && loc.city_name == exit.city_name).map(exit => exit.id);
-            const cityExitsSet = new Set(cityExits);
-            const pinnedExcludingCity = appStatus.pinnedExits.filter(exitId => !cityExitsSet.has(exitId));
-            if (pinnedExcludingCity.length !== appStatus.pinnedExits.length) {
-              commands.setPinnedExits(pinnedExcludingCity);
-            } else {
-              commands.setPinnedExits([...appStatus.pinnedExits, ...cityExits]);
-            }
-        }
+      if (exitList === null) {
+        console.error("Toggling pin with no exit list")
+        return;
+      }
+
+      let removed = appStatus.pinnedLocations.filter(loc =>
+        !(loc.city_code == exit.city_code
+        && loc.country_code == loc.country_code)
+      );
+      if (removed.length !== appStatus.pinnedLocations.length) {
+        commands.setPinnedExits(removed);
+      } else {
+        commands.setPinnedExits([
+          ...appStatus.pinnedLocations,
+          {
+            country_code: exit.country_code,
+            city_code: exit.city_code,
+            pinned_at: Math.floor(Date.now()/1000),
+          },
+        ]);
+      }
     };
 
     const locations = exitList === null ? [] : exitList;
-    const pinnedExitsSet = new Set(appStatus.pinnedExits);
-    const pinnedExits = locations.filter(exit => pinnedExitsSet.has(exit.id));
+    const pinnedLocationSet = new KeyedSet(
+      loc => JSON.stringify([loc.country_code, loc.city_code]),
+      appStatus.pinnedLocations,
+    );
+    const pinnedExits = locations.filter(exit => pinnedLocationSet.has(exitLocation(exit)));
 
     let lastChosenJsx = null;
     if (appStatus.lastChosenExit !== null) {
         const exit = locations.find((value) => value.id === appStatus.lastChosenExit);
         if (exit !== undefined) {
             const isConnected = exit.id === appStatus.vpnStatus.connected?.exit.id;
-            const isPinned = pinnedExitsSet.has(exit.id);
+            const isPinned = pinnedLocationSet.has(exitLocation(exit));
             lastChosenJsx = <>
                 <Text ta='left' w='91%' size='sm' c='green.7' ml='md' fw={600}>{t('lastChosen')}</Text>
                 <LocationCard exit={exit} togglePin={toggleExitPin}
@@ -101,7 +116,7 @@ export default function LocationView() {
             if (!insertedCities.has(key)) {
               insertedCities.add(key);
               const isConnected = exit.id === appStatus.vpnStatus.connected?.exit.id;
-              const isPinned = pinnedExitsSet.has(exit.id);
+              const isPinned = pinnedLocationSet.has(exitLocation(exit));
               pinnedExitsRender.push(<LocationCard key={key} exit={exit} togglePin={toggleExitPin}
                   onSelect={() => onExitSelect(exit)} connected={isConnected} pinned={isPinned} />);
             }
@@ -128,7 +143,7 @@ export default function LocationView() {
         if (!insertedCities.has(key)) {
           insertedCities.add(key);
           const isConnected = exit.country_code === connectedExit?.country_code && exit.city_name == connectedExit?.city_name;
-          const isPinned = pinnedExitsSet.has(exit.id);
+          const isPinned = pinnedLocationSet.has(exitLocation(exit));
           exitListRender.push(<LocationCard key={key} exit={exit} togglePin={toggleExitPin}
               onSelect={() => onExitSelect(exit)} connected={isConnected} pinned={isPinned} />);
         }

@@ -21,10 +21,9 @@ export default function LocationView() {
     const { vpnConnected, vpnConnect, connectionInProgress, vpnDisconnectConnect, appStatus } = useContext(AppContext);
     const { exitList } = useContext(ExitsContext);
 
-    const connectedExitId = appStatus.vpnStatus?.connected?.exit?.id;
-
     const onExitSelect = async (n: Exit) => {
-        if (n.id === connectedExitId) return;
+        // connected already to the desired exit
+        if (n.id === appStatus.vpnStatus.connected?.exit?.id) return;
         if (vpnConnected || connectionInProgress !== ConnectionInProgress.UNSET) {
             notifications.show({
                 title: t('connectingToCity', { city: n.city_name }),
@@ -37,19 +36,7 @@ export default function LocationView() {
         } else {
             await vpnConnect(n.id);
         }
-    }
-
-    // set from locations.map
-    let selectedLocation = null;
-
-    if (exitList !== null) {
-        for (const exitNode of exitList) {
-            if (exitNode.id === connectedExitId) {
-                selectedLocation = exitNode.city_name;
-                break;
-            }
-        }
-    }
+    };
 
     const toggleExitPin = (exitId: string) => {
         // remove from list if already pinned
@@ -62,7 +49,7 @@ export default function LocationView() {
             newPinnedExits.splice(existingIndex, 1);
         }
         commands.setPinnedExits(newPinnedExits);
-    }
+    };
 
     const locations = exitList === null ? [] : exitList;
     const pinnedExitsSet = new Set(appStatus.pinnedExits);
@@ -72,7 +59,7 @@ export default function LocationView() {
     if (appStatus.lastChosenExit !== null) {
         const exit = locations.find((value) => value.id === appStatus.lastChosenExit);
         if (exit !== undefined) {
-            const isConnected = exit.id === appStatus.vpnStatus?.connected?.exit.id;
+            const isConnected = exit.id === appStatus.vpnStatus.connected?.exit.id;
             const isPinned = pinnedExitsSet.has(exit.id);
             lastChosenJsx = <>
                 <Text ta='left' w='91%' size='sm' c='green.7' ml='md' fw={600}>{t('lastChosen')}</Text>
@@ -87,7 +74,7 @@ export default function LocationView() {
     if (pinnedExits.length > 0) {
         pinnedExitsRender.push(<Text key='pinned-heading' ta='left' w='91%' size='sm' c='gray' ml='md' fw={700}>{t('Pinned')}</Text>);
         for (const exit of pinnedExits) {
-            const isConnected = exit.id === appStatus.vpnStatus?.connected?.exit.id;
+            const isConnected = exit.id === appStatus.vpnStatus.connected?.exit.id;
             const isPinned = pinnedExitsSet.has(exit.id);
             pinnedExitsRender.push(<LocationCard key={exit.id} exit={exit} togglePin={toggleExitPin}
                 onSelect={() => onExitSelect(exit)} connected={isConnected} pinned={isPinned} />);
@@ -107,7 +94,7 @@ export default function LocationView() {
             exitListRender.push(<Text key={`continent-${continent}`} ta='left' w='91%' size='sm' c='gray' ml='sm' fw={600}>{continents[continent]}</Text>);
             insertedContinents.add(continent);
         }
-        const isConnected = exit.id === appStatus.vpnStatus?.connected?.exit.id;
+        const isConnected = exit.id === appStatus.vpnStatus.connected?.exit.id;
         const isPinned = pinnedExitsSet.has(exit.id);
         exitListRender.push(<LocationCard key={exit.id} exit={exit} togglePin={toggleExitPin}
             onSelect={() => onExitSelect(exit)} connected={isConnected} pinned={isPinned} />);
@@ -115,7 +102,7 @@ export default function LocationView() {
 
     return (
         <Stack align='center' gap={10} p={20} mt='sm'>
-            <VpnStatusCard selectedLocation={selectedLocation} />
+            <VpnStatusCard />
             <Space />
             {locations.length === 0 ? <NoExitServers /> :
                 <>
@@ -143,7 +130,7 @@ function LocationCard({ exit, connected, onSelect, togglePin, pinned }: Location
     const onPinClick = (e: MouseEvent) => {
         e.stopPropagation();
         togglePin(exit.id);
-    }
+    };
 
     const disableClick = connectionInProgress !== ConnectionInProgress.UNSET || !internetAvailable;
     const cardClasses = [];
@@ -219,23 +206,25 @@ function NoExitServers() {
     );
 }
 
-function VpnStatusCard({ selectedLocation }: { selectedLocation: string | null }) {
+function VpnStatusCard() {
     const theme = useMantineTheme();
     const { t } = useTranslation();
-    const { vpnConnected, connectionInProgress, toggleVpnConnection, osStatus } = useContext(AppContext);
+    const { appStatus, vpnConnected, connectionInProgress, toggleVpnConnection, osStatus } = useContext(AppContext);
     const { internetAvailable } = osStatus;
 
     const getStatusTitle = () => {
         if (!internetAvailable) return t('Offline');
         if (connectionInProgress === ConnectionInProgress.Disconnecting) return t(connectionInProgress) + '...';
-        if (vpnConnected) return selectedLocation === null ? t('Connected') : t('connectedToLocation', { location: selectedLocation });
+        const selectedLocation = appStatus.vpnStatus.connected?.exit.city_name;
+        // vpnConnected <-> vpnStatus.connected.exit defined
+        if (selectedLocation !== undefined) return t('connectedToLocation', { location: selectedLocation });
         return t('Disconnected');
     };
 
     const getStatusSubtitle = () => {
         if (!internetAvailable) return t('connectToInternet');
-        return vpnConnected ? t('Traffic is protected') : t('Traffic is vulnerable');
-    }
+        return vpnConnected ? t('trafficProtected') : t('trafficVulnerable');
+    };
 
     const btnDisabled = connectionInProgress !== ConnectionInProgress.UNSET || !internetAvailable;
     const buttonDisconnectProps = (vpnConnected && !btnDisabled) ? theme.other.buttonDisconnectProps : {};
@@ -244,14 +233,14 @@ function VpnStatusCard({ selectedLocation }: { selectedLocation: string | null }
     const getButtonContent = () => {
         if (connectionTransition) return t(connectionInProgress) + '...'
         if (vpnConnected) return t('Disconnect');
-        return <Group gap={5} ml={0}><BoltBadgeAuto />{t('Quick Connect')}</Group>;
-    }
+        return <Group gap={5} ml={0}><BoltBadgeAuto />{t('QuickConnect')}</Group>;
+    };
 
     const btnTitle = () => {
-      if (!btnDisabled) return;
-      if (!internetAvailable) return t('noInternet');
-      return t('busyConnection');
-    }
+        if (!btnDisabled) return;
+        if (!internetAvailable) return t('noInternet');
+        return t('busyConnection');
+    };
 
     return (
         <Card shadow='sm' padding='lg' radius='md' withBorder w='90%'>

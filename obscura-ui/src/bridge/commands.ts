@@ -146,8 +146,14 @@ export async function getTrafficStats(): Promise<TrafficStats> {
     return await jsonFfiCmd('getTrafficStats') as TrafficStats;
 }
 
+
+export interface ApiListExitResponse {
+    exits: Exit[]
+}
+
 export async function getExitServers(): Promise<Exit[]> {
-    return await jsonFfiCmd('apiListExit') as Exit[];
+    const { exits } = await jsonFfiCmd('apiListExit') as ApiListExitResponse;
+    return exits;
 }
 
 export async function getAccount(): Promise<AccountInfo> {

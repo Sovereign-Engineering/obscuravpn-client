@@ -1,6 +1,6 @@
 import { Anchor, Button, Combobox, DefaultMantineColor, Divider, Group, Image, Paper, Progress, ScrollArea, Space, Stack, StyleProp, Text, ThemeIcon, Title, useCombobox, useComputedColorScheme, useMantineTheme } from '@mantine/core';
 import { useInterval, useToggle } from '@mantine/hooks';
-import { continents } from 'countries-list';
+import { continents, getCountryData, TCountryCode } from 'countries-list';
 import { Dispatch, ReactNode, SetStateAction, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsChevronDown, BsPinFill } from 'react-icons/bs';
@@ -10,8 +10,8 @@ import { MdLanguage, MdLaptopMac, MdOutlineWifiOff } from 'react-icons/md';
 
 import { CHECK_STATUS_WEBPAGE } from '../common/accountUtils';
 import { AppContext, ConnectionInProgress, ExitsContext, isConnecting } from '../common/appContext';
-import { exitsSortComparator, getExitCountryFlag } from '../common/exitUtils';
-import { useCookie } from '../common/utils';
+import { CityNotFoundError, exitsSortComparator, getExitCountryFlag, getRandomExitFromCity } from '../common/exitUtils';
+import { normalizeError, useCookie } from '../common/utils';
 import BoltBadgeAuto from '../components/BoltBadgeAuto';
 import ObscuraChip from '../components/ObscuraChip';
 import DecoConnected from '../res/deco/deco-connected.svg';
@@ -35,9 +35,10 @@ import MascotNoInternet from '../res/mascots/no-internet-mascot.svg';
 import MascotNotConnected from '../res/mascots/not-connected-mascot.svg';
 import ObscuraIconHappy from '../res/obscura-icon-happy.svg';
 
-import { Exit, getExitCountry } from '../common/api';
+import { Exit, getCountry, getExitCountry } from '../common/api';
 import commonClasses from '../common/common.module.css';
 import classes from './ConnectionView.module.css';
+import { notifications } from '@mantine/notifications';
 
 // Los Angeles, CA
 const BUTTON_WIDTH = 320;
@@ -462,13 +463,33 @@ function LocationConnect({ cityConnectingTo, setCityConnectingTo }: LocationConn
                     <Combobox.Dropdown>
                         <Combobox.Options>
                             <ScrollArea.Autosize type='always' mah={200} hidden={false} pt={10}>
-                                <CityOptions exitList={exitList} onExitSelect={(exit: Exit) => {
-                                    setSelectedExit(exit);
-                                    setCityConnectingTo(exit.city_name);
-                                    if (vpnConnected) {
-                                        vpnDisconnectConnect(exit.id);
-                                    } else {
-                                        vpnConnect(exit.id);
+                                <CityOptions exitList={exitList} onExitSelect={(country_code: string, city_code: string) => {
+                                    combobox.closeDropdown();
+                                    try {
+                                        const exit = getRandomExitFromCity(exitList, country_code, city_code);
+                                        setSelectedExit(exit);
+                                        setCityConnectingTo(exit.city_name);
+                                        if (vpnConnected) {
+                                            vpnDisconnectConnect(exit.id);
+                                        } else {
+                                            vpnConnect(exit.id);
+                                        }
+                                    } catch (error) {
+                                        const e = normalizeError(error);
+                                        if (e instanceof CityNotFoundError) {
+                                          const countryName = getCountry(country_code).name;
+                                          notifications.show({
+                                              title: t('Error'),
+                                              message: t('noExitsFoundMatching', { country: countryName, city: city_code }),
+                                              color: 'red',
+                                          });
+                                        } else {
+                                          notifications.show({
+                                              title: t('Error'),
+                                              message: e.message,
+                                              color: 'red',
+                                          });
+                                        }
                                     }
                                 }} lastChosenExit={lastChosenExit} pinnedExitsSet={pinnedExitsSet} />
                             </ScrollArea.Autosize>
@@ -530,7 +551,7 @@ interface CityOptionsProps {
   exitList: Exit[] | null,
   pinnedExitsSet: Set<string>,
   lastChosenExit: string,
-  onExitSelect: (exit: Exit) => void
+  onExitSelect: (country_code: string, city_code: string) => void
 }
 
 interface ItemRightSectionProps {
@@ -573,56 +594,64 @@ function CityOptions({ exitList, pinnedExitsSet, lastChosenExit, onExitSelect }:
 
     // usually we'd conditionally render, however with the continent headings being optional, I decided
     //  to just push everything to a list. The alternative is returning <>{pinnedExits.length > 0 && {pinnedExits.maps(...)} }{result}</>
+    const insertedCities = new Set(); // [COUNTRY_CODE, CITY]
     const pinnedExits = exitList.filter(exit => pinnedExitsSet.has(exit.id));
     if (pinnedExits.length > 0) {
         result.push(<Text key='pinned-heading' size='sm' c='gray' ml='md' fw={400}><BsPinFill size={11} /> {t('Pinned')}</Text>);
         for (const exit of pinnedExits) {
-            const key = `pinned.${exit.id}`;
-            result.push(
+            const key = JSON.stringify(['pinned', exit.country_code, exit.city_code]);
+            if (!insertedCities.has(key)) {
+              insertedCities.add(key);
+              result.push(
                 <Combobox.Option
                     className={classes.fixedHoverColor}
                     key={key}
                     value={exit.id}
-                    onClick={() => onExitSelect(exit)}
+                    onClick={() => onExitSelect(exit.country_code, exit.city_code)}
                     {...getMouseHoverProps(key)}>
                     <Group gap='xs' justify='space-between'>
                         <Text size='lg'>{getExitCountryFlag(exit)} {exit.city_name}</Text>
                         <ItemRightSection exitId={exit.id} hoverKey={key} />
                     </Group >
                 </Combobox.Option >
-            )
+              );
+            }
         }
         result.push(<Divider key='divider-pinned' my={10} />);
     }
 
     const insertedContinents = new Set();
+    insertedCities.clear();
 
     exitList.sort(exitsSortComparator(null, null, []));
 
     for (const exit of exitList) {
         const continent = getExitCountry(exit).continent;
         if (!insertedContinents.has(continent)) {
-            if (insertedContinents.size > 0) {
-                result.push(<Divider key={`divider-${continent}`} my={10} />);
-            }
-            result.push(<Text key={`continent-${continent}`} size='sm' c='gray' ml='sm' fw={400}>{continents[continent]}</Text>);
-            insertedContinents.add(continent);
+          if (insertedContinents.size > 0) {
+            result.push(<Divider key={`divider-${continent}`} my={10} />);
+          }
+          insertedContinents.add(continent);
+          result.push(<Text key={`continent-${continent}`} size='sm' c='gray' ml='sm' fw={400}>{continents[continent]}</Text>);
         }
-        const key = exit.id;
+        const key = JSON.stringify([exit.country_code, exit.city_code]);
 
-        result.push(
+        if (!insertedCities.has(key)) {
+          insertedCities.add(key);
+          result.push(
             <Combobox.Option
                 className={classes.fixedHoverColor}
                 key={key}
                 value={exit.id}
-                onClick={() => onExitSelect(exit)}
+                onClick={() => onExitSelect(exit.country_code, exit.city_code)}
                 {...getMouseHoverProps(key)}>
                 <Group gap='xs' justify='space-between'>
                     <Text size='lg'>{getExitCountryFlag(exit)} {exit.city_name}</Text>
                     <ItemRightSection exitId={exit.id} hoverKey={key} showIconIfPinned />
                 </Group >
             </Combobox.Option >
-        )
+          );
+        }
     }
     return result;
 }

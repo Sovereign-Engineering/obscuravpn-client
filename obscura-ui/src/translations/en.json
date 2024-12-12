@@ -120,6 +120,7 @@
   "logOutFailed": "Failed to log out",
   "loginError-unknown": "Failed to login; Reason is unknown",
   "noExitServers": "No exit servers found",
+  "noExitsFoundMatching": "no exits matching country {{ country }} and city {{ city }} were found",
   "noInternet": "No internet connection",
   "notConnected": "Not connected to Obscura",
   "openSourceLicenses": "Open Source Licenses",

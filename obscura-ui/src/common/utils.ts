@@ -131,3 +131,9 @@ export function multiRef<T>(...refs: ForwardedRef<T>[]): RefCallback<T> {
     });
   };
 }
+
+export function randomChoice<T>(arr: T[]): T {
+  if (arr.length === 0) throw new Error('array length cannot be zero');
+  const randIdx = Math.floor(Math.random() * arr.length);
+  return arr[randIdx]!;
+}

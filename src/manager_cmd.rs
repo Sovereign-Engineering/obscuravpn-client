@@ -1,5 +1,5 @@
 use obscuravpn_api::{
-    cmd::{ApiErrorKind, Cmd, GetAccountInfo, ListExits},
+    cmd::{ApiErrorKind, Cmd, GetAccountInfo, ListExits2},
     ClientError,
 };
 use serde::{Deserialize, Serialize};
@@ -82,7 +82,7 @@ pub enum ManagerCmd {
 pub enum ManagerCmdOk {
     Empty,
     GetTrafficStats(ManagerTrafficStats),
-    ApiListExit(<ListExits as Cmd>::Output),
+    ApiListExit(<ListExits2 as Cmd>::Output),
     ApiGetAccountInfo(<GetAccountInfo as Cmd>::Output),
     GetStatus(Status),
 }
@@ -107,7 +107,7 @@ impl ManagerCmd {
                 Ok(account_info) => Ok(ManagerCmdOk::ApiGetAccountInfo(account_info)),
                 Err(err) => Err((&err).into()),
             },
-            ManagerCmd::ApiListExit {} => match manager.api_request(ListExits {}).await {
+            ManagerCmd::ApiListExit {} => match manager.api_request(ListExits2 {}).await {
                 Ok(exits) => Ok(ManagerCmdOk::ApiListExit(exits)),
                 Err(err) => Err((&err).into()),
             },

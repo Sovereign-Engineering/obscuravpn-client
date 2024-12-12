@@ -1,54 +1,76 @@
 import { ActionIcon, Button, Card, Flex, Group, Loader, Space, Stack, Text, ThemeIcon, useMantineTheme } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { continents } from 'countries-list';
+import { continents, getCountryData, TCountryCode } from 'countries-list';
 import { MouseEvent, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsPin, BsPinFill, BsShieldFillCheck, BsShieldFillExclamation } from 'react-icons/bs';
 
 import * as commands from '../bridge/commands';
-import { Exit, getExitCountry } from '../common/api';
+import { Exit, getCountry, getExitCountry } from '../common/api';
 import { AppContext, ConnectionInProgress, ExitsContext } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { getErrorI18n } from '../common/danger';
-import { exitsSortComparator, getExitCountryFlag } from '../common/exitUtils';
+import { CityNotFoundError, exitsSortComparator, getExitCountryFlag, getRandomExitFromCity } from '../common/exitUtils';
 import { NotificationId } from '../common/notifIds';
 import BoltBadgeAuto from '../components/BoltBadgeAuto';
 import ObscuraChip from '../components/ObscuraChip';
 import classes from './Location.module.css';
+import { normalizeError } from '../common/utils';
 
 export default function LocationView() {
     const { t } = useTranslation();
     const { vpnConnected, vpnConnect, connectionInProgress, vpnDisconnectConnect, appStatus } = useContext(AppContext);
     const { exitList } = useContext(ExitsContext);
 
-    const onExitSelect = async (n: Exit) => {
+    const onExitSelect = async (exit: Exit) => {
         // connected already to the desired exit
-        if (n.id === appStatus.vpnStatus.connected?.exit?.id) return;
+        const connectedExit = appStatus.vpnStatus.connected?.exit;
+        if (exit.country_code === connectedExit?.country_code &&
+          exit.city_name === connectedExit.city_name) return;
         if (vpnConnected || connectionInProgress !== ConnectionInProgress.UNSET) {
             notifications.show({
-                title: t('connectingToCity', { city: n.city_name }),
+                title: t('connectingToCity', { city: exit.city_name }),
                 message: '',
                 autoClose: 15_000,
                 color: 'yellow',
                 id: NotificationId.VPN_DISCONNECT_CONNECT
             });
-            await vpnDisconnectConnect(n.id);
-        } else {
-            await vpnConnect(n.id);
+            await vpnDisconnectConnect(exit.id);
+        } else if (exitList !== null) {
+            try {
+              exit = getRandomExitFromCity(exitList, exit.country_code, exit.city_code);
+            } catch (error) {
+              const e = normalizeError(error);
+              if (e instanceof CityNotFoundError) {
+                  const countryName = getExitCountry(exit).name;
+                      notifications.show({
+                          title: t('Error'),
+                          message: t('noExitsFoundMatching', { country: countryName, city: exit.city_name }),
+                          color: 'red',
+                      });
+              } else {
+                  notifications.show({
+                      title: t('Error'),
+                      message: e.message,
+                      color: 'red',
+                  });
+              }
+            }
+            await vpnConnect(exit.id);
         }
     };
 
-    const toggleExitPin = (exitId: string) => {
-        // remove from list if already pinned
-        // else, add to list
-        const newPinnedExits = [...appStatus.pinnedExits];
-        const existingIndex = newPinnedExits.indexOf(exitId);
-        if (existingIndex === -1) {
-            newPinnedExits.push(exitId);
-        } else {
-            newPinnedExits.splice(existingIndex, 1);
+    const toggleExitPin = (exit: Exit) => {
+        if (exitList !== null) {
+            const cityExits = exitList.filter(loc => loc.country_code == exit.country_code && loc.city_name == exit.city_name).map(exit => exit.id);
+            const cityExitsSet = new Set(cityExits);
+            const pinnedExcludingCity = appStatus.pinnedExits.filter(exitId => !cityExitsSet.has(exitId));
+            if (pinnedExcludingCity.length !== appStatus.pinnedExits.length) {
+              commands.setPinnedExits(pinnedExcludingCity);
+            } else {
+              commands.setPinnedExits([...appStatus.pinnedExits, ...cityExits]);
+            }
         }
-        commands.setPinnedExits(newPinnedExits);
     };
 
     const locations = exitList === null ? [] : exitList;
@@ -71,19 +93,27 @@ export default function LocationView() {
     }
 
     const pinnedExitsRender = [];
+    const insertedCities = new Set(); // [COUNTRY_CODE, CITY]
     if (pinnedExits.length > 0) {
         pinnedExitsRender.push(<Text key='pinned-heading' ta='left' w='91%' size='sm' c='gray' ml='md' fw={700}>{t('Pinned')}</Text>);
         for (const exit of pinnedExits) {
-            const isConnected = exit.id === appStatus.vpnStatus.connected?.exit.id;
-            const isPinned = pinnedExitsSet.has(exit.id);
-            pinnedExitsRender.push(<LocationCard key={exit.id} exit={exit} togglePin={toggleExitPin}
-                onSelect={() => onExitSelect(exit)} connected={isConnected} pinned={isPinned} />);
+            const key = JSON.stringify([exit.country_code, exit.city_name]);
+            if (!insertedCities.has(key)) {
+              insertedCities.add(key);
+              const isConnected = exit.id === appStatus.vpnStatus.connected?.exit.id;
+              const isPinned = pinnedExitsSet.has(exit.id);
+              pinnedExitsRender.push(<LocationCard key={key} exit={exit} togglePin={toggleExitPin}
+                  onSelect={() => onExitSelect(exit)} connected={isConnected} pinned={isPinned} />);
+            }
         }
         pinnedExitsRender.push(<Space key='space-pinned' />);
     }
 
     const exitListRender = [];
     const insertedContinents = new Set();
+    insertedCities.clear();
+    const connectedExit = appStatus.vpnStatus.connected?.exit;
+
     locations.sort(exitsSortComparator(null, null, []));
     for (const exit of locations) {
         const continent = getExitCountry(exit).continent;
@@ -94,10 +124,14 @@ export default function LocationView() {
             exitListRender.push(<Text key={`continent-${continent}`} ta='left' w='91%' size='sm' c='gray' ml='sm' fw={600}>{continents[continent]}</Text>);
             insertedContinents.add(continent);
         }
-        const isConnected = exit.id === appStatus.vpnStatus.connected?.exit.id;
-        const isPinned = pinnedExitsSet.has(exit.id);
-        exitListRender.push(<LocationCard key={exit.id} exit={exit} togglePin={toggleExitPin}
-            onSelect={() => onExitSelect(exit)} connected={isConnected} pinned={isPinned} />);
+        const key = JSON.stringify([exit.country_code, exit.city_name]);
+        if (!insertedCities.has(key)) {
+          insertedCities.add(key);
+          const isConnected = exit.country_code === connectedExit?.country_code && exit.city_name == connectedExit?.city_name;
+          const isPinned = pinnedExitsSet.has(exit.id);
+          exitListRender.push(<LocationCard key={key} exit={exit} togglePin={toggleExitPin}
+              onSelect={() => onExitSelect(exit)} connected={isConnected} pinned={isPinned} />);
+        }
     }
 
     return (
@@ -118,7 +152,7 @@ interface LocationCarProps {
   exit: Exit,
   connected: boolean,
   onSelect: () => void,
-  togglePin: (exit: string) => void,
+  togglePin: (exit: Exit) => void,
   pinned: boolean
 }
 
@@ -129,7 +163,7 @@ function LocationCard({ exit, connected, onSelect, togglePin, pinned }: Location
 
     const onPinClick = (e: MouseEvent) => {
         e.stopPropagation();
-        togglePin(exit.id);
+        togglePin(exit);
     };
 
     const disableClick = connectionInProgress !== ConnectionInProgress.UNSET || !internetAvailable;

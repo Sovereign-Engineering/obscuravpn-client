@@ -1,5 +1,6 @@
 import { TCountryCode } from 'countries-list';
 import { Exit, getExitCountry } from './api';
+import { randomChoice } from './utils';
 
 /** returns a string containing the country flag emoji. */
 function getCountryFlag(countryCode: TCountryCode): string {
@@ -58,4 +59,17 @@ const continentRankings = [
 
 export function continentCmp(left: string, right: string): number {
     return continentRankings.indexOf(left) - continentRankings.indexOf(right);
+}
+
+export class CityNotFoundError extends Error {}
+
+export function getRandomExitFromCity(exits: Exit[] | null, country_code: string, city_code: string): Exit {
+  const error = new CityNotFoundError(`no exits matching country ${country_code} and city ${city_code} were found`);
+  if (exits === null) throw error;
+  const cityExits = exits.filter(loc => loc.country_code === country_code && loc.city_code === city_code);
+  try {
+    return randomChoice(cityExits);
+  } catch {
+    throw error;
+  }
 }

@@ -4,6 +4,7 @@ use std::fs;
 use std::fs::create_dir_all;
 use std::io::{ErrorKind, Write};
 use std::path::Path;
+use std::time::SystemTime;
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -202,6 +203,21 @@ pub struct Config {
     pub cached_auth_token: Option<String>,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub pinned_exits: Vec<String>,
+
+    // Note: This is optional just for the migration. After migration we can make the default an empty list.
+    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
+    pub pinned_locations: Option<Vec<PinnedLocation>>,
+
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub last_chosen_exit: Option<String>,
+}
+
+#[serde_with::serde_as]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct PinnedLocation {
+    pub country_code: String,
+    pub city_code: String,
+
+    #[serde_as(as = "serde_with::TimestampSeconds")]
+    pub pinned_at: SystemTime,
 }

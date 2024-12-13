@@ -1,6 +1,6 @@
 import { AccountId } from '../common/accountUtils';
 import { AccountInfo, Exit } from '../common/api';
-import { AppStatus, NEVPNStatus, OsStatus } from '../common/appContext';
+import { AppStatus, NEVPNStatus, OsStatus, PinnedLocation } from '../common/appContext';
 import { normalizeError } from '../common/utils';
 
 async function WKWebViewInvoke(command: string, args: Object) {
@@ -177,6 +177,6 @@ export function setInNewAccountFlow(value: boolean) {
     return jsonFfiCmd('setInNewAccountFlow', { value });
 }
 
-export function setPinnedExits(newPinnedExits: string[]) {
+export function setPinnedExits(newPinnedExits: PinnedLocation[]) {
     return jsonFfiCmd('setPinnedExits', { exits: newPinnedExits });
 }

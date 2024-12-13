@@ -18,30 +18,31 @@ panic = "abort"
 
 [dependencies]
 anyhow = { version = "1.0.75", features = ["backtrace"] }
-futures = "0.3.29"
-quinn = "0.11.6"
-tokio = { version = "1.40", features = ["full"] }
-uuid = { version = "1.11.0", features = ["v4", "serde"] }
-clap = { version = "4.4.10", features = ["derive"] }
-rand = "0.8.5"
-base64 = "0.21.7"
-etherparse = "0.13.0"
-tun = {  version = "0.6.1", features = ["async"] }
 async-trait = "0.1.77"
-socket2 = { version = "0.5.5", features = ["all"] }
-thiserror = "1.0.56"
-include_dir = "0.7.3"
-serde_json = "1.0.114"
-serde = { version = "1.0.197", features = ["derive"] }
+base64 = "0.21.7"
+bytes = "1"
 chrono = "0.4.37"
+clap = { version = "4.4.10", features = ["derive"] }
+etherparse = "0.13.0"
+futures = "0.3.29"
+include_dir = "0.7.3"
+ipnetwork = "0.16.0"
 lazy_static = "1.4.0"
-tempfile = "3.10.1"
+quinn = "0.11.6"
+rand = "0.8.5"
+serde = { version = "1.0.197", features = ["derive"] }
+serde_json = "1.0.114"
+serde_with = "3.11.0"
+socket2 = { version = "0.5.5", features = ["all"] }
 strum = { version = "0.26.2", features = ["derive"] }
+tempfile = "3.10.1"
+thiserror = "1.0.56"
+tokio = { version = "1.40", features = ["full"] }
+tokio-util = "0.7.11"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-tokio-util = "0.7.11"
-ipnetwork = "0.16.0"
-bytes = "1"
+tun = {  version = "0.6.1", features = ["async"] }
+uuid = { version = "1.11.0", features = ["v4", "serde"] }
 
 [dependencies.boringtun]
 package = "neptun"
@@ -50,7 +51,7 @@ rev = "ff3b5555b5b1c4f85ae23d8d4aaf00bea2cd2bf0"
 
 [dependencies.obscuravpn-api]
 git = "https://github.com/Sovereign-Engineering/obscuravpn-api.git"
-rev = "b8d6660bf86ce580ed72b8db07013f0599654a93"
+rev = "d05f10bb667977b3e2b3c821ba33d0dc5d06e77a"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 oslog = "0.2.0"

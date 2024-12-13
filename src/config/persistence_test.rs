@@ -1,6 +1,7 @@
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
+use std::time::SystemTime;
 
 use tempfile::tempdir;
 use uuid::Uuid;
@@ -9,6 +10,7 @@ use crate::config::load;
 use crate::config::load_one;
 use crate::config::save;
 use crate::config::Config;
+use crate::config::PinnedLocation;
 use crate::config::CONFIG_FILE;
 
 fn random_config() -> Config {
@@ -136,6 +138,11 @@ fn test_ignore_invalid_fields() {
         in_new_account_flow: true,
         cached_auth_token: Some("myauth".into()),
         pinned_exits: vec!["mypinnedexit".into()],
+        pinned_locations: Some(vec![PinnedLocation {
+            country_code: "CA".into(),
+            city_code: "yyz".into(),
+            pinned_at: SystemTime::UNIX_EPOCH,
+        }]),
         last_chosen_exit: Some("mylastexit".into()),
     };
     let example_json = match serde_json::to_value(&example_config).unwrap() {

@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use strum::IntoStaticStr;
 use uuid::Uuid;
 
+use crate::config::PinnedLocation;
 use crate::manager::{Manager, ManagerTrafficStats, Status};
 use crate::{config::ConfigSaveError, errors::ApiError};
 
@@ -35,6 +36,12 @@ impl From<&ConfigSaveError> for ManagerCmdErrorCode {
     }
 }
 
+impl From<ApiError> for ManagerCmdErrorCode {
+    fn from(err: ApiError) -> Self {
+        (&err).into()
+    }
+}
+
 impl From<&ApiError> for ManagerCmdErrorCode {
     fn from(err: &ApiError) -> Self {
         tracing::info!("deriving json cmd error code for {}", &err);
@@ -61,12 +68,18 @@ impl From<&ApiError> for ManagerCmdErrorCode {
     }
 }
 
+impl From<anyhow::Error> for ManagerCmdErrorCode {
+    fn from(_: anyhow::Error) -> Self {
+        ManagerCmdErrorCode::Other
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum ManagerCmd {
     Ping {},
     GetTrafficStats {},
-    SetPinnedExits { exits: Vec<String> },
+    SetPinnedExits { exits: Vec<PinnedLocation> },
     Login { account_id: String, validate: bool },
     Logout {},
     SetApiUrl { url: Option<String> },
@@ -107,10 +120,7 @@ impl ManagerCmd {
                 Ok(account_info) => Ok(ManagerCmdOk::ApiGetAccountInfo(account_info)),
                 Err(err) => Err((&err).into()),
             },
-            ManagerCmd::ApiListExit {} => match manager.api_request(ListExits2 {}).await {
-                Ok(exits) => Ok(ManagerCmdOk::ApiListExit(exits)),
-                Err(err) => Err((&err).into()),
-            },
+            ManagerCmd::ApiListExit {} => manager.list_exits().await.map(ManagerCmdOk::ApiListExit),
             ManagerCmd::GetStatus { known_version } => match manager.subscribe().wait_for(|s| Some(s.version) != known_version).await {
                 Ok(status) => Ok(ManagerCmdOk::GetStatus(status.clone())),
                 Err(_err) => {

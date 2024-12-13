@@ -7,7 +7,7 @@ use std::{
 
 use futures::FutureExt;
 use obscuravpn_api::{
-    cmd::{Cmd, GetAccountInfo},
+    cmd::{Cmd, GetAccountInfo, ListExits2},
     types::{AccountInfo, OneExit},
     Client, ClientError,
 };
@@ -21,7 +21,7 @@ use uuid::Uuid;
 
 use crate::{
     client_state::ClientStateAccount,
-    config::{Config, ConfigLoadError, ConfigSaveError},
+    config::{Config, ConfigLoadError, ConfigSaveError, PinnedLocation},
     errors::ApiError,
     quicwg::{QuicWgConn, QuicWgTrafficStats},
 };
@@ -48,7 +48,7 @@ pub struct Status {
     pub vpn_status: VpnStatus,
     pub account_id: Option<String>,
     pub in_new_account_flow: bool,
-    pub pinned_exits: Vec<String>,
+    pub pinned_locations: Vec<PinnedLocation>,
     pub last_chosen_exit: Option<String>,
     pub api_url: Option<String>,
     pub account: Option<ClientStateAccount>,
@@ -56,13 +56,13 @@ pub struct Status {
 
 impl Status {
     fn new(version: Uuid, vpn_status: VpnStatus, config: Config, account: Option<ClientStateAccount>) -> Self {
-        let Config { account_id, api_url, in_new_account_flow, pinned_exits, last_chosen_exit, .. } = config;
+        let Config { account_id, api_url, in_new_account_flow, pinned_locations, last_chosen_exit, .. } = config;
         Self {
             version,
             vpn_status,
             account_id,
             in_new_account_flow,
-            pinned_exits,
+            pinned_locations: pinned_locations.unwrap_or_default(),
             last_chosen_exit,
             api_url,
             account,
@@ -325,8 +325,14 @@ impl Manager {
         ret
     }
 
-    pub fn set_pinned_exits(&self, exits: Vec<String>) -> Result<(), ConfigSaveError> {
-        let ret = self.client_state.set_pinned_exits(exits);
+    pub async fn list_exits(&self) -> Result<obscuravpn_api::cmd::ExitList, ManagerCmdErrorCode> {
+        let exits = self.api_request(ListExits2 {}).await?;
+        self.client_state.maybe_migrate_pinned_exits(&exits)?;
+        Ok(exits)
+    }
+
+    pub fn set_pinned_exits(&self, exits: Vec<PinnedLocation>) -> Result<(), ConfigSaveError> {
+        let ret = self.client_state.set_pinned_locations(exits);
         self.update_status_if_changed(None);
         ret
     }

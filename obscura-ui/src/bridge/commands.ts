@@ -1,6 +1,6 @@
 import { AccountId } from '../common/accountUtils';
 import { AccountInfo, Exit } from '../common/api';
-import { AppStatus } from '../common/appContext';
+import { AppStatus, NEVPNStatus, OsStatus } from '../common/appContext';
 import { normalizeError } from '../common/utils';
 
 async function WKWebViewInvoke(command: string, args: Object) {
@@ -73,8 +73,8 @@ export async function status(lastStatusId: string | null = null): Promise<AppSta
     ) as AppStatus;
 }
 
-export async function osStatus(lastOsStatusId = null) {
-    return await invoke('getOsStatus', { knownVersion: lastOsStatusId });
+export async function osStatus(lastOsStatusId: string | null = null): Promise<OsStatus> {
+    return await invoke('getOsStatus', { knownVersion: lastOsStatusId }) as OsStatus;
 }
 
 export function login(accountId: AccountId, validate = false) {
@@ -99,6 +99,7 @@ export function disconnect() {
 export async function disconnectBlocking() {
     await disconnect();
     let knownStatusId = null;
+    // NEStatus
     while (true) {
         try {
             const s = await status(knownStatusId);
@@ -108,6 +109,17 @@ export async function disconnectBlocking() {
             console.error(`failed to get status in disconnectThenConnect ${e}`)
         }
     }
+    // NEVPNStatus
+    knownStatusId = null;
+    while (true) {
+      try {
+          const s = await osStatus(knownStatusId);
+          if (s.osVpnStatus === NEVPNStatus.disconnected) break;
+          knownStatusId = s.version;
+      } catch (e) {
+          console.error(`failed to get osStatus in disconnectThenConnect ${e}`)
+      }
+  }
 }
 
 export function debuggingArchive() {

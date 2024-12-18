@@ -108,7 +108,7 @@ function AutoRenewalPrompt({ accountInfo }: AccountStatusProps) {
             heading={
                 <Group justify='space-between'>
                     <Text fw={500}>{t('account-SubscriptionTurnOnRenewal')}</Text>
-                    <Text size='xs' fw={600}>{t('account-DaysRemaining', { daysLeft })}</Text>
+                    <Text size='xs' fw={600}>{t('account-DaysRemaining', { count: daysLeft })}</Text>
                 </Group>
             }
             subtitle={t('account-SubscriptionAutoRenewSubtitle')}
@@ -140,7 +140,7 @@ function AccountExpiringSoon({ accountInfo }: AccountStatusProps) {
             heading={
                 <Group justify='space-between'>
                     <Text fw={500}>{t('account-ExpiresSoon')}</Text>
-                    <Text size='xs' fw={600}>{t('account-DaysRemaining', { daysLeft })}</Text>
+                    <Text size='xs' fw={600}>{t('account-DaysRemaining', { count: daysLeft })}</Text>
                 </Group>
             }
             subtitle={t('account-GoToPayment')}

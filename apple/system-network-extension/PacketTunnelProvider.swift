@@ -98,7 +98,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             return
         }
         guard let json_cmd = String(data: msg, encoding: .utf8) else {
-            logger.error("received non-UTF8 app message, excpected JSON")
+            logger.error("received non-UTF8 app message, expected JSON")
             let json_err = try! NeFfiJsonResult.error(errorCodeOther).json()
             completionHandler(json_err.data(using: .utf8))
             return

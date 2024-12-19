@@ -3,9 +3,9 @@ import { useContext, useState } from 'react';
 import { jsonFfiCmd } from "../bridge/commands";
 import { AppContext } from '../common/appContext';
 import { localStorageGet, LocalStorageKey, localStorageSet } from '../common/localStorage';
-import { SelectCreatable } from './SelectCreatable';
+import { Choice, SelectCreatable } from './SelectCreatable';
 
-const defaultApiUrls = ['https://v1.api.prod.obscura.net/api', 'https://v1.api.staging.obscura.net/api', 'http://localhost:8080/api']
+const defaultApiUrls = ['https://v1.api.prod.obscura.net/api', 'https://v1.api.staging.obscura.net/api', 'http://localhost:8080/api', ''];
 
 export default function DevSetApiUrl() {
   let [output, setOutput] = useState('');
@@ -14,7 +14,8 @@ export default function DevSetApiUrl() {
   if (lastCustomApiUrl !== null && !defaultApiUrls.includes(lastCustomApiUrl)) {
     apiUrls.push(lastCustomApiUrl);
   }
-  let [apiUrlOptions, setApiUrlOptions] = useState(apiUrls);
+  const initialApiUrlOptions: Choice[] = apiUrls.map(value => ({ text: value === '' ? 'null' : value, value }));
+  let [apiUrlOptions, setApiUrlOptions] = useState(initialApiUrlOptions);
   const { appStatus } = useContext(AppContext);
 
   const onSubmit = (url: string | null) => {
@@ -26,7 +27,7 @@ export default function DevSetApiUrl() {
         }
         if (url !== null && !defaultApiUrls.includes(url)) {
           localStorageSet(LocalStorageKey.LastCustomApiUrl, url);
-          setApiUrlOptions([...defaultApiUrls, url]);
+          setApiUrlOptions([...initialApiUrlOptions, { value: url, text: url }]);
         }
         await jsonFfiCmd("setApiUrl", { url });
       } catch (e) {

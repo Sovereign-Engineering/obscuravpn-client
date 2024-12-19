@@ -1,23 +1,33 @@
 import { Combobox, InputBase, InputBaseProps, PolymorphicComponentProps, useCombobox } from '@mantine/core';
 import { useRef, useState } from 'react';
 
-export function SelectCreatable({ defaultValue, choices, onSubmit, inputBaseProps = {} }: { defaultValue?: string, choices: string[], onSubmit: (value: string) => void, inputBaseProps?: PolymorphicComponentProps<'input', InputBaseProps> }) {
+export interface Choice {
+  value: string,
+  text: string
+}
+
+export function SelectCreatable({ defaultValue, choices, onSubmit, inputBaseProps = {} }: { defaultValue?: string, choices: Choice[], onSubmit: (value: string) => void, inputBaseProps?: PolymorphicComponentProps<'input', InputBaseProps> }) {
   const combobox = useCombobox({
     onDropdownClose: () => combobox.resetSelectedOption(),
   });
 
+  const filterByValue = (query?: string) => {
+    return choices.filter(choice => choice.value === query);
+  }
+
   const [data, setData] = useState(choices);
   const [value, setValue] = useState<string | null>(defaultValue || null);
-  const [search, setSearch] = useState(defaultValue || '');
+  const defaultSearch = filterByValue(defaultValue)[0]?.text;
+  const [search, setSearch] = useState(defaultSearch || '');
 
-  const exactOptionMatch = data.some((item) => item === search);
+  const exactOptionMatch = data.some(item => item.text === search);
   const filteredOptions = exactOptionMatch
     ? data
-    : data.filter((item) => item.toLowerCase().includes(search.toLowerCase().trim()));
+    : data.filter(item => item.text.toLowerCase().includes(search.toLowerCase().trim()));
 
   const options = filteredOptions.map((item) => (
-    <Combobox.Option value={item} key={item}>
-      {item}
+    <Combobox.Option value={item.value} key={item.value}>
+      {item.text}
     </Combobox.Option>
   ));
 
@@ -28,16 +38,16 @@ export function SelectCreatable({ defaultValue, choices, onSubmit, inputBaseProp
       store={combobox}
       withinPortal={false}
       onOptionSubmit={val => {
-        if (inputRef.current?.reportValidity()) {
-          if (val === '$create') {
-            setData(current => [...current, search]);
+        if (val === '$create') {
+          if (inputRef.current?.reportValidity()) {
+            setData(current => [...current, { text: search, value: search }]);
             setValue(search);
             onSubmit(search);
-          } else {
-            setValue(val);
-            setSearch(val);
-            onSubmit(val);
           }
+        } else {
+          setValue(val);
+          setSearch(filterByValue(val)[0]?.text || val);
+          onSubmit(val);
         }
         combobox.closeDropdown();
       }}
@@ -47,7 +57,7 @@ export function SelectCreatable({ defaultValue, choices, onSubmit, inputBaseProp
           ref={inputRef}
           rightSection={<Combobox.Chevron />}
           value={search}
-          onChange={(event) => {
+          onChange={event => {
             combobox.openDropdown();
             combobox.updateSelectedOptionIndex();
             setSearch(event.currentTarget.value);
@@ -56,7 +66,12 @@ export function SelectCreatable({ defaultValue, choices, onSubmit, inputBaseProp
           onFocus={() => combobox.openDropdown()}
           onBlur={() => {
             combobox.closeDropdown();
-            setSearch(value || '');
+            if (value === null) {
+              setSearch('');
+            } else {
+              const choiceAvailable = filterByValue(value)[0];
+              setSearch(choiceAvailable?.text || value);
+            }
           }}
           placeholder='Search value'
           rightSectionPointerEvents='none'

@@ -60,6 +60,7 @@
 		962325182C875B3E008A9B76 /* StatusMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 962325172C875B3E008A9B76 /* StatusMenu.swift */; };
 		962325212C88D4E8008A9B76 /* ObscuraToggle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 962325202C88D4E8008A9B76 /* ObscuraToggle.swift */; };
 		962325232C8A3B58008A9B76 /* MenuItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 962325222C8A3B58008A9B76 /* MenuItemView.swift */; };
+		9632E4642D19C5EC00BC8E3F /* AccountStatusItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9632E4632D19C5EA00BC8E3F /* AccountStatusItem.swift */; };
 		96516AC32BF928DD00576562 /* build in Resources */ = {isa = PBXBuildFile; fileRef = 96516AC22BF928DD00576562 /* build */; };
 		96615E292C598A9600120DEF /* CwlSysctl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96615E282C598A9600120DEF /* CwlSysctl.swift */; };
 		967D0C862C41A1E500FD0767 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 967D0C852C41A1E500FD0767 /* Constants.swift */; };
@@ -157,6 +158,7 @@
 		962325172C875B3E008A9B76 /* StatusMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusMenu.swift; sourceTree = "<group>"; };
 		962325202C88D4E8008A9B76 /* ObscuraToggle.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ObscuraToggle.swift; sourceTree = "<group>"; };
 		962325222C8A3B58008A9B76 /* MenuItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuItemView.swift; sourceTree = "<group>"; };
+		9632E4632D19C5EA00BC8E3F /* AccountStatusItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountStatusItem.swift; sourceTree = "<group>"; };
 		96516AC22BF928DD00576562 /* build */ = {isa = PBXFileReference; lastKnownFileType = folder; name = build; path = "../obscura-ui/build"; sourceTree = "<group>"; };
 		96615E282C598A9600120DEF /* CwlSysctl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CwlSysctl.swift; sourceTree = "<group>"; };
 		967D0C852C41A1E500FD0767 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
@@ -344,6 +346,7 @@
 		9623252A2C8BACBC008A9B76 /* StatusItem */ = {
 			isa = PBXGroup;
 			children = (
+				9632E4632D19C5EA00BC8E3F /* AccountStatusItem.swift */,
 				962325172C875B3E008A9B76 /* StatusMenu.swift */,
 				962325222C8A3B58008A9B76 /* MenuItemView.swift */,
 				962325202C88D4E8008A9B76 /* ObscuraToggle.swift */,
@@ -546,6 +549,7 @@
 				352D58E02C4AE796002F3404 /* ObservableValue.swift in Sources */,
 				962325232C8A3B58008A9B76 /* MenuItemView.swift in Sources */,
 				30C5320C2CC959AE00936E1F /* OsStatus.swift in Sources */,
+				9632E4642D19C5EC00BC8E3F /* AccountStatusItem.swift in Sources */,
 				30920D752C1F71BB008690C3 /* startup.swift in Sources */,
 				30920D792C2057B1008690C3 /* initNetworkExtension.swift in Sources */,
 				30920DAD2C3DC174008690C3 /* InfoDict.swift in Sources */,

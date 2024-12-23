@@ -28,6 +28,7 @@ final class StatusItemManager: ObservableObject {
     private var hostingView: NSHostingView<StatusItem>?
     private var statusItem: NSStatusItem?
     private var debuggingMenuItem: NSMenuItem?
+    private var accountMenuItemSeperator: NSMenuItem?
     private var accountMenuItem: NSMenuItem?
 
     private var sizePassthrough = PassthroughSubject<CGSize, Never>()
@@ -35,7 +36,7 @@ final class StatusItemManager: ObservableObject {
     private var bandwidthStatusModel = BandwidthStatusModel()
 
     // intentionally empty to ensure that the menu item can be hightlighted
-    @objc func toggleAction() {}
+    @objc func emptyAction() {}
 
     func createStatusItem() {
         let statusItem: NSStatusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -46,7 +47,7 @@ final class StatusItemManager: ObservableObject {
 
         let menu = NSMenu()
 
-        let toggleMenuItem = NSMenuItem(title: "Toggle VPN", action: #selector(self.toggleAction), keyEquivalent: "")
+        let toggleMenuItem = NSMenuItem(title: "Toggle VPN", action: #selector(self.emptyAction), keyEquivalent: "")
         let toggleHostingView = MenuItemView(ObscuraToggle())
         // https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/MenuList/Articles/ViewsInMenuItems.html
         toggleMenuItem.view = toggleHostingView
@@ -60,32 +61,38 @@ final class StatusItemManager: ObservableObject {
         showWindowMenuItem.image = image
         menu.addItem(showWindowMenuItem)
 
-        self.accountMenuItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        self.accountMenuItemSeperator = NSMenuItem.separator()
+        menu.addItem(self.accountMenuItemSeperator!)
+
+        self.accountMenuItem = NSMenuItem(title: "", action: #selector(self.emptyAction), keyEquivalent: "")
         self.accountMenuItem!.isHidden = true
+        self.accountMenuItem!.target = self
         menu.addItem(self.accountMenuItem!)
 
         Task { @MainActor in
             while true {
                 if let appState = StartupModel.shared.appState {
-                    self.accountMenuItem!.title = getAccountStatusItemText(appState.status.account) ?? ""
-                    if let lastUpdatedSec = appState.status.account?.lastUpdatedSec {
+                    if let account = appState.status.account {
                         let secondsStamp = UInt64(Date().timeIntervalSince1970)
-                        if let account = appState.status.account {
-                            var pollAccount = false
-                            if (!account.accountInfo.active || account.daysTillExpiry == 0) && secondsStamp - account.lastUpdatedSec > 60 * 5 {
-                                pollAccount = true
-                            } else if account.expiringSoon() && secondsStamp - account.lastUpdatedSec > 60 * 60 * 12 {
-                                pollAccount = true
-                            }
-                            if pollAccount {
-                                _ = try? await getAccountInfo(appState.manager)
-                            }
+                        var pollAccount = false
+                        if (!account.accountInfo.active || account.daysTillExpiry == 0) && secondsStamp - account.lastUpdatedSec > 60 * 5 {
+                            pollAccount = true
+                        } else if account.expiringSoon() && secondsStamp - account.lastUpdatedSec > 60 * 60 * 12 {
+                            pollAccount = true
                         }
+                        if pollAccount {
+                            _ = try? await getAccountInfo(appState.manager)
+                        }
+                        let accountHostingView = MenuItemView(StatusItemAccount(account: account))
+                        self.accountMenuItem!.view = accountHostingView
+                        self.accountMenuItem!.isHidden = !account.expiringSoon()
+                    } else {
+                        self.accountMenuItem!.isHidden = true
                     }
                 } else {
-                    self.accountMenuItem!.title = ""
+                    self.accountMenuItem!.isHidden = true
                 }
-                self.accountMenuItem!.isHidden = self.accountMenuItem!.title.isEmpty
+                self.accountMenuItemSeperator!.isHidden = self.accountMenuItem!.isHidden
                 do {
                     try await Task.sleep(seconds: 10)
                 } catch {

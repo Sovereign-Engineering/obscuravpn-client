@@ -13,10 +13,12 @@ struct NavView: Hashable {
     }
 }
 
+let AccountView = NavView(name: "account", systemImageName: "person.circle")
+
 let STABLE_VIEWS = [
     NavView(name: "connection", systemImageName: "network.badge.shield.half.filled"),
     NavView(name: "location", systemImageName: "mappin.and.ellipse"),
-    NavView(name: "account", systemImageName: "person.circle"),
+    AccountView,
     NavView(name: "help", systemImageName: "questionmark.circle"),
     NavView(name: "settings", systemImageName: "gear"),
 ]
@@ -172,6 +174,9 @@ struct ContentView: View {
         case .some("/payment-succeeded"):
             fullyOpenManagerWindow() // Open the manager window first
             self.webView.handlePaymentSucceeded()
+        case .some("/account"):
+            fullyOpenManagerWindow()
+            self.selectedView = AccountView
         case let unknownPath:
             logger.error("Unknown URL path: \(unknownPath, privacy: .public)")
             fullyOpenManagerWindow()

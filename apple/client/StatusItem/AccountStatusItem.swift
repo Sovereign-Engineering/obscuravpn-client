@@ -1,0 +1,50 @@
+import Cocoa
+import OSLog
+import SwiftUI
+import UserNotifications
+
+func getExpiredInDaysText(_ days: UInt64) -> String {
+    if days > 1 {
+        return "in \(days) days"
+    }
+    if days == 1 {
+        return "in \(days) day"
+    }
+    return "in < 1 day"
+}
+
+struct StatusItemAccount: View {
+    @Environment(\.openURL) private var openURL
+    var account: AccountStatus
+
+    var body: some View {
+        VStack {
+            if self.account.expiringSoon() {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Fund your account...")
+                            .font(.system(size: 13))
+                        HStack {
+                            Text(self.account.accountInfo.active ? "Account expires soon" : "Account is expired")
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text(self.account.accountInfo.active ? getExpiredInDaysText(self.account.daysTillExpiry!) : "        ")
+                                .foregroundStyle(.tertiary)
+                                .fixedSize()
+                                .frame(minWidth: 50)
+                        }
+                        .font(.subheadline)
+                    }.fixedSize(horizontal: true, vertical: false)
+                } icon: {
+                    Image(systemName: "exclamationmark.arrow.circlepath")
+                }
+                // this allows the Spacer to be clickable
+                .contentShape(Rectangle())
+                .padding(EdgeInsets(top: 2, leading: 14, bottom: 2, trailing: 12))
+            }
+        }
+        .onTapGesture {
+            self.openURL(URLs.AppAccountPage)
+        }
+    }
+}

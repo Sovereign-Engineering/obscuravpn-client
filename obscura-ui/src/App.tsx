@@ -1,4 +1,4 @@
-import { ActionIcon, AppShell, AppShellAside, AppShellHeader, AppShellMain, AppShellNavbar, AppShellSection, Burger, Divider, Group, Image, Modal, Space, Text, Title, useComputedColorScheme, useMantineColorScheme } from '@mantine/core';
+import { ActionIcon, AppShell, AppShellHeader, AppShellMain, AppShellNavbar, AppShellSection, Burger, Divider, Group, Image, Modal, Space, Text, Title, useComputedColorScheme, useMantineColorScheme } from '@mantine/core';
 import { useDisclosure, useHotkeys } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { ReactNode, useEffect, useRef, useState } from 'react';
@@ -368,7 +368,6 @@ export default function () {
     <AppShell padding='md'
       header={{ height: IS_WK_WEB_VIEW ? 0 : 60 }}
       navbar={IS_WK_WEB_VIEW ? undefined : { width: 200, breakpoint: 'sm', collapsed: { mobile: !mobileNavOpened, desktop: !desktopNavOpened } }}
-      aside={{ width: 200, breakpoint: 'sm', collapsed: { desktop: true, mobile: true } }}
       className={classes.appShell}>
       <AppShellMain p={0}>
         {usingCustomTitleBar && <Space h='xl' />}
@@ -416,10 +415,6 @@ export default function () {
           </>}
         </AppShellSection>
       </AppShellNavbar>}
-
-      <AppShellAside className={classes.titleBarAdjustedHeight} p='md' w={{ sm: 200, lg: 300 }}>
-        <Text>Right Side. Use for help, support, quick action menu? For example, if we were building a trading app, we could use the aside for the trade parameters while leaving the main UI with the data</Text>
-      </AppShellAside>
     </AppShell>
   </>;
 }

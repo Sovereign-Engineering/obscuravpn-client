@@ -17,6 +17,8 @@ use obscuravpn_api::{
 };
 use quinn::rustls::pki_types::CertificateDer;
 use rand::rngs::OsRng;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use tokio::{net::UdpSocket, time::timeout};
 use uuid::Uuid;
@@ -230,6 +232,7 @@ impl ClientState {
 
         let wg_pubkey = WgPubkey(pk.to_bytes());
         let tunnel_id = Uuid::new_v4();
+        let exit = exit.or_else(|| closest_relay.preferred_exits.choose(&mut thread_rng()).map(|e| e.id.clone()));
         tracing::info!(
             %tunnel_id,
             client.pubkey =? wg_pubkey,

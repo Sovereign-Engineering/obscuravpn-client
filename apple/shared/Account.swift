@@ -1,3 +1,5 @@
+import Foundation
+
 struct AccountStatus: Codable, Equatable {
     var accountInfo: AccountInfo
     var daysTillExpiry: UInt64?
@@ -9,12 +11,41 @@ struct AccountStatus: Codable, Equatable {
         case lastUpdatedSec = "last_updated_sec"
     }
 
-    func expiringSoon() -> Bool {
-        if let daysTillExpiry = self.daysTillExpiry {
-            return daysTillExpiry <= 10
-        } else {
-            return false
+    func expirationDate() -> Date? {
+        if let subscription = accountInfo.subscription {
+            if !subscription.cancelAtPeriodEnd {
+                return nil
+            }
         }
+        let top_up_end = self.accountInfo.topUp?.creditExpiresAt ?? 0
+        let subscription_end = self.accountInfo.subscription?.currentPeriodEnd ?? 0
+        let end = max(top_up_end, subscription_end, 0)
+        return Date(timeIntervalSince1970: TimeInterval(end))
+    }
+
+    func daysUntilExpiry() -> UInt64? {
+        if !self.accountInfo.active {
+            return 0
+        }
+        if let end = self.expirationDate() {
+            let now = Date()
+            return UInt64(max(Calendar.current.dateComponents([.day], from: now, to: end).day ?? 0, 0))
+        }
+        return nil
+    }
+
+    func isActive() -> Bool {
+        if let timestamp = self.expirationDate() {
+            return timestamp > Date()
+        }
+        return self.accountInfo.active
+    }
+
+    func expiringSoon() -> Bool {
+        if let daysTillExpiry = daysUntilExpiry() {
+            return daysTillExpiry <= 10
+        }
+        return false
     }
 
     static func == (left: AccountStatus, right: AccountStatus) -> Bool {

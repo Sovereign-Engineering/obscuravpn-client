@@ -68,7 +68,7 @@ class ViewModeManager: ObservableObject {
 
 func getBadgeText(_ account: AccountStatus?) -> String? {
     guard let account = account else { return nil }
-    guard let days = account.daysTillExpiry else { return nil }
+    guard let days = account.daysUntilExpiry() else { return nil }
     if !account.expiringSoon() {
         return nil
     }
@@ -119,7 +119,7 @@ struct ContentView: View {
                         label
                             .badge(Text(accountBadge!)
                                 .monospacedDigit()
-                                .foregroundColor(self.appState.status.account!.daysTillExpiry! <= 3 ? .red : .yellow)
+                                .foregroundColor(self.appState.status.account!.daysUntilExpiry()! <= 3 ? .red : .yellow)
                                 .bold()
                             )
                             // this has to be here, otherwise the label color is system accent default

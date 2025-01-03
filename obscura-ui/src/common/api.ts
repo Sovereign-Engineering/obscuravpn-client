@@ -74,11 +74,7 @@ export function paidUntilDays(account: AccountInfo): number {
     }
     let remainingMs = +expiry - Date.now();
     let remainingD = remainingMs / 1000 / 3600 / 24;
-    if (remainingD <= 1) {
-        return 1;
-    } else {
-        return Math.floor(remainingD);
-    }
+    return Math.floor(remainingD);
 }
 
 /// https://docs.stripe.com/api/subscriptions/object#subscription_object-status

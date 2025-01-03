@@ -75,7 +75,7 @@ final class StatusItemManager: ObservableObject {
                     if let account = appState.status.account {
                         let secondsStamp = UInt64(Date().timeIntervalSince1970)
                         var pollAccount = false
-                        if (!account.accountInfo.active || account.daysTillExpiry == 0) && secondsStamp - account.lastUpdatedSec > 60 * 5 {
+                        if (!account.isActive() || account.daysUntilExpiry() == 0) && secondsStamp - account.lastUpdatedSec > 60 * 5 {
                             pollAccount = true
                         } else if account.expiringSoon() && secondsStamp - account.lastUpdatedSec > 60 * 60 * 12 {
                             pollAccount = true
@@ -94,7 +94,7 @@ final class StatusItemManager: ObservableObject {
                 }
                 self.accountMenuItemSeperator!.isHidden = self.accountMenuItem!.isHidden
                 do {
-                    try await Task.sleep(seconds: 10)
+                    try await Task.sleep(seconds: 5)
                 } catch {
                     return
                 }

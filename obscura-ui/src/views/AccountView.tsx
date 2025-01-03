@@ -61,7 +61,8 @@ interface AccountStatusProps {
 function AccountStatusCard({
     accountInfo,
 }: AccountStatusProps) {
-    if (!accountInfo.active) {
+    const accountPaidUntil = paidUntil(accountInfo);
+    if (!accountInfo.active || accountPaidUntil === undefined || accountPaidUntil.getTime() < new Date().getTime()) {
         return <AccountExpired accountInfo={accountInfo} />
     } else if (isRenewing(accountInfo)) {
         return <AutoRenewalActive accountInfo={accountInfo} />
@@ -233,15 +234,22 @@ function FooterSection({ accountInfo }: FooterSectionProps) {
             </Stack>
         );
     }
+    const accountPaidUntil = paidUntil(accountInfo);
 
-    if (!accountInfo.active) {
+    if (!accountInfo.active || accountPaidUntil === undefined || accountPaidUntil.getTime() < new Date().getTime()) {
         // if an account is inactive/expired, AccountStatusCard will be visible
         return;
     }
 
     let expiryInfo = {
         daysLeft: paidUntilDays(accountInfo),
-        endDate: paidUntil(accountInfo)?.toLocaleDateString(),
+        endDate: accountPaidUntil.toLocaleDateString(),
+    };
+
+    let tOptions = {
+        count: expiryInfo.daysLeft,
+        endDate: expiryInfo.endDate,
+        context: `${expiryInfo.daysLeft}`
     };
 
     if (!expiryInfo.endDate) {
@@ -267,8 +275,8 @@ function FooterSection({ accountInfo }: FooterSectionProps) {
                 <Text size='sm'>
                     {
                         isRenewing(accountInfo) ?
-                            t('account-SubscriptionRenewsOn', expiryInfo) :
-                            t('account-SubscriptionExpiresOn', expiryInfo)
+                            t('account-SubscriptionRenewsOn', tOptions) :
+                            t('account-SubscriptionExpiresOn', tOptions)
                     }
                 </Text>
             </Box>
@@ -279,7 +287,7 @@ function FooterSection({ accountInfo }: FooterSectionProps) {
         <Box w='90%'>
             <Text mb='xs' fw={500}>{t('Expiration')}</Text>
             <Text size='sm'>
-                {t('account-ExpiresOn', expiryInfo)}
+                {t('account-ExpiresOn', tOptions)}
             </Text>
         </Box>
     );

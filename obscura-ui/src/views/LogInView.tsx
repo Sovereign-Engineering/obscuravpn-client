@@ -109,7 +109,7 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
               <Text component='p' size='sm'>
                 <Trans
                   i18nKey='legalNotice'
-                  components={[<Anchor href={ObscuraAccount.TERMS_WEBPAGE} />]}
+                  components={[<Anchor href={ObscuraAccount.LEGAL_WEBPAGE} />]}
                 />
               </Text>
               <Button disabled={apiError !== null} w={260} onClick={initiateAccountCreation}>{t('Create an Account')}</Button>

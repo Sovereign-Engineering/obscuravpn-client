@@ -33,6 +33,11 @@ export default function Mantine({ children }: PropsWithChildren) {
                     radius: 'md',
                     variant: 'gradient',
                 },
+            },
+            Modal: {
+              defaultProps: {
+                radius: 'md'
+              }
             }
         },
         primaryColor: 'orange',

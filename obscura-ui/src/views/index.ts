@@ -1,3 +1,4 @@
+export { default as About } from './About';
 export { default as Account } from './AccountView';
 export { default as Connection } from './ConnectionView';
 export { default as DeveloperView } from './DeveloperView';

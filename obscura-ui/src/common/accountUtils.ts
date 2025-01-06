@@ -126,9 +126,10 @@ export function formatPartialAccountId(accountId: string): string {
   return accountId.replace(ACCOUNT_ID_CHUNK_RE, "$& - ");
 }
 
-const OBSCURA_WEBPAGE = 'https://obscura.net';
+export const OBSCURA_WEBPAGE = 'https://obscura.net';
 export const CHECK_STATUS_WEBPAGE = `${OBSCURA_WEBPAGE}/check`;
-export const TERMS_WEBPAGE = `${OBSCURA_WEBPAGE}/legal`;
+export const LEGAL_WEBPAGE = `${OBSCURA_WEBPAGE}/legal`;
+export const TERMS_WEBPAGE = `${OBSCURA_WEBPAGE}/legal#terms-of-service`;
 
 export function payUrl(accountId: AccountId): string {
   return `${OBSCURA_WEBPAGE}/pay#account_id=${encodeURIComponent(String(accountId))}`;

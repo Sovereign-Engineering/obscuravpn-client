@@ -19,8 +19,9 @@ let STABLE_VIEWS = [
     NavView(name: "connection", systemImageName: "network.badge.shield.half.filled"),
     NavView(name: "location", systemImageName: "mappin.and.ellipse"),
     AccountView,
-    NavView(name: "help", systemImageName: "questionmark.circle"),
     NavView(name: "settings", systemImageName: "gear"),
+    NavView(name: "help", systemImageName: "questionmark.circle"),
+    NavView(name: "about", systemImageName: "info.circle"),
 ]
 
 let EXPERIMETNAL_VIEWS: [NavView] = [

@@ -40,7 +40,7 @@ export default function Settings() {
     }
 
     return (
-        <Stack gap='lg' align='flex-start' p={20}>
+        <Stack gap='lg' align='flex-start' ml={80} mt={40} m={20}>
             <Group gap={10}>
                 <ActionIcon id='toggle-theme' title={osPlatform === 'darwin' ? '⌘ + J' : 'ctrl + J'} variant='default' onClick={() => toggleColorScheme()} size='xl'>
                     {colorScheme === 'dark' ? <IoSunnySharp size='1.5em' /> : <BsMoonStarsFill />}
@@ -49,14 +49,6 @@ export default function Settings() {
             </Group>
             <DebuggingArchive />
             <Button onClick={registerAtLogin}>{t('registerLoginItem')}</Button>
-            <Group>
-                <Title order={1}>{t('openSourceLicenses')}</Title>
-                <Button onClick={() => setShowLicenses(o => !o)} miw={100}>
-                    <Group gap='xs'>{showLicenses ? t('Hide') : t('Show')}<AnimatedChevron rotated={showLicenses} /></Group>
-                </Button>
-            </Group>
-            { /* Don't load license file until need to show */}
-            {showLicenses && <Licenses />}
         </Stack>
     );
 }

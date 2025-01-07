@@ -20,7 +20,7 @@ import { NotificationId } from './common/notifIds';
 import { useLoadable } from './common/useLoadable';
 import { HEADER_TITLE, IS_WK_WEB_VIEW, normalizeError, useCookie } from './common/utils';
 import { ScrollToTop } from './components/ScrollToTop';
-import { Account, Connection, DeveloperView, FallbackAppRender, Help, Location, LogIn, Settings, SplashScreen } from './views';
+import { Account, Connection, DeveloperView, FallbackAppRender, Help, Location, LogIn, About, Settings, SplashScreen } from './views';
 
 // imported views need to be added to the `views` list variable
 interface View {
@@ -61,6 +61,7 @@ export default function () {
     { component: Location, path: '/location', name: t('Location') },
     { component: Account, path: '/account', name: t('Account') },
     { component: Help, path: '/help', name: t('Help') },
+    { component: About, path: '/about', name: t('About') },
     { component: Settings, path: '/settings', name: t('Settings') },
   ];
 

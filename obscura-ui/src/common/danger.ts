@@ -5,12 +5,12 @@ import { CommandError } from '../bridge/commands';
 
 // no-check since errorCode is defined in Rust
 // see "vpnError-*" keys
-export function getVpnError(t: TFunction, errorCode: string): ReactNode {
+export function fmtVpnError(t: TFunction, errorCode: string): ReactNode {
   return t(`vpnError-${errorCode}`);
 }
 
 // all errors over the bridge are CommandError's, see "ipcError-*" keys
-export function getErrorI18n(t: TFunction, error: CommandError): ReactNode {
+export function fmtErrorI18n(t: TFunction, error: CommandError): ReactNode {
   return t(error.i18nKey());
 }
 

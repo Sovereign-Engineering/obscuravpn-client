@@ -62,6 +62,14 @@ export function paidUntil(account: AccountInfo): Date | undefined {
     return new Date(Math.max(subscriptionExpires, topupExpires)*1000);
 }
 
+/**
+ * Checks if the active field is false and whether the topup/subscription timestamps have elapsed
+ */
+export function accountIsExpired(accountInfo: AccountInfo): boolean {
+  const accountPaidUntil = paidUntil(accountInfo);
+  return !accountInfo.active || accountPaidUntil === undefined || accountPaidUntil.getTime() < new Date().getTime();
+}
+
 /// Returns a human representation of the number of days left on an account.
 ///
 /// Note that there is funny rounding on this number, it MUST NOT be used for computation.

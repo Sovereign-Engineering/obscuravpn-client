@@ -36,6 +36,7 @@
   "Log In": "Log In",
   "LoginFailed": "Failed to login. Most likely an invalid account number",
   "Manage subscription": "Manage subscription",
+  "ManageAccount": "Manage Account",
   "Obscura Account Number": "Obscura Account Number",
   "Offline": "Offline",
   "Packages": "Packages",
@@ -92,6 +93,7 @@
   "connectingTo": "Connecting to {{ location }}",
   "connectingToCity": "Now connecting to {{ city }}",
   "contactUsText": "If you have any questions or requests, feel free to send an email to {{ email }}",
+  "continueUsingObscura": "Top-up or subscribe to continue using Obscura",
   "copy account number": "copy account number",
   "copyright": "© 2025 Sovereign Engineering Inc. All rights reserved.",
   "createDebugArchive": "Create Debugging Archive",
@@ -161,6 +163,7 @@
   "updateAvailable": "Update v{{ v }} available",
   "updateAvailableNoVersion": "Update available",
   "usedBy": "Used by",
+  "validatingAccount": "Validating Account...",
   "vpnError-accountExpired": "Account subscription has expired",
   "vpnError-apiCallFailed": "Obscura API error",
   "vpnError-invalidAccountId": "Account Number invalid (checksum failed)",
@@ -175,5 +178,6 @@
   "warningNotice_other": "- {{ notice }}",
   "willRelaunch": "GUI will close automatically. Please start the GUI manually if it does not relaunch automatically.",
   "writeDownAccountNumber": "Please write down your account number or store it in an encrypted vault",
+  "yourAccountHasExpired": "Your account has expired",
   "yourDevice": "Your device"
 }

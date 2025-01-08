@@ -7,11 +7,11 @@ import { IoLogOutOutline } from 'react-icons/io5';
 import { MdAutorenew } from 'react-icons/md';
 import * as commands from '../bridge/commands';
 import * as ObscuraAccount from '../common/accountUtils';
-import { AccountInfo, getActiveSubscription, isRenewing, paidUntil, paidUntilDays } from '../common/api';
+import { AccountInfo, accountIsExpired, getActiveSubscription, isRenewing, paidUntil, paidUntilDays } from '../common/api';
 import { AppContext } from '../common/appContext';
+import { fmtErrorI18n } from '../common/danger';
 import { normalizeError } from '../common/utils';
 import { AccountNumberDisplay } from '../components/AccountNumberDisplay';
-import { getErrorI18n } from '../common/danger';
 
 export default function Account() {
     const { t } = useTranslation();
@@ -207,7 +207,7 @@ function RecheckButton() {
             } catch (e) {
                 const error = normalizeError(e);
                 const message = error instanceof commands.CommandError
-                ? getErrorI18n(t, error) : error.message;
+                ? fmtErrorI18n(t, error) : error.message;
                 notifications.show({
                     title: t('Account Error'),
                     message: message,
@@ -236,14 +236,14 @@ function FooterSection({ accountInfo }: FooterSectionProps) {
     }
     const accountPaidUntil = paidUntil(accountInfo);
 
-    if (!accountInfo.active || accountPaidUntil === undefined || accountPaidUntil.getTime() < new Date().getTime()) {
+    if (accountPaidUntil === undefined || accountIsExpired(accountInfo)) {
         // if an account is inactive/expired, AccountStatusCard will be visible
         return;
     }
 
     let expiryInfo = {
         daysLeft: paidUntilDays(accountInfo),
-        endDate: accountPaidUntil.toLocaleDateString(),
+        endDate: accountPaidUntil!.toLocaleDateString(),
     };
 
     let tOptions = {

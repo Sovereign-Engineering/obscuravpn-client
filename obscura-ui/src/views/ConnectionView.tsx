@@ -1,16 +1,19 @@
 import { Anchor, Button, Combobox, DefaultMantineColor, Divider, Group, Image, Paper, Progress, ScrollArea, Space, Stack, StyleProp, Text, ThemeIcon, Title, useCombobox, useComputedColorScheme, useMantineTheme } from '@mantine/core';
 import { useInterval, useToggle } from '@mantine/hooks';
-import { continents, getCountryData, TCountryCode } from 'countries-list';
+import { notifications } from '@mantine/notifications';
+import { continents } from 'countries-list';
 import { Dispatch, ReactNode, SetStateAction, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsChevronDown, BsPinFill } from 'react-icons/bs';
 import { FaExternalLinkAlt } from 'react-icons/fa';
 import { IoIosEyeOff } from 'react-icons/io';
 import { MdLanguage, MdLaptopMac, MdOutlineWifiOff } from 'react-icons/md';
-
-import { CHECK_STATUS_WEBPAGE } from '../common/accountUtils';
+import * as ObscuraAccount from '../common/accountUtils';
+import { accountIsExpired, Exit, getCountry, getExitCountry } from '../common/api';
 import { AppContext, ConnectionInProgress, ExitsContext, isConnecting, PinnedLocation } from '../common/appContext';
+import commonClasses from '../common/common.module.css';
 import { CityNotFoundError, exitLocation, exitsSortComparator, getExitCountryFlag, getRandomExitFromCity } from '../common/exitUtils';
+import { KeyedSet } from '../common/KeyedSet';
 import { normalizeError, useCookie } from '../common/utils';
 import BoltBadgeAuto from '../components/BoltBadgeAuto';
 import ObscuraChip from '../components/ObscuraChip';
@@ -31,15 +34,11 @@ import MascotConnecting1 from '../res/mascots/connecting-1-mascot.svg';
 import MascotConnecting2 from '../res/mascots/connecting-2-mascot.svg';
 import MascotConnecting3 from '../res/mascots/connecting-3-mascot.svg';
 import MascotConnecting4 from '../res/mascots/connecting-4-mascot.svg';
-import MascotNoInternet from '../res/mascots/no-internet-mascot.svg';
+import MascotDead from '../res/mascots/dead-mascot.svg';
 import MascotNotConnected from '../res/mascots/not-connected-mascot.svg';
+import MascotValidating from '../res/mascots/validating-mascot.svg';
 import ObscuraIconHappy from '../res/obscura-icon-happy.svg';
-
-import { Exit, getCountry, getExitCountry } from '../common/api';
-import commonClasses from '../common/common.module.css';
 import classes from './ConnectionView.module.css';
-import { notifications } from '@mantine/notifications';
-import { KeyedSet } from '../common/KeyedSet';
 
 // Los Angeles, CA
 const BUTTON_WIDTH = 320;
@@ -48,7 +47,7 @@ export default function Connection() {
     const theme = useMantineTheme();
     const colorScheme = useComputedColorScheme();
     const { t } = useTranslation();
-    const { vpnConnected, connectionInProgress, osStatus, vpnConnect, vpnDisconnect } = useContext(AppContext);
+    const { vpnConnected, connectionInProgress, osStatus, vpnConnect, vpnDisconnect, accountInfo, appStatus } = useContext(AppContext);
     const { internetAvailable } = osStatus;
     const connectionTransition = connectionInProgress !== ConnectionInProgress.UNSET;
     const [cityConnectingTo, setCityConnectingTo] = useState<string | null>(null);
@@ -58,6 +57,8 @@ export default function Connection() {
             setCityConnectingTo(null);
         }
     }, [vpnConnected, connectionInProgress]);
+
+    const accountHasExpired = accountInfo !== null && accountIsExpired(accountInfo);
 
     const getTitle = () => {
         if (!internetAvailable) return t('disconnected');
@@ -73,15 +74,17 @@ export default function Connection() {
             }
         }
         if (vpnConnected) return t('connectedToObscura');
+        if (accountInfo === null) return t('validatingAccount')
+        if (accountHasExpired) return t('yourAccountHasExpired');
         return t('notConnected');
     }
 
     const Subtitle = () => {
         if (!internetAvailable) return t('connectToInternet');
-
         if (connectionTransition) return t('pleaseWaitAMoment');
-
         if (vpnConnected) return t('enjoyObscura');
+        if (accountInfo === null) return '';
+        if (accountHasExpired) return t('continueUsingObscura');
         return t('connectToEnjoy');
     }
 
@@ -95,7 +98,7 @@ export default function Connection() {
     const qcBtnDisabled = !internetAvailable || connectionTransition;
     const primaryBtnDisconnectProps = (vpnConnected && connectionInProgress !== ConnectionInProgress.Reconnecting) ? theme.other.buttonDisconnectProps : {};
 
-    const showQuickConnect = !vpnConnected && cityConnectingTo === null && connectionInProgress !== ConnectionInProgress.Disconnecting;
+    const showQuickConnect = !vpnConnected && cityConnectingTo === null && accountInfo !== null && connectionInProgress !== ConnectionInProgress.Disconnecting;
 
     return (
         <Stack align='center' h='100vh' gap={0} style={{ backgroundImage: `url(${Deco()})`, backgroundRepeat: 'no-repeat', backgroundSize: 'contain', backgroundPosition: 'bottom' }}>
@@ -105,8 +108,14 @@ export default function Connection() {
                 <Title order={2} fw={600}>{getTitle()}</Title>
                 <Title order={4} mt={5} h='xl' c={colorScheme === 'light' ? 'dark.3' : 'dark.2'} fw={350}>{Subtitle()}</Title>
             </Stack>
-            <Space />
-            {showQuickConnect && <Button size='md' className={commonClasses.button} onClick={qcBtnAction} w={BUTTON_WIDTH} disabled={qcBtnDisabled} {...primaryBtnDisconnectProps}>{getButtonContent()}</Button>}
+            <Space h='xs' />
+            {
+              accountInfo !== null && accountHasExpired ?
+                <Button component='a' href={ObscuraAccount.APP_ACCOUNT_TAB}>{t('ManageAccount')}</Button>
+              : showQuickConnect &&
+                <Button size='md' className={commonClasses.button} onClick={qcBtnAction} w={BUTTON_WIDTH} disabled={qcBtnDisabled} {...primaryBtnDisconnectProps}>{getButtonContent()}</Button>
+            }
+
             {/* quick connect cancel button */}
             {connectionInProgress === ConnectionInProgress.Connecting && cityConnectingTo === null && <>
                 <Space h='lg' />
@@ -117,12 +126,12 @@ export default function Connection() {
                 we do not want the user to think they are connecting to the last chosen location
                 It's possible that in the future we can propagate which location is being connected to while connecting
                 !(connectionInProgress === connecting && cityConnectingTo === null) */}
-            {(connectionInProgress !== ConnectionInProgress.Connecting || cityConnectingTo !== null) &&
+            {(connectionInProgress !== ConnectionInProgress.Connecting || cityConnectingTo !== null) && accountInfo !== null && !accountHasExpired &&
                 <LocationConnect cityConnectingTo={cityConnectingTo} setCityConnectingTo={setCityConnectingTo} />}
             {
                 vpnConnected && connectionInProgress === ConnectionInProgress.UNSET && <>
                     <Space />
-                    <Anchor href={CHECK_STATUS_WEBPAGE} underline='always' c={colorScheme === 'light' ? 'gray.6' : 'gray.5'}>{t('checkMyConnection')} <FaExternalLinkAlt size={12} /></Anchor>
+                    <Anchor href={ObscuraAccount.CHECK_STATUS_WEBPAGE} underline='always' c={colorScheme === 'light' ? 'gray.6' : 'gray.5'}>{t('checkMyConnection')} <FaExternalLinkAlt size={12} /></Anchor>
                 </>
             }
             <div style={{ flexGrow: 1 }} />
@@ -323,7 +332,8 @@ function Mascot() {
     const {
         vpnConnected,
         connectionInProgress,
-        osStatus
+        osStatus,
+        accountInfo
     } = useContext(AppContext);
     const { internetAvailable } = osStatus;
     // tuned to show ... for 3 extra cycles
@@ -356,8 +366,9 @@ function Mascot() {
     }, [connectionInProgress, start, stop]);
 
     const getMascot = () => {
-
-        if (!internetAvailable) return MascotNoInternet;
+        if (!internetAvailable) return MascotDead;
+        if (accountInfo === null) return MascotValidating;
+        if (accountIsExpired(accountInfo)) return MascotDead;
 
         if (connectionInProgress !== ConnectionInProgress.UNSET) {
             const mascotConnecting = MASCOT_CONNECTING[connectingIndex];

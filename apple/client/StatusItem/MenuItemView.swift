@@ -61,6 +61,24 @@ class MenuItemView<ContentView: View>: NSView {
 
     // https://stackoverflow.com/q/6054331/7732434
     override func draw(_ dirtyRect: NSRect) {
+        // Without this, it is possible for a Toggle/NSSwitch inside the status
+        // menu dropdown to appear "inactive". That is, without the app tint
+        // and greyed-out, even when the Toggle is in the "ON" position.
+        //
+        // This fix was discovered by observing that the only reliable
+        // difference between instances where the Toggle was and wasn't tinted
+        // was whether the `NSStatusBarWindow` (a private API class) had
+        // `isKeyWindow` true or false.
+        //
+        // References for possibly related problems and references:
+        //   - https://developer.apple.com/documentation/swiftui/environmentvalues/controlactivestate
+        //   - https://stackoverflow.com/a/59655207
+        //   - https://medium.com/@acwrightdesign/creating-a-macos-menu-bar-application-using-swiftui-54572a5d5f87
+        if let window = self.window {
+            if window.isVisible {
+                window.becomeKey()
+            }
+        }
         // NOTE: an action must be defined in the NSMenuItem
         // Sample usage; let menuItem = NSMenuItem(title: "", action: #selector(menuItemAction), keyEquivalent: "")
         let highlighted = enclosingMenuItem?.isHighlighted ?? false

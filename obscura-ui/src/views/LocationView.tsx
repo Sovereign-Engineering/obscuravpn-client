@@ -1,22 +1,22 @@
 import { ActionIcon, Button, Card, Flex, Group, Loader, Space, Stack, Text, ThemeIcon, useMantineTheme } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { continents, getCountryData, TCountryCode } from 'countries-list';
+import { continents } from 'countries-list';
 import { MouseEvent, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsPin, BsPinFill, BsShieldFillCheck, BsShieldFillExclamation } from 'react-icons/bs';
 
 import * as commands from '../bridge/commands';
-import { Exit, getCountry, getExitCountry } from '../common/api';
+import { Exit, getExitCountry } from '../common/api';
 import { AppContext, ConnectionInProgress, ExitsContext } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
-import { getErrorI18n } from '../common/danger';
+import { fmtErrorI18n } from '../common/danger';
 import { CityNotFoundError, exitLocation, exitsSortComparator, getExitCountryFlag, getRandomExitFromCity } from '../common/exitUtils';
+import { KeyedSet } from '../common/KeyedSet';
 import { NotificationId } from '../common/notifIds';
+import { normalizeError } from '../common/utils';
 import BoltBadgeAuto from '../components/BoltBadgeAuto';
 import ObscuraChip from '../components/ObscuraChip';
 import classes from './Location.module.css';
-import { normalizeError } from '../common/utils';
-import { KeyedSet } from '../common/KeyedSet';
 
 export default function LocationView() {
     const { t } = useTranslation();
@@ -225,7 +225,7 @@ function NoExitServers() {
             await fetchExitList();
         } catch (error) {
           let message = error instanceof commands.CommandError
-            ? getErrorI18n(t, error)
+            ? fmtErrorI18n(t, error)
             : t('exitServerFetchResolution');
 
           notifications.show({

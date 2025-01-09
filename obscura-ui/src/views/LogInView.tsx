@@ -9,10 +9,10 @@ import { FaExternalLinkAlt } from 'react-icons/fa';
 import AppIcon from '../../../apple/client/Assets.xcassets/AppIcon.appiconset/icon_128x128.png';
 import * as commands from '../bridge/commands';
 import * as ObscuraAccount from '../common/accountUtils';
+import { fmtErrorI18n, tUnsafe } from '../common/danger';
 import { HEADER_TITLE, multiRef, normalizeError } from '../common/utils';
 import DecoOrangeTop from '../res/deco/deco-orange-top.svg';
 import classes from './LoginView.module.css';
-import { getErrorI18n, tUnsafe } from '../common/danger';
 
 interface LogInProps {
   accountNumber: ObscuraAccount.AccountId,
@@ -60,9 +60,9 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
       } catch (e) {
         const error = normalizeError(e);
         const message = error instanceof commands.CommandError
-          ? getErrorI18n(t, error)
+          ? fmtErrorI18n(t, error)
           : error instanceof ObscuraAccount.ObscuraAccountIdError
-            ? getErrorI18n(t, error)
+            ? fmtErrorI18n(t, error)
             : error.message;
 
         notifications.show({

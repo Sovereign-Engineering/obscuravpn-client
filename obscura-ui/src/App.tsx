@@ -15,7 +15,7 @@ import * as commands from './bridge/commands';
 import { logReactError, useSystemContext } from './bridge/SystemProvider';
 import { Exit } from './common/api';
 import { AppContext, AppStatus, ConnectionInProgress, ExitsContext, OsStatus } from './common/appContext';
-import { getVpnError } from './common/danger';
+import { fmtVpnError } from './common/danger';
 import { NotificationId } from './common/notifIds';
 import { useLoadable } from './common/useLoadable';
 import { HEADER_TITLE, IS_WK_WEB_VIEW, normalizeError, useCookie } from './common/utils';
@@ -103,9 +103,12 @@ export default function () {
       await commands.connect(exit);
     } catch (e) {
       const error = normalizeError(e);
+      if (error.message === 'accountExpired') {
+        void pollAccount();
+      }
       if (!ignoreConnectingErrors.current && error.message !== 'tunnelNotDisconnected') {
         notifications.hide(NotificationId.VPN_ERROR);
-        notifications.show({ title: t('Error Connecting'), message: getVpnError(t, error.message), color: 'red', id: NotificationId.VPN_ERROR, autoClose: false });
+        notifications.show({ title: t('Error Connecting'), message: fmtVpnError(t, error.message), color: 'red', id: NotificationId.VPN_ERROR, autoClose: false });
         // see https://linear.app/soveng/issue/OBS-775/not-starting-tunnel-because-it-isnt-disconnected-connecting#comment-e98a7150
         setConnectionInProgress(ConnectionInProgress.UNSET);
       }
@@ -154,7 +157,7 @@ export default function () {
         withCloseButton: false,
         color: 'red',
         title: t('Error'),
-        message: getVpnError(t, errorEnum),
+        message: fmtVpnError(t, errorEnum),
         autoClose: 15_000
       });
     }

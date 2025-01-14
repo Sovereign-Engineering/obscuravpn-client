@@ -166,6 +166,7 @@ impl QuicWgConn {
         mtu_discovery_config.upper_bound(MTU);
         transport_config.mtu_discovery_config(Some(mtu_discovery_config));
         transport_config.keep_alive_interval(Some(Duration::from_secs(1)));
+        transport_config.max_idle_timeout(Some(Duration::from_secs(5).try_into()?));
         transport_config.congestion_controller_factory(Arc::new(quinn::congestion::BbrConfig::default()));
         client_cfg.transport_config(Arc::new(transport_config));
         Ok(client_cfg)

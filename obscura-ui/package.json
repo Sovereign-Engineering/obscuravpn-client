@@ -49,6 +49,7 @@
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^22.10.5",
     "@vitejs/plugin-react": "^4.3.4",
+    "@welldone-software/why-did-you-render": "^8.0.3",
     "chai": "^4.5.0",
     "dotenv-load": "^2.0.1",
     "license-checker": "^25.0.1",

@@ -1,6 +1,6 @@
 import { Anchor, Box, Button, Center, Code, Group, Loader, Paper, Stack, Text, ThemeIcon, useComputedColorScheme, useMantineTheme } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useReducer, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsQuestionSquareFill } from 'react-icons/bs';
 import { FaExternalLinkSquareAlt } from 'react-icons/fa';
@@ -25,7 +25,7 @@ import SubscriptionPausedBadge from '../res/subscription-paused.svg?react';
 export default function Account() {
     const { t } = useTranslation();
     const theme = useMantineTheme();
-    const { appStatus, accountInfo, pollAccount } = useContext(AppContext);
+    const { appStatus, pollAccount } = useContext(AppContext);
 
     useEffect(() => {
         // Ensure account info is up-to-date when the user is viewing the account page.
@@ -47,7 +47,7 @@ export default function Account() {
     return (
         <Stack align='center' p={20} gap='xl' mt='sm'>
             <Stack w='100%' align='center'>
-                <AccountStatusCard accountInfo={accountInfo} />
+                <AccountStatusCard />
                 <Group w='90%' justify='right'>
                     <ManageSubscriptionLink accountId={appStatus.accountId} />
                 </Group>
@@ -85,11 +85,24 @@ interface AccountStatusProps {
     accountInfo: AccountInfo,
 }
 
-function AccountStatusCard({
-    accountInfo,
-}: { accountInfo: AccountInfo | null }) {
-    if (accountInfo === null) return <AccountInfoUnavailable />;
+function AccountStatusCard() {
+    const { appStatus } = useContext(AppContext);
+    const [, forceUpdate] = useReducer(x => x + 1, 0);
+    const { account } = appStatus;
 
+    useEffect(() => {
+      if (account !== null) {
+        const expiryDate = paidUntil(account.account_info);
+        if (expiryDate !== undefined && !accountIsExpired(account.account_info)) {
+          const timeoutId = setTimeout(forceUpdate, expiryDate.getTime() - (new Date()).getTime());
+          return () => clearTimeout(timeoutId);
+        }
+      }
+    }, [account?.last_updated_sec]);
+
+    if (account === null) return <AccountInfoUnavailable />;
+
+    const accountInfo = account.account_info;
     const creditExpiresAt = accountInfo.top_up?.credit_expires_at;
     const topupExpires = creditExpiresAt !== undefined ? new Date(creditExpiresAt * 1000) : undefined;
     const topUpActive = topupExpires !== undefined && topupExpires.getTime() > new Date().getTime();

@@ -1,5 +1,5 @@
 import { Anchor, Button, Combobox, DefaultMantineColor, Divider, Group, Image, Paper, Progress, ScrollArea, Space, Stack, StyleProp, Text, ThemeIcon, Title, useCombobox, useComputedColorScheme, useMantineTheme } from '@mantine/core';
-import { useInterval, useToggle } from '@mantine/hooks';
+import { useDebouncedCallback, useInterval, useToggle } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { continents } from 'countries-list';
 import { Dispatch, ReactNode, SetStateAction, useContext, useEffect, useState } from 'react';
@@ -47,10 +47,12 @@ export default function Connection() {
     const theme = useMantineTheme();
     const colorScheme = useComputedColorScheme();
     const { t } = useTranslation();
-    const { vpnConnected, connectionInProgress, osStatus, vpnConnect, vpnDisconnect, accountInfo, appStatus } = useContext(AppContext);
+    const { vpnConnected, connectionInProgress, osStatus, vpnConnect, vpnDisconnect, appStatus } = useContext(AppContext);
+    // osStatus causes a re-render often. Otherwise we would need to force a re-render when the account expires
     const { internetAvailable } = osStatus;
     const connectionTransition = connectionInProgress !== ConnectionInProgress.UNSET;
     const [cityConnectingTo, setCityConnectingTo] = useState<string | null>(null);
+    const accountInfo = appStatus.account?.account_info ?? null;
 
     useEffect(() => {
         if (!vpnConnected && !isConnecting(connectionInProgress)) {
@@ -333,8 +335,9 @@ function Mascot() {
         vpnConnected,
         connectionInProgress,
         osStatus,
-        accountInfo
+        appStatus
     } = useContext(AppContext);
+    const accountInfo = appStatus.account?.account_info ?? null;
     const { internetAvailable } = osStatus;
     // tuned to show ... for 3 extra cycles
     const [connectingIndex, toggleConnectingDeco] = useToggle([0, 1, 2, 3, 3, 3, 3]);

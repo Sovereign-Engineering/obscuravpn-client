@@ -82,13 +82,14 @@ func getBadgeText(_ account: AccountStatus?) -> String? {
     if days == 1 {
         return "exp. in 1d"
     }
-    return account.accountInfo.active ? "exp. today" : "expired"
+    return account.isActive() ? "exp. today" : "expired"
 }
 
 struct ContentView: View {
     @ObservedObject var appState: AppState
     @State private var selectedView = STABLE_VIEWS.first!
     @State private var webView = WebView()
+    @State private var accountBadge: String?
 
     @EnvironmentObject private var appDelegate: AppDelegate
 
@@ -100,6 +101,8 @@ struct ContentView: View {
     // set alongside above, want to hide the sidebar when navigation is not allowed
     @State private var splitViewVisibility: NavigationSplitViewVisibility
 
+    let accountBadgeTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
+
     init(appState: AppState) {
         self.appState = appState
         let forceHide = appState.status.accountId == nil || appState.status.inNewAccountFlow
@@ -108,7 +111,6 @@ struct ContentView: View {
     }
 
     var body: some View {
-        let accountBadge = getBadgeText(self.appState.status.account)
         NavigationSplitView(
             columnVisibility: self.$splitViewVisibility,
             sidebar: {
@@ -116,9 +118,9 @@ struct ContentView: View {
                     let label = Label(view.name.capitalized, systemImage: view.systemImageName)
                         .listItemTint(Color("ObscuraOrange"))
                     // hide badge if we simply do not know if should be shown
-                    if view.name == "account" && accountBadge != nil {
+                    if view.name == "account" && self.accountBadge != nil {
                         label
-                            .badge(Text(accountBadge!)
+                            .badge(Text(self.accountBadge!)
                                 .monospacedDigit()
                                 .foregroundColor(self.appState.status.account!.daysUntilExpiry()! <= 3 ? .red : .yellow)
                                 .bold()
@@ -130,17 +132,21 @@ struct ContentView: View {
                     }
                 }
                 .environment(\.sidebarRowSize, .large)
-                .navigationSplitViewColumnWidth(min: 150, ideal: 200)
+                .navigationSplitViewColumnWidth(min: 175, ideal: 200)
             }, detail: {
                 self.webView
                     .navigationTitle(self.loginViewShown ? "Obscura" : self.selectedView.name.capitalized)
             }
         )
+        .onReceive(self.accountBadgeTimer, perform: { _ in
+            self.accountBadge = getBadgeText(self.appState.status.account)
+        })
         .onChange(of: self.selectedView) { view in
             // inform webUI to update navigation
             self.webView.navigateTo(view: view)
         }
         .onChange(of: self.appState.status) { status in
+            self.accountBadge = getBadgeText(self.appState.status.account)
             if status.accountId == nil || status.inNewAccountFlow {
                 self.loginViewShown = true
                 self.splitViewVisibility = .detailOnly

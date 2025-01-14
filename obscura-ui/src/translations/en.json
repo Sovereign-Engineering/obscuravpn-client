@@ -98,7 +98,7 @@
   "connectingTo": "Connecting to {{ location }}",
   "connectingToCity": "Now connecting to {{ city }}",
   "contactUsText": "If you have any questions or requests, feel free to send an email to {{ email }}",
-  "continueUsingObscura": "Top-up or subscribe to continue using Obscura",
+  "continueUsingObscura": "Top-up or subscribe to continue using Obscura.",
   "copy account number": "copy account number",
   "copyright": "© 2025 Sovereign Engineering Inc. All rights reserved.",
   "createDebugArchive": "Create Debugging Archive",

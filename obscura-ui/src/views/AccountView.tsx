@@ -212,7 +212,7 @@ function AccountExpiringSoon({ accountInfo }: AccountStatusProps) {
             heading={t('account-DaysUntilExpiry', expiryInfo)}
             subtitle={
                 <Stack gap={0}>
-                    <Text>{t(i18nKey, expiryInfo)}</Text>
+                    <Text size='sm'>{t(i18nKey, expiryInfo)}</Text>
                     <Text size='sm' c='dimmed'>{t('continueUsingObscura')}</Text>
                 </Stack>
             }

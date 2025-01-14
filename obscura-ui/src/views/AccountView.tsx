@@ -1,6 +1,6 @@
 import { Anchor, Box, Button, Center, Code, Group, Loader, Paper, Stack, Text, ThemeIcon, useComputedColorScheme, useMantineTheme } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import React, { useContext, useEffect, useReducer, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsQuestionSquareFill } from 'react-icons/bs';
 import { FaExternalLinkSquareAlt } from 'react-icons/fa';
@@ -9,7 +9,7 @@ import { IoLogOutOutline } from 'react-icons/io5';
 import { MdOutlineWifiOff } from 'react-icons/md';
 import * as commands from '../bridge/commands';
 import * as ObscuraAccount from '../common/accountUtils';
-import { AccountInfo, accountIsExpired, getActiveSubscription, isRenewing, paidUntil, paidUntilDays } from '../common/api';
+import { AccountInfo, accountIsExpired, getActiveSubscription, isRenewing, paidUntil, paidUntilDays, useReRenderWhenExpired } from '../common/api';
 import { AppContext } from '../common/appContext';
 import { fmtErrorI18n } from '../common/danger';
 import { normalizeError } from '../common/utils';
@@ -87,18 +87,9 @@ interface AccountStatusProps {
 
 function AccountStatusCard() {
     const { appStatus } = useContext(AppContext);
-    const [, forceUpdate] = useReducer(x => x + 1, 0);
     const { account } = appStatus;
 
-    useEffect(() => {
-      if (account !== null) {
-        const expiryDate = paidUntil(account.account_info);
-        if (expiryDate !== undefined && !accountIsExpired(account.account_info)) {
-          const timeoutId = setTimeout(forceUpdate, expiryDate.getTime() - (new Date()).getTime());
-          return () => clearTimeout(timeoutId);
-        }
-      }
-    }, [account?.last_updated_sec]);
+    useReRenderWhenExpired(account);
 
     if (account === null) return <AccountInfoUnavailable />;
 

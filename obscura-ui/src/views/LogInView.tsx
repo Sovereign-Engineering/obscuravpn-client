@@ -4,7 +4,7 @@ import { notifications } from '@mantine/notifications';
 import { motion, MotionValue, useSpring, useTransform } from 'framer-motion';
 import { ChangeEvent, FormEvent, ForwardedRef, forwardRef, ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { FaExternalLinkAlt } from 'react-icons/fa';
+import { FaExternalLinkSquareAlt } from 'react-icons/fa';
 
 import AppIcon from '../../../apple/client/Assets.xcassets/AppIcon.appiconset/icon_128x128.png';
 import * as commands from '../bridge/commands';
@@ -183,7 +183,7 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
               </CopyButton>
               <Text ta='center' fw={800}>{t('writeDownAccountNumber')}</Text>
               <Group>
-                <Button onClick={open} rightSection={<FaExternalLinkAlt />}>{t('Payment')}</Button>
+                <Button onClick={open} rightSection={<FaExternalLinkSquareAlt />}>{t('Payment')}</Button>
                 <Button disabled={!accountActive && !paymentClicked} onClick={() => commands.setInNewAccountFlow(false)}>{t('Done')}</Button>
               </Group>
             </Stack>}

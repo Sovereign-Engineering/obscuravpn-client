@@ -5,7 +5,7 @@ import { continents } from 'countries-list';
 import { Dispatch, ReactNode, SetStateAction, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsChevronDown, BsPinFill } from 'react-icons/bs';
-import { FaExternalLinkAlt } from 'react-icons/fa';
+import { FaExternalLinkSquareAlt } from 'react-icons/fa';
 import { IoIosEyeOff } from 'react-icons/io';
 import { MdLanguage, MdLaptopMac, MdOutlineWifiOff } from 'react-icons/md';
 import * as ObscuraAccount from '../common/accountUtils';
@@ -75,7 +75,7 @@ export default function Connection() {
         }
         if (vpnConnected) return t('connectedToObscura');
         if (accountInfo === null) return t('validatingAccount')
-        if (accountHasExpired) return t('yourAccountHasExpired');
+        if (accountHasExpired) return t('account-Expired');
         return t('notConnected');
     }
 
@@ -131,7 +131,7 @@ export default function Connection() {
             {
                 vpnConnected && connectionInProgress === ConnectionInProgress.UNSET && <>
                     <Space />
-                    <Anchor href={ObscuraAccount.CHECK_STATUS_WEBPAGE} underline='always' c={colorScheme === 'light' ? 'gray.6' : 'gray.5'}>{t('checkMyConnection')} <FaExternalLinkAlt size={12} /></Anchor>
+                    <Anchor href={ObscuraAccount.CHECK_STATUS_WEBPAGE} underline='always' c={colorScheme === 'light' ? 'gray.6' : 'gray.5'}>{t('checkMyConnection')} <FaExternalLinkSquareAlt size={12} /></Anchor>
                 </>
             }
             <div style={{ flexGrow: 1 }} />

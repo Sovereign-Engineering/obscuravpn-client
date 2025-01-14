@@ -44,7 +44,12 @@ export interface AppStatus {
     pinnedLocations: Array<PinnedLocation>,
     lastChosenExit: string,
     inNewAccountFlow: boolean,
-    apiUrl: string
+    apiUrl: string,
+    account: {
+      account_info: AccountInfo,
+      days_till_expiry: number,
+      last_updated_sec: number
+    } | null
 }
 
 interface IAppContext {

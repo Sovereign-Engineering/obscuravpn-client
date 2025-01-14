@@ -6,21 +6,21 @@ import { ErrorBoundary } from 'react-error-boundary';
 import { Trans, useTranslation } from 'react-i18next';
 import { BsMoonStarsFill } from 'react-icons/bs';
 import { IoSunnySharp } from 'react-icons/io5';
-import { NavLink, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import { Navigate, NavLink, Route, Routes, useNavigate } from 'react-router-dom';
 import SimpleBar from 'simplebar-react';
 import 'simplebar-react/dist/simplebar.min.css';
 import AppIcon from '../../apple/client/Assets.xcassets/AppIcon.appiconset/icon_128x128.png';
 import classes from './App.module.css';
 import * as commands from './bridge/commands';
 import { logReactError, useSystemContext } from './bridge/SystemProvider';
-import { Exit } from './common/api';
+import { accountIsExpired, Exit, paidUntil } from './common/api';
 import { AppContext, AppStatus, ConnectionInProgress, ExitsContext, OsStatus } from './common/appContext';
 import { fmtVpnError } from './common/danger';
 import { NotificationId } from './common/notifIds';
 import { useLoadable } from './common/useLoadable';
 import { HEADER_TITLE, IS_WK_WEB_VIEW, normalizeError, useCookie } from './common/utils';
 import { ScrollToTop } from './components/ScrollToTop';
-import { Account, Connection, DeveloperView, FallbackAppRender, Help, Location, LogIn, About, Settings, SplashScreen } from './views';
+import { About, Account, Connection, DeveloperView, FallbackAppRender, Help, Location, LogIn, Settings, SplashScreen } from './views';
 
 // imported views need to be added to the `views` list variable
 interface View {

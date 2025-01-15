@@ -67,8 +67,7 @@ class ViewModeManager: ObservableObject {
     }
 }
 
-func getBadgeText(_ account: AccountStatus?) -> String? {
-    guard let account = account else { return nil }
+func getBadgeText(_ account: AccountStatus) -> String? {
     guard let days = account.daysUntilExpiry() else { return nil }
     if !account.expiringSoon() {
         return nil
@@ -85,11 +84,20 @@ func getBadgeText(_ account: AccountStatus?) -> String? {
     return account.isActive() ? "exp. today" : "expired"
 }
 
+func getBadgeColor(_ account: AccountStatus) -> Color? {
+    guard let days = account.daysUntilExpiry() else { return nil }
+    return days <= 3 ? .red : .yellow
+}
+
 struct ContentView: View {
     @ObservedObject var appState: AppState
     @State private var selectedView = STABLE_VIEWS.first!
     @State private var webView = WebView()
+    // when accountBadge and badgeColor are nil, the account status is either unknown OR a badge does not need to be shown
+    // if ever the account is reset to nil, these variables will maintain their last computed values
+    // see https://linear.app/soveng/issue/OBS-1159/ regarding why account could be reset to nil
     @State private var accountBadge: String?
+    @State private var badgeColor: Color?
 
     @EnvironmentObject private var appDelegate: AppDelegate
 
@@ -117,12 +125,12 @@ struct ContentView: View {
                 List(self.viewMode.getViews(), id: \.self, selection: self.$selectedView) { view in
                     let label = Label(view.name.capitalized, systemImage: view.systemImageName)
                         .listItemTint(Color("ObscuraOrange"))
-                    // hide badge if we simply do not know if should be shown
-                    if view.name == "account" && self.accountBadge != nil {
+                    // hide badge if we do not know if it should be shown
+                    if view.name == "account" && self.accountBadge != nil && self.badgeColor != nil {
                         label
                             .badge(Text(self.accountBadge!)
                                 .monospacedDigit()
-                                .foregroundColor(self.appState.status.account!.daysUntilExpiry()! <= 3 ? .red : .yellow)
+                                .foregroundColor(self.badgeColor)
                                 .bold()
                             )
                             // this has to be here, otherwise the label color is system accent default
@@ -139,14 +147,20 @@ struct ContentView: View {
             }
         )
         .onReceive(self.accountBadgeTimer, perform: { _ in
-            self.accountBadge = getBadgeText(self.appState.status.account)
+            if let account = self.appState.status.account {
+                self.accountBadge = getBadgeText(account)
+                self.badgeColor = getBadgeColor(account)
+            }
         })
         .onChange(of: self.selectedView) { view in
             // inform webUI to update navigation
             self.webView.navigateTo(view: view)
         }
         .onChange(of: self.appState.status) { status in
-            self.accountBadge = getBadgeText(self.appState.status.account)
+            if let account = self.appState.status.account {
+                self.accountBadge = getBadgeText(account)
+                self.badgeColor = getBadgeColor(account)
+            }
             if status.accountId == nil || status.inNewAccountFlow {
                 self.loginViewShown = true
                 self.splitViewVisibility = .detailOnly

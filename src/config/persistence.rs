@@ -6,10 +6,14 @@ use std::io::{ErrorKind, Write};
 use std::path::Path;
 use std::time::SystemTime;
 
+use boringtun::x25519::StaticSecret;
 use chrono::Utc;
+use obscuravpn_api::types::WgPubkey;
+use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use tempfile::{NamedTempFile, PersistError};
 use thiserror::Error;
+use x25519_dalek::PublicKey;
 
 pub(super) const CONFIG_FILE: &str = "config.json";
 
@@ -210,6 +214,11 @@ pub struct Config {
 
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub last_chosen_exit: Option<String>,
+
+    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
+    pub wireguard_key_cache: WireGuardKeyCache,
+    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
+    pub use_wireguard_key_cache: bool,
 }
 
 #[serde_with::serde_as]
@@ -220,4 +229,47 @@ pub struct PinnedLocation {
 
     #[serde_as(as = "serde_with::TimestampSeconds")]
     pub pinned_at: SystemTime,
+}
+
+#[serde_with::serde_as]
+#[derive(Serialize, Deserialize, Clone)]
+pub struct WireGuardKeyCache {
+    pub secret_key: StaticSecret,
+    #[serde_as(as = "serde_with::TimestampSeconds")]
+    pub generated_at: SystemTime,
+}
+
+impl PartialEq for WireGuardKeyCache {
+    fn eq(&self, other: &Self) -> bool {
+        self.secret_key.as_bytes() == other.secret_key.as_bytes() && self.generated_at == other.generated_at
+    }
+}
+
+impl Eq for WireGuardKeyCache {}
+
+impl core::fmt::Debug for WireGuardKeyCache {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self { secret_key, generated_at } = self;
+        let public_key = WgPubkey(PublicKey::from(secret_key).to_bytes());
+        f.debug_struct("WireGuardKeyCache")
+            .field("public_key", &public_key)
+            .field("cached_at", generated_at)
+            .finish()
+    }
+}
+
+impl Default for WireGuardKeyCache {
+    fn default() -> Self {
+        if cfg!(test) {
+            // deterministic values for serialization tests
+            return Self { secret_key: StaticSecret::from([1; 32]), generated_at: SystemTime::UNIX_EPOCH };
+        }
+        Self { secret_key: StaticSecret::random_from_rng(OsRng), generated_at: SystemTime::now() }
+    }
+}
+
+impl WireGuardKeyCache {
+    pub fn rotate_now(&mut self) {
+        *self = Self::default();
+    }
 }

@@ -144,6 +144,8 @@ fn test_ignore_invalid_fields() {
             pinned_at: SystemTime::UNIX_EPOCH,
         }]),
         last_chosen_exit: Some("mylastexit".into()),
+        wireguard_key_cache: Default::default(),
+        use_wireguard_key_cache: false,
     };
     let example_json = match serde_json::to_value(&example_config).unwrap() {
         serde_json::Value::Object(m) => m,

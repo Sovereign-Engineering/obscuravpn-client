@@ -49,6 +49,7 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
                         | NoApiRoute {}
                         | NoMatchingExit {}
                         | SignupLimitExceeded {}
+                        | WgKeyRotationRequired {}
                         | Unknown(_) => Self::ApiError,
                     },
                     ClientError::ProtocolError(_) | ClientError::Other(_) => Self::Other,

@@ -37,6 +37,12 @@ export interface PinnedLocation {
     pinned_at: number,
 }
 
+export interface AccountStatus {
+    account_info: AccountInfo,
+    days_till_expiry: number,
+    last_updated_sec: number
+}
+
 export interface AppStatus {
     version: string,
     vpnStatus: VpnStatus,
@@ -45,11 +51,7 @@ export interface AppStatus {
     lastChosenExit: string,
     inNewAccountFlow: boolean,
     apiUrl: string,
-    account: {
-      account_info: AccountInfo,
-      days_till_expiry: number,
-      last_updated_sec: number
-    } | null
+    account: AccountStatus | null
 }
 
 interface IAppContext {

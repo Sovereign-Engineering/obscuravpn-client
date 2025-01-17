@@ -1,5 +1,8 @@
 import { getCountryData, ICountryData, TCountryCode } from "countries-list";
+import { useEffect, useReducer } from 'react';
 import { AccountId } from "./accountUtils";
+import { accountIsExpired, paidUntil } from './api';
+import { AccountStatus } from './appContext';
 
 export interface Exit {
     id: string,
@@ -95,4 +98,21 @@ export const enum SubscriptionStatus {
     PAUSED = "paused",
     TRIALING = "trialing",
     UNPAID = "unpaid",
+}
+
+/**
+ * Force the component to re-render when an account is expected to expire
+ */
+export function useReRenderWhenExpired(account: AccountStatus | null) {
+  const [, forceUpdate] = useReducer(x => x + 1, 0);
+
+  useEffect(() => {
+    if (account !== null) {
+      const expiryDate = paidUntil(account.account_info);
+      if (expiryDate !== undefined && !accountIsExpired(account.account_info)) {
+        const timeoutId = setTimeout(forceUpdate, expiryDate.getTime() - (new Date()).getTime());
+        return () => clearTimeout(timeoutId);
+      }
+    }
+  }, [account?.last_updated_sec]);
 }

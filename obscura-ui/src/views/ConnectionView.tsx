@@ -1,5 +1,5 @@
 import { Anchor, Button, Combobox, DefaultMantineColor, Divider, Group, Image, Paper, Progress, ScrollArea, Space, Stack, StyleProp, Text, ThemeIcon, Title, useCombobox, useComputedColorScheme, useMantineTheme } from '@mantine/core';
-import { useDebouncedCallback, useInterval, useToggle } from '@mantine/hooks';
+import { useInterval, useToggle } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { continents } from 'countries-list';
 import { Dispatch, ReactNode, SetStateAction, useContext, useEffect, useState } from 'react';
@@ -9,7 +9,7 @@ import { FaExternalLinkSquareAlt } from 'react-icons/fa';
 import { IoIosEyeOff } from 'react-icons/io';
 import { MdLanguage, MdLaptopMac, MdOutlineWifiOff } from 'react-icons/md';
 import * as ObscuraAccount from '../common/accountUtils';
-import { accountIsExpired, Exit, getCountry, getExitCountry } from '../common/api';
+import { accountIsExpired, Exit, getCountry, getExitCountry, useReRenderWhenExpired } from '../common/api';
 import { AppContext, ConnectionInProgress, ExitsContext, isConnecting, PinnedLocation } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { CityNotFoundError, exitLocation, exitsSortComparator, getExitCountryFlag, getRandomExitFromCity } from '../common/exitUtils';
@@ -47,12 +47,14 @@ export default function Connection() {
     const theme = useMantineTheme();
     const colorScheme = useComputedColorScheme();
     const { t } = useTranslation();
-    const { vpnConnected, connectionInProgress, osStatus, vpnConnect, vpnDisconnect, appStatus } = useContext(AppContext);
-    // osStatus causes a re-render often. Otherwise we would need to force a re-render when the account expires
+    const { vpnConnected, connectionInProgress, osStatus, vpnConnect, vpnDisconnect, appStatus,  } = useContext(AppContext);
     const { internetAvailable } = osStatus;
     const connectionTransition = connectionInProgress !== ConnectionInProgress.UNSET;
     const [cityConnectingTo, setCityConnectingTo] = useState<string | null>(null);
-    const accountInfo = appStatus.account?.account_info ?? null;
+    const { account } = appStatus;
+    const accountInfo = account?.account_info ?? null;
+
+    useReRenderWhenExpired(account);
 
     useEffect(() => {
         if (!vpnConnected && !isConnecting(connectionInProgress)) {
@@ -280,41 +282,40 @@ function Deco() {
     } = useContext(AppContext);
     const { internetAvailable } = osStatus;
     const colorScheme = useComputedColorScheme();
-
-    const [connectingIndex, toggleConnectingDeco] = useToggle([0, 1, DEC_LAST_IDX, DEC_LAST_IDX]);
+    const [connectingIndex, toggleConnectingDeco] = useToggle([0, 1, 2, 2]);
 
     // Setup interval for animation when connecting
     const { start, stop } = useInterval(() => {
-        toggleConnectingDeco();
+      toggleConnectingDeco();
     }, 1000);
 
     useEffect(() => {
-        if (connectionInProgress) {
+        if (connectionInProgress !== ConnectionInProgress.UNSET) {
             start();
         } else {
+            if (connectingIndex !== 0) {
+              toggleConnectingDeco(0);
+            }
             stop();
         }
         return () => stop();
     }, [connectionInProgress, start, stop]);
 
-    const getDecoration = () => {
-        if (!internetAvailable) return colorScheme === 'light' ? DecoOfflineLight : DecoOfflineDark;
+      if (!internetAvailable) return colorScheme === 'light' ? DecoOfflineLight : DecoOfflineDark;
 
-        if (connectionInProgress !== ConnectionInProgress.UNSET) {
-            // want to allow reverse animations
-            const adjustedIdx = connectionInProgress === ConnectionInProgress.Disconnecting ? DEC_LAST_IDX - connectingIndex : connectingIndex;
-            const connectionDeco = DECO_CONNECTING_ARRAY[colorScheme][adjustedIdx];
-            if (connectionDeco === undefined) {
-                console.error(`adjustedIdx/connectingIndex (${adjustedIdx} or ${connectingIndex}) longer than DECO_CONNECTING_ARRAY`);
-                return DECO_CONNECTING_ARRAY[colorScheme][0];
-            }
-            return connectionDeco;
-        };
+      if (connectionInProgress !== ConnectionInProgress.UNSET) {
+          // want to allow reverse animations
+          const adjustedIdx = connectionInProgress === ConnectionInProgress.Disconnecting ? DEC_LAST_IDX - connectingIndex : connectingIndex;
+          const connectionDeco = DECO_CONNECTING_ARRAY[colorScheme][adjustedIdx];
+          if (connectionDeco === undefined) {
+              console.error(`adjustedIdx/connectingIndex (${adjustedIdx} or ${connectingIndex}) longer than DECO_CONNECTING_ARRAY`);
+              return DECO_CONNECTING_ARRAY[colorScheme][0];
+          }
+          return connectionDeco;
+      };
 
-        if (vpnConnected) return DecoConnected;
-        return colorScheme === 'light' ? DecoDisconnectedLight : DecoDisconnectedDark;
-    };
-    return getDecoration();
+      if (vpnConnected) return DecoConnected;
+      return colorScheme === 'light' ? DecoDisconnectedLight : DecoDisconnectedDark;
 }
 
 const MASCOT_CONNECTING = [
@@ -363,6 +364,9 @@ function Mascot() {
         if (connectionInProgress !== ConnectionInProgress.UNSET) {
             start();
         } else {
+            if (connectingIndex !== 0) {
+              toggleConnectingDeco(0);
+            }
             stop();
         }
         return () => stop();

@@ -59,6 +59,7 @@ impl From<&ApiError> for ManagerCmdErrorCode {
                     | ApiErrorKind::NoApiRoute {}
                     | ApiErrorKind::NoMatchingExit {}
                     | ApiErrorKind::TunnelLimitExceeded {}
+                    | ApiErrorKind::WgKeyRotationRequired {}
                     | ApiErrorKind::Unknown(_) => Self::ApiError,
                 },
                 ClientError::ProtocolError(_) | ClientError::Other(_) => Self::ApiError,

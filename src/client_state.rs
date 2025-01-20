@@ -221,37 +221,43 @@ impl ClientState {
         &self,
         exit: Option<String>,
     ) -> anyhow::Result<(Uuid, ObfuscatedTunnelConfig, StaticSecret, OneExit, OneRelay), TunnelConnectError> {
-        if let Err(err) = self.remove_local_tunnels().await {
-            tracing::warn!("error removing unused local tunnels: {}", err);
-        }
-
         let closest_relay = self.select_relay().await?;
-
-        let sk = StaticSecret::random_from_rng(OsRng);
-        let pk = PublicKey::from(&sk);
-
-        let wg_pubkey = WgPubkey(pk.to_bytes());
-        let tunnel_id = Uuid::new_v4();
         let exit = exit.or_else(|| closest_relay.preferred_exits.choose(&mut thread_rng()).map(|e| e.id.clone()));
-        tracing::info!(
-            %tunnel_id,
-            client.pubkey =? wg_pubkey,
-            exit.id = exit,
-            relay.id =? closest_relay.id,
-            relay.ip_v4 =% closest_relay.ip_v4,
-            relay.ip_v6 =% closest_relay.ip_v6,
-            "creating tunnel");
 
-        _ = Self::change_config(&mut self.lock(), |config| config.local_tunnels_ids.push(tunnel_id.to_string()));
+        let (tunnel_info, sk, tunnel_id) = loop {
+            if let Err(err) = self.remove_local_tunnels().await {
+                tracing::warn!("error removing unused local tunnels: {}", err);
+            }
 
-        let cmd = CreateTunnel::Obfuscated { id: Some(tunnel_id), wg_pubkey, relay: Some(closest_relay.id), exit };
-        let tunnel_info = loop {
+            let mut sk = self.get_config().wireguard_key_cache.secret_key;
+            if !self.get_config().use_wireguard_key_cache {
+                sk = StaticSecret::random_from_rng(OsRng);
+            }
+            let pk = PublicKey::from(&sk);
+            let wg_pubkey = WgPubkey(pk.to_bytes());
+            let tunnel_id = Uuid::new_v4();
+            tracing::info!(
+                    %tunnel_id,
+                    client.pubkey =? wg_pubkey,
+                    exit.id = exit.as_deref(),
+                    relay.id =? &closest_relay.id,
+                    relay.ip_v4 =% closest_relay.ip_v4,
+                    relay.ip_v6 =% closest_relay.ip_v6,
+                    "creating tunnel");
+            _ = Self::change_config(&mut self.lock(), |config| config.local_tunnels_ids.push(tunnel_id.to_string()));
+
+            let cmd = CreateTunnel::Obfuscated { id: Some(tunnel_id), wg_pubkey, relay: Some(closest_relay.id.clone()), exit: exit.clone() };
             let error = match self.api_request(cmd.clone()).await {
-                Ok(t) => break t,
-                Err(err) => match err {
+                Ok(t) => break (t, sk, tunnel_id),
+                Err(error) => match error {
                     ApiError::ApiClient(ClientError::ApiError(ref api_error)) => match api_error.body.error {
-                        ApiErrorKind::TunnelLimitExceeded {} => err,
-                        _ => return Err(err.into()),
+                        ApiErrorKind::TunnelLimitExceeded {} => error,
+                        ApiErrorKind::WgKeyRotationRequired {} => {
+                            tracing::warn!(?error, "server indicated that key rotation is required immediately");
+                            _ = Self::change_config(&mut self.lock(), |config| config.wireguard_key_cache.rotate_now());
+                            continue;
+                        }
+                        _ => return Err(error.into()),
                     },
                     err => return Err(err.into()),
                 },

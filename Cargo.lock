@@ -495,7 +495,9 @@ dependencies = [
  "curve25519-dalek-derive",
  "fiat-crypto",
  "rustc_version",
+ "serde",
  "subtle",
+ "zeroize",
 ]
 
 [[package]]
@@ -1328,7 +1330,7 @@ dependencies = [
 [[package]]
 name = "obscuravpn-api"
 version = "0.0.0"
-source = "git+https://github.com/Sovereign-Engineering/obscuravpn-api.git?rev=d05f10bb667977b3e2b3c821ba33d0dc5d06e77a#d05f10bb667977b3e2b3c821ba33d0dc5d06e77a"
+source = "git+https://github.com/Sovereign-Engineering/obscuravpn-api.git?rev=05f728916b51d3d459de283d30861552fa3b2751#05f728916b51d3d459de283d30861552fa3b2751"
 dependencies = [
  "anyhow",
  "base64 0.21.7",
@@ -1380,6 +1382,7 @@ dependencies = [
  "tracing-subscriber",
  "tun",
  "uuid",
+ "x25519-dalek",
 ]
 
 [[package]]
@@ -2913,6 +2916,8 @@ checksum = "c7e468321c81fb07fa7f4c636c3972b9100f0346e5b6a9f2bd0603a52f7ed277"
 dependencies = [
  "curve25519-dalek",
  "rand_core",
+ "serde",
+ "zeroize",
 ]
 
 [[package]]
@@ -2920,3 +2925,17 @@ name = "zeroize"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "525b4ec142c6b68a2d10f01f7bbf6755599ca3f81ea53b8431b7dd348f5fdb2d"
+dependencies = [
+ "zeroize_derive",
+]
+
+[[package]]
+name = "zeroize_derive"
+version = "1.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce36e65b0d2999d2aafac989fb249189a141aee1f53c612c1f37d72631959f69"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.87",
+]

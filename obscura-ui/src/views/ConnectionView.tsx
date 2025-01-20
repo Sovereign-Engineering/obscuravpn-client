@@ -1,5 +1,5 @@
 import { Anchor, Button, Combobox, DefaultMantineColor, Divider, Group, Image, Paper, Progress, ScrollArea, Space, Stack, StyleProp, Text, ThemeIcon, Title, useCombobox, useComputedColorScheme, useMantineTheme } from '@mantine/core';
-import { useInterval, useToggle } from '@mantine/hooks';
+import { useFocusTrap, useInterval, useToggle } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { continents } from 'countries-list';
 import { Dispatch, ReactNode, SetStateAction, useContext, useEffect, useState } from 'react';
@@ -445,6 +445,7 @@ function LocationConnect({ cityConnectingTo, setCityConnectingTo }: LocationConn
     const combobox = useCombobox({
         onDropdownClose: () => combobox.resetSelectedOption(),
     });
+    const focusRef = useFocusTrap(combobox.dropdownOpened);
 
     return (
         <>
@@ -460,7 +461,7 @@ function LocationConnect({ cityConnectingTo, setCityConnectingTo }: LocationConn
                     size='lg'
                 >
                     <Combobox.Target>
-                        <Group gap={0} style={{ minWidth: BUTTON_WIDTH }}>
+                        <Group ref={focusRef} gap={0} style={{ minWidth: BUTTON_WIDTH }}>
                             <Button
                                 disabled={comboDisabled}
                                 size='lg'
@@ -493,6 +494,9 @@ function LocationConnect({ cityConnectingTo, setCityConnectingTo }: LocationConn
                             <ScrollArea.Autosize type='always' mah={200} hidden={false} pt={10}>
                                 <CityOptions exitList={exitList} onExitSelect={(country_code: string, city_code: string) => {
                                     combobox.closeDropdown();
+                                    if (connectedExit?.country_code === country_code && connectedExit?.city_code === city_code) {
+                                      return;
+                                    }
                                     try {
                                         const exit = getRandomExitFromCity(exitList, country_code, city_code);
                                         setSelectedExit(exit);

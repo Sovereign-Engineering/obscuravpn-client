@@ -46,19 +46,17 @@ struct ClientStateInner {
     config_dir: PathBuf,
     config: Config,
     cached_api_client: Option<Arc<Client>>,
-    account: Option<ClientStateAccount>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-pub struct ClientStateAccount {
-    pub account_info: AccountInfo,     // API
-    pub days_till_expiry: Option<u64>, // Computed
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct AccountStatus {
+    pub account_info: AccountInfo, // API
     pub last_updated_sec: u64,
 }
 
-impl Eq for ClientStateAccount {}
+impl Eq for AccountStatus {}
 
-impl PartialEq for ClientStateAccount {
+impl PartialEq for AccountStatus {
     fn eq(&self, other: &Self) -> bool {
         self.last_updated_sec == other.last_updated_sec
     }
@@ -73,7 +71,7 @@ impl ClientStateInner {
 impl ClientState {
     pub fn new(config_dir: PathBuf, old_config_dir: PathBuf, user_agent: String) -> Result<Self, ConfigLoadError> {
         let config = config::load(&config_dir, &old_config_dir)?;
-        let inner = ClientStateInner { config_dir, config, cached_api_client: None, account: None }.into();
+        let inner = ClientStateInner { config_dir, config, cached_api_client: None }.into();
         Ok(Self { user_agent, inner })
     }
 
@@ -376,49 +374,13 @@ impl ClientState {
         &self.user_agent
     }
 
-    pub fn get_account(&self) -> Option<ClientStateAccount> {
-        self.lock().account.clone()
-    }
-
-    pub fn update_account_info(&self, account_info: &AccountInfo) {
+    pub fn update_account_info(&self, account_info: &AccountInfo) -> Result<(), ConfigSaveError> {
         let response_time = SystemTime::now();
         let last_updated_sec = response_time.duration_since(UNIX_EPOCH).unwrap_or(Duration::ZERO).as_secs();
-        let days_till_expiry = compute_days_till_expiry(account_info, response_time);
         let mut inner = self.lock();
-        inner.account = Some(ClientStateAccount { account_info: account_info.clone(), days_till_expiry, last_updated_sec })
+        let account = Some(AccountStatus { account_info: account_info.clone(), last_updated_sec });
+        Self::change_config(&mut inner, move |config| {
+            config.cached_account_status = account;
+        })
     }
-}
-
-fn parse_api_timestamp(timestamp_s: i64) -> SystemTime {
-    if let Ok(timestamp_s) = u64::try_from(timestamp_s) {
-        UNIX_EPOCH + Duration::from_secs(timestamp_s)
-    } else {
-        tracing::error!(
-            message_id = "Chiiji6o",
-            timestamp_s,
-            "Can't convert timestamp to SystemTime, assuming far past.",
-        );
-        UNIX_EPOCH
-    }
-}
-
-fn compute_days_till_expiry(account_info: &AccountInfo, now: SystemTime) -> Option<u64> {
-    if !account_info.active {
-        return Some(0);
-    }
-    if account_info.subscription.as_ref().is_some_and(|sub| !sub.cancel_at_period_end) {
-        return None;
-    }
-
-    let top_up_end = account_info.top_up.as_ref().map(|top_up| parse_api_timestamp(top_up.credit_expires_at));
-    let subscription_end = account_info.subscription.as_ref().map(|sub| parse_api_timestamp(sub.current_period_end));
-
-    let Some(end) = top_up_end.max(subscription_end) else {
-        // The account is active but we don't know why. Assume it will never expire.
-        return None;
-    };
-
-    let until_expiry = end.duration_since(now).unwrap_or(Duration::ZERO);
-
-    Some(until_expiry.as_secs() / 3600 / 24)
 }

@@ -39,7 +39,6 @@ export interface PinnedLocation {
 
 export interface AccountStatus {
     account_info: AccountInfo,
-    days_till_expiry: number,
     last_updated_sec: number
 }
 

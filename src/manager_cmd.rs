@@ -117,10 +117,7 @@ impl ManagerCmd {
                 Ok(()) => Ok(ManagerCmdOk::Empty),
                 Err(err) => Err((&err).into()),
             },
-            ManagerCmd::ApiGetAccountInfo {} => match manager.get_account_info().await {
-                Ok(account_info) => Ok(ManagerCmdOk::ApiGetAccountInfo(account_info)),
-                Err(err) => Err((&err).into()),
-            },
+            ManagerCmd::ApiGetAccountInfo {} => manager.get_account_info().await.map(ManagerCmdOk::ApiGetAccountInfo),
             ManagerCmd::ApiListExit {} => manager.list_exits().await.map(ManagerCmdOk::ApiListExit),
             ManagerCmd::GetStatus { known_version } => match manager.subscribe().wait_for(|s| Some(s.version) != known_version).await {
                 Ok(status) => Ok(ManagerCmdOk::GetStatus(status.clone())),

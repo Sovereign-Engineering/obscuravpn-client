@@ -20,7 +20,7 @@ use tokio::{
 use uuid::Uuid;
 
 use crate::{
-    client_state::ClientStateAccount,
+    client_state::AccountStatus,
     config::{Config, ConfigLoadError, ConfigSaveError, PinnedLocation},
     errors::ApiError,
     quicwg::{QuicWgConn, QuicWgTrafficStats},
@@ -51,12 +51,12 @@ pub struct Status {
     pub pinned_locations: Vec<PinnedLocation>,
     pub last_chosen_exit: Option<String>,
     pub api_url: String,
-    pub account: Option<ClientStateAccount>,
+    pub account: Option<AccountStatus>,
 }
 
 impl Status {
-    fn new(version: Uuid, vpn_status: VpnStatus, config: Config, account: Option<ClientStateAccount>, api_url: String) -> Self {
-        let Config { account_id, in_new_account_flow, pinned_locations, last_chosen_exit, .. } = config;
+    fn new(version: Uuid, vpn_status: VpnStatus, config: Config, api_url: String) -> Self {
+        let Config { account_id, in_new_account_flow, pinned_locations, last_chosen_exit, cached_account_status, .. } = config;
         Self {
             version,
             vpn_status,
@@ -65,7 +65,7 @@ impl Status {
             pinned_locations: pinned_locations.unwrap_or_default(),
             last_chosen_exit,
             api_url,
-            account,
+            account: cached_account_status,
         }
     }
 }
@@ -133,7 +133,7 @@ impl Manager {
     pub fn new(config_dir: PathBuf, old_config_dir: PathBuf, user_agent: String) -> Result<Arc<Self>, ConfigLoadError> {
         let client_state = ClientState::new(config_dir, old_config_dir, user_agent)?;
         let config = client_state.get_config();
-        let initial_status = Status::new(Uuid::new_v4(), VpnStatus::Disconnected {}, config, None, client_state.base_url());
+        let initial_status = Status::new(Uuid::new_v4(), VpnStatus::Disconnected {}, config, client_state.base_url());
         Ok(Self {
             client_state: client_state.into(),
             tunnel_state: Arc::new(RwLock::new(TunnelState::Disconnected { conn_id: Uuid::new_v4() })),
@@ -301,8 +301,7 @@ impl Manager {
         self.status_watch.send_if_modified(|status| {
             let config = self.client_state.get_config();
             let vpn_status = new_vpn_status.unwrap_or_else(|| status.vpn_status.clone());
-            let account = self.client_state.get_account();
-            let mut new_status = Status::new(status.version, vpn_status, config, account, self.client_state.base_url());
+            let mut new_status = Status::new(status.version, vpn_status, config, self.client_state.base_url());
             if new_status == *status {
                 return false;
             }
@@ -359,15 +358,16 @@ impl Manager {
         self.client_state.api_request(cmd).await
     }
 
-    pub async fn get_account_info(&self) -> Result<AccountInfo, ApiError> {
+    pub async fn get_account_info(&self) -> Result<AccountInfo, ManagerCmdErrorCode> {
         let account_info = self.api_request(GetAccountInfo()).await?;
-        self.update_account_info(&account_info);
+        self.update_account_info(&account_info)?;
         Ok(account_info)
     }
 
-    pub fn update_account_info(&self, account_info: &AccountInfo) {
-        self.client_state.update_account_info(account_info);
+    pub fn update_account_info(&self, account_info: &AccountInfo) -> anyhow::Result<()> {
+        self.client_state.update_account_info(account_info)?;
         self.update_status_if_changed(None);
+        Ok(())
     }
 }
 

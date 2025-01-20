@@ -146,6 +146,7 @@ fn test_ignore_invalid_fields() {
         last_chosen_exit: Some("mylastexit".into()),
         wireguard_key_cache: Default::default(),
         use_wireguard_key_cache: false,
+        cached_account_status: Default::default(),
     };
     let example_json = match serde_json::to_value(&example_config).unwrap() {
         serde_json::Value::Object(m) => m,

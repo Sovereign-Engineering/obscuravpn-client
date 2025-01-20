@@ -15,6 +15,8 @@ use tempfile::{NamedTempFile, PersistError};
 use thiserror::Error;
 use x25519_dalek::PublicKey;
 
+use crate::client_state::AccountStatus;
+
 pub(super) const CONFIG_FILE: &str = "config.json";
 
 #[derive(Debug, Error)]
@@ -219,6 +221,8 @@ pub struct Config {
     pub wireguard_key_cache: WireGuardKeyCache,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub use_wireguard_key_cache: bool,
+    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
+    pub cached_account_status: Option<AccountStatus>,
 }
 
 #[serde_with::serde_as]

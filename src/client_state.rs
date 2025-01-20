@@ -46,18 +46,17 @@ struct ClientStateInner {
     config_dir: PathBuf,
     config: Config,
     cached_api_client: Option<Arc<Client>>,
-    account: Option<ClientStateAccount>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-pub struct ClientStateAccount {
-    pub account_info: AccountInfo,     // API
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct AccountStatus {
+    pub account_info: AccountInfo, // API
     pub last_updated_sec: u64,
 }
 
-impl Eq for ClientStateAccount {}
+impl Eq for AccountStatus {}
 
-impl PartialEq for ClientStateAccount {
+impl PartialEq for AccountStatus {
     fn eq(&self, other: &Self) -> bool {
         self.last_updated_sec == other.last_updated_sec
     }
@@ -72,7 +71,7 @@ impl ClientStateInner {
 impl ClientState {
     pub fn new(config_dir: PathBuf, old_config_dir: PathBuf, user_agent: String) -> Result<Self, ConfigLoadError> {
         let config = config::load(&config_dir, &old_config_dir)?;
-        let inner = ClientStateInner { config_dir, config, cached_api_client: None, account: None }.into();
+        let inner = ClientStateInner { config_dir, config, cached_api_client: None }.into();
         Ok(Self { user_agent, inner })
     }
 
@@ -375,14 +374,13 @@ impl ClientState {
         &self.user_agent
     }
 
-    pub fn get_account(&self) -> Option<ClientStateAccount> {
-        self.lock().account.clone()
-    }
-
-    pub fn update_account_info(&self, account_info: &AccountInfo) {
+    pub fn update_account_info(&self, account_info: &AccountInfo) -> Result<(), ConfigSaveError> {
         let response_time = SystemTime::now();
         let last_updated_sec = response_time.duration_since(UNIX_EPOCH).unwrap_or(Duration::ZERO).as_secs();
         let mut inner = self.lock();
-        inner.account = Some(ClientStateAccount { account_info: account_info.clone(), last_updated_sec })
+        let account = Some(AccountStatus { account_info: account_info.clone(), last_updated_sec });
+        Self::change_config(&mut inner, move |config| {
+            config.cached_account_status = account;
+        })
     }
 }

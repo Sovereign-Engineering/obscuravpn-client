@@ -2,12 +2,10 @@ import Foundation
 
 struct AccountStatus: Codable, Equatable {
     var accountInfo: AccountInfo
-    var daysTillExpiry: UInt64?
     var lastUpdatedSec: UInt64
 
     enum CodingKeys: String, CodingKey {
         case accountInfo = "account_info"
-        case daysTillExpiry = "days_till_expiry"
         case lastUpdatedSec = "last_updated_sec"
     }
 
@@ -98,11 +96,4 @@ enum SubscriptionStatus: String, Codable {
     case paused
     case trialing
     case unpaid
-}
-
-struct AccountDaysTillExpiry {
-    var days: Int64?
-    func expiringSoon() -> Bool {
-        return self.days != nil && self.days! <= 10
-    }
 }

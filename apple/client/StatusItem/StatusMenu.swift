@@ -5,24 +5,6 @@ import UserNotifications
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "StatusMenu")
 
-func getAccountStatusItemText(_ account: AccountStatus?) -> String? {
-    guard let account = account else { return nil }
-    guard let days = account.daysTillExpiry else { return nil }
-    if !account.expiringSoon() {
-        return nil
-    }
-    if days > 3 {
-        return "Account expires soon"
-    }
-    if days > 1 {
-        return "Account expires in \(days) days"
-    }
-    if days == 1 {
-        return "Accounts expires in in 1 day"
-    }
-    return account.accountInfo.active ? "Account expires today" : "Account is expired"
-}
-
 // https://multi.app/blog/pushing-the-limits-nsstatusitem
 final class StatusItemManager: ObservableObject {
     private var hostingView: NSHostingView<StatusItem>?

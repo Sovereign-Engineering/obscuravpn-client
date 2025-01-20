@@ -52,7 +52,6 @@ struct ClientStateInner {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ClientStateAccount {
     pub account_info: AccountInfo,     // API
-    pub days_till_expiry: Option<u64>, // Computed
     pub last_updated_sec: u64,
 }
 
@@ -383,42 +382,7 @@ impl ClientState {
     pub fn update_account_info(&self, account_info: &AccountInfo) {
         let response_time = SystemTime::now();
         let last_updated_sec = response_time.duration_since(UNIX_EPOCH).unwrap_or(Duration::ZERO).as_secs();
-        let days_till_expiry = compute_days_till_expiry(account_info, response_time);
         let mut inner = self.lock();
-        inner.account = Some(ClientStateAccount { account_info: account_info.clone(), days_till_expiry, last_updated_sec })
+        inner.account = Some(ClientStateAccount { account_info: account_info.clone(), last_updated_sec })
     }
-}
-
-fn parse_api_timestamp(timestamp_s: i64) -> SystemTime {
-    if let Ok(timestamp_s) = u64::try_from(timestamp_s) {
-        UNIX_EPOCH + Duration::from_secs(timestamp_s)
-    } else {
-        tracing::error!(
-            message_id = "Chiiji6o",
-            timestamp_s,
-            "Can't convert timestamp to SystemTime, assuming far past.",
-        );
-        UNIX_EPOCH
-    }
-}
-
-fn compute_days_till_expiry(account_info: &AccountInfo, now: SystemTime) -> Option<u64> {
-    if !account_info.active {
-        return Some(0);
-    }
-    if account_info.subscription.as_ref().is_some_and(|sub| !sub.cancel_at_period_end) {
-        return None;
-    }
-
-    let top_up_end = account_info.top_up.as_ref().map(|top_up| parse_api_timestamp(top_up.credit_expires_at));
-    let subscription_end = account_info.subscription.as_ref().map(|sub| parse_api_timestamp(sub.current_period_end));
-
-    let Some(end) = top_up_end.max(subscription_end) else {
-        // The account is active but we don't know why. Assume it will never expire.
-        return None;
-    };
-
-    let until_expiry = end.duration_since(now).unwrap_or(Duration::ZERO);
-
-    Some(until_expiry.as_secs() / 3600 / 24)
 }

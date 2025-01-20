@@ -80,6 +80,8 @@ pub enum QuicWgWireguardHandshakeError {
 pub struct QuicWgConn {
     wg_state: Mutex<WgState>,
     quic: quinn::Connection,
+    client_public_key: PublicKey,
+    exit_public_key: PublicKey,
 }
 
 #[derive(Default, Clone, Copy)]
@@ -100,23 +102,24 @@ struct WgState {
 
 impl QuicWgConn {
     pub async fn connect(
-        sk: StaticSecret,
-        remote_pk: PublicKey,
+        client_secret_key: StaticSecret,
+        exit_public_key: PublicKey,
         relay_addr: SocketAddr,
         relay_cert: CertificateDer<'static>,
         endpoint: quinn::Endpoint,
         token: Uuid,
     ) -> Result<Self, QuicWgConnectError> {
+        let client_public_key = PublicKey::from(&client_secret_key);
         tracing::info!("connecting to relay");
         let quic = Self::relay_connect(&endpoint, relay_addr, relay_cert, token).await?;
         tracing::info!("connected to relay");
 
         let index = thread_rng().gen();
-        let mut wg = Tunn::new(sk, remote_pk, None, Some(1), index, None).unwrap();
+        let mut wg = Tunn::new(client_secret_key, exit_public_key, None, Some(1), index, None).unwrap();
         Self::first_wg_handshake(&mut wg, &quic, WG_FIRST_HANDSHAKE_RETRIES, WG_FIRST_HANDSHAKE_RESENDS).await?;
         tracing::info!("connected to exit");
         let wg_state = Mutex::new(WgState { wg, last_handshake_expired: None, traffic_stats: QuicWgTrafficStats::default() });
-        Ok(Self { quic, wg_state })
+        Ok(Self { quic, wg_state, client_public_key, exit_public_key })
     }
 
     async fn relay_connect(
@@ -370,6 +373,14 @@ impl QuicWgConn {
 
     pub fn traffic_stats(&self) -> QuicWgTrafficStats {
         self.wg_state.lock().unwrap().traffic_stats
+    }
+
+    pub fn exit_public_key(&self) -> PublicKey {
+        self.exit_public_key
+    }
+
+    pub fn client_public_key(&self) -> PublicKey {
+        self.client_public_key
     }
 }
 

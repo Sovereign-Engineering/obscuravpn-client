@@ -8,7 +8,7 @@ use std::{
 use futures::FutureExt;
 use obscuravpn_api::{
     cmd::{Cmd, GetAccountInfo, ListExits2},
-    types::{AccountInfo, OneExit},
+    types::{AccountInfo, OneExit, WgPubkey},
     Client, ClientError,
 };
 use serde::{Deserialize, Serialize};
@@ -77,6 +77,8 @@ pub enum VpnStatus {
     Connecting {},
     Connected {
         exit: OneExit,
+        client_public_key: WgPubkey,
+        exit_public_key: WgPubkey,
     },
     Reconnecting {
         exit: OneExit,
@@ -115,9 +117,13 @@ impl TunnelState {
         match self {
             TunnelState::Disconnected { .. } => VpnStatus::Disconnected {},
             TunnelState::Starting { .. } => VpnStatus::Connecting {},
-            TunnelState::Running { reconnecting, reconnect_err, exit, .. } => match reconnecting {
+            TunnelState::Running { conn, reconnecting, reconnect_err, exit, .. } => match reconnecting {
                 true => VpnStatus::Reconnecting { err: *reconnect_err, exit: exit.clone() },
-                false => VpnStatus::Connected { exit: exit.clone() },
+                false => VpnStatus::Connected {
+                    exit: exit.clone(),
+                    client_public_key: WgPubkey(conn.client_public_key().to_bytes()),
+                    exit_public_key: WgPubkey(conn.exit_public_key().to_bytes()),
+                },
             },
         }
     }

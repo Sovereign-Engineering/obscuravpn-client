@@ -36,7 +36,7 @@ struct PinnedLocation: Codable, Equatable {
 
 enum NeVpnStatus: Codable {
     case connecting
-    case connected(exit: ExitInfo)
+    case connected(exit: ExitInfo, client_public_key: String, exit_public_key: String)
     case reconnecting(exit: ExitInfo, err: String?)
     case disconnected
 }

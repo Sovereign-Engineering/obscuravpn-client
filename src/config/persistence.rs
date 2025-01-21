@@ -189,7 +189,7 @@ pub fn save(config_dir: &Path, config: &Config) -> Result<(), ConfigSaveError> {
 /// - Fields must never fail to parse. The best way to do this is the `#[serde(deserialize_with = "crate::serde_safe::deserialize")]` attribute which resets to `Default` if the fields fails to parse.
 ///     - If the field value is complex you may want to make the field support partial parse failure internally as well.
 /// - The more important some data is the simpler its type should be. Consider breaking important data out of complex types into simple top-level ones to reduce the risk of it getting reset to the default value..
-/// - If the field's value needs to persist on logout, ensure so by updating `ClientState::config_logout`
+/// - If the field's value needs to persist on logout, ensure so by updating `ClientState::set_account_id`
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
 #[allow(clippy::manual_non_exhaustive)]
 #[serde(default)]

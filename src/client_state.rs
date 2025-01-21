@@ -89,22 +89,45 @@ impl ClientState {
         Ok(())
     }
 
+    /// Log in or out.
+    ///
+    /// If `account_id` is set log in `auth_token` may be specified with an initial auth token.
+    ///
+    /// If `account_id` is `None` log out, `auth_token` should be `None`.
     pub fn set_account_id(&self, account_id: Option<String>, auth_token: Option<AuthToken>) -> Result<(), ConfigSaveError> {
+        debug_assert!(
+            account_id.is_some() || auth_token.is_none(),
+            "It doesn't make sense to set `auth_token` with no `account_id`."
+        );
+
         let mut inner = self.lock();
         inner.cached_api_client = None;
-        let clear_config = account_id.is_none();
         Self::change_config(&mut inner, move |config| {
-            if let Some(old_account_id) = mem::replace(&mut config.account_id, account_id) {
-                if !config.old_account_ids.contains(&old_account_id) {
-                    config.old_account_ids.push(old_account_id);
+            if account_id != config.account_id {
+                // Log-out / Change User
+
+                let mut old_account_ids = mem::take(&mut config.old_account_ids);
+                if let Some(old_account_id) = &config.account_id {
+                    if !old_account_ids.contains(old_account_id) {
+                        old_account_ids.push(old_account_id.clone());
+                    }
                 }
+
+                *config = Config {
+                    api_url: config.api_url.take(),
+                    account_id,
+                    cached_auth_token: auth_token.map(Into::into),
+                    old_account_ids,
+                    in_new_account_flow: config.in_new_account_flow,
+                    // see https://linear.app/soveng/issue/OBS-1171
+                    local_tunnels_ids: config.local_tunnels_ids.clone(),
+                    ..Default::default()
+                }
+            } else {
+                tracing::warn!(message_id = "shia4Eph", "Setting auth token for logged in account. This isn't expected.");
+                config.cached_auth_token = auth_token.map(Into::into);
             }
-            config.cached_auth_token = config.account_id.as_ref().and_then(|_| auth_token.map(Into::into));
         })?;
-        drop(inner);
-        if clear_config {
-            self.config_logout()?
-        }
         Ok(())
     }
 
@@ -386,18 +409,6 @@ impl ClientState {
         let account = Some(AccountStatus { account_info: account_info.clone(), last_updated_sec });
         Self::change_config(&mut inner, move |config| {
             config.cached_account_status = account;
-        })
-    }
-
-    /// keeps only the required fields when logging out
-    pub fn config_logout(&self) -> Result<(), ConfigSaveError> {
-        let mut cleared_config = Config::default();
-        let mut inner = self.lock();
-        cleared_config.api_url = inner.config.api_url.clone();
-        cleared_config.old_account_ids = inner.config.old_account_ids.clone();
-        cleared_config.in_new_account_flow = inner.config.in_new_account_flow;
-        Self::change_config(&mut inner, move |config| {
-            *config = cleared_config;
         })
     }
 }

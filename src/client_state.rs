@@ -92,6 +92,7 @@ impl ClientState {
     pub fn set_account_id(&self, account_id: Option<String>, auth_token: Option<AuthToken>) -> Result<(), ConfigSaveError> {
         let mut inner = self.lock();
         inner.cached_api_client = None;
+        let clear_config = account_id.is_none();
         Self::change_config(&mut inner, move |config| {
             if let Some(old_account_id) = mem::replace(&mut config.account_id, account_id) {
                 if !config.old_account_ids.contains(&old_account_id) {
@@ -100,6 +101,10 @@ impl ClientState {
             }
             config.cached_auth_token = config.account_id.as_ref().and_then(|_| auth_token.map(Into::into));
         })?;
+        drop(inner);
+        if clear_config {
+            self.config_logout()?
+        }
         Ok(())
     }
 
@@ -381,6 +386,18 @@ impl ClientState {
         let account = Some(AccountStatus { account_info: account_info.clone(), last_updated_sec });
         Self::change_config(&mut inner, move |config| {
             config.cached_account_status = account;
+        })
+    }
+
+    /// keeps only the required fields when logging out
+    pub fn config_logout(&self) -> Result<(), ConfigSaveError> {
+        let mut cleared_config = Config::default();
+        let mut inner = self.lock();
+        cleared_config.api_url = inner.config.api_url.clone();
+        cleared_config.old_account_ids = inner.config.old_account_ids.clone();
+        cleared_config.in_new_account_flow = inner.config.in_new_account_flow;
+        Self::change_config(&mut inner, move |config| {
+            *config = cleared_config;
         })
     }
 }

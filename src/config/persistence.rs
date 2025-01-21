@@ -133,7 +133,17 @@ pub fn load(config_dir: &Path, old_config_dir: &Path) -> Result<Config, ConfigLo
 }
 
 pub fn save(config_dir: &Path, config: &Config) -> Result<(), ConfigSaveError> {
-    let json = serde_json::to_vec_pretty(config).unwrap();
+    let json = match serde_json::to_vec_pretty(config) {
+        Ok(json) => json,
+        Err(error) => {
+            tracing::error!(
+                    config.dir =? config_dir,
+                    ?error,
+                    "config::save could not encode config"
+            );
+            return Err(ConfigSaveError::SerializeError(error));
+        }
+    };
 
     if let Err(error) = create_dir_all(config_dir) {
         tracing::error!(

@@ -170,7 +170,7 @@
   "updateAvailableNoVersion": "Update available",
   "usedBy": "Used by",
   "validatingAccount": "Validating Account...",
-  "vpnError-accountExpired": "Account subscription has expired",
+  "vpnError-accountExpired": "Your account has expired",
   "vpnError-apiCallFailed": "Obscura API error",
   "vpnError-invalidAccountId": "Account Number invalid (checksum failed)",
   "vpnError-noLongerSupported": "This client is too old, please update to the latest version to connect",

@@ -3,6 +3,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::time::SystemTime;
 
+use obscuravpn_api::types::AccountId;
 use tempfile::tempdir;
 use uuid::Uuid;
 
@@ -16,8 +17,8 @@ use crate::config::CONFIG_FILE;
 fn random_config() -> Config {
     Config {
         api_url: Some(Uuid::new_v4().to_string()),
-        account_id: Some(Uuid::new_v4().to_string()),
-        old_account_ids: vec![Uuid::new_v4().to_string()],
+        account_id: Some(AccountId::from_string_unchecked(Uuid::new_v4().to_string())),
+        old_account_ids: vec![AccountId::from_string_unchecked(Uuid::new_v4().to_string())],
         local_tunnels_ids: vec![Uuid::new_v4().to_string()],
         ..Default::default()
     }
@@ -131,8 +132,8 @@ fn load_no_permission() {
 fn test_ignore_invalid_fields() {
     let example_config = Config {
         api_url: Some("myapi".into()),
-        account_id: Some("myaccount".into()),
-        old_account_ids: vec!["oldaccount".into()],
+        account_id: Some(AccountId::from_string_unchecked("myaccount".into())),
+        old_account_ids: vec![AccountId::from_string_unchecked("oldaccount".into())],
         local_tunnels_ids: vec!["oldtunnel".into()],
         exit: (),
         in_new_account_flow: true,

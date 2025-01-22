@@ -199,7 +199,6 @@ func runNeCommand(
     attemptTimeout: Duration?,
     maxAttempts: UInt = 10
 ) async throws -> String {
-    logger.debug("running ne command: \(jsonCmd, privacy: .public)")
     var result: NeFfiJsonResult
     do {
         let resultJson = try await manager.sendAppMessage(
@@ -213,7 +212,7 @@ func runNeCommand(
     }
     switch result {
     case .ok_json(let ok):
-        logger.debug("ne command success: \(ok, privacy: .public)")
+        logger.debug("ne command success")
         return ok
     case .error(let error):
         logger.debug("ne command error: \(error, privacy: .public)")

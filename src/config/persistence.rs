@@ -8,7 +8,7 @@ use std::time::SystemTime;
 
 use boringtun::x25519::StaticSecret;
 use chrono::Utc;
-use obscuravpn_api::types::WgPubkey;
+use obscuravpn_api::types::{AccountId, WgPubkey};
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use tempfile::{NamedTempFile, PersistError};
@@ -207,9 +207,9 @@ pub struct Config {
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub api_url: Option<String>,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
-    pub account_id: Option<String>,
+    pub account_id: Option<AccountId>,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
-    pub old_account_ids: Vec<String>,
+    pub old_account_ids: Vec<AccountId>,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub local_tunnels_ids: Vec<String>,
     #[serde(skip)]

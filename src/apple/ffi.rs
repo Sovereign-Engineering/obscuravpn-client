@@ -114,25 +114,52 @@ pub extern "C" fn stop_tunnel() {
 #[no_mangle]
 pub unsafe extern "C" fn json_ffi_cmd(context: usize, json_cmd: FfiStr, cb: extern "C" fn(context: usize, json_ret: FfiStr, json_err: FfiStr)) {
     let json_cmd = json_cmd.to_string();
-    tracing::info!("received json ffi cmd: {}", &json_cmd);
+
+    let hash = ring::digest::digest(&ring::digest::SHA1_FOR_LEGACY_USE_ONLY, json_cmd.as_bytes());
+
     let cmd: ManagerCmd = match serde_json::from_str(&json_cmd) {
         Ok(cmd) => cmd,
-        Err(err) => {
-            tracing::error!(?err, "could not decode json command: {err}");
+        Err(error) => {
+            tracing::error!(
+                ?error,
+                cmd = json_cmd,
+                hash =? hash,
+                message_id = "ahsh9Aec",
+                "could not decode json command: {error}",
+            );
             let err: &'static str = ManagerCmdErrorCode::Other.into();
             cb(context, "".ffi_str(), err.ffi_str());
             return;
         }
     };
+
+    tracing::info!(
+        cmd = format!("{:#?}", cmd),
+        hash =? hash,
+        message_id = "JumahFi5",
+        "received json ffi cmd",
+    );
+
     RUNTIME.spawn(async move {
         let manager = global_manager();
-        let json_result: Result<String, ManagerCmdErrorCode> = cmd.run(&manager).await.and_then(|ok| match serde_json::to_string_pretty(&ok) {
+
+        let result = cmd.run(&manager).await;
+
+        tracing::info!(
+            result = format!("{:#?}", result),
+            hash =? hash,
+            message_id = "eed0Oogi",
+            "finished json ffi cmd",
+        );
+
+        let json_result = result.and_then(|ok| match serde_json::to_string(&ok) {
             Ok(json_ok) => Ok(json_ok),
             Err(err) => {
                 tracing::error!(?err, "could not serialize successful json cmd result: {err}");
                 Err(ManagerCmdErrorCode::Other)
             }
         });
+
         match json_result {
             Ok(ok) => cb(context, ok.ffi_str(), "".ffi_str()),
             Err(err) => {

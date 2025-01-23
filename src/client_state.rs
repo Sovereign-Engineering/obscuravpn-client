@@ -9,7 +9,7 @@ use std::{
 use base64::prelude::*;
 use boringtun::x25519::{PublicKey, StaticSecret};
 use chrono::Utc;
-use obscuravpn_api::types::{AccountInfo, AuthToken, OneExit};
+use obscuravpn_api::types::{AccountId, AccountInfo, AuthToken, OneExit};
 use obscuravpn_api::{
     cmd::{ApiErrorKind, Cmd, CreateTunnel, DeleteTunnel, ListRelays, ListTunnels},
     types::{ObfuscatedTunnelConfig, OneRelay, TunnelConfig, WgPubkey},
@@ -94,7 +94,7 @@ impl ClientState {
     /// If `account_id` is set log in `auth_token` may be specified with an initial auth token.
     ///
     /// If `account_id` is `None` log out, `auth_token` should be `None`.
-    pub fn set_account_id(&self, account_id: Option<String>, auth_token: Option<AuthToken>) -> Result<(), ConfigSaveError> {
+    pub fn set_account_id(&self, account_id: Option<AccountId>, auth_token: Option<AuthToken>) -> Result<(), ConfigSaveError> {
         debug_assert!(
             account_id.is_some() || auth_token.is_none(),
             "It doesn't make sense to set `auth_token` with no `account_id`."

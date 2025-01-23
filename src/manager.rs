@@ -8,7 +8,7 @@ use std::{
 use futures::FutureExt;
 use obscuravpn_api::{
     cmd::{Cmd, GetAccountInfo, ListExits2},
-    types::{AccountInfo, OneExit, WgPubkey},
+    types::{AccountId, AccountInfo, OneExit, WgPubkey},
     Client, ClientError,
 };
 use serde::{Deserialize, Serialize};
@@ -38,12 +38,12 @@ pub struct Manager {
 }
 
 // Keep synchronized with ../../apple/shared/NetworkExtensionIpc.swift
-#[derive(Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Status {
     pub version: Uuid,
     pub vpn_status: VpnStatus,
-    pub account_id: Option<String>,
+    pub account_id: Option<AccountId>,
     pub in_new_account_flow: bool,
     pub pinned_locations: Vec<PinnedLocation>,
     pub last_chosen_exit: Option<String>,
@@ -68,7 +68,7 @@ impl Status {
 }
 
 // Keep synchronized with ../../apple/shared/NetworkExtensionIpc.swift
-#[derive(Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum VpnStatus {
     Connecting {},
@@ -303,7 +303,7 @@ impl Manager {
         });
     }
 
-    pub async fn login(&self, account_id: String, validate: bool) -> Result<(), ApiError> {
+    pub async fn login(&self, account_id: AccountId, validate: bool) -> Result<(), ApiError> {
         let auth_token = if validate {
             let api_client =
                 Client::new(self.client_state.base_url(), account_id.clone(), self.client_state.user_agent()).map_err(ClientError::from)?;

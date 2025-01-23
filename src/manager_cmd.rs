@@ -2,6 +2,7 @@
 
 use obscuravpn_api::{
     cmd::{ApiErrorKind, Cmd, GetAccountInfo, ListExits2},
+    types::AccountId,
     ClientError,
 };
 use serde::{Deserialize, Serialize};
@@ -73,13 +74,13 @@ impl From<&ApiError> for ManagerCmdErrorCode {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum ManagerCmd {
     Ping {},
     GetTrafficStats {},
     SetPinnedExits { exits: Vec<PinnedLocation> },
-    Login { account_id: String, validate: bool },
+    Login { account_id: AccountId, validate: bool },
     Logout {},
     SetApiUrl { url: Option<String> },
     ApiGetAccountInfo {},
@@ -89,7 +90,7 @@ pub enum ManagerCmd {
 }
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ManagerCmdOk {
     Empty,

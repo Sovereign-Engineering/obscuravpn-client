@@ -1,3 +1,5 @@
+// Command interface for commands, whose arguments and return values can be serialized and deserialized. You should usually prefer other methods unless you are implementing an FFI interface. All commands map more or less directly to another method.
+
 use obscuravpn_api::{
     cmd::{ApiErrorKind, Cmd, GetAccountInfo, ListExits2},
     ClientError,
@@ -17,6 +19,8 @@ use crate::{config::ConfigSaveError, errors::ApiError};
 ///
 /// All remaining errors are mapped to the `Other` variant.
 /// Make sure `obscura-ui/src/translations/en.json` contains an entry for each variant.
+///
+/// Do not use outside of code processing `ManagerCmd` processing.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, IntoStaticStr, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
@@ -69,12 +73,6 @@ impl From<&ApiError> for ManagerCmdErrorCode {
     }
 }
 
-impl From<anyhow::Error> for ManagerCmdErrorCode {
-    fn from(_: anyhow::Error) -> Self {
-        ManagerCmdErrorCode::Other
-    }
-}
-
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum ManagerCmd {
@@ -117,8 +115,14 @@ impl ManagerCmd {
                 Ok(()) => Ok(ManagerCmdOk::Empty),
                 Err(err) => Err((&err).into()),
             },
-            ManagerCmd::ApiGetAccountInfo {} => manager.get_account_info().await.map(ManagerCmdOk::ApiGetAccountInfo),
-            ManagerCmd::ApiListExit {} => manager.list_exits().await.map(ManagerCmdOk::ApiListExit),
+            ManagerCmd::ApiGetAccountInfo {} => match manager.get_account_info().await {
+                Ok(account_info) => Ok(ManagerCmdOk::ApiGetAccountInfo(account_info)),
+                Err(error) => Err((&error).into()),
+            },
+            ManagerCmd::ApiListExit {} => match manager.list_exits().await {
+                Ok(exit_list) => Ok(ManagerCmdOk::ApiListExit(exit_list)),
+                Err(error) => Err((&error).into()),
+            },
             ManagerCmd::GetStatus { known_version } => match manager.subscribe().wait_for(|s| Some(s.version) != known_version).await {
                 Ok(status) => Ok(ManagerCmdOk::GetStatus(status.clone())),
                 Err(_err) => {

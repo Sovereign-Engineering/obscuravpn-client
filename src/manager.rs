@@ -28,10 +28,7 @@ use crate::{
 
 use crate::{client_state::ClientState, errors::ConnectErrorCode, network_config::NetworkConfig};
 
-use super::{
-    ffi_helpers::*,
-    manager_cmd::{ManagerCmd, ManagerCmdErrorCode, ManagerCmdOk},
-};
+use super::ffi_helpers::*;
 
 pub struct Manager {
     client_state: Arc<ClientState>,
@@ -141,11 +138,6 @@ impl Manager {
             status_watch: channel(initial_status).0,
         }
         .into())
-    }
-
-    // Command interface for commands, whose arguments and return values can be serialized and deserialized. You should usually prefer other methods unless you are implementing an FFI interface. All commands map more or less directly to another method.
-    pub async fn run_cmd(&self, cmd: ManagerCmd) -> Result<ManagerCmdOk, ManagerCmdErrorCode> {
-        cmd.run(self).await
     }
 
     // Non-async exclusive mutable access to tunnel state
@@ -330,7 +322,7 @@ impl Manager {
         ret
     }
 
-    pub async fn list_exits(&self) -> Result<obscuravpn_api::cmd::ExitList, ManagerCmdErrorCode> {
+    pub async fn list_exits(&self) -> Result<obscuravpn_api::cmd::ExitList, ApiError> {
         let exits = self.api_request(ListExits2 {}).await?;
         self.client_state.maybe_migrate_pinned_exits(&exits)?;
         Ok(exits)
@@ -358,16 +350,11 @@ impl Manager {
         self.client_state.api_request(cmd).await
     }
 
-    pub async fn get_account_info(&self) -> Result<AccountInfo, ManagerCmdErrorCode> {
+    pub async fn get_account_info(&self) -> Result<AccountInfo, ApiError> {
         let account_info = self.api_request(GetAccountInfo()).await?;
-        self.update_account_info(&account_info)?;
-        Ok(account_info)
-    }
-
-    pub fn update_account_info(&self, account_info: &AccountInfo) -> anyhow::Result<()> {
-        self.client_state.update_account_info(account_info)?;
+        self.client_state.update_account_info(&account_info)?;
         self.update_status_if_changed(None);
-        Ok(())
+        Ok(account_info)
     }
 }
 

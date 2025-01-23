@@ -135,7 +135,7 @@ impl ClientState {
         self.lock().config.clone()
     }
 
-    pub fn maybe_migrate_pinned_exits(&self, exits: &obscuravpn_api::cmd::ExitList) -> anyhow::Result<()> {
+    pub fn maybe_migrate_pinned_exits(&self, exits: &obscuravpn_api::cmd::ExitList) -> Result<(), ConfigSaveError> {
         let mut inner = self.lock();
         if inner.config.pinned_locations.is_some() {
             return Ok(());

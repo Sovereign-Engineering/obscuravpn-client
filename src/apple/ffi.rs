@@ -126,7 +126,7 @@ pub unsafe extern "C" fn json_ffi_cmd(context: usize, json_cmd: FfiStr, cb: exte
     };
     RUNTIME.spawn(async move {
         let manager = global_manager();
-        let json_result: Result<String, ManagerCmdErrorCode> = manager.run_cmd(cmd).await.and_then(|ok| match serde_json::to_string_pretty(&ok) {
+        let json_result: Result<String, ManagerCmdErrorCode> = cmd.run(&manager).await.and_then(|ok| match serde_json::to_string_pretty(&ok) {
             Ok(json_ok) => Ok(json_ok),
             Err(err) => {
                 tracing::error!(?err, "could not serialize successful json cmd result: {err}");

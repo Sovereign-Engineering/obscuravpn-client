@@ -25,6 +25,16 @@ class AppState: ObservableObject {
                     Self.logger.info("Status updated: \(debugFormat(status), privacy: .public)")
                     version = status.version
                     self.status = status
+                    switch status.vpnStatus {
+                    case .reconnecting(exit: _, err: let err):
+                        if err == "accountExpired" {
+                            Self.logger.info("found reconnecting error accountExpired")
+                            // can't use openURL due to a runtime warning stating that it was called outside of a view
+                            NSApp.delegate?.application?(NSApp, open: [URLs.AppAccountPage])
+                        }
+                    default:
+                        break
+                    }
                 } else {
                     // TODO: Mark status as "unknown".
                     // https://linear.app/soveng/issue/OBS-358/status-icon-should-display-unknown-when-status-cant-be-read

@@ -16,6 +16,7 @@ enum ToggleLabels: String {
 struct ObscuraToggle: View {
     @Environment(\.openURL) private var openURL
     @ObservedObject var startupModel = StartupModel.shared
+    @ObservedObject var osStatusModel: OsStatusModel
     @State private var toggleLabel = ToggleLabels.notConnected
     @State private var isToggled = false
     @State private var allowToggleSync = true
@@ -114,7 +115,16 @@ struct ObscuraToggle: View {
         .onTapGesture { self.toggleClick() }
         .onReceive(self.vpnStatusTimer, perform: { _ in
             if self.allowToggleSync {
+                if self.osStatusModel.osStatus?.osVpnStatus == .disconnecting {
+                    self.isToggled = false
+                    self.toggleLabel = ToggleLabels.disconnecting
+                    return
+                }
                 guard let vpnStatus = self.getVpnStatus() else { return }
+                // Don't update the toggle's state if the state has already been updated for a particular vpnStatus
+                // This avoids bugs where the toggle is the component driving a vpn status change
+                // E.g. The vpnStatus reports disconnected and the user starts a connection through the toggle
+                //  -> Show the connecting state until the new vpnStatus rather than showing a disconnected state
                 if vpnStatus.version == self.vpnStatusId { return }
                 self.vpnStatusId = vpnStatus.version
                 switch vpnStatus.vpnStatus {

@@ -16,13 +16,14 @@ final class StatusItemManager: ObservableObject {
     private var sizePassthrough = PassthroughSubject<CGSize, Never>()
     private var sizeCancellable: AnyCancellable?
     private var bandwidthStatusModel = BandwidthStatusModel()
+    private var osStatusModel = OsStatusModel()
 
     // intentionally empty to ensure that the menu item can be hightlighted
     @objc func emptyAction() {}
 
     func createStatusItem() {
         let statusItem: NSStatusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        let hostingView = NSHostingView(rootView: StatusItem(sizePassthrough: sizePassthrough, bandwidthStatusModel: bandwidthStatusModel))
+        let hostingView = NSHostingView(rootView: StatusItem(sizePassthrough: sizePassthrough, bandwidthStatusModel: bandwidthStatusModel, osStatusModel: self.osStatusModel))
         hostingView.frame = NSRect(x: 0, y: 0, width: 80, height: 24)
         statusItem.button?.frame = hostingView.frame
         statusItem.button?.addSubview(hostingView)
@@ -30,7 +31,7 @@ final class StatusItemManager: ObservableObject {
         let menu = NSMenu()
 
         let toggleMenuItem = NSMenuItem(title: "Toggle VPN", action: #selector(self.emptyAction), keyEquivalent: "")
-        let toggleHostingView = MenuItemView(ObscuraToggle())
+        let toggleHostingView = MenuItemView(ObscuraToggle(osStatusModel: self.osStatusModel))
         // https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/MenuList/Articles/ViewsInMenuItems.html
         toggleMenuItem.view = toggleHostingView
         toggleMenuItem.target = self
@@ -172,9 +173,10 @@ struct StatusItem: View {
     var sizePassthrough: PassthroughSubject<CGSize, Never>
     @State private var showWave: Bool = false
     @State private var menuShown: Bool = false
+    @State private var osStatus: OsStatus?
     @ObservedObject var startupModel = StartupModel.shared
-
     @ObservedObject var bandwidthStatusModel: BandwidthStatusModel
+    @ObservedObject var osStatusModel: OsStatusModel
 
     let connectingImageNames = ["MenuBarConnecting-1", "MenuBarConnecting-2", "MenuBarConnecting-3"]
     @State private var menuBarImage = "MenuBarDisconnected"
@@ -193,6 +195,12 @@ struct StatusItem: View {
                     Image(self.menuBarImage)
                         .renderingMode(.template)
                         .onReceive(self.statusIconTimer, perform: { _ in
+                            if self.osStatusModel.osStatus?.osVpnStatus == .disconnecting {
+                                self.menuBarImage = self.connectingImageNames[self.statusIconIdx]
+                                // add a full count before using modulo to avoid negative indices
+                                self.statusIconIdx = (self.statusIconIdx + self.connectingImageNames.count - 1) % self.connectingImageNames.count
+                                return
+                            }
                             switch self.getVpnStatus() {
                             case .connecting, .reconnecting:
                                 self.menuBarImage = self.connectingImageNames[self.statusIconIdx]
@@ -223,6 +231,24 @@ struct StatusItem: View {
         .padding(4)
         .padding(.bottom, 2)
         .fixedSize()
+        .task {
+            while true {
+                do {
+                    if self.startupModel.appState == nil {
+                        throw "appState is nil"
+                    }
+                    self.osStatusModel.osStatus = try await self.startupModel.appState?.getOsStatus(knownVersion: self.osStatusModel.osStatus?.version)
+                } catch {
+                    logger.error("could not update osStatsus. \(error, privacy: .public)")
+                    do {
+                        try await Task.sleep(seconds: 1)
+                    } catch {
+                        logger.info("Task cancelled \(error, privacy: .public)")
+                        return // Another task will be started.
+                    }
+                }
+            }
+        }
         .task {
             while true {
                 do {
@@ -287,4 +313,8 @@ struct StatusItem: View {
                 self.sizePassthrough.send(size)
             })
     }
+}
+
+class OsStatusModel: ObservableObject {
+    @Published var osStatus: OsStatus? = nil
 }

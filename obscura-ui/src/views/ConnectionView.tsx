@@ -65,7 +65,8 @@ export default function Connection() {
     const accountHasExpired = accountInfo !== null && accountIsExpired(accountInfo);
 
     const getTitle = () => {
-        if (!internetAvailable) return t('disconnected');
+        if (vpnConnected) return t('connectedToObscura');
+        if (accountHasExpired) return t('account-Expired');
         if (connectionTransition) {
             switch (connectionInProgress) {
                 case ConnectionInProgress.Connecting:
@@ -77,18 +78,17 @@ export default function Connection() {
                     return t('Disconnecting');
             }
         }
-        if (vpnConnected) return t('connectedToObscura');
+        if (!internetAvailable) return t('disconnected');
         if (accountInfo === null) return t('validatingAccount')
-        if (accountHasExpired) return t('account-Expired');
         return t('notConnected');
     }
 
     const Subtitle = () => {
+        if (vpnConnected) return t('enjoyObscura');
+        if (accountHasExpired) return t('continueUsingObscura');
         if (!internetAvailable) return t('connectToInternet');
         if (connectionTransition) return t('pleaseWaitAMoment');
-        if (vpnConnected) return t('enjoyObscura');
         if (accountInfo === null) return '';
-        if (accountHasExpired) return t('continueUsingObscura');
         return t('connectToEnjoy');
     }
 
@@ -103,6 +103,14 @@ export default function Connection() {
     const primaryBtnDisconnectProps = (vpnConnected && connectionInProgress !== ConnectionInProgress.Reconnecting) ? theme.other.buttonDisconnectProps : {};
 
     const showQuickConnect = !vpnConnected && cityConnectingTo === null && accountInfo !== null && connectionInProgress !== ConnectionInProgress.Disconnecting;
+    /* If quick connect is used, don't show the combobox while connecting to avoid confusion.
+       This is because we don't want the user to think they are connecting to the last chosen location.
+       It's possible in the future that we can propagate which location is being connected to while connecting.
+       Additionally, we don't want to show the dropdown when not connected AND a connection pre-requisite is missing.
+       If we're already connected and the account expires, we still want to show the disconnect.
+       Only when we're no longer connected should the pre-requisite take precedence.
+    */
+    const showLocationSelect = (connectionInProgress !== ConnectionInProgress.Connecting || cityConnectingTo !== null) && (vpnConnected || accountInfo !== null && !accountHasExpired);
 
     return (
         <Stack align='center' h='100vh' gap={0} style={{ backgroundImage: `url(${Deco()})`, backgroundRepeat: 'no-repeat', backgroundSize: 'contain', backgroundPosition: 'bottom' }}>
@@ -114,24 +122,18 @@ export default function Connection() {
             </Stack>
             <Space h='xs' />
             {
-              accountInfo !== null && accountHasExpired ?
+              !vpnConnected && accountInfo !== null && accountHasExpired ?
                 <Button component='a' href={ObscuraAccount.APP_ACCOUNT_TAB}>{t('ManageAccount')}</Button>
               : showQuickConnect &&
                 <Button size='md' className={commonClasses.button} onClick={qcBtnAction} w={BUTTON_WIDTH} disabled={qcBtnDisabled} {...primaryBtnDisconnectProps}>{getButtonContent()}</Button>
             }
-
             {/* quick connect cancel button */}
-            {connectionInProgress === ConnectionInProgress.Connecting && cityConnectingTo === null && <>
+            {isConnecting(connectionInProgress) && cityConnectingTo === null && <>
                 <Space h='lg' />
-                <Button w={BUTTON_WIDTH} {...theme.other.buttonDisconnectProps} mt={5} onClick={vpnDisconnect}>{t('Cancel')}</Button>
+                <Button w={BUTTON_WIDTH} {...theme.other.buttonDisconnectProps} mt={5} onClick={vpnDisconnect}>{t('Cancel Connecting')}</Button>
             </>}
             <Space />
-            {/* if quick connect is used, don't show the combobox while connecting to avoid confusion
-                we do not want the user to think they are connecting to the last chosen location
-                It's possible that in the future we can propagate which location is being connected to while connecting
-                !(connectionInProgress === connecting && cityConnectingTo === null) */}
-            {(connectionInProgress !== ConnectionInProgress.Connecting || cityConnectingTo !== null) && accountInfo !== null && !accountHasExpired &&
-                <LocationConnect cityConnectingTo={cityConnectingTo} setCityConnectingTo={setCityConnectingTo} />}
+            {showLocationSelect && <LocationSelect cityConnectingTo={cityConnectingTo} setCityConnectingTo={setCityConnectingTo} />}
             {
                 vpnConnected && connectionInProgress === ConnectionInProgress.UNSET && <>
                     <Space />
@@ -374,9 +376,6 @@ function Mascot() {
 
     const getMascot = () => {
         if (!internetAvailable) return MascotDead;
-        if (accountInfo === null) return MascotValidating;
-        if (accountIsExpired(accountInfo)) return MascotDead;
-
         if (connectionInProgress !== ConnectionInProgress.UNSET) {
             const mascotConnecting = MASCOT_CONNECTING[connectingIndex];
             if (mascotConnecting === undefined) {
@@ -386,17 +385,19 @@ function Mascot() {
             return mascotConnecting;
         }
         if (vpnConnected) return connectedBefore === ConnectedBefore.FIRST_CONNECT ? MascotConnectedFirstTime : MascotConnected;
+        if (accountInfo === null) return MascotValidating;
+        if (accountIsExpired(accountInfo)) return MascotDead;
         return MascotNotConnected;
     };
     return <Image src={getMascot()} maw={90} />;
 }
 
-interface LocationConnectProps {
+interface LocationSelectProps {
   cityConnectingTo: string | null,
   setCityConnectingTo: Dispatch<SetStateAction<string | null>>
 }
 
-function LocationConnect({ cityConnectingTo, setCityConnectingTo }: LocationConnectProps) {
+function LocationSelect({ cityConnectingTo, setCityConnectingTo }: LocationSelectProps) {
     const { t } = useTranslation();
     const { exitList } = useContext(ExitsContext);
     const { appStatus, vpnConnect, vpnConnected, vpnDisconnectConnect, connectionInProgress, osStatus } = useContext(AppContext);

@@ -376,7 +376,9 @@ class StartupModel: ObservableObject {
             let value = ObservableValue<Bool>()
             self.update(status: .askToRegisterLoginItem(value))
             if await value.get() {
-                _ = registerLoginitem()
+                do {
+                    try registerAsLoginItem()
+                } catch {}
             }
             UserDefaults.standard.set(true, forKey: UserDefaultKeys.LoginItemRegistered)
         }

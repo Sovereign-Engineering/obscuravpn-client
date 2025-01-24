@@ -138,10 +138,17 @@ export async function notices(): Promise<Notice[]>  {
     return await invoke('notices');
 }
 
-export function registerLoginItem() {
-    return invoke('registerLoginItem');
+export function registerAsLoginItem() {
+    return invoke('registerAsLoginItem');
 }
 
+export function unregisterAsLoginItem() {
+  return invoke('unregisterAsLoginItem');
+}
+
+export async function isRegisteredAsLoginItem(): Promise<boolean> {
+  return await invoke('isRegisteredAsLoginItem') as boolean;
+}
 
 export function developerResetUserDefaults() {
     return invoke('resetUserDefaults');

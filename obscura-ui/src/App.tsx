@@ -184,6 +184,7 @@ export default function () {
         return ConnectionInProgress.Connecting;
       });
     } else if (vpnStatus.reconnecting !== undefined) {
+      setVpnConnected(false);
       setConnectionInProgress(ConnectionInProgress.Reconnecting);
       if (vpnStatus.reconnecting.err !== undefined) {
         console.error(`got error while reconnecting: ${vpnStatus.reconnecting.err}`);

@@ -1,14 +1,15 @@
 import { Anchor, Button, Center, Group, Image, Loader, Modal, Stack, Text, Title, useComputedColorScheme, useMantineTheme } from '@mantine/core';
-import { t } from 'i18next';
 import { lazy, Suspense, useContext, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import AppIcon from '../../../apple/client/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x@2x.png';
-import { LEGAL_WEBPAGE, OBSCURA_WEBPAGE, TERMS_WEBPAGE } from '../common/accountUtils';
+import { LEGAL_WEBPAGE, OBSCURA_WEBPAGE } from '../common/accountUtils';
 import { AppContext } from '../common/appContext';
 import Wordmark from '../res/obscura-wordmark.svg?react';
 
 const Licenses = lazy(() => import('../components/Licenses'));
 
 export default function About() {
+  const { t } = useTranslation();
   const { osStatus } = useContext(AppContext);
   const colorScheme = useComputedColorScheme();
   const [showLicenses, setShowLicenses] = useState(false);
@@ -34,8 +35,7 @@ export default function About() {
         <Anchor onClick={() => setShowLicenses(o => !o)}>
           {t('openSourceLicenses')}
         </Anchor>
-        <Anchor href={LEGAL_WEBPAGE}>{t('privacyPolicy')}</Anchor>
-        <Anchor href={TERMS_WEBPAGE}>{t('termsOfService')}</Anchor>
+        <Anchor href={LEGAL_WEBPAGE}>{t('tosAndPrivacyPolicy')}</Anchor>
       </Group>
     </Stack>
   );

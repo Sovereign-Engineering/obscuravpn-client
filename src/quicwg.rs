@@ -1,6 +1,7 @@
 use boringtun::noise::{Tunn, TunnResult};
 use boringtun::x25519::{PublicKey, StaticSecret};
-use futures::select;
+use etherparse::{IcmpEchoHeader, Icmpv4Type, PacketBuilder, SlicedPacket, TransportSlice};
+use futures::select_biased;
 use futures::FutureExt;
 use quinn::crypto::rustls::QuicClientConfig;
 use quinn::rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
@@ -8,18 +9,22 @@ use quinn::rustls::crypto::{verify_tls12_signature, verify_tls13_signature, Cryp
 use quinn::rustls::pki_types::{CertificateDer, ServerName, UnixTime};
 use quinn::rustls::{CertificateError, DigitallySignedStruct, SignatureScheme};
 use quinn::{rustls, ClientConfig, MtuDiscoveryConfig, RecvStream};
-use rand::{thread_rng, Rng};
-use std::net::SocketAddr;
+use rand::random;
+use std::net::{Ipv4Addr, SocketAddr};
 use std::ops::ControlFlow;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
 use thiserror::Error;
-use tokio::time::{interval, sleep, timeout};
+use tokio::spawn;
+use tokio::sync::Notify;
+use tokio::task::AbortHandle;
+use tokio::time::{interval, sleep, timeout, MissedTickBehavior};
+use tokio::time::{Duration, Instant};
 use uuid::Uuid;
 
 // Note that there is a race condition between client connection and the relay learning about our tunnel. In most cases this delay can't be more than a few seconds. So we make sure that we have at least 10s of retries here to cover this case.
 const QUIC_CONNECT_RETRY_COUNT: usize = 20;
 const QUIC_CONNECT_RETRY_DELAY: Duration = Duration::from_millis(500);
+const QUIC_MAX_IDLE_MS: u32 = 5000;
 
 // The primary reason for these retries is that Mullvad's key propagation to exits is sometimes slow. Handshakes will be ignored until the key is known so we need to keep retrying.
 // Based on a day of measurements on a good network connection while 97% of handshakes will succeed within 10s we need to wait 21.2s to get a 99% success rate.
@@ -28,15 +33,18 @@ const QUIC_CONNECT_RETRY_DELAY: Duration = Duration::from_millis(500);
 const WG_FIRST_HANDSHAKE_RETRIES: usize = 9; // 22.5s total.
 const WG_FIRST_HANDSHAKE_RESENDS: usize = 25; // 2.5s per handshake.
 const WG_FIRST_HANDSHAKE_TIMEOUT: Duration = Duration::from_millis(100);
-const NO_HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(20);
 const RELAY_SNI: &str = "relay.obscura.net";
+const WG_MAX_IDLE_MS: u32 = QUIC_MAX_IDLE_MS;
+const WG_TICK_MS: u32 = 1000;
 
 #[derive(Debug, Error)]
-pub enum QuicWgError {
-    #[error("timeout")]
-    Timeout,
-    #[error(transparent)]
-    Other(#[from] anyhow::Error),
+pub enum QuicWgReceiveError {
+    #[error("wireguard idle timeout")]
+    WireguardIdleTimeout,
+    #[error("quic send error: {0}")]
+    QuicSendError(#[from] quinn::SendDatagramError),
+    #[error("quic receive error: {0}")]
+    QuicReceiveError(#[from] quinn::ConnectionError),
 }
 
 #[derive(Debug, Error)]
@@ -82,31 +90,39 @@ pub struct QuicWgConn {
     quic: quinn::Connection,
     client_public_key: PublicKey,
     exit_public_key: PublicKey,
+    client_ip_v4: Ipv4Addr,
+    ping_keepalive_ip_v4: Ipv4Addr,
+    ping_keepalive_payload: [u8; 16],
+    connected_at: Instant,
+    wg_tick_notify: Arc<Notify>,
+    tick_abort: AbortHandle,
 }
 
 #[derive(Default, Clone, Copy)]
 pub struct QuicWgTrafficStats {
     pub tx_bytes: u64,
     pub rx_bytes: u64,
+    pub latest_latency_ms: u16,
 }
 
 struct WgState {
+    buffer: Vec<u8>,
     wg: Tunn,
-
-    /// The time that the last handshake expired.
-    ///
-    /// Specifically this is the time that we noticed that `self.wg.time_since_last_handshake()` started returning `None`. This value is reset to `None` if that method indicates that another handshake completed.
-    last_handshake_expired: Option<Instant>,
     traffic_stats: QuicWgTrafficStats,
+    ticks_since_last_packet: u32,
+    last_send_err_logged_at: Option<Instant>,
 }
 
 impl QuicWgConn {
+    #[allow(clippy::too_many_arguments)]
     pub async fn connect(
         client_secret_key: StaticSecret,
         exit_public_key: PublicKey,
         relay_addr: SocketAddr,
         relay_cert: CertificateDer<'static>,
         endpoint: quinn::Endpoint,
+        client_ip_v4: Ipv4Addr,
+        ping_keepalive_ip_v4: Ipv4Addr,
         token: Uuid,
     ) -> Result<Self, QuicWgConnectError> {
         let client_public_key = PublicKey::from(&client_secret_key);
@@ -114,12 +130,41 @@ impl QuicWgConn {
         let quic = Self::relay_connect(&endpoint, relay_addr, relay_cert, token).await?;
         tracing::info!("connected to relay");
 
-        let index = thread_rng().gen();
-        let mut wg = Tunn::new(client_secret_key, exit_public_key, None, Some(1), index, None).unwrap();
+        let index = random();
+        let mut wg = Tunn::new(client_secret_key, exit_public_key, None, None, index, None).unwrap();
         Self::first_wg_handshake(&mut wg, &quic, WG_FIRST_HANDSHAKE_RETRIES, WG_FIRST_HANDSHAKE_RESENDS).await?;
         tracing::info!("connected to exit");
-        let wg_state = Mutex::new(WgState { wg, last_handshake_expired: None, traffic_stats: QuicWgTrafficStats::default() });
-        Ok(Self { quic, wg_state, client_public_key, exit_public_key })
+        let wg_tick_notify = Arc::new(Notify::new());
+        let wg_tick_notify_clone = wg_tick_notify.clone();
+        let tick_abort = spawn(async move {
+            let mut timer = interval(Duration::from_millis(WG_TICK_MS.into()));
+            timer.set_missed_tick_behavior(MissedTickBehavior::Skip);
+            loop {
+                timer.tick().await;
+                wg_tick_notify_clone.notify_one();
+            }
+        })
+        .abort_handle();
+        let now = Instant::now();
+        let wg_state = Mutex::new(WgState {
+            wg,
+            traffic_stats: QuicWgTrafficStats::default(),
+            buffer: vec![0u8; u16::MAX as usize],
+            ticks_since_last_packet: 0,
+            last_send_err_logged_at: None,
+        });
+        Ok(Self {
+            quic,
+            wg_state,
+            client_public_key,
+            exit_public_key,
+            client_ip_v4,
+            ping_keepalive_ip_v4,
+            ping_keepalive_payload: random(),
+            connected_at: now,
+            wg_tick_notify,
+            tick_abort,
+        })
     }
 
     async fn relay_connect(
@@ -128,7 +173,7 @@ impl QuicWgConn {
         relay_cert: CertificateDer<'static>,
         token: Uuid,
     ) -> Result<quinn::Connection, QuicWgConnectError> {
-        let quic_config = Self::quic_config(relay_cert).map_err(QuicWgConnectError::CryptoConfig)?;
+        let quic_config = Self::quic_config(relay_cert)?;
         let mut retries = QUIC_CONNECT_RETRY_COUNT;
         loop {
             match Self::try_relay_connect(endpoint, &quic_config, relay_addr, token).await {
@@ -149,15 +194,16 @@ impl QuicWgConn {
         }
     }
 
-    fn quic_config(relay_cert: CertificateDer<'static>) -> anyhow::Result<ClientConfig> {
+    fn quic_config(relay_cert: CertificateDer<'static>) -> Result<ClientConfig, QuicWgConnectError> {
         let default_provider = Arc::new(rustls::crypto::ring::default_provider());
         let mut crypto = rustls::ClientConfig::builder_with_provider(default_provider.clone())
-            .with_safe_default_protocol_versions()?
+            .with_safe_default_protocol_versions()
+            .map_err(|error| QuicWgConnectError::CryptoConfig(error.into()))?
             .dangerous()
             .with_custom_certificate_verifier(Arc::new(VerifyVpnServerCert { cert: relay_cert, provider: default_provider }))
             .with_no_client_auth();
         crypto.alpn_protocols = vec![b"h3".to_vec()];
-        let crypto = QuicClientConfig::try_from(crypto)?;
+        let crypto = QuicClientConfig::try_from(crypto).map_err(|error| QuicWgConnectError::CryptoConfig(error.into()))?;
         let mut client_cfg = ClientConfig::new(Arc::new(crypto));
         let mut transport_config = quinn::TransportConfig::default();
         transport_config.max_concurrent_uni_streams(0u8.into());
@@ -169,7 +215,7 @@ impl QuicWgConn {
         mtu_discovery_config.upper_bound(MTU);
         transport_config.mtu_discovery_config(Some(mtu_discovery_config));
         transport_config.keep_alive_interval(Some(Duration::from_secs(1)));
-        transport_config.max_idle_timeout(Some(Duration::from_secs(5).try_into()?));
+        transport_config.max_idle_timeout(Some(quinn::VarInt::from_u32(QUIC_MAX_IDLE_MS).into()));
         transport_config.congestion_controller_factory(Arc::new(quinn::congestion::BbrConfig::default()));
         client_cfg.transport_config(Arc::new(transport_config));
         Ok(client_cfg)
@@ -220,6 +266,27 @@ impl QuicWgConn {
             _ => return Err(QuicWgWireguardHandshakeError::InitMessageConstructError),
         };
         Ok(data)
+    }
+
+    fn build_ping_keepalive_packet(&self) -> Vec<u8> {
+        let id = random();
+        let seq = self.connected_at.elapsed().as_millis() as u16;
+        let builder = PacketBuilder::ipv4(self.client_ip_v4.octets(), self.ping_keepalive_ip_v4.octets(), 255).icmpv4_echo_request(id, seq);
+        let mut packet = Vec::<u8>::with_capacity(builder.size(self.ping_keepalive_payload.len()));
+        builder.write(&mut packet, &self.ping_keepalive_payload).unwrap();
+        packet
+    }
+
+    fn latency_ms_from_pong_keepalive_packet(&self, packet: &[u8]) -> Option<u16> {
+        let ip = SlicedPacket::from_ip(packet).ok()?;
+        let Some(TransportSlice::Icmpv4(icmp)) = ip.transport else { return None };
+        let Icmpv4Type::EchoReply(IcmpEchoHeader { seq, .. }) = icmp.icmp_type() else {
+            return None;
+        };
+        if icmp.payload() == self.ping_keepalive_payload {
+            return Some((self.connected_at.elapsed().as_millis() as u16).wrapping_sub(seq));
+        }
+        None
     }
 
     async fn wait_for_first_handshake_response(wg: &mut Tunn, quic: &quinn::Connection) -> Result<(), QuicWgWireguardHandshakeError> {
@@ -296,71 +363,64 @@ impl QuicWgConn {
         }
     }
 
-    pub fn send(&self, packet: &[u8]) -> anyhow::Result<()> {
-        let mut buf = vec![0u8; u16::MAX as usize];
-        let res = {
-            let mut wg_state = self.wg_state.lock().unwrap();
-            wg_state.traffic_stats.tx_bytes += packet.len() as u64;
-            wg_state.wg.encapsulate(packet, &mut buf)
-        };
-        Self::handle_result(&self.quic, res)?;
-        Ok(())
+    pub fn send(&self, packet: &[u8]) {
+        let mut wg_state = self.wg_state.lock().unwrap();
+        let WgState { buffer, wg, traffic_stats, last_send_err_logged_at, .. } = &mut *wg_state;
+        traffic_stats.tx_bytes += packet.len() as u64;
+        let res = wg.encapsulate(packet, buffer);
+        if let Err(error) = Self::handle_result(&self.quic, res) {
+            // rate-limited logging because this can get VERY noisy and is usually not interesting
+            const SILENCE_SECS: u64 = 1;
+            if !last_send_err_logged_at.is_some_and(|last_log_at| last_log_at.elapsed().as_secs() < SILENCE_SECS) {
+                tracing::error!(?error, "error while sending packet, silencing this log for {SILENCE_SECS}min");
+                *last_send_err_logged_at = Some(Instant::now());
+            }
+        }
     }
 
-    pub async fn receive(&self, buf: &mut [u8]) -> anyhow::Result<Vec<u8>> {
+    pub async fn receive(&self) -> Result<Vec<u8>, QuicWgReceiveError> {
         // TODO: implement QUIC recovery and detect WG interruptions fast (OBS-274)
-        let mut timer = interval(Duration::from_secs(1));
         loop {
-            select! {
-                _ = timer.tick().fuse() => {
+            select_biased! {
+                _ = self.wg_tick_notify.notified().fuse() => {
                     let mut wg_state = self.wg_state.lock().unwrap();
+                    let WgState {buffer,wg, ticks_since_last_packet, .. } = &mut *wg_state;
+                    if ticks_since_last_packet.saturating_mul(WG_TICK_MS) > WG_MAX_IDLE_MS {
+                        tracing::error!("no packets received for at least {WG_MAX_IDLE_MS}ms");
+                        return Err(QuicWgReceiveError::WireguardIdleTimeout)
+                    }
                     loop {
-                        let timer_result = wg_state.wg.update_timers(buf);
-
-                        match (wg_state.wg.time_since_last_handshake(), wg_state.last_handshake_expired) {
-                            (None, None) => {
-                                tracing::info!("Handshake expired.");
-                                wg_state.last_handshake_expired = Some(Instant::now());
-                            }
-                            (None, Some(last_handshake_expired)) => {
-                                if last_handshake_expired.elapsed() > NO_HANDSHAKE_TIMEOUT {
-                                    anyhow::bail!(
-                                        "No successful handshake in {:?}.",
-                                        NO_HANDSHAKE_TIMEOUT)
-                                }
-                            }
-                            (Some(duration), None) => {
-                                if duration > Duration::from_secs(10 * 60) {
-                                    tracing::warn!(
-                                        time_since_handshake_s = duration.as_secs(),
-                                        "Long time since handshake.");
-                                }
-                            }
-                            (Some(_), Some(_)) => {
-                                tracing::info!("Handshake succeeded.");
-                                wg_state.last_handshake_expired = None;
-                            }
-                        }
-
+                        let timer_result = wg.update_timers(buffer);
                         match Self::handle_result(&self.quic, timer_result)? {
                             ControlFlow::Continue(()) => continue,
                             ControlFlow::Break(Some(_)) => tracing::warn!("unexpected packet during update_timers"),
                             ControlFlow::Break(None) => break,
                         }
                     }
+                    let ping_packet = self.build_ping_keepalive_packet();
+                    let ping_result = wg.encapsulate(&ping_packet, buffer);
+                    Self::handle_result(&self.quic, ping_result)?;
+                    *ticks_since_last_packet += 1;
                 }
                 receive_quic = self.receive_quic().fuse() => {
                     let mut datagram = receive_quic?;
                     let mut wg_state = self.wg_state.lock().unwrap();
+                    let WgState {buffer,wg, ticks_since_last_packet, traffic_stats, .. } = &mut *wg_state;
                     loop {
-                        let res = wg_state.wg.decapsulate(None, &datagram, buf);
+                        let res = wg.decapsulate(None, &datagram, buffer);
                         match Self::handle_result(&self.quic, res)? {
                             ControlFlow::Continue(()) => {
                                 datagram.truncate(0);
                                 continue
                             }
                             ControlFlow::Break(Some(packet)) => {
-                                wg_state.traffic_stats.rx_bytes += packet.len() as u64;
+                                *ticks_since_last_packet = 0;
+                                traffic_stats.rx_bytes += packet.len() as u64;
+                                if let Some(latest_latency_ms) = self.latency_ms_from_pong_keepalive_packet(&packet) {
+                                    tracing::info!("received keepalive pong after {}ms", latest_latency_ms);
+                                    traffic_stats.latest_latency_ms = latest_latency_ms;
+                                    break
+                                }
                                 return Ok(packet)
                             },
                             ControlFlow::Break(None) => break,
@@ -381,6 +441,12 @@ impl QuicWgConn {
 
     pub fn client_public_key(&self) -> PublicKey {
         self.client_public_key
+    }
+}
+
+impl Drop for QuicWgConn {
+    fn drop(&mut self) {
+        self.tick_abort.abort();
     }
 }
 

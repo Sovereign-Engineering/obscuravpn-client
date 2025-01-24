@@ -151,7 +151,8 @@ export interface TrafficStats {
     timestampMs: number,
     connId: string,
     txBytes: number,
-    rxBytes: number
+    rxBytes: number,
+    latestLatencyMs: number,
 }
 
 export async function getTrafficStats(): Promise<TrafficStats> {

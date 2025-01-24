@@ -221,6 +221,7 @@ impl ClientState {
         let chose_exit = exit.is_some();
         let (token, tunnel_config, wg_sk, exit, relay) = self.new_tunnel(exit).await?;
         let network_config = NetworkConfig::new(&tunnel_config)?;
+        let client_ip_v4 = network_config.ipv4;
         tracing::info!(
             tunnel.id =% token,
             exit.pubkey =? tunnel_config.exit_pubkey,
@@ -235,7 +236,18 @@ impl ClientState {
                 .decode(tunnel_config.relay_cert)
                 .map_err(|err| TunnelConnectError::InvalidRelayCert(err.into()))?,
         );
-        let conn = QuicWgConn::connect(wg_sk.clone(), remote_pk, relay_addr, relay_cert, quic, token).await?;
+        let ping_keepalive_ip = tunnel_config.gateway_ip_v4;
+        let conn = QuicWgConn::connect(
+            wg_sk.clone(),
+            remote_pk,
+            relay_addr,
+            relay_cert,
+            quic,
+            client_ip_v4,
+            ping_keepalive_ip,
+            token,
+        )
+        .await?;
         tracing::info!("tunnel connected");
         if chose_exit {
             _ = Self::change_config(&mut self.lock(), |config| config.last_chosen_exit = Some(exit.id.clone()));

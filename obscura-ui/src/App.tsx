@@ -1,11 +1,9 @@
-import { ActionIcon, AppShell, AppShellHeader, AppShellMain, AppShellNavbar, AppShellSection, Burger, Divider, Group, Image, Modal, Space, Text, Title, useComputedColorScheme, useMantineColorScheme } from '@mantine/core';
+import { AppShell, AppShellHeader, AppShellMain, AppShellNavbar, AppShellSection, Burger, Divider, Group, Image, Modal, Space, Text, Title, useComputedColorScheme, useMantineColorScheme } from '@mantine/core';
 import { useDisclosure, useHotkeys } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Trans, useTranslation } from 'react-i18next';
-import { BsMoonStarsFill } from 'react-icons/bs';
-import { IoSunnySharp } from 'react-icons/io5';
 import { Navigate, NavLink, Route, Routes, useNavigate } from 'react-router-dom';
 import SimpleBar from 'simplebar-react';
 import 'simplebar-react/dist/simplebar.min.css';
@@ -13,7 +11,7 @@ import AppIcon from '../../apple/client/Assets.xcassets/AppIcon.appiconset/icon_
 import classes from './App.module.css';
 import * as commands from './bridge/commands';
 import { logReactError, useSystemContext } from './bridge/SystemProvider';
-import { accountIsExpired, Exit, paidUntil } from './common/api';
+import { Exit } from './common/api';
 import { AppContext, AppStatus, ConnectionInProgress, ExitsContext, OsStatus } from './common/appContext';
 import { fmtVpnError } from './common/danger';
 import { NotificationId } from './common/notifIds';
@@ -396,12 +394,6 @@ export default function () {
           <Burger visibleFrom='sm' opened={desktopNavOpened} onClick={toggleDesktopNav} size='sm' />
           <Image src={AppIcon} w={28} />
           <Text>{HEADER_TITLE}</Text>
-        </Group>
-
-        <Group className={classes.headerRightItems} h='110%'>
-          <ActionIcon id='toggle-theme' title={osPlatform === 'darwin' ? '⌘ + J' : 'ctrl + J'} variant='default' onClick={() => toggleColorScheme()} size={30}>
-            {colorScheme === 'dark' ? <IoSunnySharp size='1.5em' /> : <BsMoonStarsFill />}
-          </ActionIcon>
         </Group>
       </AppShellHeader>}
 

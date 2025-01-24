@@ -8,7 +8,9 @@ enum Command: Codable {
     case startTunnel(tunnelArgs: String)
     case stopTunnel
     case debuggingArchive
-    case registerLoginItem
+    case registerAsLoginItem
+    case unregisterAsLoginItem
+    case isRegisteredAsLoginItem
     case resetUserDefaults
     case getOsStatus(knownVersion: UUID?)
     case jsonFfiCmd(
@@ -29,8 +31,14 @@ func handleWebViewCommand(command: Command) async throws -> String {
         appState.disableTunnel()
     case .debuggingArchive:
         try await createDebuggingArchive()
-    case .registerLoginItem:
-        return try registerLoginitem().json()
+
+    case .registerAsLoginItem:
+        try registerAsLoginItem()
+    case .unregisterAsLoginItem:
+        try unregisterAsLoginItem()
+    case .isRegisteredAsLoginItem:
+        return try isRegisteredAsLoginItem().json()
+
     case .resetUserDefaults:
         // NOTE: only shown in the Developer View
         appState.resetUserDefaults()
@@ -48,14 +56,4 @@ func handleWebViewCommand(command: Command) async throws -> String {
         return try await appState.getOsStatus(knownVersion: version).json()
     }
     return "{}"
-}
-
-func registerLoginitem() -> Bool {
-    do {
-        try SMAppService.mainApp.register()
-        return true
-    } catch {
-        logger.info("failed to register app at login")
-    }
-    return false
 }

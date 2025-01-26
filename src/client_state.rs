@@ -255,11 +255,11 @@ impl ClientState {
                 tracing::warn!("error removing unused local tunnels: {}", err);
             }
 
-            let mut sk = self.get_config().wireguard_key_cache.secret_key;
+            let (mut sk, mut pk) = self.get_config().wireguard_key_cache.key_pair();
             if !self.get_config().use_wireguard_key_cache {
                 sk = StaticSecret::random_from_rng(OsRng);
+                pk = PublicKey::from(&sk);
             }
-            let pk = PublicKey::from(&sk);
             let wg_pubkey = WgPubkey(pk.to_bytes());
             let tunnel_id = Uuid::new_v4();
             tracing::info!(

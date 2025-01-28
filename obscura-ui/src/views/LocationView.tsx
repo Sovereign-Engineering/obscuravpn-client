@@ -1,10 +1,11 @@
-import { ActionIcon, Button, Card, Flex, Group, Loader, Space, Stack, Text, ThemeIcon, useMantineTheme } from '@mantine/core';
+import { ActionIcon, Button, Card, Divider, Flex, Group, Loader, Stack, Text, TextInput, ThemeIcon, useMantineTheme } from '@mantine/core';
+import { useInterval } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { continents } from 'countries-list';
 import { MouseEvent, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsPin, BsPinFill, BsShieldFillCheck, BsShieldFillExclamation } from 'react-icons/bs';
-
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import * as commands from '../bridge/commands';
 import { Exit, getExitCountry } from '../common/api';
 import { AppContext, ConnectionInProgress, ExitsContext } from '../common/appContext';
@@ -13,9 +14,11 @@ import { fmtErrorI18n } from '../common/danger';
 import { CityNotFoundError, exitLocation, exitsSortComparator, getExitCountryFlag, getRandomExitFromCity } from '../common/exitUtils';
 import { KeyedSet } from '../common/KeyedSet';
 import { NotificationId } from '../common/notifIds';
-import { normalizeError } from '../common/utils';
+import { useAsync } from '../common/useAsync';
+import { fmtTime, normalizeError } from '../common/utils';
 import BoltBadgeAuto from '../components/BoltBadgeAuto';
 import ObscuraChip from '../components/ObscuraChip';
+import GoldCheckedBadge from '../res/gold-checked-badge.svg?react';
 import classes from './Location.module.css';
 
 export default function LocationView() {
@@ -102,7 +105,6 @@ export default function LocationView() {
                 <Text ta='left' w='91%' size='sm' c='green.7' ml='md' fw={600}>{t('lastChosen')}</Text>
                 <LocationCard exit={exit} togglePin={toggleExitPin}
                     onSelect={() => onExitSelect(exit)} connected={isConnected} pinned={isPinned} />
-                <Space />
             </>;
         }
     }
@@ -121,7 +123,6 @@ export default function LocationView() {
                   onSelect={() => onExitSelect(exit)} connected={isConnected} pinned={isPinned} />);
             }
         }
-        pinnedExitsRender.push(<Space key='space-pinned' />);
     }
 
     const exitListRender = [];
@@ -133,9 +134,6 @@ export default function LocationView() {
     for (const exit of locations) {
         const continent = getExitCountry(exit).continent;
         if (!insertedContinents.has(continent)) {
-            if (insertedContinents.size > 0) {
-                exitListRender.push(<Space key={`space-${continent}`} />);
-            }
             exitListRender.push(<Text key={`continent-${continent}`} ta='left' w='91%' size='sm' c='gray' ml='sm' fw={600}>{continents[continent]}</Text>);
             insertedContinents.add(continent);
         }
@@ -152,7 +150,6 @@ export default function LocationView() {
     return (
         <Stack align='center' gap={10} p={20} mt='sm'>
             <VpnStatusCard />
-            <Space />
             {locations.length === 0 ? <NoExitServers /> :
                 <>
                     {lastChosenJsx}
@@ -189,12 +186,12 @@ function LocationCard({ exit, connected, onSelect, togglePin, pinned }: Location
     const cardTitle = (!connected && !disableClick) ? t('Click to connect') : undefined;
 
     return (
-        <Card title={cardTitle} className={cardClasses.join(' ')} withBorder padding='lg' radius='md' w='90%' onClick={(connected || disableClick) ? undefined : onSelect}>
+        <Card shadow='xs' title={cardTitle} className={cardClasses.join(' ')} withBorder padding='xs' radius='md' w='90%' onClick={(connected || disableClick) ? undefined : onSelect}>
             <Group justify='space-between'>
                 <Group>
                     <Text size='2rem'>{getExitCountryFlag(exit)}</Text>
                     <Flex direction='column'>
-                        <Text fw={500} size='lg'>{exit.city_name}</Text>
+                        <Text size='md'>{exit.city_name}</Text>
                         <Text c='dimmed' size='sm'>{getExitCountry(exit).name}</Text>
                     </Flex>
                 </Group>
@@ -258,12 +255,16 @@ function NoExitServers() {
 function VpnStatusCard() {
     const theme = useMantineTheme();
     const { t } = useTranslation();
-    const { appStatus, vpnConnected, connectionInProgress, toggleVpnConnection, osStatus } = useContext(AppContext);
+    const { appStatus, vpnConnected, connectionInProgress, vpnDisconnect, vpnConnect, osStatus } = useContext(AppContext);
     const { internetAvailable } = osStatus;
+    const exitPubKey = appStatus.vpnStatus.connected?.exit_public_key;
+    const [showExitPubKey, setShowExitPubKey] = useState(false);
+    const { value: trafficStats, refresh: pollTrafficStats } = useAsync({deps: [], load: commands.getTrafficStats });
+    useInterval(pollTrafficStats, 1000, { autoInvoke: true });
 
     const getStatusTitle = () => {
         if (!internetAvailable) return t('Offline');
-        if (connectionInProgress === ConnectionInProgress.Disconnecting) return t(connectionInProgress) + '...';
+        if (connectionInProgress !== ConnectionInProgress.UNSET && connectionInProgress !== ConnectionInProgress.ChangingLocations) return t(connectionInProgress) + '...';
         const selectedLocation = appStatus.vpnStatus.connected?.exit.city_name;
         // vpnConnected <-> vpnStatus.connected.exit defined
         if (selectedLocation !== undefined) return t('connectedToLocation', { location: selectedLocation });
@@ -275,12 +276,13 @@ function VpnStatusCard() {
         return vpnConnected ? t('trafficProtected') : t('trafficVulnerable');
     };
 
-    const btnDisabled = connectionInProgress !== ConnectionInProgress.UNSET || !internetAvailable;
-    const buttonDisconnectProps = (vpnConnected && !btnDisabled) ? theme.other.buttonDisconnectProps : {};
+    const allowCancel = connectionInProgress === ConnectionInProgress.Connecting || connectionInProgress === ConnectionInProgress.Reconnecting;
+    const btnDisabled = !allowCancel && (connectionInProgress === ConnectionInProgress.Disconnecting || connectionInProgress === ConnectionInProgress.ChangingLocations || (!vpnConnected && !internetAvailable));
+    const buttonDisconnectProps = ((allowCancel || vpnConnected) && !btnDisabled) ? theme.other.buttonDisconnectProps : {};
 
-    const connectionTransition = connectionInProgress !== ConnectionInProgress.UNSET;
     const getButtonContent = () => {
-        if (connectionTransition) return t(connectionInProgress) + '...'
+        if (allowCancel) return t('Cancel Connecting');
+        if (connectionInProgress !== ConnectionInProgress.UNSET) return t(connectionInProgress) + '...';
         if (vpnConnected) return t('Disconnect');
         return <Group gap={5} ml={0}><BoltBadgeAuto />{t('QuickConnect')}</Group>;
     };
@@ -292,19 +294,45 @@ function VpnStatusCard() {
     };
 
     return (
-        <Card shadow='sm' padding='lg' radius='md' withBorder w='90%'>
-            <Group justify='space-between' >
+        <Card shadow='sm' padding='lg' radius='md' withBorder w='90%' mb='xs'>
+            <Group justify='space-between'>
                 <Group align='center' gap={5}>
                     <ThemeIcon color={vpnConnected ? 'teal' : 'red.7'} variant='transparent'>
                         {vpnConnected ? <BsShieldFillCheck size={25} /> : <BsShieldFillExclamation size={25} />}
                     </ThemeIcon>
                     <Text size='xl' fw={700} c={vpnConnected ? 'teal' : 'red.7'}>{getStatusTitle()}</Text>
                 </Group>
-                <Button className={commonClasses.button} miw={190} onClick={toggleVpnConnection} disabled={btnDisabled} title={btnTitle()} px={10} radius='md' {...buttonDisconnectProps}>
+                <Button className={commonClasses.button} miw={190} onClick={(_: MouseEvent) => (vpnConnected || allowCancel) ? vpnDisconnect() : vpnConnect()} disabled={btnDisabled} title={btnTitle()} px={10} radius='md' {...buttonDisconnectProps}>
                     {getButtonContent()}
                 </Button>
             </Group>
             <Text c='dimmed' size='sm' ml={34}>{getStatusSubtitle()}</Text>
+            {exitPubKey !== undefined &&
+              <>
+                <Divider ml={34} my='md' />
+                <Group ml={34} justify='space-between' w='100%'>
+                  {trafficStats?.timestampMs !== undefined &&
+                    <Stack gap={5}>
+                      <Text c='dimmed' size='sm'>{t('currentSession')}</Text>
+                      <Group>
+                        <Text size='sm'>{fmtTime(trafficStats?.timestampMs)}</Text>
+                      </Group>
+                    </Stack>
+                  }
+                  <Stack gap={5}>
+                    <Group h='1em' gap={3}>
+                      <Text c='dimmed' size='sm'>{t('exitPubKey')}</Text>
+                      <ActionIcon variant='subtle' onClick={() => setShowExitPubKey(!showExitPubKey)}>
+                        {showExitPubKey ? <FaEyeSlash size='1em'/> : <FaEye size='1em'/>}
+                      </ActionIcon>
+                    </Group>
+                    <Group w={`${exitPubKey.length + 2}ch`} gap={3}>
+                      {showExitPubKey ? <GoldCheckedBadge /> : ''}<TextInput readOnly w={`${exitPubKey.length}ch`} variant='unstyled' size='sm' value={exitPubKey} type={showExitPubKey ? 'text' : 'password'} />
+                    </Group>
+                  </Stack>
+                </Group>
+              </>
+            }
         </Card>
     );
 }

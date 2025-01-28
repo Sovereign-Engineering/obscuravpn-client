@@ -137,3 +137,19 @@ export function randomChoice<T>(arr: T[]): T {
   const randIdx = Math.floor(Math.random() * arr.length);
   return arr[randIdx]!;
 }
+
+/**
+ * Returns hh:mm:ss from ms
+ * @param ms milliseconds
+ */
+export function fmtTime(ms: number) {
+  const totalSeconds = Math.floor(ms / 1000);
+  const seconds = totalSeconds % 60;
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const hours = Math.floor(totalSeconds / 3600);
+  return `${zeroPad(hours, 2)}:${zeroPad(minutes, 2)}:${zeroPad(seconds, 2)}`;
+}
+
+function zeroPad(num: number, width: number) {
+  return num.toString().padStart(width, '0');
+}

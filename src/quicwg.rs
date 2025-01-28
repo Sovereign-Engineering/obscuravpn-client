@@ -138,7 +138,7 @@ impl QuicWgConn {
         let wg_tick_notify_clone = wg_tick_notify.clone();
         let tick_abort = spawn(async move {
             let mut timer = interval(Duration::from_millis(WG_TICK_MS.into()));
-            timer.set_missed_tick_behavior(MissedTickBehavior::Skip);
+            timer.set_missed_tick_behavior(MissedTickBehavior::Delay);
             loop {
                 timer.tick().await;
                 wg_tick_notify_clone.notify_one();

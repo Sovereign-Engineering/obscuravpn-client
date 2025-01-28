@@ -251,4 +251,5 @@ struct TrafficStats: Codable {
     let connId: UUID
     let txBytes: UInt64
     let rxBytes: UInt64
+    let latestLatencyMs: UInt16
 }

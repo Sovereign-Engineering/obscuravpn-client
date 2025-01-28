@@ -254,8 +254,7 @@ impl Manager {
     pub fn send_packet(&self, packet: &[u8]) {
         self.read_tunnel_state(|tunnel_state| {
             if let TunnelState::Running { conn_id: _, conn, run_task: _, .. } = tunnel_state {
-                // TODO: log errors (or remove return value), but rate-limit to a few per minute, because this can get VERY noisy and is usually not interesting
-                _ = conn.send(packet);
+                conn.send(packet);
             }
         })
     }
@@ -286,6 +285,7 @@ impl Manager {
             conn_id,
             tx_bytes: offset.tx_bytes + stats.tx_bytes,
             rx_bytes: offset.rx_bytes + stats.rx_bytes,
+            latest_latency_ms: stats.latest_latency_ms,
         }
     }
 
@@ -365,6 +365,7 @@ pub struct ManagerTrafficStats {
     conn_id: Uuid,
     tx_bytes: u64,
     rx_bytes: u64,
+    latest_latency_ms: u16,
 }
 
 async fn run_tunnel(
@@ -376,9 +377,8 @@ async fn run_tunnel(
     network_config_cb: extern "C" fn(FfiBytes),
     tunnel_status_cb: extern "C" fn(isConnected: bool),
 ) -> ControlFlow<()> {
-    let mut buf = vec![0u8; u16::MAX as usize];
     loop {
-        match conn.receive(&mut buf).await {
+        match conn.receive().await {
             Ok(packet) => receive_cb(packet.ffi()),
             Err(err) => {
                 tracing::error!(%conn_id, %err, "tunnel failed, reconnecting");

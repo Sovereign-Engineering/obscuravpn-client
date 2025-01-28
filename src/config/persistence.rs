@@ -11,6 +11,7 @@ use chrono::Utc;
 use obscuravpn_api::types::{AccountId, WgPubkey};
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 use tempfile::{NamedTempFile, PersistError};
 use thiserror::Error;
 use x25519_dalek::PublicKey;
@@ -283,6 +284,15 @@ impl WireGuardKeyCache {
         (secret_key, public_key)
     }
     pub fn rotate_now(&mut self) {
+        tracing::info!("rotating wireguard key pair");
         *self = Self::default();
+    }
+    pub fn rotate_if_old(&mut self) {
+        const MAX_AGE: Duration = Duration::from_secs(60 * 60 * 24 * 30); // 30 days
+        if self.generated_at.elapsed().is_ok_and(|age| age < MAX_AGE) {
+            tracing::info!("no wireguard key pair rotation required");
+            return;
+        }
+        self.rotate_now();
     }
 }

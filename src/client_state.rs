@@ -71,8 +71,10 @@ impl ClientStateInner {
 impl ClientState {
     pub fn new(config_dir: PathBuf, old_config_dir: PathBuf, user_agent: String) -> Result<Self, ConfigLoadError> {
         let config = config::load(&config_dir, &old_config_dir)?;
-        let inner = ClientStateInner { config_dir, config, cached_api_client: None }.into();
-        Ok(Self { user_agent, inner })
+        let mut inner = ClientStateInner { config_dir, config, cached_api_client: None };
+        // TODO: Move this to or repeat at key registration once implemented: https://linear.app/soveng/issue/OBS-1200
+        Self::change_config(&mut inner, |config| config.wireguard_key_cache.rotate_if_old()).map_err(ConfigLoadError::SaveEror)?;
+        Ok(Self { user_agent, inner: Mutex::new(inner) })
     }
 
     fn lock(&self) -> MutexGuard<ClientStateInner> {

@@ -247,28 +247,21 @@ pub struct PinnedLocation {
 }
 
 #[serde_with::serde_as]
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct WireGuardKeyCache {
-    pub secret_key: StaticSecret,
+    #[serde_as(as = "serde_with::base64::Base64")]
+    secret_key: [u8; 32],
     #[serde_as(as = "serde_with::TimestampSeconds")]
-    pub generated_at: SystemTime,
+    generated_at: SystemTime,
 }
-
-impl PartialEq for WireGuardKeyCache {
-    fn eq(&self, other: &Self) -> bool {
-        self.secret_key.as_bytes() == other.secret_key.as_bytes() && self.generated_at == other.generated_at
-    }
-}
-
-impl Eq for WireGuardKeyCache {}
 
 impl core::fmt::Debug for WireGuardKeyCache {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { secret_key, generated_at } = self;
-        let public_key = WgPubkey(PublicKey::from(secret_key).to_bytes());
+        let Self { secret_key: _, generated_at } = self;
+        let public_key = WgPubkey(self.key_pair().1.to_bytes());
         f.debug_struct("WireGuardKeyCache")
             .field("public_key", &public_key)
-            .field("cached_at", generated_at)
+            .field("generated_at", generated_at)
             .finish()
     }
 }
@@ -277,13 +270,18 @@ impl Default for WireGuardKeyCache {
     fn default() -> Self {
         if cfg!(test) {
             // deterministic values for serialization tests
-            return Self { secret_key: StaticSecret::from([1; 32]), generated_at: SystemTime::UNIX_EPOCH };
+            return Self { secret_key: [1; 32], generated_at: SystemTime::UNIX_EPOCH };
         }
-        Self { secret_key: StaticSecret::random_from_rng(OsRng), generated_at: SystemTime::now() }
+        Self { secret_key: StaticSecret::random_from_rng(OsRng).to_bytes(), generated_at: SystemTime::now() }
     }
 }
 
 impl WireGuardKeyCache {
+    pub fn key_pair(&self) -> (StaticSecret, PublicKey) {
+        let secret_key = StaticSecret::from(self.secret_key);
+        let public_key = PublicKey::from(&secret_key);
+        (secret_key, public_key)
+    }
     pub fn rotate_now(&mut self) {
         *self = Self::default();
     }

@@ -31,7 +31,7 @@ struct NeStatus: Codable, Equatable {
 struct PinnedLocation: Codable, Equatable {
     var country_code: String
     var city_code: String
-    var pinned_at: Int8
+    var pinned_at: Int64
 }
 
 enum NeVpnStatus: Codable {

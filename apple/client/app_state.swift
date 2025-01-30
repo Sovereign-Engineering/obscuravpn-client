@@ -247,7 +247,7 @@ class AppState: ObservableObject {
 }
 
 struct TrafficStats: Codable {
-    let timestampMs: UInt64
+    let connectedMs: UInt64
     let connId: UUID
     let txBytes: UInt64
     let rxBytes: UInt64

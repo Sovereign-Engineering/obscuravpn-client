@@ -34,7 +34,6 @@ pub struct Manager {
     client_state: Arc<ClientState>,
     tunnel_state: Arc<RwLock<TunnelState>>,
     status_watch: Sender<Status>,
-    started_at: Instant,
 }
 
 // Keep synchronized with ../../apple/shared/NetworkExtensionIpc.swift
@@ -99,6 +98,7 @@ pub enum TunnelState {
         conn_id: Uuid,
     },
     Running {
+        started_at: Instant,
         conn_id: Uuid,
         conn: Arc<QuicWgConn>,
         run_task: JoinHandle<()>,
@@ -134,7 +134,6 @@ impl Manager {
         Ok(Self {
             client_state: client_state.into(),
             tunnel_state: Arc::new(RwLock::new(TunnelState::Disconnected { conn_id: Uuid::new_v4() })),
-            started_at: Instant::now(),
             status_watch: channel(initial_status).0,
         }
         .into())
@@ -231,6 +230,7 @@ impl Manager {
                         run_tunnel(self.clone(), conn.clone(), args, conn_id, receive_cb, network_config_cb, tunnel_status_cb).map(|_| ()),
                     );
                     *tunnel_state = TunnelState::Running {
+                        started_at: Instant::now(),
                         conn_id,
                         conn,
                         run_task,
@@ -276,12 +276,16 @@ impl Manager {
     }
 
     pub fn traffic_stats(&self) -> ManagerTrafficStats {
-        let (conn_id, stats, offset) = self.read_tunnel_state(|tunnel_state| match tunnel_state {
-            TunnelState::Disconnected { conn_id } | TunnelState::Starting { conn_id } => (*conn_id, Default::default(), Default::default()),
-            TunnelState::Running { conn_id, conn, traffic_stats_offset, .. } => (*conn_id, conn.traffic_stats(), *traffic_stats_offset),
+        let (conn_id, stats, offset, connected) = self.read_tunnel_state(|tunnel_state| match tunnel_state {
+            TunnelState::Disconnected { conn_id } | TunnelState::Starting { conn_id } => {
+                (*conn_id, Default::default(), Default::default(), Duration::ZERO)
+            }
+            TunnelState::Running { conn_id, conn, traffic_stats_offset, started_at, .. } => {
+                (*conn_id, conn.traffic_stats(), *traffic_stats_offset, started_at.elapsed())
+            }
         });
         ManagerTrafficStats {
-            timestamp_ms: self.started_at.elapsed().as_millis() as u64,
+            connected_ms: connected.as_millis() as u64,
             conn_id,
             tx_bytes: offset.tx_bytes + stats.tx_bytes,
             rx_bytes: offset.rx_bytes + stats.rx_bytes,
@@ -361,7 +365,7 @@ impl Manager {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ManagerTrafficStats {
-    timestamp_ms: u64,
+    connected_ms: u64,
     conn_id: Uuid,
     tx_bytes: u64,
     rx_bytes: u64,

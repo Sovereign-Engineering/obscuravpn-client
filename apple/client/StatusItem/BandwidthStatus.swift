@@ -4,7 +4,6 @@ import SwiftUI
 class BandwidthStatusModel: ObservableObject {
     @Published var uploadBandwidth = BandwidthFmt.fromTransferRate(bytesPerSecond: 0)
     @Published var downloadBandwidth = BandwidthFmt.fromTransferRate(bytesPerSecond: 0)
-    @Published var trafficStats: TrafficStats? = nil
 }
 
 struct BandwidthStatusItem: View {

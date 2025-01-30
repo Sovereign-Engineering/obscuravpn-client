@@ -311,11 +311,11 @@ function VpnStatusCard() {
               <>
                 <Divider ml={34} my='md' />
                 <Group ml={34} justify='space-between' w='100%'>
-                  {trafficStats?.timestampMs !== undefined &&
+                  {trafficStats?.connectedMs !== undefined &&
                     <Stack gap={5}>
                       <Text c='dimmed' size='sm'>{t('currentSession')}</Text>
                       <Group>
-                        <Text size='sm'>{fmtTime(trafficStats?.timestampMs)}</Text>
+                        <Text size='sm'>{fmtTime(trafficStats?.connectedMs)}</Text>
                       </Group>
                     </Stack>
                   }

@@ -155,7 +155,7 @@ export function developerResetUserDefaults() {
 }
 
 export interface TrafficStats {
-    timestampMs: number,
+    connectedMs: number,
     connId: string,
     txBytes: number,
     rxBytes: number,

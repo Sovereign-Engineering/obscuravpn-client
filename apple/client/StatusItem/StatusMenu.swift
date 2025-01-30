@@ -250,53 +250,43 @@ struct StatusItem: View {
             }
         }
         .task {
-            while true {
-                do {
+            var trafficStats: TrafficStats?
+            do {
+                while true {
                     try await Task.sleep(seconds: 1)
-                } catch {
-                    logger.info("Task cancelled \(error, privacy: .public)")
-                    return // Another task will be started.
-                }
-                do {
-                    let newTrafficStats = try await startupModel.appState?.getTrafficStats()
-                    guard let newTrafficStats = newTrafficStats else {
-                        logger.info("getTrafficStats return nil")
-                        continue
-                    }
-                    guard let oldTrafficStats = self.bandwidthStatusModel.trafficStats else {
-                        self.bandwidthStatusModel.trafficStats = newTrafficStats
-                        // no need to reset upload and download state as this is the first loop
-                        continue
-                    }
-                    if oldTrafficStats.connId == newTrafficStats.connId {
-                        // the connId check avoids arithmetic overflows when the vpn is disabled
-                        let (txBytesDelta, overflowedTx) = newTrafficStats.txBytes.subtractingReportingOverflow(oldTrafficStats.txBytes)
-                        let (rxBytesDelta, overflowedRx) = newTrafficStats.rxBytes.subtractingReportingOverflow(oldTrafficStats.rxBytes)
-                        let (msElapsed, overflowedT) = newTrafficStats.timestampMs.subtractingReportingOverflow(oldTrafficStats.timestampMs)
-                        if overflowedTx || overflowedRx || overflowedT {
-                            logger.info("oldTrafficStats: tx \(oldTrafficStats.txBytes), rx \(oldTrafficStats.rxBytes), timestamp \(oldTrafficStats.timestampMs)")
-                            logger.info("newTrafficStats: tx \(newTrafficStats.txBytes), rx \(newTrafficStats.rxBytes), timestamp \(newTrafficStats.timestampMs)")
-                            #if DEBUG
-                                fatalError("unexpected overflowed in bandwidth substractions. tx overflowed? \(overflowedTx), rx overflowed? \(overflowedRx), timestamp overflowed?  \(overflowedT)")
-                            #else
-                                logger.error("unexpected overflowed in bandwidth substractions. tx overflowed? \(overflowedTx), rx overflowed? \(overflowedRx), timestamp overflowed?  \(overflowedT)")
-                            #endif
-                        } else {
-                            let secondsDelta = Double(msElapsed) / 1000
-                            if secondsDelta > 0 {
-                                self.bandwidthStatusModel.uploadBandwidth = BandwidthFmt.fromTransferRate(bytesPerSecond: Double(txBytesDelta) / secondsDelta)
-                                self.bandwidthStatusModel.downloadBandwidth = BandwidthFmt.fromTransferRate(bytesPerSecond: Double(rxBytesDelta) / secondsDelta)
+                    if let appState = startupModel.appState {
+                        if case .connected = appState.status.vpnStatus {
+                            let oldTrafficStats = trafficStats
+                            trafficStats = try? await appState.getTrafficStats()
+                            if let oldTrafficStats = oldTrafficStats, let newTrafficStats = trafficStats, oldTrafficStats.connId == newTrafficStats.connId {
+                                let (txBytesDelta, overflowedTx) = newTrafficStats.txBytes.subtractingReportingOverflow(oldTrafficStats.txBytes)
+                                let (rxBytesDelta, overflowedRx) = newTrafficStats.rxBytes.subtractingReportingOverflow(oldTrafficStats.rxBytes)
+                                let (msElapsed, overflowedT) = newTrafficStats.connectedMs.subtractingReportingOverflow(oldTrafficStats.connectedMs)
+                                if overflowedTx || overflowedRx || overflowedT {
+                                    logger.info("oldTrafficStats: tx \(oldTrafficStats.txBytes, privacy: .public), rx \(oldTrafficStats.rxBytes, privacy: .public), timestamp \(oldTrafficStats.connectedMs, privacy: .public)")
+                                    logger.info("newTrafficStats: tx \(newTrafficStats.txBytes, privacy: .public), rx \(newTrafficStats.rxBytes, privacy: .public), timestamp \(newTrafficStats.connectedMs, privacy: .public)")
+                                    #if DEBUG
+                                        fatalError("unexpected overflowed in bandwidth substractions. tx overflowed? \(overflowedTx), rx overflowed? \(overflowedRx), timestamp overflowed?  \(overflowedT)")
+                                    #else
+                                        logger.error("unexpected overflowed in bandwidth substractions. tx overflowed? \(overflowedTx, privacy: .public), rx overflowed? \(overflowedRx, privacy: .public), timestamp overflowed?  \(overflowedT, privacy: .public)")
+                                    #endif
+                                } else {
+                                    let secondsDelta = Double(msElapsed) / 1000
+                                    if secondsDelta > 0 {
+                                        self.bandwidthStatusModel.uploadBandwidth = BandwidthFmt.fromTransferRate(bytesPerSecond: Double(txBytesDelta) / secondsDelta)
+                                        self.bandwidthStatusModel.downloadBandwidth = BandwidthFmt.fromTransferRate(bytesPerSecond: Double(rxBytesDelta) / secondsDelta)
+                                        continue
+                                    }
+                                }
                             }
                         }
-                    } else {
-                        // vpn is off or new/old traffic stats are nil
-                        self.bandwidthStatusModel.uploadBandwidth = BandwidthFmt.fromTransferRate(bytesPerSecond: 0)
-                        self.bandwidthStatusModel.downloadBandwidth = BandwidthFmt.fromTransferRate(bytesPerSecond: 0)
                     }
-                    self.bandwidthStatusModel.trafficStats = newTrafficStats
-                } catch {
-                    logger.error("getTrafficStats failed with error \(error, privacy: .public)")
+                    self.bandwidthStatusModel.uploadBandwidth = BandwidthFmt.fromTransferRate(bytesPerSecond: 0)
+                    self.bandwidthStatusModel.downloadBandwidth = BandwidthFmt.fromTransferRate(bytesPerSecond: 0)
                 }
+            } catch {
+                logger.info("traffic task exception or cancelled \(error, privacy: .public)")
+                return // Another task will be started.
             }
         }
     }

@@ -13,8 +13,9 @@ import * as commands from './bridge/commands';
 import { logReactError, useSystemContext } from './bridge/SystemProvider';
 import { Exit } from './common/api';
 import { AppContext, AppStatus, ConnectionInProgress, ExitsContext, OsStatus } from './common/appContext';
-import { fmtVpnError } from './common/danger';
+import { fmtVpnError, tUnsafe } from './common/danger';
 import { NotificationId } from './common/notifIds';
+import { useAsync } from './common/useAsync';
 import { useLoadable } from './common/useLoadable';
 import { HEADER_TITLE, IS_WK_WEB_VIEW, normalizeError, useCookie } from './common/utils';
 import { ScrollToTop } from './components/ScrollToTop';
@@ -338,6 +339,24 @@ export default function () {
       // We just ignore errors, they will be shown if the user goes to the account page.
     }
   }, [accountInfoError]);
+
+  const {
+    error: checkUpdateError,
+  } = useAsync({
+    skip: !osStatus?.internetAvailable,
+    load: commands.checkForUpdates,
+    returnError: true,
+  });
+
+  useEffect(() => {
+    if (checkUpdateError !== undefined) {
+      notifications.show({
+        color: 'red',
+        title: t('Error'),
+        message: tUnsafe(t, normalizeError(checkUpdateError).message)
+      });
+    }
+  }, [checkUpdateError]);
 
   if (loading) return <SplashScreen text={systemProviderLoading ? t('synchronizing') : t('appStatusLoading')} />;
 

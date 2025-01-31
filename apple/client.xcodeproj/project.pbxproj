@@ -61,6 +61,7 @@
 		962325212C88D4E8008A9B76 /* ObscuraToggle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 962325202C88D4E8008A9B76 /* ObscuraToggle.swift */; };
 		962325232C8A3B58008A9B76 /* MenuItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 962325222C8A3B58008A9B76 /* MenuItemView.swift */; };
 		9632E4642D19C5EC00BC8E3F /* AccountStatusItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9632E4632D19C5EA00BC8E3F /* AccountStatusItem.swift */; };
+		9636E8B92D4BE02500CFB57E /* UpdaterDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9636E8B82D4BE02500CFB57E /* UpdaterDriver.swift */; };
 		96516AC32BF928DD00576562 /* build in Resources */ = {isa = PBXBuildFile; fileRef = 96516AC22BF928DD00576562 /* build */; };
 		96615E292C598A9600120DEF /* CwlSysctl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96615E282C598A9600120DEF /* CwlSysctl.swift */; };
 		966967C12D440B450019AF9F /* LoginItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 966967C02D440B430019AF9F /* LoginItem.swift */; };
@@ -160,6 +161,7 @@
 		962325202C88D4E8008A9B76 /* ObscuraToggle.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ObscuraToggle.swift; sourceTree = "<group>"; };
 		962325222C8A3B58008A9B76 /* MenuItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuItemView.swift; sourceTree = "<group>"; };
 		9632E4632D19C5EA00BC8E3F /* AccountStatusItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountStatusItem.swift; sourceTree = "<group>"; };
+		9636E8B82D4BE02500CFB57E /* UpdaterDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdaterDriver.swift; sourceTree = "<group>"; };
 		96516AC22BF928DD00576562 /* build */ = {isa = PBXFileReference; lastKnownFileType = folder; name = build; path = "../obscura-ui/build"; sourceTree = "<group>"; };
 		96615E282C598A9600120DEF /* CwlSysctl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CwlSysctl.swift; sourceTree = "<group>"; };
 		966967C02D440B430019AF9F /* LoginItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginItem.swift; sourceTree = "<group>"; };
@@ -244,6 +246,7 @@
 		30761C202B6EB17100E5F60D /* client */ = {
 			isa = PBXGroup;
 			children = (
+				9636E8B82D4BE02500CFB57E /* UpdaterDriver.swift */,
 				966967C02D440B430019AF9F /* LoginItem.swift */,
 				3096BFF72CECD4BA003D062E /* extensions */,
 				9623252A2C8BACBC008A9B76 /* StatusItem */,
@@ -565,6 +568,7 @@
 				962325182C875B3E008A9B76 /* StatusMenu.swift in Sources */,
 				30761C242B6EB17100E5F60D /* ContentView.swift in Sources */,
 				35F8DE872C6666C40016CEEB /* DebugBundleExtensionInfo.swift in Sources */,
+				9636E8B92D4BE02500CFB57E /* UpdaterDriver.swift in Sources */,
 				35A6F2542C6121C2004E1A7C /* time.swift in Sources */,
 				300452782C49BC90000B78F7 /* Json.swift in Sources */,
 				356D94272C48368100135DF9 /* CheckForUpdatesView.swift in Sources */,

@@ -10,6 +10,7 @@ class OsStatus: Encodable {
     var internetAvailable: Bool = false
     var osVpnStatus: NEVPNStatus
     let srcVersion = sourceVersion()
+    var updaterStatus = UpdaterStatus()
 
     init(osVpnStatus: NEVPNStatus) {
         self.osVpnStatus = osVpnStatus

@@ -7,7 +7,7 @@ class AppState: ObservableObject {
     private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "AppState")
     public var manager: NETunnelProviderManager
     private let configQueue: DispatchQueue = .init(label: "config queue")
-    private let osStatus: WatchableValue<OsStatus>
+    public let osStatus: WatchableValue<OsStatus>
     @Published var status: NeStatus
 
     init(

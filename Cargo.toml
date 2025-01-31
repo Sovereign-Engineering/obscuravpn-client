@@ -39,7 +39,7 @@ strum = { version = "0.26.2", features = ["derive"] }
 tempfile = "3.10.1"
 thiserror = "1.0.56"
 tokio = { version = "1.40", features = ["full"] }
-tokio-util = "0.7.11"
+tokio-util = "0.7.13"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 tun = {  version = "0.6.1", features = ["async"] }
@@ -53,7 +53,7 @@ rev = "ff3b5555b5b1c4f85ae23d8d4aaf00bea2cd2bf0"
 
 [dependencies.obscuravpn-api]
 git = "https://github.com/Sovereign-Engineering/obscuravpn-api.git"
-rev = "0ed341a1d48b944c81d9021c54b6d621338388ee"
+rev = "0d35f59a600077afb9984de52563618bdd4684ca"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 oslog = "0.2.0"

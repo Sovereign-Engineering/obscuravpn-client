@@ -261,47 +261,74 @@ pub struct PinnedLocation {
 pub struct WireGuardKeyCache {
     #[serde_as(as = "serde_with::base64::Base64")]
     secret_key: [u8; 32],
-    #[serde_as(as = "serde_with::TimestampSeconds")]
-    generated_at: SystemTime,
+    #[serde_as(as = "Option<serde_with::TimestampSeconds>")]
+    first_use: Option<SystemTime>,
+    #[serde_as(as = "Option<serde_with::TimestampSeconds>")]
+    registered_at: Option<SystemTime>,
+    #[serde_as(as = "Vec<serde_with::base64::Base64>")]
+    old_public_keys: Vec<[u8; 32]>,
 }
 
 impl core::fmt::Debug for WireGuardKeyCache {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { secret_key: _, generated_at } = self;
-        let public_key = WgPubkey(self.key_pair().1.to_bytes());
+        let Self { secret_key, old_public_keys, first_use, registered_at } = self;
+        let public_key = WgPubkey(PublicKey::from(&StaticSecret::from(*secret_key)).to_bytes());
+        let old_public_keys: Vec<WgPubkey> = old_public_keys.iter().map(|b| WgPubkey(*b)).collect();
         f.debug_struct("WireGuardKeyCache")
             .field("public_key", &public_key)
-            .field("generated_at", generated_at)
+            .field("first_use", first_use)
+            .field("registered_at", registered_at)
+            .field("old_public_keys", &old_public_keys)
             .finish()
     }
 }
 
 impl Default for WireGuardKeyCache {
     fn default() -> Self {
-        if cfg!(test) {
-            // deterministic values for serialization tests
-            return Self { secret_key: [1; 32], generated_at: SystemTime::UNIX_EPOCH };
-        }
-        Self { secret_key: StaticSecret::random_from_rng(OsRng).to_bytes(), generated_at: SystemTime::now() }
+        let secret_key = if cfg!(test) {
+            // deterministic value for serialization tests
+            [1u8; 32]
+        } else {
+            StaticSecret::random_from_rng(OsRng).to_bytes()
+        };
+        Self { secret_key, first_use: None, registered_at: None, old_public_keys: Vec::new() }
     }
 }
 
 impl WireGuardKeyCache {
-    pub fn key_pair(&self) -> (StaticSecret, PublicKey) {
+    pub fn use_key_pair(&mut self) -> (StaticSecret, PublicKey) {
         let secret_key = StaticSecret::from(self.secret_key);
         let public_key = PublicKey::from(&secret_key);
+        let now = SystemTime::now();
+        self.first_use.get_or_insert(now);
         (secret_key, public_key)
     }
     pub fn rotate_now(&mut self) {
         tracing::info!("rotating wireguard key pair");
-        *self = Self::default();
+        let mut old_public_keys = std::mem::take(&mut self.old_public_keys);
+        old_public_keys.push(PublicKey::from(&StaticSecret::from(self.secret_key)).to_bytes());
+        let secret_key = StaticSecret::random_from_rng(OsRng).to_bytes();
+        *self = Self { secret_key, first_use: None, registered_at: None, old_public_keys }
     }
-    pub fn rotate_if_old(&mut self) {
+    pub fn rotate_if_required(&mut self) {
         const MAX_AGE: Duration = Duration::from_secs(60 * 60 * 24 * 30); // 30 days
-        if self.generated_at.elapsed().is_ok_and(|age| age < MAX_AGE) {
+        if self.first_use.is_some_and(|t| t.elapsed().is_ok_and(|age| age > MAX_AGE)) {
+            self.rotate_now();
+        } else {
             tracing::info!("no wireguard key pair rotation required");
-            return;
         }
-        self.rotate_now();
+    }
+    pub fn need_registration(&mut self) -> Option<(PublicKey, Vec<PublicKey>)> {
+        if self.registered_at.is_none() {
+            let secret_key = StaticSecret::from(self.secret_key);
+            let current_public_key = PublicKey::from(&secret_key);
+            let old_public_keys = self.old_public_keys.iter().copied().map(Into::into).collect();
+            return Some((current_public_key, old_public_keys));
+        }
+        None
+    }
+    pub fn registered(&mut self, removed_public_keys: &[PublicKey]) {
+        self.registered_at = Some(SystemTime::now());
+        self.old_public_keys.retain(|b| !removed_public_keys.contains(&PublicKey::from(*b)));
     }
 }

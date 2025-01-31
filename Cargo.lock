@@ -1329,7 +1329,7 @@ dependencies = [
 [[package]]
 name = "obscuravpn-api"
 version = "0.0.0"
-source = "git+https://github.com/Sovereign-Engineering/obscuravpn-api.git?rev=0ed341a1d48b944c81d9021c54b6d621338388ee#0ed341a1d48b944c81d9021c54b6d621338388ee"
+source = "git+https://github.com/Sovereign-Engineering/obscuravpn-api.git?rev=0d35f59a600077afb9984de52563618bdd4684ca#0d35f59a600077afb9984de52563618bdd4684ca"
 dependencies = [
  "anyhow",
  "base64 0.21.7",
@@ -2328,9 +2328,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-util"
-version = "0.7.11"
+version = "0.7.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9cf6b47b3771c49ac75ad09a6162f53ad4b8088b76ac60e8ec1455b31a189fe1"
+checksum = "d7fcaa8d55a2bdd6b83ace262b016eca0d79ee02818c5c1bcdf0305114081078"
 dependencies = [
  "bytes",
  "futures-core",

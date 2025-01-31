@@ -9,6 +9,7 @@ use std::{
 use base64::prelude::*;
 use boringtun::x25519::{PublicKey, StaticSecret};
 use chrono::Utc;
+use obscuravpn_api::cmd::CacheWgKey;
 use obscuravpn_api::types::{AccountId, AccountInfo, AuthToken, OneExit};
 use obscuravpn_api::{
     cmd::{ApiErrorKind, Cmd, CreateTunnel, DeleteTunnel, ListRelays, ListTunnels},
@@ -71,9 +72,7 @@ impl ClientStateInner {
 impl ClientState {
     pub fn new(config_dir: PathBuf, old_config_dir: PathBuf, user_agent: String) -> Result<Self, ConfigLoadError> {
         let config = config::load(&config_dir, &old_config_dir)?;
-        let mut inner = ClientStateInner { config_dir, config, cached_api_client: None };
-        // TODO: Move this to or repeat at key registration once implemented: https://linear.app/soveng/issue/OBS-1200
-        Self::change_config(&mut inner, |config| config.wireguard_key_cache.rotate_if_old()).map_err(ConfigLoadError::SaveEror)?;
+        let inner = ClientStateInner { config_dir, config, cached_api_client: None };
         Ok(Self { user_agent, inner: Mutex::new(inner) })
     }
 
@@ -81,14 +80,14 @@ impl ClientState {
         self.inner.lock().unwrap()
     }
 
-    fn change_config(inner: &mut ClientStateInner, f: impl FnOnce(&mut Config)) -> Result<(), ConfigSaveError> {
+    fn change_config<T>(inner: &mut ClientStateInner, f: impl FnOnce(&mut Config) -> T) -> Result<T, ConfigSaveError> {
         let mut new_config = inner.config.clone();
-        f(&mut new_config);
+        let ret = f(&mut new_config);
         if inner.config != new_config {
             config::save(&inner.config_dir, &new_config)?;
         }
         inner.config = new_config;
-        Ok(())
+        Ok(ret)
     }
 
     /// Log in or out.
@@ -252,7 +251,7 @@ impl ClientState {
         .await?;
         tracing::info!("tunnel connected");
         if chose_exit {
-            _ = Self::change_config(&mut self.lock(), |config| config.last_chosen_exit = Some(exit.id.clone()));
+            Self::change_config(&mut self.lock(), |config| config.last_chosen_exit = Some(exit.id.clone()))?;
         }
         Ok((conn, network_config, exit, relay))
     }
@@ -269,11 +268,13 @@ impl ClientState {
                 tracing::warn!("error removing unused local tunnels: {}", err);
             }
 
-            let (mut sk, mut pk) = self.get_config().wireguard_key_cache.key_pair();
-            if !self.get_config().use_wireguard_key_cache {
-                sk = StaticSecret::random_from_rng(OsRng);
-                pk = PublicKey::from(&sk);
-            }
+            let (sk, pk) = if self.get_config().use_wireguard_key_cache {
+                Self::change_config(&mut self.lock(), |config| config.wireguard_key_cache.use_key_pair())?
+            } else {
+                let sk = StaticSecret::random_from_rng(OsRng);
+                let pk = PublicKey::from(&sk);
+                (sk, pk)
+            };
             let wg_pubkey = WgPubkey(pk.to_bytes());
             let tunnel_id = Uuid::new_v4();
             tracing::info!(
@@ -284,22 +285,19 @@ impl ClientState {
                     relay.ip_v4 =% closest_relay.ip_v4,
                     relay.ip_v6 =% closest_relay.ip_v6,
                     "creating tunnel");
-            _ = Self::change_config(&mut self.lock(), |config| config.local_tunnels_ids.push(tunnel_id.to_string()));
+            Self::change_config(&mut self.lock(), |config| config.local_tunnels_ids.push(tunnel_id.to_string()))?;
 
             let cmd = CreateTunnel::Obfuscated { id: Some(tunnel_id), wg_pubkey, relay: Some(closest_relay.id.clone()), exit: exit.clone() };
             let error = match self.api_request(cmd.clone()).await {
                 Ok(t) => break (t, sk, tunnel_id),
-                Err(error) => match error {
-                    ApiError::ApiClient(ClientError::ApiError(ref api_error)) => match api_error.body.error {
-                        ApiErrorKind::TunnelLimitExceeded {} => error,
-                        ApiErrorKind::WgKeyRotationRequired {} => {
-                            tracing::warn!(?error, "server indicated that key rotation is required immediately");
-                            _ = Self::change_config(&mut self.lock(), |config| config.wireguard_key_cache.rotate_now());
-                            continue;
-                        }
-                        _ => return Err(error.into()),
-                    },
-                    err => return Err(err.into()),
+                Err(error) => match error.api_error_kind() {
+                    Some(ApiErrorKind::TunnelLimitExceeded {}) => error,
+                    Some(ApiErrorKind::WgKeyRotationRequired {}) => {
+                        tracing::warn!(?error, "server indicated that key rotation is required immediately");
+                        Self::change_config(&mut self.lock(), |config| config.wireguard_key_cache.rotate_now())?;
+                        continue;
+                    }
+                    _ => return Err(error.into()),
                 },
             };
             tracing::warn!(?error, "no tunnel slots left, trying to delete an unused one");
@@ -339,7 +337,7 @@ impl ClientState {
             };
             tracing::info!("removing previously used tunnel {}", &local_tunnel_id);
             self.api_request(DeleteTunnel { id: local_tunnel_id.clone() }).await?;
-            _ = Self::change_config(&mut self.lock(), |config| config.local_tunnels_ids.retain(|x| x != &local_tunnel_id))
+            Self::change_config(&mut self.lock(), |config| config.local_tunnels_ids.retain(|x| x != &local_tunnel_id))?
         }
     }
 
@@ -423,6 +421,51 @@ impl ClientState {
         let account = Some(AccountStatus { account_info: account_info.clone(), last_updated_sec });
         Self::change_config(&mut inner, move |config| {
             config.cached_account_status = account;
+        })
+    }
+
+    // Only intended to be called after use (on disconnect). Rotation schedules are fairly arbitrary, so using the key one more time is fine. The benefit is that we don't trigger rotation if the user stops using the client, but the client is still auto-starting. This does not imply the effect of `Self::register_cached_wireguard_key_if_new`. It's the callers responsibility to ensure that registration is triggered asap.
+    pub fn rotate_wireguard_key_if_required(&self) -> Result<(), ConfigSaveError> {
+        if !self.get_config().use_wireguard_key_cache {
+            return Ok(());
+        }
+        Self::change_config(&mut self.lock(), |config| {
+            config.wireguard_key_cache.rotate_if_required();
+        })
+    }
+
+    // Registers the current wireguard key via the API server if it has not been registered yet. Because this function is a NOOP after first successful use (until key rotation), it may be called frequently. Most importantly it should be called after disconnecting (due to possible key rotation) and after observing that the user paid.
+    pub async fn register_cached_wireguard_key_if_new(&self) -> Result<(), ApiError> {
+        if !self.get_config().use_wireguard_key_cache {
+            return Ok(());
+        }
+        let Some((current_public_key, old_public_keys)) = self.get_config().wireguard_key_cache.need_registration() else {
+            return Ok(());
+        };
+        let cmd = CacheWgKey {
+            public_key: WgPubkey(current_public_key.to_bytes()),
+            previous_public_keys: old_public_keys.iter().map(|p| WgPubkey(p.to_bytes())).collect(),
+        };
+        match self.api_request(cmd).await {
+            Ok(()) => {
+                Self::change_config(&mut self.lock(), |config| config.wireguard_key_cache.registered(&old_public_keys))?;
+                tracing::info!("successfully registered public wireguard key");
+                Ok(())
+            }
+            Err(error) => {
+                if matches!(error.api_error_kind(), Some(ApiErrorKind::WgKeyRotationRequired {})) {
+                    tracing::warn!(?error, "server indicated that key rotation is required immediately");
+                    Self::change_config(&mut self.lock(), |config| config.wireguard_key_cache.rotate_now())?;
+                }
+                Err(error)
+            }
+        }
+    }
+
+    pub fn enable_wg_key_cache_and_rotate(&self) -> Result<(), ConfigSaveError> {
+        Self::change_config(&mut self.lock(), |config| {
+            config.use_wireguard_key_cache = true;
+            config.wireguard_key_cache.rotate_now();
         })
     }
 }

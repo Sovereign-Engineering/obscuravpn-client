@@ -39,22 +39,6 @@ export class CommandError extends Error {
     }
 }
 
-export function readContents(path: string) {
-    return invoke('read_contents', { path });
-}
-
-export function showItemInFolder(path: string) {
-    return invoke('show_item_in_folder', { path });
-}
-
-export function checkForUpdate() {
-    return invoke('check_for_update');
-}
-
-export function installUpdate(newVersion: string) {
-    return invoke('install_update', { newVersion });
-}
-
 // VPN Client Specific Commands
 
 export async function jsonFfiCmd(cmd: string, arg = {}, timeoutMs: number | null = 10_000): Promise<unknown> {
@@ -114,7 +98,7 @@ export async function disconnectBlocking() {
     while (true) {
       try {
           const s = await osStatus(knownStatusId);
-          if (s.osVpnStatus === NEVPNStatus.disconnected) break;
+          if (s.osVpnStatus === NEVPNStatus.Disconnected) break;
           knownStatusId = s.version;
       } catch (e) {
           console.error(`failed to get osStatus in disconnectThenConnect ${e}`)
@@ -152,6 +136,14 @@ export async function isRegisteredAsLoginItem(): Promise<boolean> {
 
 export function developerResetUserDefaults() {
     return invoke('resetUserDefaults');
+}
+
+export function checkForUpdates() {
+  return invoke('checkForUpdates');
+}
+
+export function installUpdate() {
+  return invoke('installUpdate');
 }
 
 export interface TrafficStats {

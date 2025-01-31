@@ -13,6 +13,8 @@ enum Command: Codable {
     case isRegisteredAsLoginItem
     case resetUserDefaults
     case getOsStatus(knownVersion: UUID?)
+    case checkForUpdates
+    case installUpdate
     case jsonFfiCmd(
         cmd: String,
         timeoutMs: Int?
@@ -54,6 +56,18 @@ func handleWebViewCommand(command: Command) async throws -> String {
         )
     case .getOsStatus(knownVersion: let version):
         return try await appState.getOsStatus(knownVersion: version).json()
+    case .checkForUpdates:
+        if await CommandHandler.updater?.canCheckForUpdates ?? false {
+            await CommandHandler.updater!.checkForUpdates()
+        } else {
+            throw errorCodeUpdaterCheck
+        }
+    case .installUpdate:
+        if await CommandHandler.updaterController?.updater.canCheckForUpdates ?? false {
+            await CommandHandler.updaterController!.checkForUpdates(nil)
+        } else {
+            throw errorCodeUpdaterInstall
+        }
     }
     return "{}"
 }

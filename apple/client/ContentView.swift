@@ -1,4 +1,5 @@
 import OSLog
+import Sparkle
 import SwiftUI
 import UniformTypeIdentifiers
 import WebKit
@@ -59,7 +60,9 @@ class ViewModeManager: ObservableObject {
     }
 
     deinit {
-        NSEvent.removeMonitor(self.eventMonitor)
+        if self.eventMonitor != nil {
+            NSEvent.removeMonitor(self.eventMonitor!)
+        }
     }
 
     func getViews() -> [NavView] {
@@ -92,7 +95,7 @@ func getBadgeColor(_ account: AccountStatus) -> Color? {
 struct ContentView: View {
     @ObservedObject var appState: AppState
     @State private var selectedView = STABLE_VIEWS.first!
-    @State private var webView = WebView()
+    @State private var webView: WebView
     // when accountBadge and badgeColor are nil, the account status is either unknown OR a badge does not need to be shown
     // if ever the account is reset to nil, these variables will maintain their last computed values
     // see https://linear.app/soveng/issue/OBS-1159/ regarding why account could be reset to nil
@@ -111,8 +114,9 @@ struct ContentView: View {
 
     let accountBadgeTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
-    init(appState: AppState) {
+    init(appState: AppState, updaterController: SPUStandardUpdaterController) {
         self.appState = appState
+        self.webView = WebView(appState: appState, updaterController: updaterController)
         let forceHide = appState.status.accountId == nil || appState.status.inNewAccountFlow
         self.loginViewShown = forceHide
         self.splitViewVisibility = forceHide ? .detailOnly : .automatic
@@ -239,7 +243,7 @@ struct WebView: NSViewRepresentable {
     let webView: WKWebView
     let webViewDelegate: WebViewController
 
-    init() {
+    init(appState: AppState, updaterController: SPUStandardUpdaterController) {
         let webConfiguration = WKWebViewConfiguration()
         // webConfiguration.preferences.javaScriptEnabled = true
         let error_capture_script = WKUserScript(source: js_error_capture, injectionTime: .atDocumentStart, forMainFrameOnly: false)
@@ -248,7 +252,6 @@ struct WebView: NSViewRepresentable {
         webConfiguration.userContentController.addUserScript(log_capture_script)
 
         // add bridges (command, console.error, console.log) between JS and Swift
-        // CommandHandler defined in ScriptMessageHandlers
         webConfiguration.userContentController.addScriptMessageHandler(CommandHandler.shared, contentWorld: .page, name: "commandBridge")
         webConfiguration.userContentController.add(ErrorHandler.shared, name: "errorBridge")
         webConfiguration.userContentController.add(LogHandler.shared, name: "logBridge")
@@ -265,6 +268,11 @@ struct WebView: NSViewRepresentable {
         self.webView = WKWebView(frame: .zero, configuration: webConfiguration)
         self.webViewDelegate = WebViewController()
         self.webView.navigationDelegate = self.webViewDelegate
+
+        // initialize a Sparkle updater with custom driver that can send events to web ui
+        let updater = UpdaterDriver.createUpdater(appState: appState)
+        CommandHandler.updater = updater
+        CommandHandler.updaterController = updaterController
 
         #if LOAD_DEV_SERVER
             let urlRequest = URLRequest(url: URL(string: "http://localhost:1420/")!)

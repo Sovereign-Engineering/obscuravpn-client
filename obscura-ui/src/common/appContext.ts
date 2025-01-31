@@ -3,12 +3,34 @@ import { AccountId } from './accountUtils';
 import { AccountInfo, Exit } from './api';
 
 export enum NEVPNStatus {
-    invalid = 'invalid',
-    disconnected = 'disconnected',
-    connecting = 'connecting',
-    connected = 'connected',
-    reasserting = 'reasserting',
-    disconnecting = 'disconnecting'
+    Invalid = 'invalid',
+    Disconnected = 'disconnected',
+    Connecting = 'connecting',
+    Connected = 'connected',
+    Reasserting = 'reasserting',
+    Disconnecting = 'disconnecting'
+}
+
+export enum UpdaterStatusType {
+    Uninitiated = 'uninitiated',
+    Initiated = 'initiated',
+    Available = 'available',
+    NotFound = 'notFound',
+    Error = 'error'
+}
+
+export interface AppcastSummary {
+    date: string;
+    description: string;
+    version: string;
+    minSystemVersionOk: boolean;
+}
+
+export interface UpdaterStatus {
+    type: UpdaterStatusType;
+    appcast?: AppcastSummary;
+    error?: string;
+    errorCode?: number;
 }
 
 export interface OsStatus {
@@ -16,6 +38,7 @@ export interface OsStatus {
     internetAvailable: boolean,
     osVpnStatus: NEVPNStatus,
     srcVersion: string
+    updaterStatus: UpdaterStatus,
 }
 
 export interface VpnStatus {

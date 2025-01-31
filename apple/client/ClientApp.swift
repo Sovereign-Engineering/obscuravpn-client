@@ -138,7 +138,7 @@ struct ClientApp: App {
         Window("Obscura", id: WindowIds.RootWindowId) {
             Group {
                 if let appState = self.startupModel.appState {
-                    ContentView(appState: appState)
+                    ContentView(appState: appState, updaterController: self.updaterController)
                         .frame(minWidth: 805, minHeight: 525)
                 } else {
                     StartupView()

@@ -1,7 +1,6 @@
 import { getCountryData, ICountryData, TCountryCode } from "countries-list";
 import { useEffect, useReducer } from 'react';
 import { AccountId } from "./accountUtils";
-import { accountIsExpired, paidUntil } from './api';
 import { AccountStatus } from './appContext';
 
 export interface Exit {

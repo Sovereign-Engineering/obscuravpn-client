@@ -85,6 +85,7 @@ interface IAppContext {
     vpnDisconnect: () => Promise<void>,
     vpnDisconnectConnect: (exit: string) => Promise<void>,
     pollAccount: () => Promise<void>,
+    accountLoading: boolean,
     appStatus: AppStatus,
     osStatus: OsStatus,
     accountInfo: AccountInfo | null,

@@ -28,7 +28,7 @@ func handleWebViewCommand(command: Command) async throws -> String {
     }
     switch command {
     case .startTunnel(tunnelArgs: let args):
-        try await appState.enableTunnel(jsonTunnelArgs: args)
+        try await appState.enableTunnelWithErrorHandling(jsonTunnelArgs: args)
     case .stopTunnel:
         appState.disableTunnel()
     case .debuggingArchive:

@@ -176,6 +176,15 @@ pub fn save(config_dir: &Path, config: &Config) -> Result<(), ConfigSaveError> {
         return Err(ConfigSaveError::TempFileWriteError(error));
     }
 
+    if let Err(error) = file.as_file_mut().sync_data() {
+        tracing::error!(
+            config.dir =? config_dir,
+            ?error,
+            "config::save could not sync the temporary file"
+        );
+        return Err(ConfigSaveError::TempFileWriteError(error));
+    }
+
     let path = config_dir.join(CONFIG_FILE);
     if let Err(error) = file.persist(path) {
         tracing::error!(

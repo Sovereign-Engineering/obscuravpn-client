@@ -1,5 +1,5 @@
 import { AppShell, AppShellHeader, AppShellMain, AppShellNavbar, AppShellSection, Burger, Divider, Group, Image, Modal, Space, Text, Title, useComputedColorScheme, useMantineColorScheme } from '@mantine/core';
-import { useDisclosure, useHotkeys } from '@mantine/hooks';
+import { useDisclosure, useHotkeys, useThrottledValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
@@ -17,7 +17,7 @@ import { fmtVpnError, tUnsafe } from './common/danger';
 import { NotificationId } from './common/notifIds';
 import { useAsync } from './common/useAsync';
 import { useLoadable } from './common/useLoadable';
-import { HEADER_TITLE, IS_WK_WEB_VIEW, normalizeError, useCookie } from './common/utils';
+import { HEADER_TITLE, IS_WK_WEB_VIEW, MIN_LOAD_MS, normalizeError, useCookie } from './common/utils';
 import { ScrollToTop } from './components/ScrollToTop';
 import { About, Account, Connection, DeveloperView, FallbackAppRender, Help, Location, LogIn, Settings, SplashScreen } from './views';
 
@@ -326,12 +326,14 @@ export default function () {
     lastSuccessfulValue: accountInfo,
     error: accountInfoError,
     refresh: pollAccount,
+    loading: accountLoading
   } = useLoadable({
     skip: !osStatus?.internetAvailable || !isLoggedIn,
     load: commands.getAccount,
     periodMs: showAccountCreation ? 3600 * 1000 : 12 * 3600 * 1000,
     returnError: true,
   });
+  const accountLoadingDelayed = useThrottledValue(accountLoading, accountLoading ? MIN_LOAD_MS : 0);
 
   useEffect(() => {
     if (accountInfoError) {
@@ -368,6 +370,7 @@ export default function () {
     connectionInProgress,
     osStatus,
     pollAccount,
+    accountLoading: accountLoadingDelayed,
     toggleVpnConnection,
     vpnConnect: tryConnect,
     vpnConnected,

@@ -256,30 +256,24 @@ function AccountStatusCardTemplate({
 
 function CheckAgain() {
     const { t } = useTranslation();
-    const { pollAccount } = useContext(AppContext);
-    const [accountRefreshing, setAccountRefreshing] = useState(false);
+    const { pollAccount, accountLoading } = useContext(AppContext);
 
     return (
         <Group>
             <Anchor onClick={async () => {
-                if (!accountRefreshing) {
-                    try {
-                        setAccountRefreshing(true);
-                        await pollAccount();
-                    } catch (e) {
-                        const error = normalizeError(e);
-                        const message = error instanceof commands.CommandError
-                            ? fmtErrorI18n(t, error) : error.message;
-                        notifications.show({
-                            title: t('Account Error'),
-                            message: message,
-                            color: 'red',
-                        });
-                    } finally {
-                        setAccountRefreshing(false);
-                    }
+                try {
+                    await pollAccount();
+                } catch (e) {
+                    const error = normalizeError(e);
+                    const message = error instanceof commands.CommandError
+                        ? fmtErrorI18n(t, error) : error.message;
+                    notifications.show({
+                        title: t('Account Error'),
+                        message: message,
+                        color: 'red',
+                    });
                 }
-            }} c='gray.6'>{accountRefreshing ? <Center w={100}><Loader size='sm' /></Center> : <><IoIosRefresh size={13} /> <u>{t('Recheck')}</u></>}</Anchor>
+            }} c='gray.6'>{(accountLoading) ? <Center w={100}><Loader size='sm' /></Center> : <><IoIosRefresh size={13} /> <u>{t('Recheck')}</u></>}</Anchor>
         </Group>
     );
 }

@@ -1,4 +1,5 @@
-import { Anchor, Button, Center, Group, Image, Loader, Modal, Space, Stack, Text, ThemeIcon, Title, useComputedColorScheme, useMantineTheme } from '@mantine/core';
+import { Anchor, Button, Center, Group, Image, Loader, Modal, Stack, Text, ThemeIcon, Title, useComputedColorScheme, useMantineTheme } from '@mantine/core';
+import { useThrottledValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { lazy, Suspense, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -8,7 +9,7 @@ import * as commands from '../bridge/commands';
 import { LEGAL_WEBPAGE, OBSCURA_WEBPAGE } from '../common/accountUtils';
 import { AppContext, UpdaterStatusType } from '../common/appContext';
 import { tUnsafe } from '../common/danger';
-import { normalizeError } from '../common/utils';
+import { MIN_LOAD_MS, normalizeError } from '../common/utils';
 import Wordmark from '../res/obscura-wordmark.svg?react';
 
 const Licenses = lazy(() => import('../components/Licenses'));
@@ -39,6 +40,7 @@ export default function About() {
       handleCommand(() => commands.checkForUpdates());
     }
   }, []);
+  const updaterStatusDelayed = useThrottledValue(updaterStatus, updaterStatus.type === UpdaterStatusType.Initiated ? MIN_LOAD_MS : 0);
 
   return (
     <Stack justify='space-between' h='100vh'>
@@ -46,22 +48,22 @@ export default function About() {
         <Image src={AppIcon} w={120} />
         <Wordmark fill={colorScheme === 'light' ? 'black' : theme.colors.gray[4]} width={150} height='auto' />
         <Group gap={0}>
-          {updaterStatus.errorCode === 2 && <ThemeIcon variant='transparent' c='green.8'><FaCheckCircle /></ThemeIcon>}
-          {updaterStatus.type === UpdaterStatusType.Available && <ThemeIcon variant='transparent' c='yellow'><FaExclamationTriangle /></ThemeIcon>}
-          {updaterStatus.type === UpdaterStatusType.Initiated && <Loader size='xs' mr='xs' />}
+          {updaterStatusDelayed.errorCode === 2 && <ThemeIcon variant='transparent' c='green.8'><FaCheckCircle /></ThemeIcon>}
+          {updaterStatusDelayed.type === UpdaterStatusType.Available && <ThemeIcon variant='transparent' c='yellow'><FaExclamationTriangle /></ThemeIcon>}
+          {updaterStatusDelayed.type === UpdaterStatusType.Initiated && <Loader size='xs' mr='xs' />}
           <Text>
             {osStatus.srcVersion}
-            {updaterStatus.errorCode === 2 && <> ({t('latestVersion')})</>}
-            {updaterStatus.type === UpdaterStatusType.Available && <> ({t('updateAvailable', { version: updaterStatus.appcast!.version })})</>}
+            {updaterStatusDelayed.errorCode === 2 && <> ({t('latestVersion')})</>}
+            {updaterStatusDelayed.type === UpdaterStatusType.Available && <> ({t('updateAvailable', { version: updaterStatusDelayed.appcast!.version })})</>}
           </Text>
         </Group>
-        {(updaterStatus.type === UpdaterStatusType.NotFound || updaterStatus.type == UpdaterStatusType.Error) && (
-          <UpdaterError errorCode={updaterStatus.errorCode} error={updaterStatus.error!} />
+        {(updaterStatusDelayed.type === UpdaterStatusType.NotFound || updaterStatusDelayed.type == UpdaterStatusType.Error) && (
+          <UpdaterError errorCode={updaterStatusDelayed.errorCode} error={updaterStatusDelayed.error!} />
         )}
         <Group>
           <Button component='a' href={OBSCURA_WEBPAGE} variant='outline'>{t('Website')}</Button>
           {
-            updaterStatus?.type === UpdaterStatusType.Available ? (
+            updaterStatusDelayed?.type === UpdaterStatusType.Available ? (
               <Button onClick={() => handleCommand(commands.installUpdate)}>{t('installUpdate')}</Button>
             ) : (
               <Button onClick={() => handleCommand(commands.checkForUpdates)}>{t('checkForUpdates')}</Button>

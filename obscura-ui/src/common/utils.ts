@@ -6,6 +6,7 @@ export { localforage };
 export const HEADER_TITLE = 'Obscura VPN';
 export const IS_DEVELOPMENT = import.meta.env.MODE === 'development';
 export const IS_WK_WEB_VIEW = window.webkit !== undefined;
+export const MIN_LOAD_MS = 400;
 
 export function useCookie(key: string, defaultValue: string, options: Cookies.CookieAttributes = { expires: 365000, sameSite: 'lax', path: '/' }): [string, Dispatch<SetStateAction<string>>] {
     // cookie expires in a millenia

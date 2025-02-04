@@ -2,18 +2,22 @@ import { Code, Stack, Title } from '@mantine/core';
 import { useContext, useState } from 'react';
 import { jsonFfiCmd } from "../bridge/commands";
 import { AppContext } from '../common/appContext';
-import { localStorageGet, LocalStorageKey, localStorageSet } from '../common/localStorage';
+import { getCustomApiUrls, setCustomApiUrls } from '../common/localStorage';
 import { Choice, SelectCreatable } from './SelectCreatable';
 
-const defaultApiUrls = ['https://v1.api.prod.obscura.net/api', 'https://v1.api.staging.obscura.net/api', 'http://localhost:8080/api', ''];
+const defaultApiUrls = new Set(['https://v1.api.prod.obscura.net/api', 'https://v1.api.staging.obscura.net/api', 'http://localhost:8080/api', '']);
 
 export default function DevSetApiUrl() {
   let [output, setOutput] = useState('');
-  let apiUrls = [...defaultApiUrls];
-  let lastCustomApiUrl = localStorageGet(LocalStorageKey.LastCustomApiUrl);
-  if (lastCustomApiUrl !== null && !defaultApiUrls.includes(lastCustomApiUrl)) {
-    apiUrls.push(lastCustomApiUrl);
+  let apiUrls = [...defaultApiUrls.values()];
+  const customApiUrls = new Set(getCustomApiUrls());
+
+  for (const customApiUrl of customApiUrls) {
+    if (!defaultApiUrls.has(customApiUrl) && !apiUrls.includes(customApiUrl)) {
+      apiUrls.push(customApiUrl);
+    }
   }
+
   const initialApiUrlOptions: Choice[] = apiUrls.map(value => ({ text: value === '' ? 'null' : value, value }));
   let [apiUrlOptions, setApiUrlOptions] = useState(initialApiUrlOptions);
   const { appStatus } = useContext(AppContext);
@@ -25,9 +29,10 @@ export default function DevSetApiUrl() {
         if (url === '') {
           url = null;
         }
-        if (url !== null && !defaultApiUrls.includes(url)) {
-          localStorageSet(LocalStorageKey.LastCustomApiUrl, url);
-          setApiUrlOptions([...initialApiUrlOptions, { value: url, text: url }]);
+        // add new urls to custom api urls
+        if (url !== null && !defaultApiUrls.has(url) && !customApiUrls.has(url)) {
+          setCustomApiUrls([url, ...customApiUrls]);
+          setApiUrlOptions([{ value: url, text: url }, ...apiUrlOptions]);
         }
         await jsonFfiCmd("setApiUrl", { url });
       } catch (e) {

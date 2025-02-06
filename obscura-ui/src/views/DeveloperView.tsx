@@ -1,15 +1,16 @@
-import { Button, Group, JsonInput, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Autocomplete, Button, Group, JsonInput, Space, Stack, Text, TextInput, Title } from '@mantine/core';
 import { useInterval } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import Cookies from 'js-cookie';
 import { useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as commands from '../bridge/commands';
+import { Exit } from '../common/api';
 import { AppContext } from '../common/appContext';
+import { localStorageGet, LocalStorageKey } from '../common/localStorage';
 import { IS_WK_WEB_VIEW } from '../common/utils';
 import DevSendCommand from '../components/DevSendCommand';
 import DevSetApiUrl from '../components/DevSetApiUrl';
-import { Exit } from '../common/api';
 
 export default function DeveloperViewer() {
     const { t } = useTranslation();
@@ -30,7 +31,10 @@ export default function DeveloperViewer() {
         };
     }, []);
 
-    return <Stack p={20}>
+    const [localStorageKey, setLocalStorageKey] = useState('');
+    const [localStorageValue, setLocalStorageValue] = useState<string | null>(null);
+
+    return <Stack p={20} mb={50}>
         <Title order={3}>Developer View</Title>
         <Title order={4}>Current Status</Title>
         <JsonInput value={JSON.stringify(appStatus, null, 4)} contentEditable={false} rows={11} />
@@ -55,5 +59,11 @@ export default function DeveloperViewer() {
                 if (cookieToDeleteRef.current !== null) Cookies.remove(cookieToDeleteRef.current.value)
             }}>Delete Cookie</Button>
         </Group>
+        <Title order={4}>Local Storage</Title>
+        <Group align='end'>
+          <Autocomplete onChange={setLocalStorageKey} label='local storage key' data={Object.values(LocalStorageKey)} />
+          <Button onClick={() => setLocalStorageValue(localStorageGet(localStorageKey as LocalStorageKey))}>Get</Button>
+        </Group>
+        <JsonInput value={localStorageValue ?? 'null'} contentEditable={false} />
     </Stack>;
 }

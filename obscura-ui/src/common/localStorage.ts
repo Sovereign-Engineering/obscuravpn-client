@@ -1,5 +1,14 @@
 export const enum LocalStorageKey {
-    LastCustomApiUrl = "lastCustomApiUrl"
+    CustomApiUrls = "customApiUrls"
+}
+
+export function getCustomApiUrls(): string[] {
+    const customApiUrlsExist = localStorageGet(LocalStorageKey.CustomApiUrls);
+    return JSON.parse(customApiUrlsExist ?? '[]');
+}
+
+export function setCustomApiUrls(customApiUrls: string[]): string | null {
+  return localStorageSet(LocalStorageKey.CustomApiUrls, JSON.stringify(customApiUrls));
 }
 
 export function localStorageGet(key: LocalStorageKey): string | null {

@@ -47,29 +47,15 @@ struct ObscuraToggle: View {
             Task {
                 self.toggleLabel = ToggleLabels.connecting
                 do {
-                    try await self.startupModel.appState?.enableTunnel(TunnelArgs())
+                    try await self.startupModel.appState?.enableTunnelWithErrorHandling(TunnelArgs())
                     self.isToggled = true
                     self.toggleLabel = ToggleLabels.connected
                 } catch {
                     logger.error("Failed to connect from status menu \(error, privacy: .public)")
                     self.toggleLabel = ToggleLabels.notConnected
-                    let content = UNMutableNotificationContent()
                     if error.localizedDescription == "accountExpired" {
                         self.openURL(URLs.AppAccountPage)
-                        content.body = "Your account has expired."
-                    } else {
-                        content.body = "An error occurred while connecting to the tunnel."
                     }
-                    content.title = "Tunnel failed to connect"
-                    content.interruptionLevel = .active
-                    content.sound = UNNotificationSound.defaultCritical
-                    displayNotification(
-                        UNNotificationRequest(
-                            identifier: "obscura-connect-failed",
-                            content: content,
-                            trigger: nil
-                        )
-                    )
                 }
                 self.allowToggleSync = true
             }

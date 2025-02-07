@@ -84,8 +84,16 @@ class AppState: ObservableObject {
         }
     }
 
-    func enableTunnel(_ tunnelArgs: TunnelArgs) async throws {
-        try await self.enableTunnel(jsonTunnelArgs: tunnelArgs.json())
+    func enableTunnelWithErrorHandling(_ tunnelArgs: TunnelArgs) async throws {
+        try await self.enableTunnelWithErrorHandling(jsonTunnelArgs: tunnelArgs.json())
+    }
+
+    func enableTunnelWithErrorHandling(jsonTunnelArgs: String) async throws {
+        do {
+            try await self.enableTunnel(jsonTunnelArgs: jsonTunnelArgs)
+        } catch {
+            notifyConnectError(error)
+        }
     }
 
     func enableTunnel(jsonTunnelArgs: String) async throws {
@@ -100,7 +108,6 @@ class AppState: ObservableObject {
             try self.manager.connection.startVPNTunnel(options: ["tunnelArgs": NSString(string: jsonTunnelArgs)])
             Self.logger.log("startVPNTunnel called without error")
         } catch {
-            Self.logger.error("Error during 'startVPNTunnel': \(error.localizedDescription, privacy: .public)")
             throw errorCodeOther
         }
         // We are observed the disconnected status right before calling startVPNTunnel and expect to observe the connecting state

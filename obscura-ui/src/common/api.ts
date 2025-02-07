@@ -8,6 +8,8 @@ export interface Exit {
     country_code: string, // lowercase TCountryCode
     city_code: string,
     city_name: string,
+    provider_id: string,
+    provider_url: string
 }
 
 export function getCountry(country_code: string): ICountryData {

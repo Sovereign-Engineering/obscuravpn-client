@@ -176,7 +176,7 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
             {styles => <Stack style={styles} justify='center' align='center'>
               <CopyButton value={ObscuraAccount.accountIdToString(generatedAccountId)}>
                 {({ copied, copy }) => (
-                  <Button color={copied ? 'teal' : undefined} onClick={copy}>
+                  <Button color={copied ? 'teal' : undefined} onClick={copy} miw='22ch'>
                     {copied ? t('Copied Account Number') : t('Copy Account Number')}
                   </Button>
                 )}

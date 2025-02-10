@@ -13,7 +13,7 @@ import * as commands from './bridge/commands';
 import { logReactError, useSystemContext } from './bridge/SystemProvider';
 import { Exit } from './common/api';
 import { AppContext, AppStatus, ConnectionInProgress, ExitsContext, OsStatus } from './common/appContext';
-import { fmtVpnError, tUnsafe } from './common/danger';
+import { fmtErrorI18n, fmtVpnError } from './common/danger';
 import { NotificationId } from './common/notifIds';
 import { useAsync } from './common/useAsync';
 import { useLoadable } from './common/useLoadable';
@@ -351,11 +351,11 @@ export default function () {
   });
 
   useEffect(() => {
-    if (checkUpdateError !== undefined) {
+    if (checkUpdateError instanceof commands.CommandError) {
       notifications.show({
         color: 'red',
         title: t('Error'),
-        message: tUnsafe(t, normalizeError(checkUpdateError).message)
+        message: fmtErrorI18n(t, checkUpdateError)
       });
     }
   }, [checkUpdateError]);

@@ -14,6 +14,6 @@ export function fmtErrorI18n(t: TFunction, error: CommandError): ReactNode {
   return t(error.i18nKey());
 }
 
-export function tUnsafe(t, key: string): ReactNode {
-  return t(value);
+export function tUnsafe(t: TFunction, key: string): ReactNode {
+  return t(key);
 }

@@ -70,9 +70,7 @@ export function logout() {
 }
 
 export function connect(exit: string | null = null) {
-    console.log(`got exit: ${JSON.stringify(exit)}`);
     let jsonTunnelArgs = JSON.stringify(({ exit }));
-
     return invoke('startTunnel', { tunnelArgs: jsonTunnelArgs });
 }
 

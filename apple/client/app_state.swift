@@ -93,6 +93,7 @@ class AppState: ObservableObject {
             try await self.enableTunnel(jsonTunnelArgs: jsonTunnelArgs)
         } catch {
             notifyConnectError(error)
+            throw error
         }
     }
 

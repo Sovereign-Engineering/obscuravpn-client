@@ -1,8 +1,9 @@
 use anyhow::Context;
 use socket2::{Domain, Protocol, Socket, Type};
+use std::io;
 use std::net::{Ipv4Addr, SocketAddrV4};
 
-pub fn new_udp(fw_mark: Option<u32>) -> anyhow::Result<std::net::UdpSocket> {
+pub fn new_udp(fw_mark: Option<u32>) -> io::Result<std::net::UdpSocket> {
     let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP))?;
     let bind_addr = SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 0).into();
     socket.bind(&bind_addr)?;
@@ -11,7 +12,10 @@ pub fn new_udp(fw_mark: Option<u32>) -> anyhow::Result<std::net::UdpSocket> {
         #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
         socket.set_mark(fw_mark)?;
         #[cfg(not(any(target_os = "android", target_os = "fuchsia", target_os = "linux")))]
-        anyhow::bail!("fw_mark only supported on android, linux and fuchsia")
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            "fw_mark only supported on android, linux and fuchsia",
+        ));
     }
     Ok(socket.into())
 }

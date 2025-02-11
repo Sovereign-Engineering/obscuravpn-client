@@ -1,11 +1,3 @@
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex, MutexGuard};
-use std::{
-    mem,
-    net::{IpAddr, Ipv4Addr},
-    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
-};
-
 use boringtun::x25519::{PublicKey, StaticSecret};
 use chrono::Utc;
 use obscuravpn_api::cmd::CacheWgKey;
@@ -15,25 +7,31 @@ use obscuravpn_api::{
     types::{ObfuscatedTunnelConfig, OneRelay, TunnelConfig, WgPubkey},
     Client, ClientError,
 };
-use quinn::rustls::pki_types::CertificateDer;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
-use tokio::{net::UdpSocket, time::timeout};
-use uuid::Uuid;
-
-use crate::config::ConfigSaveError;
-use crate::config::PinnedLocation;
-use crate::{
-    config::{self, Config, ConfigLoadError},
-    errors::RelaySelectionError,
-    net::{new_quic, new_udp},
-    quicwg::QuicWgConn,
+use std::collections::BTreeSet;
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex, MutexGuard};
+use std::{
+    mem,
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
+use tokio::spawn;
+use uuid::Uuid;
 
 use super::{
     errors::{ApiError, TunnelConnectError},
     network_config::NetworkConfig,
+};
+use crate::config::ConfigSaveError;
+use crate::config::PinnedLocation;
+use crate::quicwg::QuicWgConnHandshaking;
+use crate::relay_selection::race_relay_handshakes;
+use crate::{
+    config::{self, Config, ConfigLoadError},
+    errors::RelaySelectionError,
+    quicwg::QuicWgConn,
 };
 
 pub struct ClientState {
@@ -218,37 +216,16 @@ impl ClientState {
 
     pub(crate) async fn connect(&self, exit: Option<String>) -> Result<(QuicWgConn, NetworkConfig, OneExit, OneRelay), TunnelConnectError> {
         let chose_exit = exit.is_some();
-        let (token, tunnel_config, wg_sk, exit, relay) = self.new_tunnel(exit).await?;
+        let (token, tunnel_config, wg_sk, exit, relay, handshaking) = self.new_tunnel(exit).await?;
         let network_config = NetworkConfig::new(&tunnel_config)?;
         let client_ip_v4 = network_config.ipv4;
-        const DEFAULT_PORT: u16 = 443;
-        let relay_port = if relay.ports.contains(&DEFAULT_PORT) {
-            DEFAULT_PORT
-        } else {
-            relay.ports.choose(&mut thread_rng()).copied().unwrap_or(DEFAULT_PORT)
-        };
-        let relay_addr = (relay.ip_v4, relay_port).into();
         tracing::info!(
             tunnel.id =% token,
             exit.pubkey =? tunnel_config.exit_pubkey,
-            relay.addr =% relay_addr,
-            "connecting to tunnel");
-        let udp = new_udp(None).map_err(TunnelConnectError::UdpSetup)?;
-        let quic = new_quic(udp).map_err(TunnelConnectError::QuicSetup)?;
+            "finishing tunnel connection");
         let remote_pk = PublicKey::from(tunnel_config.exit_pubkey.0);
-        let relay_cert = CertificateDer::from(relay.tls_cert.clone());
         let ping_keepalive_ip = tunnel_config.gateway_ip_v4;
-        let conn = QuicWgConn::connect(
-            wg_sk.clone(),
-            remote_pk,
-            relay_addr,
-            relay_cert,
-            quic,
-            client_ip_v4,
-            ping_keepalive_ip,
-            token,
-        )
-        .await?;
+        let conn = QuicWgConn::connect(handshaking, wg_sk.clone(), remote_pk, client_ip_v4, ping_keepalive_ip, token).await?;
         tracing::info!("tunnel connected");
         if chose_exit {
             Self::change_config(&mut self.lock(), |config| config.last_chosen_exit = Some(exit.id.clone()))?;
@@ -259,8 +236,8 @@ impl ClientState {
     async fn new_tunnel(
         &self,
         exit: Option<String>,
-    ) -> anyhow::Result<(Uuid, ObfuscatedTunnelConfig, StaticSecret, OneExit, OneRelay), TunnelConnectError> {
-        let closest_relay = self.select_relay().await?;
+    ) -> anyhow::Result<(Uuid, ObfuscatedTunnelConfig, StaticSecret, OneExit, OneRelay, QuicWgConnHandshaking), TunnelConnectError> {
+        let (closest_relay, handshaking) = self.select_relay().await?;
         let exit = exit.or_else(|| closest_relay.preferred_exits.choose(&mut thread_rng()).map(|e| e.id.clone()));
 
         let (tunnel_info, sk, tunnel_id) = loop {
@@ -318,10 +295,13 @@ impl ClientState {
             self.api_request(DeleteTunnel { id }).await?;
         };
 
+        if tunnel_info.relay.id != closest_relay.id {
+            return Err(TunnelConnectError::UnexpectedRelay);
+        }
         let TunnelConfig::Obfuscated(config) = tunnel_info.config else {
             return Err(TunnelConnectError::UnexpectedTunnelKind);
         };
-        Ok((tunnel_id, config, sk, tunnel_info.exit, tunnel_info.relay))
+        Ok((tunnel_id, config, sk, tunnel_info.exit, tunnel_info.relay, handshaking))
     }
 
     pub async fn remove_local_tunnels(&self) -> Result<(), ApiError> {
@@ -335,37 +315,36 @@ impl ClientState {
         }
     }
 
-    async fn select_relay(&self) -> Result<OneRelay, TunnelConnectError> {
+    pub async fn select_relay(&self) -> Result<(OneRelay, QuicWgConnHandshaking), TunnelConnectError> {
         let relays = self.api_request(ListRelays {}).await?;
-        let udp_socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0)).await.map_err(RelaySelectionError::Io)?;
-        let send_payload = Uuid::new_v4().into_bytes();
-        let start = Instant::now();
-        for _ in 0..2 {
-            for relay in &relays {
-                _ = udp_socket.send_to(&send_payload, (relay.ip_v4, 441)).await;
+        tracing::info!("relay candidates: {:?}", relays);
+
+        let racing_handshakes = race_relay_handshakes(relays)?;
+        let mut relays_connected_successfully = BTreeSet::new();
+        let mut best_candidate = None;
+
+        while let Ok((relay, port, rtt, handshaking)) = racing_handshakes.recv_async().await {
+            relays_connected_successfully.insert(relay.id.clone());
+            let rejected = if best_candidate.as_ref().is_some_and(|(_, _, best_rtt, _)| *best_rtt < rtt) {
+                Some(handshaking)
+            } else {
+                best_candidate
+                    .replace((relay, port, rtt, handshaking))
+                    .map(|(_, _, _, replaced)| replaced)
+            };
+            if let Some(rejected) = rejected {
+                spawn(rejected.abandon());
+            }
+            if relays_connected_successfully.len() >= 5 {
+                break;
             }
         }
-        let closest_relay = timeout(Duration::from_secs(3), async {
-            let mut recv_payload = [0u8; 16];
-            loop {
-                let (len, addr) = udp_socket.recv_from(&mut recv_payload).await?;
-                if len != send_payload.len() || recv_payload != send_payload {
-                    continue;
-                }
-                tracing::info!("received udp echo reponse from after {}ms", start.elapsed().as_millis());
-                for relay in &relays {
-                    match addr.ip() {
-                        IpAddr::V4(ip) if ip == relay.ip_v4 => return Ok(relay.clone()),
-                        _ => continue,
-                    }
-                }
-            }
-        })
-        .await
-        .map_err(|_| RelaySelectionError::Timeout)?
-        .map_err(RelaySelectionError::Io)?;
-        tracing::info!("selected relay {}", closest_relay.id);
-        Ok(closest_relay)
+
+        let Some((relay, port, rtt, handshaking)) = best_candidate else {
+            return Err(RelaySelectionError::NoSuccess.into());
+        };
+        tracing::info!(relay.id, port, rtt = rtt.as_millis(), "selected relay");
+        Ok((relay, handshaking))
     }
 
     pub async fn api_request<C: Cmd>(&self, cmd: C) -> Result<C::Output, ApiError> {

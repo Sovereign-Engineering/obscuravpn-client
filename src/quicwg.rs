@@ -372,7 +372,7 @@ impl QuicWgConn {
             // rate-limited logging because this can get VERY noisy and is usually not interesting
             const SILENCE_SECS: u64 = 1;
             if !last_send_err_logged_at.is_some_and(|last_log_at| last_log_at.elapsed().as_secs() < SILENCE_SECS) {
-                tracing::error!(?error, "error while sending packet, silencing this log for {SILENCE_SECS}min");
+                tracing::error!(?error, "error while sending packet, silencing this log for {SILENCE_SECS}s");
                 *last_send_err_logged_at = Some(Instant::now());
             }
         }

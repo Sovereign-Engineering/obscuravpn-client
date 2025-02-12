@@ -41,19 +41,19 @@ export default function About() {
     }
   }, []);
   const updaterStatusDelayed = useThrottledValue(updaterStatus, updaterStatus.type === UpdaterStatusType.Initiated ? MIN_LOAD_MS : 0);
-
+  const isLatest = errorCodeIsLatestVersion(updaterStatusDelayed.errorCode);
   return (
     <Stack justify='space-between' h='100vh'>
       <Stack gap='lg' align='center' m={60}>
         <Image src={AppIcon} w={120} />
         <Wordmark fill={colorScheme === 'light' ? 'black' : theme.colors.gray[4]} width={150} height='auto' />
         <Group gap={0}>
-          {updaterStatusDelayed.errorCode === 2 && <ThemeIcon variant='transparent' c='green.8'><FaCheckCircle /></ThemeIcon>}
+          {isLatest && <ThemeIcon variant='transparent' c='green.8'><FaCheckCircle /></ThemeIcon>}
           {updaterStatusDelayed.type === UpdaterStatusType.Available && <ThemeIcon variant='transparent' c='yellow'><FaExclamationTriangle /></ThemeIcon>}
           {updaterStatusDelayed.type === UpdaterStatusType.Initiated && <Loader size='xs' mr='xs' />}
           <Text>
             {osStatus.srcVersion}
-            {updaterStatusDelayed.errorCode === 2 && <> ({t('latestVersion')})</>}
+            {isLatest && <> ({t('latestVersion')})</>}
             {updaterStatusDelayed.type === UpdaterStatusType.Available && <> ({t('updateAvailable', { version: updaterStatusDelayed.appcast!.version })})</>}
           </Text>
         </Group>
@@ -96,10 +96,17 @@ interface UpdaterErrorProps {
   error: string
 }
 
+function errorCodeIsLatestVersion(errorcode: number | undefined) {
+  return errorcode === 1 || errorcode == 2;
+}
+
 function UpdaterError({ errorCode, error }: UpdaterErrorProps) {
   switch (errorCode) {
+    // Project version matches
+    case 1:
+    // Project version exceeds the update
     case 2:
-      return null
+      return null;
     default:
       return <Text c='red'>{error}</Text>;
   }

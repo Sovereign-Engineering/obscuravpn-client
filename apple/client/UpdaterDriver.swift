@@ -22,6 +22,7 @@ class UpdaterDriver: NSObject, SPUUserDriver {
     }
 
     private func updateOsStatus(updaterStatus: UpdaterStatus) {
+        logger.info("New osStatus.updaterStatus \(updaterStatus, privacy: .public))")
         _ = self.appState.osStatus.update { value in
             value.updaterStatus = updaterStatus
             value.version = UUID()
@@ -118,7 +119,11 @@ struct AppcastSummary: Codable {
     var minSystemVersionOk: Bool
 }
 
-struct UpdaterStatus: Codable {
+struct UpdaterStatus: Codable, CustomStringConvertible {
+    var description: String {
+        return "UpdaterStatus(type: \(self.type), appcast: \(self.appcast as Optional), error: \(self.error as Optional)), errorCode: \(self.errorCode as Optional)"
+    }
+
     var type: UpdaterStatusType = .uninitiated
     var appcast: AppcastSummary?
     var error: String?

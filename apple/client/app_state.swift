@@ -92,7 +92,9 @@ class AppState: ObservableObject {
         do {
             try await self.enableTunnel(jsonTunnelArgs: jsonTunnelArgs)
         } catch {
-            notifyConnectError(error)
+            if error.localizedDescription != "tunnelNotDisconnected" && error.localizedDescription != "failedWithoutDisconnectError" && self.manager.connection.status != .disconnecting {
+                notifyConnectError(error)
+            }
             throw error
         }
     }
@@ -233,7 +235,7 @@ class AppState: ObservableObject {
         do {
             try await connection.fetchLastDisconnectError()
             self.logger.error("Failed to fetch disconnect error")
-            return errorCodeOther
+            return "failedWithoutDisconnectError"
         } catch {
             if let connectErrorCode = (error as NSError).connectErrorCode() {
                 self.logger.log("Fetched connect error code: \(connectErrorCode)")

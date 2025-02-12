@@ -112,7 +112,7 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
                   components={[<Anchor href={ObscuraAccount.LEGAL_WEBPAGE} />]}
                 />
               </Text>
-              <Button disabled={apiError !== null} w={260} onClick={initiateAccountCreation}>{t('Create an Account')}</Button>
+              <Button w={260} onClick={initiateAccountCreation}>{t('Create an Account')}</Button>
               {
                 apiError &&
                 <Card shadow='sm' padding='lg' my={0} m={0} radius='md'>

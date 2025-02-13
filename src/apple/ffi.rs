@@ -52,7 +52,7 @@ pub unsafe extern "C" fn initialize(config_dir: FfiStr, old_config_dir: FfiStr, 
         let config_dir = config_dir.to_string().into();
         let old_config_dir = old_config_dir.to_string().into();
         let user_agent = user_agent.to_string();
-        match Manager::new(config_dir, old_config_dir, user_agent) {
+        match Manager::new(config_dir, old_config_dir, user_agent, &RUNTIME) {
             Ok(c) => {
                 first_init = true;
                 tracing::info!("ffi initialized");

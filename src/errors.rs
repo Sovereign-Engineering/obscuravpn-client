@@ -43,7 +43,8 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
                         NoLongerSupported {} => Self::NoLongerSupported,
                         TunnelLimitExceeded {} => Self::NoSlotsLeft,
                         RateLimitExceeded {} => Self::ApiRateLimitExceeded,
-                        BadRequest {}
+                        AlreadyExists {}
+                        | BadRequest {}
                         | InternalError {}
                         | MissingOrInvalidAuthToken {}
                         | NoApiRoute {}
@@ -63,7 +64,8 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
             | TunnelConnectError::TunnelConnect(_)
             | TunnelConnectError::InvalidTunnelId
             | TunnelConnectError::UnexpectedTunnelKind
-            | TunnelConnectError::RelaySelection(_) => Self::Other,
+            | TunnelConnectError::RelaySelection(_)
+            | TunnelConnectError::ConfigSave(_) => Self::Other,
         }
     }
 }
@@ -88,6 +90,8 @@ pub enum TunnelConnectError {
     InvalidRelayCert(anyhow::Error),
     #[error("api returned unexpected tunnel kind")]
     UnexpectedTunnelKind,
+    #[error("failed to save config file")]
+    ConfigSave(#[from] ConfigSaveError),
 }
 
 #[derive(Debug, Error)]
@@ -98,6 +102,15 @@ pub enum ApiError {
     ApiClient(#[from] ClientError),
     #[error(transparent)]
     ConfigSave(#[from] ConfigSaveError),
+}
+
+impl ApiError {
+    pub fn api_error_kind(&self) -> Option<&obscuravpn_api::cmd::ApiErrorKind> {
+        if let Self::ApiClient(ClientError::ApiError(error)) = self {
+            return Some(&error.body.error);
+        }
+        None
+    }
 }
 
 #[derive(Debug, Error)]

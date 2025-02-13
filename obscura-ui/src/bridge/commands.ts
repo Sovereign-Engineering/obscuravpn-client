@@ -178,3 +178,7 @@ export function setInNewAccountFlow(value: boolean) {
 export function setPinnedExits(newPinnedExits: PinnedLocation[]) {
     return jsonFfiCmd('setPinnedExits', { exits: newPinnedExits });
 }
+
+export function enableWgKeyCacheAndRotate() {
+    return jsonFfiCmd('enableWgKeyCacheAndRotate');
+}

@@ -51,6 +51,7 @@ export default function DeveloperViewer() {
         <JsonInput value={JSON.stringify(exitServers, null, 4)} contentEditable={false} rows={4} />
         <DevSendCommand />
         <Button onClick={() => commands.setInNewAccountFlow(true)}>setInNewAccountFlow</Button>
+        <Button onClick={() => commands.enableWgKeyCacheAndRotate()}>Rotate WG key (and enable caching)</Button>
         <Title order={4}>Cookies</Title>
         <Text>{JSON.stringify(Cookies.get(), null, 4)}</Text>
         <Group>

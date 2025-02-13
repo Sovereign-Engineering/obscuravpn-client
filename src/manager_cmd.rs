@@ -41,12 +41,6 @@ impl From<&ConfigSaveError> for ManagerCmdErrorCode {
     }
 }
 
-impl From<ApiError> for ManagerCmdErrorCode {
-    fn from(err: ApiError) -> Self {
-        (&err).into()
-    }
-}
-
 impl From<&ApiError> for ManagerCmdErrorCode {
     fn from(err: &ApiError) -> Self {
         tracing::info!("deriving json cmd error code for {}", &err);
@@ -59,6 +53,7 @@ impl From<&ApiError> for ManagerCmdErrorCode {
                     ApiErrorKind::SignupLimitExceeded {} => Self::ApiSignupLimitExceeded,
                     ApiErrorKind::InternalError {}
                     | ApiErrorKind::AccountExpired {}
+                    | ApiErrorKind::AlreadyExists {}
                     | ApiErrorKind::BadRequest {}
                     | ApiErrorKind::MissingOrInvalidAuthToken {}
                     | ApiErrorKind::NoApiRoute {}
@@ -87,6 +82,7 @@ pub enum ManagerCmd {
     ApiListExit {},
     GetStatus { known_version: Option<Uuid> },
     SetInNewAccountFlow { value: bool },
+    EnableWgKeyCacheAndRotate {},
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -137,6 +133,10 @@ impl ManagerCmd {
                 Err(err) => Err((&err).into()),
             },
             ManagerCmd::SetApiUrl { url } => match manager.set_api_url(url) {
+                Ok(()) => Ok(ManagerCmdOk::Empty),
+                Err(err) => Err((&err).into()),
+            },
+            ManagerCmd::EnableWgKeyCacheAndRotate {} => match manager.enable_wg_key_cache_and_rotate() {
                 Ok(()) => Ok(ManagerCmdOk::Empty),
                 Err(err) => Err((&err).into()),
             },

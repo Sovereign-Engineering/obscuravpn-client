@@ -13,10 +13,12 @@ use obscuravpn_api::{
 };
 use serde::{Deserialize, Serialize};
 use tokio::{
+    runtime::Runtime,
     sync::watch::{channel, Receiver, Sender},
     task::JoinHandle,
     time::sleep,
 };
+use tokio_util::sync::{CancellationToken, DropGuard};
 use uuid::Uuid;
 
 use crate::{
@@ -34,6 +36,7 @@ pub struct Manager {
     client_state: Arc<ClientState>,
     tunnel_state: Arc<RwLock<TunnelState>>,
     status_watch: Sender<Status>,
+    _background_task_cancellation: DropGuard,
 }
 
 // Keep synchronized with ../../apple/shared/NetworkExtensionIpc.swift
@@ -127,16 +130,25 @@ impl TunnelState {
 }
 
 impl Manager {
-    pub fn new(config_dir: PathBuf, old_config_dir: PathBuf, user_agent: String) -> Result<Arc<Self>, ConfigLoadError> {
+    pub fn new(config_dir: PathBuf, old_config_dir: PathBuf, user_agent: String, runtime: &Runtime) -> Result<Arc<Self>, ConfigLoadError> {
         let client_state = ClientState::new(config_dir, old_config_dir, user_agent)?;
         let config = client_state.get_config();
         let initial_status = Status::new(Uuid::new_v4(), VpnStatus::Disconnected {}, config, client_state.base_url());
-        Ok(Self {
+        let background_task_cancellation = CancellationToken::new();
+        let this: Arc<Self> = Self {
             client_state: client_state.into(),
             tunnel_state: Arc::new(RwLock::new(TunnelState::Disconnected { conn_id: Uuid::new_v4() })),
             status_watch: channel(initial_status).0,
+            _background_task_cancellation: background_task_cancellation.clone().drop_guard(),
         }
-        .into())
+        .into();
+        if this.client_state.get_config().use_wireguard_key_cache {
+            let background_fut = this.clone().wireguard_key_registraction_task();
+            runtime.spawn(async move {
+                background_task_cancellation.run_until_cancelled(background_fut).await;
+            });
+        }
+        Ok(this)
     }
 
     // Non-async exclusive mutable access to tunnel state
@@ -272,6 +284,9 @@ impl Manager {
             let new_conn_id = Uuid::new_v4();
             tracing::info!(%new_conn_id, "setting TunnelState to Disconnected");
             *tunnel_state = TunnelState::Disconnected { conn_id: new_conn_id };
+            if let Err(error) = self.client_state.rotate_wireguard_key_if_required() {
+                tracing::error!(?error, "wireguard key rotation after stopping tunnel failed")
+            }
         })
     }
 
@@ -359,6 +374,40 @@ impl Manager {
         self.client_state.update_account_info(&account_info)?;
         self.update_status_if_changed(None);
         Ok(account_info)
+    }
+
+    async fn wireguard_key_registraction_task(self: Arc<Self>) {
+        let mut status_subscription = self.subscribe();
+        let mut last_status_version = None;
+        loop {
+            {
+                let status_result = status_subscription
+                    .wait_for(|status| {
+                        let changed = Some(status.version) != last_status_version;
+                        let active = status.account.as_ref().is_some_and(|account_status| account_status.account_info.active);
+                        let disconnected = matches!(status.vpn_status, VpnStatus::Disconnected {});
+                        changed && active && disconnected
+                    })
+                    .await;
+                let Ok(status) = status_result else {
+                    tracing::error!("status subscription closed unexpectedly");
+                    return;
+                };
+                last_status_version = Some(status.version);
+            }
+            tracing::info!("status change triggered wireguard key registration");
+            for backoff_wait in 0..10 {
+                let Err(error) = self.client_state.register_cached_wireguard_key_if_new().await else {
+                    continue;
+                };
+                tracing::warn!(?error, "failed attempt to register cached wireguard key");
+                sleep(Duration::from_secs(backoff_wait)).await;
+            }
+        }
+    }
+
+    pub fn enable_wg_key_cache_and_rotate(&self) -> Result<(), ConfigSaveError> {
+        self.client_state.enable_wg_key_cache_and_rotate()
     }
 }
 

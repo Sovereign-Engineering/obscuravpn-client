@@ -6,7 +6,6 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
-use base64::prelude::*;
 use boringtun::x25519::{PublicKey, StaticSecret};
 use chrono::Utc;
 use obscuravpn_api::cmd::CacheWgKey;
@@ -223,20 +222,22 @@ impl ClientState {
         let (token, tunnel_config, wg_sk, exit, relay) = self.new_tunnel(exit).await?;
         let network_config = NetworkConfig::new(&tunnel_config)?;
         let client_ip_v4 = network_config.ipv4;
+        const DEFAULT_PORT: u16 = 443;
+        let relay_port = if relay.ports.contains(&DEFAULT_PORT) {
+            DEFAULT_PORT
+        } else {
+            relay.ports.choose(&mut thread_rng()).copied().unwrap_or(DEFAULT_PORT)
+        };
+        let relay_addr = (relay.ip_v4, relay_port).into();
         tracing::info!(
             tunnel.id =% token,
             exit.pubkey =? tunnel_config.exit_pubkey,
-            relay.addr =% tunnel_config.relay_addr_v4,
+            relay.addr =% relay_addr,
             "connecting to tunnel");
         let udp = new_udp(None).map_err(TunnelConnectError::UdpSetup)?;
         let quic = new_quic(udp).map_err(TunnelConnectError::QuicSetup)?;
         let remote_pk = PublicKey::from(tunnel_config.exit_pubkey.0);
-        let relay_addr = tunnel_config.relay_addr_v4.into();
-        let relay_cert = CertificateDer::from(
-            BASE64_STANDARD
-                .decode(tunnel_config.relay_cert)
-                .map_err(|err| TunnelConnectError::InvalidRelayCert(err.into()))?,
-        );
+        let relay_cert = CertificateDer::from(relay.tls_cert.clone());
         let ping_keepalive_ip = tunnel_config.gateway_ip_v4;
         let conn = QuicWgConn::connect(
             wg_sk.clone(),

@@ -33,7 +33,7 @@ rand = "0.8.5"
 ring = "0.17.8"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
-serde_with = { version = "3.11.0", features = ["base64"] }
+serde_with = { version = "3.12", features = ["base64"] }
 socket2 = { version = "0.5.5", features = ["all"] }
 strum = { version = "0.26.2", features = ["derive"] }
 tempfile = "3.10.1"
@@ -53,7 +53,7 @@ rev = "ff3b5555b5b1c4f85ae23d8d4aaf00bea2cd2bf0"
 
 [dependencies.obscuravpn-api]
 git = "https://github.com/Sovereign-Engineering/obscuravpn-api.git"
-rev = "0d35f59a600077afb9984de52563618bdd4684ca"
+rev = "1471372e9ad74091b5750e92723b9c00993cc617"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 oslog = "0.2.0"

@@ -1329,7 +1329,7 @@ dependencies = [
 [[package]]
 name = "obscuravpn-api"
 version = "0.0.0"
-source = "git+https://github.com/Sovereign-Engineering/obscuravpn-api.git?rev=0d35f59a600077afb9984de52563618bdd4684ca#0d35f59a600077afb9984de52563618bdd4684ca"
+source = "git+https://github.com/Sovereign-Engineering/obscuravpn-api.git?rev=1471372e9ad74091b5750e92723b9c00993cc617#1471372e9ad74091b5750e92723b9c00993cc617"
 dependencies = [
  "anyhow",
  "base64 0.21.7",
@@ -1340,6 +1340,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
+ "serde_with",
  "thiserror 1.0.56",
  "tokio",
  "tracing",
@@ -2003,9 +2004,9 @@ dependencies = [
 
 [[package]]
 name = "serde_with"
-version = "3.11.0"
+version = "3.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e28bdad6db2b8340e449f7108f020b3b092e8583a9e3fb82713e1d4e71fe817"
+checksum = "d6b6f7f2fcb69f747921f79f3926bd1e203fce4fef62c268dd3abfb6d86029aa"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -2021,9 +2022,9 @@ dependencies = [
 
 [[package]]
 name = "serde_with_macros"
-version = "3.11.0"
+version = "3.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d846214a9854ef724f3da161b426242d8de7c1fc7de2f89bb1efcb154dca79d"
+checksum = "8d00caa5193a3c8362ac2b73be6b9e768aa5a4b2f721d8f4b339600c3cb51f8e"
 dependencies = [
  "darling",
  "proc-macro2",

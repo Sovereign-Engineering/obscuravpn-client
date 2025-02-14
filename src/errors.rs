@@ -60,7 +60,6 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
             TunnelConnectError::NetworkConfig(_)
             | TunnelConnectError::UdpSetup(_)
             | TunnelConnectError::QuicSetup(_)
-            | TunnelConnectError::InvalidRelayCert(_)
             | TunnelConnectError::TunnelConnect(_)
             | TunnelConnectError::InvalidTunnelId
             | TunnelConnectError::UnexpectedTunnelKind
@@ -86,8 +85,6 @@ pub enum TunnelConnectError {
     RelaySelection(#[from] RelaySelectionError),
     #[error("api returned invalid tunnel id")]
     InvalidTunnelId,
-    #[error("api returned invalid relay certificate: {0}")]
-    InvalidRelayCert(anyhow::Error),
     #[error("api returned unexpected tunnel kind")]
     UnexpectedTunnelKind,
     #[error("failed to save config file")]

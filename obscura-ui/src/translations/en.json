@@ -122,6 +122,7 @@
   "errorFetchingOsStatus": "Error Fetching OsStatus",
   "errorFetchingStatus": "Error Fetching Status",
   "exitPubKey": "Exit server's public key",
+  "exitPubKeyTooltip": "This public key matches those found for <0>{{ exitProviderId }}</0> on <1>{{ exitProviderURL }}</1>",
   "exitServerFetchResolution": "Make sure you are connected to the internet then try again.",
   "failedToFetchExitServers": "Failed to fetch exit servers",
   "findDebugBundleInFinder": "A Finder window should have opened with the debugging archive file selected",

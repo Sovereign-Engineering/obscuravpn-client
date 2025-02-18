@@ -1,9 +1,9 @@
-import { ActionIcon, Button, Card, Divider, Flex, Group, Loader, Stack, Text, TextInput, ThemeIcon, useMantineTheme } from '@mantine/core';
+import { ActionIcon, Anchor, Button, Card, Divider, Flex, Group, HoverCard, Loader, Stack, Text, TextInput, ThemeIcon, useComputedColorScheme, useMantineTheme } from '@mantine/core';
 import { useInterval } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { continents } from 'countries-list';
 import { MouseEvent, useContext, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { BsPin, BsPinFill, BsShieldFillCheck, BsShieldFillExclamation } from 'react-icons/bs';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import * as commands from '../bridge/commands';
@@ -254,10 +254,13 @@ function NoExitServers() {
 
 function VpnStatusCard() {
     const theme = useMantineTheme();
+    const colorScheme = useComputedColorScheme();
     const { t } = useTranslation();
     const { appStatus, vpnConnected, connectionInProgress, vpnDisconnect, vpnConnect, osStatus } = useContext(AppContext);
     const { internetAvailable } = osStatus;
     const exitPubKey = appStatus.vpnStatus.connected?.exit_public_key;
+    const exitProviderId = appStatus.vpnStatus.connected?.exit.provider_id;
+    const exitProviderURL = appStatus.vpnStatus.connected?.exit.provider_url;
     const [showExitPubKey, setShowExitPubKey] = useState(false);
     const { value: trafficStats, refresh: pollTrafficStats } = useAsync({deps: [], load: commands.getTrafficStats });
     useInterval(pollTrafficStats, 1000, { autoInvoke: true });
@@ -320,13 +323,23 @@ function VpnStatusCard() {
                     </Stack>
                   }
                   <Stack gap={5}>
-                    <Group h='1em' gap={3}>
-                      <Text c='dimmed' size='sm'>{t('exitPubKey')}</Text>
-                      <ActionIcon variant='subtle' onClick={() => setShowExitPubKey(!showExitPubKey)}>
-                        {showExitPubKey ? <FaEyeSlash size='1em'/> : <FaEye size='1em'/>}
-                      </ActionIcon>
+                    <Group h='1em' justify='space-between' mr={34}>
+                      <Group gap={3}>
+                        <HoverCard disabled={!showExitPubKey} withArrow arrowSize={15} position='top' shadow='xs' offset={4}>
+                          <HoverCard.Target>
+                            <Text c='dimmed' size='sm'>{t('exitPubKey')}</Text>
+                          </HoverCard.Target>
+                          <HoverCard.Dropdown bg={colorScheme === 'dark' ? 'dark.8' : 'gray.0'}>
+                            <Text size='xs'><Trans i18nKey='exitPubKeyTooltip' values={{ exitProviderId, exitProviderURL }} components={[<i />, <Anchor href={exitProviderURL} />]} /></Text>
+                          </HoverCard.Dropdown>
+                        </HoverCard>
+                        <ActionIcon variant='subtle' onClick={() => setShowExitPubKey(!showExitPubKey)}>
+                          {showExitPubKey ? <FaEyeSlash size='1em'/> : <FaEye size='1em'/>}
+                        </ActionIcon>
+                      </Group>
+                      {showExitPubKey && <Anchor href={exitProviderURL}><Text size='xs' component='i'>{exitProviderId}</Text></Anchor>}
                     </Group>
-                    <Group w={`${exitPubKey.length + 2}ch`} gap={3}>
+                    <Group ff='monospace' w={`${exitPubKey.length + 2}ch`} gap={3}>
                       {showExitPubKey ? <GoldCheckedBadge /> : ''}<TextInput readOnly w={`${exitPubKey.length}ch`} variant='unstyled' size='sm' value={exitPubKey} type={showExitPubKey ? 'text' : 'password'} />
                     </Group>
                   </Stack>

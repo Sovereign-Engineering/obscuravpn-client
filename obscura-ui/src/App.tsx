@@ -351,13 +351,14 @@ export default function () {
   });
 
   useEffect(() => {
-    if (checkUpdateError instanceof commands.CommandError) {
-      notifications.show({
-        color: 'red',
-        title: t('Error'),
-        message: fmtErrorI18n(t, checkUpdateError)
-      });
-    }
+    const error = normalizeError(checkUpdateError);
+    const message = error instanceof commands.CommandError
+      ? fmtErrorI18n(t, error) : error.message;
+    notifications.show({
+      color: 'red',
+      title: t('Error'),
+      message
+    });
   }, [checkUpdateError]);
 
   if (loading) return <SplashScreen text={systemProviderLoading ? t('synchronizing') : t('appStatusLoading')} />;

@@ -1,7 +1,7 @@
 import { TCountryCode } from 'countries-list';
 import { Exit, getExitCountry } from './api';
 import { randomChoice } from './utils';
-import { PinnedLocation } from 'src/common/appContext';
+import { PinnedLocation } from '../common/appContext';
 
 /** returns a string containing the country flag emoji. */
 function getCountryFlag(countryCode: TCountryCode): string {

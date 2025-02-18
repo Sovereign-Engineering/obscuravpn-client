@@ -8,7 +8,7 @@ import AppIcon from '../../../apple/client/Assets.xcassets/AppIcon.appiconset/ic
 import * as commands from '../bridge/commands';
 import { LEGAL_WEBPAGE, OBSCURA_WEBPAGE } from '../common/accountUtils';
 import { AppContext, UpdaterStatusType } from '../common/appContext';
-import { tUnsafe } from '../common/danger';
+import { fmtErrorI18n } from '../common/danger';
 import { MIN_LOAD_MS, normalizeError } from '../common/utils';
 import Wordmark from '../res/obscura-wordmark.svg?react';
 
@@ -25,11 +25,14 @@ export default function About() {
   const handleCommand = async (command: () => Promise<void> | void) => {
     try {
       await command();
-    } catch (error) {
+    } catch (e) {
+      const error = normalizeError(e);
+      const message = error instanceof commands.CommandError
+        ? fmtErrorI18n(t, error) : error.message;
       notifications.show({
         color: 'red',
         title: t('Error'),
-        message: tUnsafe(t, normalizeError(error).message)
+        message
       });
     }
   };
@@ -37,7 +40,7 @@ export default function About() {
   useEffect(() => {
     // Intentionally run only on mount (recheck once if update not already available)
     if (updaterStatus?.type !== UpdaterStatusType.Available) {
-      handleCommand(() => commands.checkForUpdates());
+      handleCommand(commands.checkForUpdates);
     }
   }, []);
   const updaterStatusDelayed = useThrottledValue(updaterStatus, updaterStatus.type === UpdaterStatusType.Initiated ? MIN_LOAD_MS : 0);

@@ -28,17 +28,10 @@
     background-color: light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-6));
 }
 
-.titleBarAdjustedHeight {
-    /* used inspect element to find the first part of this calc value */
-    height: calc(var(--_section-height, calc(100dvh - var(--app-shell-header-offset, 0px) - var(--app-shell-footer-offset, 0px))) - var(--titlebar-height)) !important;
-    margin-top: var(--titlebar-height);
-}
-
 .header {
     display: flex;
     align-items: center;
     height: 100%;
-    margin-top: var(--titlebar-height);
 }
 
 .headerRightItems {

@@ -9,7 +9,6 @@
     "@mantine/hooks": "^7.15.3",
     "@mantine/modals": "^7.15.3",
     "@mantine/notifications": "^7.15.3",
-    "@tauri-apps/api": "^1.6.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.1",
     "countries-list": "^3.1.1",

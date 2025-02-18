@@ -1,4 +1,4 @@
-import { AppShell, AppShellHeader, AppShellMain, AppShellNavbar, AppShellSection, Burger, Divider, Group, Image, Modal, Space, Text, Title, useComputedColorScheme, useMantineColorScheme } from '@mantine/core';
+import { AppShell, AppShellMain, Group, Modal, Text, Title, useComputedColorScheme, useMantineColorScheme } from '@mantine/core';
 import { useDisclosure, useHotkeys, useThrottledValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { ReactNode, useEffect, useRef, useState } from 'react';
@@ -7,7 +7,6 @@ import { Trans, useTranslation } from 'react-i18next';
 import { Navigate, NavLink, Route, Routes, useNavigate } from 'react-router-dom';
 import SimpleBar from 'simplebar-react';
 import 'simplebar-react/dist/simplebar.min.css';
-import AppIcon from '../../apple/client/Assets.xcassets/AppIcon.appiconset/icon_128x128.png';
 import classes from './App.module.css';
 import * as commands from './bridge/commands';
 import { logReactError, useSystemContext } from './bridge/SystemProvider';
@@ -17,7 +16,7 @@ import { fmtErrorI18n, fmtVpnError } from './common/danger';
 import { NotificationId } from './common/notifIds';
 import { useAsync } from './common/useAsync';
 import { useLoadable } from './common/useLoadable';
-import { HEADER_TITLE, IS_WK_WEB_VIEW, MIN_LOAD_MS, normalizeError, useCookie } from './common/utils';
+import { IS_WK_WEB_VIEW, MIN_LOAD_MS, normalizeError, useCookie } from './common/utils';
 import { ScrollToTop } from './components/ScrollToTop';
 import { About, Account, Connection, DeveloperView, FallbackAppRender, Help, Location, LogIn, Settings, SplashScreen } from './views';
 
@@ -32,7 +31,7 @@ interface View {
 export default function () {
   const { t } = useTranslation();
   // check if using custom titlebar to adjust other components
-  const { usingCustomTitleBar, osPlatform, loading: systemProviderLoading } = useSystemContext();
+  const { osPlatform, loading: systemProviderLoading } = useSystemContext();
 
   // Boilerplate State
   const navigate = useNavigate();
@@ -292,15 +291,6 @@ export default function () {
     );
   }
 
-  // hack for global styling the vertical simplebar based on state
-  useEffect(() => {
-    const el = document.getElementsByClassName('simplebar-vertical')[0];
-    if (el instanceof HTMLElement) {
-      el.style.marginTop = usingCustomTitleBar ? '100px' : '70px';
-      el.style.marginBottom = '0px';
-    }
-  }, [usingCustomTitleBar]);
-
   const {
     lastSuccessfulValue: exitList,
     error: exitListError,
@@ -392,11 +382,10 @@ export default function () {
       {importantNotices.map(notice => <Text style={{ marginBottom: 10 }}><Trans i18nKey='importantNotice' values={{ notice, count: importantNotices.length }} /></Text>)}
     </Modal>
     <AppShell padding='md'
-      header={{ height: IS_WK_WEB_VIEW ? 0 : 60 }}
-      navbar={IS_WK_WEB_VIEW ? undefined : { width: 200, breakpoint: 'sm', collapsed: { mobile: !mobileNavOpened, desktop: !desktopNavOpened } }}
+      header={{ height: 0 }}
+      navbar={undefined}
       className={classes.appShell}>
       <AppShellMain p={0}>
-        {usingCustomTitleBar && <Space h='xl' />}
         <SimpleBar scrollableNodeProps={{ ref: setScroller }} autoHide={false} className={classes.simpleBar}>
           <AppContext.Provider value={appContext}>
             <ExitsContext.Provider value={exitsContext}>
@@ -411,30 +400,6 @@ export default function () {
           <ScrollToTop scroller={scroller} bottom={20} />
         </SimpleBar>
       </AppShellMain>
-
-      {!IS_WK_WEB_VIEW && <AppShellHeader data-tauri-drag-region p='md' className={classes.header}>
-        <Group h='100%'>
-          <Burger hiddenFrom='sm' opened={mobileNavOpened} onClick={toggleMobileNav} size='sm' />
-          <Burger visibleFrom='sm' opened={desktopNavOpened} onClick={toggleDesktopNav} size='sm' />
-          <Image src={AppIcon} w={28} />
-          <Text>{HEADER_TITLE}</Text>
-        </Group>
-      </AppShellHeader>}
-
-      {!IS_WK_WEB_VIEW && <AppShellNavbar className={classes.titleBarAdjustedHeight} h='100%' w={{ sm: 200 }} p='xs' hidden={!mobileNavOpened}>
-        <AppShellSection grow><NavLinks /></AppShellSection>
-        {/* Bottom of Navbar Example: https://mantine.dev/app-shell/?e=NavbarSection */}
-        <AppShellSection>
-          {warningNotices.length > 0 && <>
-            <Divider m={10} label={<Title style={{ color: 'orange', letterSpacing: 2 }} order={5}>{t('WARNING', { count: warningNotices.length })}</Title>} />
-            {
-              warningNotices.map((notice, i) => <Text key={i} style={{ color: 'orange' }}>
-                <Trans i18nKey='warningNotice' values={{ notice, count: warningNotices.length }} />
-              </Text>)
-            }
-          </>}
-        </AppShellSection>
-      </AppShellNavbar>}
     </AppShell>
   </>;
 }

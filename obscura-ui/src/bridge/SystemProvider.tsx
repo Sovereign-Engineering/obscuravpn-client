@@ -8,7 +8,6 @@ interface SystemProvideContext {
   osType: string,
   osPlatform: string,
   fileSep: string,
-  usingCustomTitleBar: boolean,
   logDir: undefined,
   defaultLogFile: undefined,
 }
@@ -24,7 +23,6 @@ export function SystemProvider({ children }: PropsWithChildren) {
     fileSep: '/',
     osType: 'darwin',
     osPlatform: 'Darwin',
-    usingCustomTitleBar: false,
     logDir: undefined,
     defaultLogFile: undefined,
   }

@@ -299,24 +299,26 @@ function VpnStatusCard() {
     return (
         <Card shadow='sm' padding='lg' radius='md' withBorder w='90%' mb='xs'>
             <Group justify='space-between'>
-                <Group align='center' gap={5}>
-                    <ThemeIcon color={vpnConnected ? 'teal' : 'red.7'} variant='transparent'>
-                        {vpnConnected ? <BsShieldFillCheck size={25} /> : <BsShieldFillExclamation size={25} />}
-                    </ThemeIcon>
-                    <Text size='xl' fw={700} c={vpnConnected ? 'teal' : 'red.7'}>{getStatusTitle()}</Text>
-                </Group>
+                <Stack gap={0}>
+                    <Group align='center' gap={5}>
+                        <ThemeIcon color={vpnConnected ? 'teal' : 'red.7'} variant='transparent'>
+                            {vpnConnected ? <BsShieldFillCheck size={25} /> : <BsShieldFillExclamation size={25} />}
+                        </ThemeIcon>
+                        <Text size='xl' fw={700} c={vpnConnected ? 'teal' : 'red.7'}>{getStatusTitle()}</Text>
+                    </Group>
+                    <Text c='gray' size='sm' ml={34}>{getStatusSubtitle()}</Text>
+                </Stack>
                 <Button className={commonClasses.button} miw={190} onClick={(_: MouseEvent) => (vpnConnected || allowCancel) ? vpnDisconnect() : vpnConnect()} disabled={btnDisabled} title={btnTitle()} px={10} radius='md' {...buttonDisconnectProps}>
                     {getButtonContent()}
                 </Button>
             </Group>
-            <Text c='dimmed' size='sm' ml={34}>{getStatusSubtitle()}</Text>
             {exitPubKey !== undefined &&
               <>
-                <Divider ml={34} my='md' />
-                <Group ml={34} justify='space-between' w='100%'>
+                <Divider my='md' />
+                <Group justify='space-between' w='100%'>
                   {trafficStats?.connectedMs !== undefined &&
                     <Stack gap={5}>
-                      <Text c='dimmed' size='sm'>{t('currentSession')}</Text>
+                      <Text c='gray' size='sm'>{t('currentSession')}</Text>
                       <Group>
                         <Text size='sm'>{fmtTime(trafficStats?.connectedMs)}</Text>
                       </Group>
@@ -327,7 +329,7 @@ function VpnStatusCard() {
                       <Group gap={3}>
                         <HoverCard disabled={!showExitPubKey} withArrow arrowSize={15} position='top' shadow='xs' offset={4}>
                           <HoverCard.Target>
-                            <Text c='dimmed' size='sm'>{t('exitPubKey')}</Text>
+                            <Text c='gray' size='sm'>{t('exitPubKey')}</Text>
                           </HoverCard.Target>
                           <HoverCard.Dropdown bg={colorScheme === 'dark' ? 'dark.8' : 'gray.0'}>
                             <Text size='xs'><Trans i18nKey='exitPubKeyTooltip' values={{ exitProviderId, exitProviderURL }} components={[<i />, <Anchor href={exitProviderURL} />]} /></Text>

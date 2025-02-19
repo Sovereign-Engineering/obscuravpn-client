@@ -142,12 +142,10 @@ impl Manager {
             _background_task_cancellation: background_task_cancellation.clone().drop_guard(),
         }
         .into();
-        if this.client_state.get_config().use_wireguard_key_cache {
-            let background_fut = this.clone().wireguard_key_registraction_task();
-            runtime.spawn(async move {
-                background_task_cancellation.run_until_cancelled(background_fut).await;
-            });
-        }
+        let background_fut = this.clone().wireguard_key_registraction_task();
+        runtime.spawn(async move {
+            background_task_cancellation.run_until_cancelled(background_fut).await;
+        });
         Ok(this)
     }
 
@@ -395,7 +393,6 @@ impl Manager {
                 };
                 last_status_version = Some(status.version);
             }
-            tracing::info!("status change triggered wireguard key registration");
             for backoff_wait in 0..10 {
                 let Err(error) = self.client_state.register_cached_wireguard_key_if_new().await else {
                     continue;
@@ -406,8 +403,8 @@ impl Manager {
         }
     }
 
-    pub fn enable_wg_key_cache_and_rotate(&self) -> Result<(), ConfigSaveError> {
-        self.client_state.enable_wg_key_cache_and_rotate()
+    pub fn rotate_wg_key(&self) -> Result<(), ConfigSaveError> {
+        self.client_state.rotate_wg_key()
     }
 }
 

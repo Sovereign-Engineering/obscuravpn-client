@@ -82,7 +82,7 @@ pub enum ManagerCmd {
     ApiListExit {},
     GetStatus { known_version: Option<Uuid> },
     SetInNewAccountFlow { value: bool },
-    EnableWgKeyCacheAndRotate {},
+    RotateWgKey {},
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -136,7 +136,7 @@ impl ManagerCmd {
                 Ok(()) => Ok(ManagerCmdOk::Empty),
                 Err(err) => Err((&err).into()),
             },
-            ManagerCmd::EnableWgKeyCacheAndRotate {} => match manager.enable_wg_key_cache_and_rotate() {
+            ManagerCmd::RotateWgKey {} => match manager.rotate_wg_key() {
                 Ok(()) => Ok(ManagerCmdOk::Empty),
                 Err(err) => Err((&err).into()),
             },

@@ -16,7 +16,6 @@ use obscuravpn_api::{
     Client, ClientError,
 };
 use quinn::rustls::pki_types::CertificateDer;
-use rand::rngs::OsRng;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
@@ -269,13 +268,7 @@ impl ClientState {
                 tracing::warn!("error removing unused local tunnels: {}", err);
             }
 
-            let (sk, pk) = if self.get_config().use_wireguard_key_cache {
-                Self::change_config(&mut self.lock(), |config| config.wireguard_key_cache.use_key_pair())?
-            } else {
-                let sk = StaticSecret::random_from_rng(OsRng);
-                let pk = PublicKey::from(&sk);
-                (sk, pk)
-            };
+            let (sk, pk) = Self::change_config(&mut self.lock(), |config| config.wireguard_key_cache.use_key_pair())?;
             let wg_pubkey = WgPubkey(pk.to_bytes());
             let tunnel_id = Uuid::new_v4();
             tracing::info!(
@@ -427,9 +420,6 @@ impl ClientState {
 
     // Only intended to be called after use (on disconnect). Rotation schedules are fairly arbitrary, so using the key one more time is fine. The benefit is that we don't trigger rotation if the user stops using the client, but the client is still auto-starting. This does not imply the effect of `Self::register_cached_wireguard_key_if_new`. It's the callers responsibility to ensure that registration is triggered asap.
     pub fn rotate_wireguard_key_if_required(&self) -> Result<(), ConfigSaveError> {
-        if !self.get_config().use_wireguard_key_cache {
-            return Ok(());
-        }
         Self::change_config(&mut self.lock(), |config| {
             config.wireguard_key_cache.rotate_if_required();
         })
@@ -437,10 +427,8 @@ impl ClientState {
 
     // Registers the current wireguard key via the API server if it has not been registered yet. Because this function is a NOOP after first successful use (until key rotation), it may be called frequently. Most importantly it should be called after disconnecting (due to possible key rotation) and after observing that the user paid.
     pub async fn register_cached_wireguard_key_if_new(&self) -> Result<(), ApiError> {
-        if !self.get_config().use_wireguard_key_cache {
-            return Ok(());
-        }
         let Some((current_public_key, old_public_keys)) = self.get_config().wireguard_key_cache.need_registration() else {
+            tracing::info!("public wireguard key already registered");
             return Ok(());
         };
         let cmd = CacheWgKey {
@@ -463,9 +451,8 @@ impl ClientState {
         }
     }
 
-    pub fn enable_wg_key_cache_and_rotate(&self) -> Result<(), ConfigSaveError> {
+    pub fn rotate_wg_key(&self) -> Result<(), ConfigSaveError> {
         Self::change_config(&mut self.lock(), |config| {
-            config.use_wireguard_key_cache = true;
             config.wireguard_key_cache.rotate_now();
         })
     }

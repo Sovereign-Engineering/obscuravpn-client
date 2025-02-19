@@ -179,6 +179,6 @@ export function setPinnedExits(newPinnedExits: PinnedLocation[]) {
     return jsonFfiCmd('setPinnedExits', { exits: newPinnedExits });
 }
 
-export function enableWgKeyCacheAndRotate() {
-    return jsonFfiCmd('enableWgKeyCacheAndRotate');
+export function rotateWgKey() {
+    return jsonFfiCmd('rotateWgKey');
 }

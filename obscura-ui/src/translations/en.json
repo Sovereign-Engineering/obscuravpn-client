@@ -170,6 +170,7 @@
   "revealFile_darwin": "Reveal in Finder",
   "revealFile_linux": "Show in folder",
   "revealFile_win32": "Show in File Explorer",
+  "rotateWgKey": "Rotate WireGuard key",
   "selectLocation": "Select Location",
   "settings.Version": "Version: {{ VERSION }}",
   "show account number": "show account number",

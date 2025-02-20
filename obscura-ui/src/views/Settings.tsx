@@ -1,11 +1,13 @@
-import { ActionIcon, Group, Stack, Switch, Text, Title, useMantineColorScheme } from '@mantine/core';
+import { ActionIcon, Button, Group, Stack, Switch, Text, Title, useMantineColorScheme } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useTranslation } from 'react-i18next';
 import { BsCircleHalf } from 'react-icons/bs';
 import { IoMoon, IoSunnySharp } from 'react-icons/io5';
 import * as commands from '../bridge/commands';
+import { fmtErrorI18n } from '../common/danger';
 import { NotificationId } from '../common/notifIds';
 import { useAsync } from '../common/useAsync';
+import { normalizeError } from '../common/utils';
 
 export default function Settings() {
     const { t } = useTranslation();
@@ -50,6 +52,21 @@ export default function Settings() {
         });
     }
 
+    const rotateWgKey = async () => {
+      try {
+        await commands.rotateWgKey();
+      } catch (e) {
+        const error = normalizeError(e);
+        const message = error instanceof commands.CommandError
+            ? fmtErrorI18n(t, error) : error.message;
+        notifications.show({
+            title: t('Error'),
+            message: message,
+            color: 'red',
+        });
+      }
+    }
+
     return (
         <Stack gap='lg' align='flex-start' ml={80} mt={40} m={20}>
             <Title order={4}>{t('General')}</Title>
@@ -75,6 +92,7 @@ export default function Settings() {
                     </Stack>
                 </ActionIcon>
             </Group>
+            <Button onClick={rotateWgKey}>{t('rotateWgKey')}</Button>
         </Stack >
     );
 }

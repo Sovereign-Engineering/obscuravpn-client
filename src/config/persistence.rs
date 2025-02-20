@@ -240,8 +240,8 @@ pub struct Config {
 
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub wireguard_key_cache: WireGuardKeyCache,
-    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
-    pub use_wireguard_key_cache: bool,
+    #[serde(skip)]
+    pub use_wireguard_key_cache: (), // Removed
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub cached_account_status: Option<AccountStatus>,
 }

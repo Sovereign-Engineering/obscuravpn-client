@@ -12,7 +12,7 @@ import * as commands from './bridge/commands';
 import { logReactError, useSystemContext } from './bridge/SystemProvider';
 import { Exit } from './common/api';
 import { AppContext, AppStatus, ConnectionInProgress, ExitsContext, OsStatus } from './common/appContext';
-import { fmtErrorI18n, fmtVpnError } from './common/danger';
+import { fmtVpnError } from './common/danger';
 import { NotificationId } from './common/notifIds';
 import { useAsync } from './common/useAsync';
 import { useLoadable } from './common/useLoadable';
@@ -339,17 +339,6 @@ export default function () {
     load: commands.checkForUpdates,
     returnError: true,
   });
-
-  useEffect(() => {
-    const error = normalizeError(checkUpdateError);
-    const message = error instanceof commands.CommandError
-      ? fmtErrorI18n(t, error) : error.message;
-    notifications.show({
-      color: 'red',
-      title: t('Error'),
-      message
-    });
-  }, [checkUpdateError]);
 
   if (loading) return <SplashScreen text={systemProviderLoading ? t('synchronizing') : t('appStatusLoading')} />;
 

@@ -1,6 +1,7 @@
 import Cookies from 'js-cookie';
 import localforage from 'localforage';
 import { Dispatch, ForwardedRef, RefCallback, SetStateAction, useEffect, useLayoutEffect, useState } from 'react';
+import { fmt } from './fmt';
 export { localforage };
 
 export const HEADER_TITLE = 'Obscura VPN';
@@ -113,7 +114,7 @@ export function normalizeError(error: unknown): Error {
     if (error instanceof Error) {
         return error;
     }
-
+    console.warn(fmt`normalizeError: error = ${error} is not an instance of Error`);
     return new Error(DEFAULT_ERROR_MSG, {
         cause: error,
     });

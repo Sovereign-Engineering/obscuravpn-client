@@ -415,8 +415,8 @@ impl QuicWgConnHandshaking {
         let mut min_rtt = Duration::MAX;
         for _ in 0..3 {
             self.send_op(RelayOpCode::Ping, &[]).await?;
-            let end_time = Instant::now();
             self.recv_resp().await?;
+            let end_time = Instant::now();
             if let Some(last_rtt) = end_time.checked_duration_since(start_time) {
                 min_rtt = min_rtt.min(last_rtt);
             }

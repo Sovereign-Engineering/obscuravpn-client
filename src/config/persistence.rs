@@ -310,6 +310,19 @@ impl WireGuardKeyCache {
         let secret_key = StaticSecret::random_from_rng(OsRng).to_bytes();
         *self = Self { secret_key, first_use: None, registered_at: None, old_public_keys }
     }
+    pub fn rotate_now_if_not_recent(&mut self) {
+        let first_used_or_registered_at = match (self.first_use, self.registered_at) {
+            (Some(t1), Some(t2)) => Some(t1.min(t2)),
+            (maybe_t1, maybe_t2) => maybe_t1.or(maybe_t2),
+        };
+        let not_recent = first_used_or_registered_at
+            .and_then(|t| t.elapsed().ok())
+            .map(|d| d > Duration::from_secs(60))
+            .unwrap_or(true);
+        if not_recent {
+            self.rotate_now();
+        }
+    }
     pub fn rotate_if_required(&mut self) {
         const MAX_AGE: Duration = Duration::from_secs(60 * 60 * 24 * 30); // 30 days
         if self.first_use.is_some_and(|t| t.elapsed().is_ok_and(|age| age > MAX_AGE)) {

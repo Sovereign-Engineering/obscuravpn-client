@@ -3,27 +3,27 @@ use boringtun::x25519::{PublicKey, StaticSecret};
 use etherparse::{IcmpEchoHeader, Icmpv4Type, PacketBuilder, SlicedPacket, TransportSlice};
 use futures::select_biased;
 use futures::FutureExt;
+use obscuravpn_api::relay_protocol::{MessageContext, MessageHeader, RelayOpCode, RelayResponseCode, PROTOCOL_IDENTIFIER};
 use quinn::crypto::rustls::QuicClientConfig;
 use quinn::rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
 use quinn::rustls::crypto::{verify_tls12_signature, verify_tls13_signature, CryptoProvider};
 use quinn::rustls::pki_types::{CertificateDer, ServerName, UnixTime};
 use quinn::rustls::{CertificateError, DigitallySignedStruct, SignatureScheme};
-use quinn::{rustls, ClientConfig, MtuDiscoveryConfig, RecvStream};
+use quinn::{rustls, ClientConfig, MtuDiscoveryConfig};
 use rand::random;
+use static_assertions::const_assert;
 use std::net::{Ipv4Addr, SocketAddr};
+use std::num::NonZeroU32;
 use std::ops::ControlFlow;
 use std::sync::{Arc, Mutex};
 use thiserror::Error;
 use tokio::spawn;
 use tokio::sync::Notify;
 use tokio::task::AbortHandle;
-use tokio::time::{interval, sleep, timeout, MissedTickBehavior};
+use tokio::time::{interval, timeout, MissedTickBehavior};
 use tokio::time::{Duration, Instant};
 use uuid::Uuid;
 
-// Note that there is a race condition between client connection and the relay learning about our tunnel. In most cases this delay can't be more than a few seconds. So we make sure that we have at least 10s of retries here to cover this case.
-const QUIC_CONNECT_RETRY_COUNT: usize = 20;
-const QUIC_CONNECT_RETRY_DELAY: Duration = Duration::from_millis(500);
 const QUIC_MAX_IDLE_MS: u32 = 5000;
 
 // The primary reason for these retries is that Mullvad's key propagation to exits is sometimes slow. Handshakes will be ignored until the key is known so we need to keep retrying.
@@ -33,7 +33,7 @@ const QUIC_MAX_IDLE_MS: u32 = 5000;
 const WG_FIRST_HANDSHAKE_RETRIES: usize = 9; // 22.5s total.
 const WG_FIRST_HANDSHAKE_RESENDS: usize = 25; // 2.5s per handshake.
 const WG_FIRST_HANDSHAKE_TIMEOUT: Duration = Duration::from_millis(100);
-const RELAY_SNI: &str = "relay.obscura.net";
+pub(crate) const RELAY_SNI: &str = "relay.obscura.net";
 const WG_MAX_IDLE_MS: u32 = QUIC_MAX_IDLE_MS;
 const WG_TICK_MS: u32 = 1000;
 
@@ -52,25 +52,31 @@ pub enum QuicWgConnectError {
     #[error("crypto config: {0}")]
     CryptoConfig(anyhow::Error),
     #[error("quic config: {0}")]
-    QuicConfig(#[from] quinn::ConnectError),
+    QuicConfig(quinn::ConnectError),
     #[error("quic connect: {0}")]
-    QuicConnect(#[from] quinn::ConnectionError),
+    QuicConnect(quinn::ConnectionError),
     #[error("relay handshake: {0}")]
     RelayHandshake(#[from] QuicWgRelayHandshakeError),
     #[error("wireguard handshake: {0}")]
-    WireguardHandshake(#[from] QuicWgWireguardHandshakeError),
+    WireguardHandshake(QuicWgWireguardHandshakeError),
 }
 
 #[derive(Debug, Error)]
 pub enum QuicWgRelayHandshakeError {
     #[error("could not open control stream: {0}")]
-    ControlStreamInitError(#[from] quinn::ConnectionError),
-    #[error("could not read ack from control stream: {0}")]
-    NoAckReceived(#[from] quinn::ReadExactError),
+    ControlStreamInitError(quinn::ConnectionError),
+    #[error("could not read from control stream: {0}")]
+    ControlStreamReadError(quinn::ReadExactError),
+    #[error("could not read protocol identifier from control stream: {0}")]
+    ProtocolIdentifierReceiveFailed(quinn::ReadExactError),
+    #[error("relay sent unexpected protocol indentifier: {0:#034x}")]
+    UnexpectedProtocolIdentifierReceived(u128),
     #[error("could not write to control stream: {0}")]
-    ControlStreamWriteError(#[from] quinn::WriteError),
-    #[error("received invalid ack (non-zero: {0})")]
-    ReceivedInvalidAck(u8),
+    ControlStreamWriteError(quinn::WriteError),
+    #[error("received message with payload too small for result code: {0}")]
+    PayloadTooSmallForResponseCode(usize),
+    #[error("received response with error code {0} and message: {1}")]
+    ReceivedErrorResponse(NonZeroU32, String),
 }
 
 #[derive(Debug, Error)]
@@ -96,6 +102,7 @@ pub struct QuicWgConn {
     connected_at: Instant,
     wg_tick_notify: Arc<Notify>,
     tick_abort: AbortHandle,
+    _control_stream: (quinn::SendStream, quinn::RecvStream),
 }
 
 #[derive(Default, Clone, Copy)]
@@ -116,23 +123,23 @@ struct WgState {
 impl QuicWgConn {
     #[allow(clippy::too_many_arguments)]
     pub async fn connect(
+        relay_handshaking: QuicWgConnHandshaking,
         client_secret_key: StaticSecret,
         exit_public_key: PublicKey,
-        relay_addr: SocketAddr,
-        relay_cert: CertificateDer<'static>,
-        endpoint: quinn::Endpoint,
         client_ip_v4: Ipv4Addr,
         ping_keepalive_ip_v4: Ipv4Addr,
         token: Uuid,
     ) -> Result<Self, QuicWgConnectError> {
         let client_public_key = PublicKey::from(&client_secret_key);
-        tracing::info!("connecting to relay");
-        let quic = Self::relay_connect(&endpoint, relay_addr, relay_cert, token).await?;
-        tracing::info!("connected to relay");
+        let (quic, send, recv) = relay_handshaking.authenticate(token).await?;
+        let control_stream = (send, recv);
+        tracing::info!("completed handshake with relay");
 
         let index = random();
         let mut wg = Tunn::new(client_secret_key, exit_public_key, None, None, index, None).unwrap();
-        Self::first_wg_handshake(&mut wg, &quic, WG_FIRST_HANDSHAKE_RETRIES, WG_FIRST_HANDSHAKE_RESENDS).await?;
+        Self::first_wg_handshake(&mut wg, &quic, WG_FIRST_HANDSHAKE_RETRIES, WG_FIRST_HANDSHAKE_RESENDS)
+            .await
+            .map_err(QuicWgConnectError::WireguardHandshake)?;
         tracing::info!("connected to exit");
         let wg_tick_notify = Arc::new(Notify::new());
         let wg_tick_notify_clone = wg_tick_notify.clone();
@@ -164,90 +171,8 @@ impl QuicWgConn {
             connected_at: now,
             wg_tick_notify,
             tick_abort,
+            _control_stream: control_stream,
         })
-    }
-
-    async fn relay_connect(
-        endpoint: &quinn::Endpoint,
-        relay_addr: SocketAddr,
-        relay_cert: CertificateDer<'static>,
-        token: Uuid,
-    ) -> Result<quinn::Connection, QuicWgConnectError> {
-        let quic_config = Self::quic_config(relay_cert)?;
-        let mut retries = QUIC_CONNECT_RETRY_COUNT;
-        loop {
-            match Self::try_relay_connect(endpoint, &quic_config, relay_addr, token).await {
-                Ok(quic) => return Ok(quic),
-                Err(error) => match error {
-                    QuicWgConnectError::RelayHandshake(QuicWgRelayHandshakeError::NoAckReceived(_)) => {
-                        tracing::info!(?error, "relay handshake failed at ack, relay may not know the token yet");
-                        if retries == 0 {
-                            return Err(error);
-                        }
-                        retries -= 1;
-                        tracing::info!("will retry relay connect again in {:?}", QUIC_CONNECT_RETRY_DELAY);
-                        sleep(QUIC_CONNECT_RETRY_DELAY).await
-                    }
-                    _ => return Err(error),
-                },
-            }
-        }
-    }
-
-    fn quic_config(relay_cert: CertificateDer<'static>) -> Result<ClientConfig, QuicWgConnectError> {
-        let default_provider = Arc::new(rustls::crypto::ring::default_provider());
-        let mut crypto = rustls::ClientConfig::builder_with_provider(default_provider.clone())
-            .with_safe_default_protocol_versions()
-            .map_err(|error| QuicWgConnectError::CryptoConfig(error.into()))?
-            .dangerous()
-            .with_custom_certificate_verifier(Arc::new(VerifyVpnServerCert { cert: relay_cert, provider: default_provider }))
-            .with_no_client_auth();
-        crypto.alpn_protocols = vec![b"h3".to_vec()];
-        let crypto = QuicClientConfig::try_from(crypto).map_err(|error| QuicWgConnectError::CryptoConfig(error.into()))?;
-        let mut client_cfg = ClientConfig::new(Arc::new(crypto));
-        let mut transport_config = quinn::TransportConfig::default();
-        transport_config.max_concurrent_uni_streams(0u8.into());
-        transport_config.max_concurrent_bidi_streams(0u8.into());
-        const MTU: u16 = 1350;
-        transport_config.initial_mtu(MTU);
-        transport_config.min_mtu(MTU);
-        let mut mtu_discovery_config = MtuDiscoveryConfig::default();
-        mtu_discovery_config.upper_bound(MTU);
-        transport_config.mtu_discovery_config(Some(mtu_discovery_config));
-        transport_config.keep_alive_interval(Some(Duration::from_secs(1)));
-        transport_config.max_idle_timeout(Some(quinn::VarInt::from_u32(QUIC_MAX_IDLE_MS).into()));
-        transport_config.congestion_controller_factory(Arc::new(quinn::congestion::BbrConfig::default()));
-        client_cfg.transport_config(Arc::new(transport_config));
-        Ok(client_cfg)
-    }
-
-    async fn try_relay_connect(
-        endpoint: &quinn::Endpoint,
-        quic_config: &ClientConfig,
-        relay_addr: SocketAddr,
-        token: Uuid,
-    ) -> Result<quinn::Connection, QuicWgConnectError> {
-        let quic = endpoint
-            .connect_with(quic_config.clone(), relay_addr, RELAY_SNI)
-            .map_err(QuicWgConnectError::QuicConfig)?
-            .await?;
-        let (snd, recv) = quic.open_bi().await?;
-        Self::relay_handshake(snd, recv, token).await?;
-        Ok(quic)
-    }
-
-    async fn relay_handshake(mut snd: quinn::SendStream, mut recv: RecvStream, token: Uuid) -> Result<(), QuicWgRelayHandshakeError> {
-        // Protocol version
-        snd.write_all(&[2]).await?;
-        // Token
-        snd.write_all(token.as_bytes()).await?;
-
-        let mut status = [0u8];
-        recv.read_exact(&mut status).await?;
-        if status[0] != 0 {
-            return Err(QuicWgRelayHandshakeError::ReceivedInvalidAck(status[0]));
-        }
-        Ok(())
     }
 
     pub fn max_datagram_size(&self) -> Option<usize> {
@@ -450,6 +375,170 @@ impl Drop for QuicWgConn {
     }
 }
 
+pub struct QuicWgConnHandshaking {
+    relay_id: String,
+    connection: quinn::Connection,
+    send: quinn::SendStream,
+    recv: quinn::RecvStream,
+}
+
+impl QuicWgConnHandshaking {
+    pub async fn start(
+        relay_id: String,
+        quic_endpoint: &quinn::Endpoint,
+        relay_addr: SocketAddr,
+        relay_cert: CertificateDer<'static>,
+    ) -> Result<Self, QuicWgConnectError> {
+        tracing::info!("starting quic wg relay handshake with {} port {}", &relay_id, relay_addr.port());
+        let quic_config = Self::quic_config(relay_cert).map_err(QuicWgConnectError::CryptoConfig)?;
+        let connecting = quic_endpoint
+            .connect_with(quic_config.clone(), relay_addr, RELAY_SNI)
+            .map_err(QuicWgConnectError::QuicConfig)?;
+        let connection = connecting.await.map_err(QuicWgConnectError::QuicConnect)?;
+        let (send, recv) = connection.open_bi().await.map_err(QuicWgRelayHandshakeError::ControlStreamInitError)?;
+        let mut this = Self { relay_id, connection, send, recv };
+        this.send_all(&PROTOCOL_IDENTIFIER.to_be_bytes()).await?;
+        let mut buffer = [0u8; 16];
+        this.recv
+            .read_exact(&mut buffer)
+            .await
+            .map_err(QuicWgRelayHandshakeError::ProtocolIdentifierReceiveFailed)?;
+        let relay_protocol_identifier = u128::from_be_bytes(buffer);
+        if relay_protocol_identifier != PROTOCOL_IDENTIFIER {
+            return Err(QuicWgRelayHandshakeError::UnexpectedProtocolIdentifierReceived(relay_protocol_identifier).into());
+        }
+        Ok(this)
+    }
+
+    pub async fn measure_rtt(&mut self) -> Result<Duration, QuicWgConnectError> {
+        let mut start_time = Instant::now();
+        let mut min_rtt = Duration::MAX;
+        for _ in 0..3 {
+            self.send_op(RelayOpCode::Ping, &[]).await?;
+            let end_time = Instant::now();
+            self.recv_resp().await?;
+            if let Some(last_rtt) = end_time.checked_duration_since(start_time) {
+                min_rtt = min_rtt.min(last_rtt);
+            }
+            start_time = end_time;
+        }
+        tracing::info!(
+            "relay {} port {} min rtt is {}ms",
+            &self.relay_id,
+            self.connection.remote_address().port(),
+            min_rtt.as_millis()
+        );
+        Ok(min_rtt)
+    }
+
+    async fn authenticate(mut self, token: Uuid) -> Result<(quinn::Connection, quinn::SendStream, quinn::RecvStream), QuicWgConnectError> {
+        self.send_op(RelayOpCode::Token, token.as_bytes()).await?;
+        self.recv_resp().await?;
+        tracing::info!("relay confirmed token");
+        let Self { relay_id: _, connection, send, recv } = self;
+        Ok((connection, send, recv))
+    }
+
+    async fn stop(&mut self) -> Result<(), QuicWgRelayHandshakeError> {
+        tracing::info!(
+            "sending stop op to relay {} port {}",
+            &self.relay_id,
+            self.connection.remote_address().port()
+        );
+        self.send_op(RelayOpCode::Stop, &[]).await?;
+        self.recv_resp().await?;
+        tracing::info!("relay {} port {} confirmed stop", &self.relay_id, self.connection.remote_address().port());
+        Ok(())
+    }
+
+    pub async fn abandon(mut self) {
+        if let Err(error) = self.stop().await {
+            tracing::warn!(?error, "error while abandoning handshake")
+        } else {
+            _ = self.send.finish();
+            _ = self.send.stopped().await;
+            drop(self);
+        }
+    }
+
+    pub fn quic_config(relay_cert: CertificateDer<'static>) -> Result<ClientConfig, anyhow::Error> {
+        let default_provider = Arc::new(rustls::crypto::ring::default_provider());
+        let mut crypto = rustls::ClientConfig::builder_with_provider(default_provider.clone())
+            .with_safe_default_protocol_versions()?
+            .dangerous()
+            .with_custom_certificate_verifier(Arc::new(VerifyVpnServerCert { cert: relay_cert, provider: default_provider }))
+            .with_no_client_auth();
+        crypto.alpn_protocols = vec![b"h3".to_vec()];
+        let crypto = QuicClientConfig::try_from(crypto)?;
+        let mut client_cfg = ClientConfig::new(Arc::new(crypto));
+        let mut transport_config = quinn::TransportConfig::default();
+        transport_config.max_concurrent_uni_streams(0u8.into());
+        transport_config.max_concurrent_bidi_streams(0u8.into());
+        const MTU: u16 = 1350;
+        transport_config.initial_mtu(MTU);
+        transport_config.min_mtu(MTU);
+        let mut mtu_discovery_config = MtuDiscoveryConfig::default();
+        mtu_discovery_config.upper_bound(MTU);
+        transport_config.mtu_discovery_config(Some(mtu_discovery_config));
+        transport_config.keep_alive_interval(Some(Duration::from_secs(10)));
+        transport_config.max_idle_timeout(Some(quinn::VarInt::from_u32(QUIC_MAX_IDLE_MS).into()));
+        transport_config.congestion_controller_factory(Arc::new(quinn::congestion::BbrConfig::default()));
+        client_cfg.transport_config(Arc::new(transport_config));
+        Ok(client_cfg)
+    }
+
+    async fn recv_resp(&mut self) -> Result<(), QuicWgRelayHandshakeError> {
+        loop {
+            let mut buffer = [0u8; 8];
+            self.recv
+                .read_exact(&mut buffer)
+                .await
+                .map_err(QuicWgRelayHandshakeError::ControlStreamReadError)?;
+            let msg_header = MessageHeader::from(buffer);
+            const_assert!(size_of::<usize>() >= size_of::<u32>());
+            let mut payload = vec![0u8; msg_header.payload_length as usize];
+            self.recv
+                .read_exact(&mut payload)
+                .await
+                .map_err(QuicWgRelayHandshakeError::ControlStreamReadError)?;
+            if msg_header.context_id != MessageContext::ZERO {
+                tracing::warn!("ignoring message with non-zero context id {:?}", msg_header.context_id);
+                continue;
+            }
+            let Some((response_code, arg)) = payload.split_at_checked(4) else {
+                return Err(QuicWgRelayHandshakeError::PayloadTooSmallForResponseCode(payload.len()));
+            };
+            let response_code = RelayResponseCode::from_bytes(response_code.try_into().unwrap());
+            match response_code {
+                RelayResponseCode::Ok => {
+                    if !arg.is_empty() {
+                        tracing::warn!("ignoring additional payload bytes on ok response");
+                    }
+                }
+                RelayResponseCode::Error(error_code) => {
+                    let error_message = String::from_utf8_lossy(arg).into();
+                    return Err(QuicWgRelayHandshakeError::ReceivedErrorResponse(error_code, error_message));
+                }
+            }
+            break Ok(());
+        }
+    }
+
+    async fn send_all(&mut self, data: &[u8]) -> Result<(), QuicWgRelayHandshakeError> {
+        self.send
+            .write_all(data)
+            .await
+            .map_err(QuicWgRelayHandshakeError::ControlStreamWriteError)
+    }
+
+    async fn send_op(&mut self, op: RelayOpCode, arg: &[u8]) -> Result<(), QuicWgRelayHandshakeError> {
+        let msg_header: [u8; 8] = MessageHeader { context_id: MessageContext::ZERO, payload_length: 4 + arg.len() as u32 }.into();
+        self.send_all(&msg_header).await?;
+        self.send_all(&op.to_bytes()).await?;
+        self.send_all(arg).await
+    }
+}
+
 #[derive(Debug)]
 struct VerifyVpnServerCert {
     cert: CertificateDer<'static>,
@@ -465,7 +554,7 @@ impl ServerCertVerifier for VerifyVpnServerCert {
         _ocsp_response: &[u8],
         _now: UnixTime,
     ) -> Result<ServerCertVerified, rustls::Error> {
-        match &self.cert == end_entity {
+        match self.cert == *end_entity {
             true => Ok(ServerCertVerified::assertion()),
             false => Err(rustls::Error::InvalidCertificate(CertificateError::ApplicationVerificationFailure)),
         }

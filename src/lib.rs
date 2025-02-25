@@ -7,6 +7,7 @@ mod manager_cmd;
 pub mod net;
 pub mod network_config;
 pub mod quicwg;
+pub mod relay_selection;
 mod serde_safe;
 pub mod virt;
 

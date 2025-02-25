@@ -24,6 +24,7 @@ bytes = "1"
 chrono = "0.4.37"
 clap = { version = "4.4.10", features = ["derive"] }
 etherparse = "0.13.0"
+flume = { version = "0.11.1", features = ["async"] }
 futures = "0.3.29"
 include_dir = "0.7.3"
 ipnetwork = "0.16.0"
@@ -35,13 +36,14 @@ serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
 serde_with = { version = "3.12", features = ["base64"] }
 socket2 = { version = "0.5.5", features = ["all"] }
+static_assertions = "1.1.0"
 strum = { version = "0.26.2", features = ["derive"] }
 tempfile = "3.10.1"
 thiserror = "1.0.56"
 tokio = { version = "1.40", features = ["full"] }
 tokio-util = "0.7.13"
 tracing = "0.1.40"
-tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.18", features = ["env-filter", "fmt"] }
 tun = {  version = "0.6.1", features = ["async"] }
 uuid = { version = "1.11.0", features = ["v4", "serde"] }
 x25519-dalek = { version = "2.0.1" }
@@ -53,7 +55,7 @@ rev = "ff3b5555b5b1c4f85ae23d8d4aaf00bea2cd2bf0"
 
 [dependencies.obscuravpn-api]
 git = "https://github.com/Sovereign-Engineering/obscuravpn-api.git"
-rev = "e86a3fd5b1ef706095407e2c403fb7a98bd58184"
+rev = "4058303f4ea1f02d8fe357988f28e1657f52faca"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 oslog = "0.2.0"

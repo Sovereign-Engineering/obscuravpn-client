@@ -58,10 +58,9 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
                 ApiError::ConfigSave(_) => Self::Other,
             },
             TunnelConnectError::NetworkConfig(_)
-            | TunnelConnectError::UdpSetup(_)
-            | TunnelConnectError::QuicSetup(_)
             | TunnelConnectError::TunnelConnect(_)
             | TunnelConnectError::InvalidTunnelId
+            | TunnelConnectError::UnexpectedRelay
             | TunnelConnectError::UnexpectedTunnelKind
             | TunnelConnectError::RelaySelection(_)
             | TunnelConnectError::ConfigSave(_) => Self::Other,
@@ -75,16 +74,14 @@ pub enum TunnelConnectError {
     ApiError(#[from] ApiError),
     #[error("could not construct network config: {0}")]
     NetworkConfig(#[from] NetworkConfigError),
-    #[error("udp socket setup: {0}")]
-    UdpSetup(anyhow::Error),
-    #[error("quic endpoint setup: {0}")]
-    QuicSetup(anyhow::Error),
     #[error("tunnel connect: {0}")]
     TunnelConnect(#[from] QuicWgConnectError),
     #[error("relay selection failed: {0}")]
     RelaySelection(#[from] RelaySelectionError),
     #[error("api returned invalid tunnel id")]
     InvalidTunnelId,
+    #[error("api returned and unexpected relay")]
+    UnexpectedRelay,
     #[error("api returned unexpected tunnel kind")]
     UnexpectedTunnelKind,
     #[error("failed to save config file")]
@@ -112,8 +109,10 @@ impl ApiError {
 
 #[derive(Debug, Error)]
 pub enum RelaySelectionError {
-    #[error("io error")]
-    Io(#[from] io::Error),
-    #[error("timeout")]
-    Timeout,
+    #[error("udp socket setup: {0}")]
+    UdpSetup(io::Error),
+    #[error("quic setup: {0}")]
+    QuicSetup(anyhow::Error),
+    #[error("all relay connections failed")]
+    NoSuccess,
 }

@@ -1,3 +1,17 @@
+use super::{
+    errors::{ApiError, TunnelConnectError},
+    network_config::NetworkConfig,
+};
+use crate::config::ConfigSaveError;
+use crate::config::PinnedLocation;
+use crate::quicwg::QuicWgConnHandshaking;
+use crate::quicwg::{QuicWgConnectError, QuicWgWireguardHandshakeError};
+use crate::relay_selection::race_relay_handshakes;
+use crate::{
+    config::{self, Config, ConfigLoadError},
+    errors::RelaySelectionError,
+    quicwg::QuicWgConn,
+};
 use boringtun::x25519::{PublicKey, StaticSecret};
 use chrono::Utc;
 use obscuravpn_api::cmd::CacheWgKey;
@@ -19,20 +33,6 @@ use std::{
 };
 use tokio::spawn;
 use uuid::Uuid;
-
-use super::{
-    errors::{ApiError, TunnelConnectError},
-    network_config::NetworkConfig,
-};
-use crate::config::ConfigSaveError;
-use crate::config::PinnedLocation;
-use crate::quicwg::QuicWgConnHandshaking;
-use crate::relay_selection::race_relay_handshakes;
-use crate::{
-    config::{self, Config, ConfigLoadError},
-    errors::RelaySelectionError,
-    quicwg::QuicWgConn,
-};
 
 pub struct ClientState {
     user_agent: String,
@@ -225,7 +225,20 @@ impl ClientState {
             "finishing tunnel connection");
         let remote_pk = PublicKey::from(tunnel_config.exit_pubkey.0);
         let ping_keepalive_ip = tunnel_config.gateway_ip_v4;
-        let conn = QuicWgConn::connect(handshaking, wg_sk.clone(), remote_pk, client_ip_v4, ping_keepalive_ip, token).await?;
+        let result = QuicWgConn::connect(handshaking, wg_sk.clone(), remote_pk, client_ip_v4, ping_keepalive_ip, token).await;
+        let conn = match result {
+            Ok(conn) => conn,
+            Err(error) => {
+                if matches!(
+                    error,
+                    QuicWgConnectError::WireguardHandshake(QuicWgWireguardHandshakeError::RespMessageTimeout)
+                ) {
+                    tracing::info!("consider rotating wireguard key if it's not too recent, because WG handshake timed out");
+                    Self::change_config(&mut self.lock(), |config| config.wireguard_key_cache.rotate_now_if_not_recent())?;
+                }
+                return Err(error.into());
+            }
+        };
         tracing::info!("tunnel connected");
         if chose_exit {
             Self::change_config(&mut self.lock(), |config| config.last_chosen_exit = Some(exit.id.clone()))?;

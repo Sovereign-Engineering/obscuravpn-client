@@ -1,10 +1,14 @@
 import { AccountId } from '../common/accountUtils';
 import { AccountInfo, Exit } from '../common/api';
 import { AppStatus, NEVPNStatus, OsStatus, PinnedLocation } from '../common/appContext';
+import { fmt } from '../common/fmt';
 import { normalizeError } from '../common/utils';
 
 async function WKWebViewInvoke(command: string, args: Object) {
     const commandJson = JSON.stringify({ [command]: args });
+    if (command !== 'jsonFfiCmd') {
+      console.log(`invoked non-FFI command: ${command}`);
+    }
     let resultJson;
     try {
         resultJson = await window.webkit.messageHandlers.commandBridge.postMessage(commandJson);
@@ -19,7 +23,7 @@ async function invoke(command: string, args: Object = {}) {
     try {
         return await WKWebViewInvoke(command, args);
     } catch (e) {
-        console.error(`Command ${command}(${JSON.stringify(args)}) resulted in error: ${e}`);
+        console.error(fmt`Command ${command}(${args}) resulted in error: ${e}`);
         // rethrow error
         throw e;
     }
@@ -88,7 +92,7 @@ export async function disconnectBlocking() {
             if (s.vpnStatus.disconnected !== undefined) break;
             knownStatusId = s.version;
         } catch (e) {
-            console.error(`failed to get status in disconnectThenConnect ${e}`)
+            console.error(fmt`failed to get status in disconnectThenConnect ${e}`);
         }
     }
     // NEVPNStatus
@@ -99,7 +103,7 @@ export async function disconnectBlocking() {
           if (s.osVpnStatus === NEVPNStatus.Disconnected) break;
           knownStatusId = s.version;
       } catch (e) {
-          console.error(`failed to get osStatus in disconnectThenConnect ${e}`)
+          console.error(fmt`failed to get osStatus in disconnectThenConnect ${e}`);
       }
   }
 }

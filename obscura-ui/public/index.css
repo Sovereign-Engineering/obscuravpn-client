@@ -6,6 +6,7 @@ body {
   /* disable text interaction by default */
   -webkit-user-select: none; /* Safari */
   user-select: none; /* Standard  */
+  cursor: default;
 }
 
 /* fallback scrollbar is inspired by Firefox's dark scrollbar */

@@ -1,6 +1,9 @@
 interface Window {
-  webkit?: {
+  webkit: {
     messageHandlers: {
+      commandBridge: {
+        postMessage(commandJson: string): Promise<string>
+      },
       logBridge: {
         postMessage: {
           level: 'log' | 'info' | 'warn' | 'error' | 'debug',

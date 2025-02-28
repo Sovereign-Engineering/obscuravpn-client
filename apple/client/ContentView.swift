@@ -257,14 +257,13 @@ struct WebView: NSViewRepresentable {
         webConfiguration.userContentController.add(LogHandler.shared, name: "logBridge")
 
         // for React application
-        webConfiguration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
         webConfiguration.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
-
-        let preferences = WKPreferences()
+        webConfiguration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
         // note that text selection is disabled using CSS
-        preferences.isTextInteractionEnabled = true
-        webConfiguration.preferences = preferences
-
+        webConfiguration.preferences.isTextInteractionEnabled = true
+        #if DEBUG
+            webConfiguration.preferences.setValue(true, forKey: "developerExtrasEnabled")
+        #endif
         self.webView = WKWebView(frame: .zero, configuration: webConfiguration)
         self.webViewDelegate = WebViewController()
         self.webView.navigationDelegate = self.webViewDelegate

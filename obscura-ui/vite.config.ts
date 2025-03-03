@@ -7,6 +7,8 @@ import { visualizer } from 'rollup-plugin-visualizer';
 export default defineConfig({
   // WkWebkitWebview specifics
   base: '',
+  // Don't serve public static assets, have vite process all assets
+  publicDir: false,
 
   plugins: [
     svgr(),

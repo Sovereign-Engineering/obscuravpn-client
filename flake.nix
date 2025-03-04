@@ -33,6 +33,13 @@
 
         rustArgs = rustDepsArgs // { cargoArtifacts = craneLib.buildDepsOnly rustDepsArgs; };
 
+        rustlibBindgenArgs = {
+          # Environment variables for cbindgen, see rustlib/build.rs
+          outputs = [ "out" "dev" ]; # Assumes that crane's derivation only has "out"
+          OBSCURA_CLIENT_RUSTLIB_CBINDGEN_CONFIG_PATH = ./apple/cbindgen-apple.toml;
+          OBSCURA_CLIENT_RUSTLIB_CBINDGEN_OUTPUT_HEADER_PATH = "${placeholder "dev"}/include/libobscuravpn_client.h";
+        };
+
         nodeModules = pkgs.napalm.buildPackage (lib.fileset.toSource {
           root = ./obscura-ui;
           fileset = lib.fileset.unions [ ./obscura-ui/package.json ./obscura-ui/package-lock.json ];
@@ -98,8 +105,6 @@
         };
 
         packages = rec {
-          inherit (pkgs) rust-cbindgen;
-
           licenses = pkgs.runCommand "licenses.json" {
             nativeBuildInputs = [ pkgs.nodejs ];
 
@@ -148,7 +153,7 @@
             installPhase = " ";
           });
 
-          rust = craneLib.buildPackage rustArgs;
+          rust = craneLib.buildPackage (rustArgs // rustlibBindgenArgs);
         };
       });
 }

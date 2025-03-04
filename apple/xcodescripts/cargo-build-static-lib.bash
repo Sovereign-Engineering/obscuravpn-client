@@ -7,6 +7,9 @@ export PATH="$HOME/.cargo/bin:$PATH:/usr/local/bin:/opt/homebrew/bin"
 #export CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER=/usr/bin/ld
 #export CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER=/usr/bin/ld
 
+export OBSCURA_CLIENT_RUSTLIB_CBINDGEN_OUTPUT_HEADER_PATH="$SCRIPT_OUTPUT_FILE_1"
+export OBSCURA_CLIENT_RUSTLIB_CBINDGEN_CONFIG_PATH="$SCRIPT_INPUT_FILE_2"
+
 CARGO_XCODE_CARGO_MANIFEST_PATH="${SCRIPT_INPUT_FILE:-"$SCRIPT_INPUT_FILE_1"}"
 
 # NOTE: We need the '-' paramaeter expansion because we're in bash's "set -u" mode
@@ -86,16 +89,6 @@ if [ -n "${LD_DYLIB_INSTALL_NAME-}" ]; then
 fi
 
 echo "success: $ACTION of $SCRIPT_OUTPUT_FILE_0 for ${CARGO_XCODE_TARGET_TRIPLES[*]}"
-
-# Generate C binding headers
-CARGO_TOML_DIR="$(dirname "$CARGO_XCODE_CARGO_MANIFEST_PATH")"
-# TODO: We may need to specify the --only-target-dependencies flag with TARGET set
-CBINDGEN_OPTS=(
-	--config="$SCRIPT_INPUT_FILE_2"
-	--profile="$CARGO_XCODE_BUILD_PROFILE"
-	--output="$SCRIPT_OUTPUT_FILE_1"
-)
-"${SRCROOT}/../apple/xcodescripts/nix-cbindgen.bash" "${CBINDGEN_OPTS[@]}" -- "$CARGO_TOML_DIR"
 
 # Generate .modulemap file
 cat <<EOF >"$SCRIPT_OUTPUT_FILE_2"

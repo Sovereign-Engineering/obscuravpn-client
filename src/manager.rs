@@ -93,6 +93,7 @@ pub struct TunnelArgs {
     exit: Option<String>,
 }
 
+#[allow(clippy::large_enum_variant)]
 pub enum TunnelState {
     Disconnected {
         conn_id: Uuid,

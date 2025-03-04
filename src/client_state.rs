@@ -267,7 +267,6 @@ impl ClientState {
                     exit.id = exit.as_deref(),
                     relay.id =? &closest_relay.id,
                     relay.ip_v4 =% closest_relay.ip_v4,
-                    relay.ip_v6 =% closest_relay.ip_v6,
                     "creating tunnel");
             Self::change_config(&mut self.lock(), |config| config.local_tunnels_ids.push(tunnel_id.to_string()))?;
 

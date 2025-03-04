@@ -8,5 +8,11 @@
 language = "C"
 sys_includes = ["TargetConditionals.h"]
 
+after_includes = """
+#if TARGET_OS_OSX
+    #define OBSCURA_DEFINE_TARGET_OS_MACOS
+#endif
+"""
+
 [defines]
-"target_os = macos" = "TARGET_OS_OSX"
+"target_os = macos" = "OBSCURA_DEFINE_TARGET_OS_MACOS"

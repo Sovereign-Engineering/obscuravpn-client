@@ -5,6 +5,7 @@
 # See:
 #   find /Applications/Xcode.app/Contents/Developer/Platforms -name 'TargetConditionals\.h'
 
+language = "C"
 sys_includes = ["TargetConditionals.h"]
 
 [defines]

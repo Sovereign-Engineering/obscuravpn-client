@@ -92,7 +92,6 @@ CARGO_TOML_DIR="$(dirname "$CARGO_XCODE_CARGO_MANIFEST_PATH")"
 # TODO: We may need to specify the --only-target-dependencies flag with TARGET set
 CBINDGEN_OPTS=(
 	--config="$SCRIPT_INPUT_FILE_2"
-	--lang=c
 	--profile="$CARGO_XCODE_BUILD_PROFILE"
 	--output="$SCRIPT_OUTPUT_FILE_1"
 )

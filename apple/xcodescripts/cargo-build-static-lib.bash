@@ -12,6 +12,9 @@ export OBSCURA_CLIENT_RUSTLIB_CBINDGEN_CONFIG_PATH="$SCRIPT_INPUT_FILE_2"
 
 CARGO_XCODE_CARGO_MANIFEST_PATH="${SCRIPT_INPUT_FILE:-"$SCRIPT_INPUT_FILE_1"}"
 
+# So that we pick up .cargo/config.toml
+cd "$(dirname "$CARGO_XCODE_CARGO_MANIFEST_PATH")"
+
 # NOTE: We need the '-' paramaeter expansion because we're in bash's "set -u" mode
 if [ -n "${OTHER_INPUT_FILE_FLAGS-}" ]; then
 	read -r -a CARGO_XCODE_CARGO_EXTRA_FLAGS <<<"$OTHER_INPUT_FILE_FLAGS"

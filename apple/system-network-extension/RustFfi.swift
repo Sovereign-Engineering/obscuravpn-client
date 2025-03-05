@@ -55,7 +55,7 @@ func ffiJsonCmd(_ jsonCmd: String) async -> NeFfiJsonResult {
     }
 }
 
-// Keep synchronized with ../../src/apple/network_config.rs
+// Keep synchronized with rustlib/src/apple/network_config.rs
 struct FfiNetworkConfig: Codable, CustomStringConvertible {
     var description: String {
         return "ipv4: \(self.ipv4), dns: \(self.dns), ipv6: \(self.ipv6)"

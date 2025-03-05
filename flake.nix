@@ -15,16 +15,13 @@
         overlays = [ (import ./nix/overlays) (import rust-overlay) napalm.overlays.default ];
         pkgs = import nixpkgs { inherit overlays system; };
         lib = pkgs.lib;
-        rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
+        rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./rustlib/rust-toolchain.toml;
         swiftfmt = swiftformat.packages.${system}.default;
 
         craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
 
         rustDepsArgs = {
-          src = lib.fileset.toSource {
-            root = ./.;
-            fileset = lib.fileset.unions [ ./.cargo ./Cargo.lock ./Cargo.toml ./rustfmt.toml ./src ];
-          };
+          src = ./rustlib;
 
           strictDeps = true;
 
@@ -138,15 +135,7 @@
           licenses-rust = craneLib.mkCargoDerivation (rustArgs // {
             name = "licenses-rust.json";
             nativeBuildInputs = [ pkgs.cargo-about ];
-            src = lib.fileset.toSource {
-              root = ./.;
-              fileset = lib.fileset.unions [
-                ./about.toml
-                ./Cargo.lock
-                ./Cargo.toml
-                src/lib.rs # Required for cargo-metadata not to fail.
-              ];
-            };
+            src = ./rustlib;
             buildPhaseCargoCommand = ''
               cargo-about generate --format=json --fail >"$out"
             '';

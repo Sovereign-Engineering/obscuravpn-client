@@ -1,11 +1,10 @@
-import { ActionIcon, Anchor, Button, Card, Divider, Flex, Group, HoverCard, Loader, Stack, Text, TextInput, ThemeIcon, useComputedColorScheme, useMantineTheme } from '@mantine/core';
+import { Accordion, ActionIcon, Anchor, Button, Card, Divider, Flex, Group, Loader, Space, Stack, Text, ThemeIcon, Title, useMantineTheme } from '@mantine/core';
 import { useInterval } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { continents } from 'countries-list';
 import { MouseEvent, useContext, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { BsPin, BsPinFill, BsShieldFillCheck, BsShieldFillExclamation } from 'react-icons/bs';
-import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import * as commands from '../bridge/commands';
 import { Exit, getExitCountry } from '../common/api';
 import { AppContext, ConnectionInProgress, ExitsContext } from '../common/appContext';
@@ -17,8 +16,12 @@ import { NotificationId } from '../common/notifIds';
 import { useAsync } from '../common/useAsync';
 import { fmtTime, normalizeError } from '../common/utils';
 import BoltBadgeAuto from '../components/BoltBadgeAuto';
+import ExternalLinkIcon from '../components/ExternalLinkIcon';
 import ObscuraChip from '../components/ObscuraChip';
-import GoldCheckedBadge from '../res/gold-checked-badge.svg?react';
+import CheckMarkCircleFill from '../res/checkmark.circle.fill.svg?react';
+import Eye from '../res/eye.fill.svg?react';
+import EyeSlash from '../res/eye.slash.fill.svg?react';
+import OrangeCheckedShield from '../res/orange-checked-shield.svg?react';
 import classes from './Location.module.css';
 
 export default function LocationView() {
@@ -244,7 +247,7 @@ function NoExitServers() {
                         {t('noExitServers')}
                     </Text>
                 </Group>
-                <Button onClick={refetch} color='teal' radius='md' variant='filled'>
+                <Button onClick={refetch} color='green.7' radius='md' variant='filled'>
                     {t('refetchExitList')}
                 </Button>
             </Group>
@@ -254,16 +257,9 @@ function NoExitServers() {
 
 function VpnStatusCard() {
     const theme = useMantineTheme();
-    const colorScheme = useComputedColorScheme();
     const { t } = useTranslation();
     const { appStatus, vpnConnected, connectionInProgress, vpnDisconnect, vpnConnect, osStatus } = useContext(AppContext);
     const { internetAvailable } = osStatus;
-    const exitPubKey = appStatus.vpnStatus.connected?.exit_public_key;
-    const exitProviderId = appStatus.vpnStatus.connected?.exit.provider_id;
-    const exitProviderURL = appStatus.vpnStatus.connected?.exit.provider_url;
-    const [showExitPubKey, setShowExitPubKey] = useState(false);
-    const { value: trafficStats, refresh: pollTrafficStats } = useAsync({deps: [], load: commands.getTrafficStats });
-    useInterval(pollTrafficStats, 1000, { autoInvoke: true });
 
     const getStatusTitle = () => {
         if (!internetAvailable) return t('Offline');
@@ -301,10 +297,10 @@ function VpnStatusCard() {
             <Group justify='space-between'>
                 <Stack gap={0}>
                     <Group align='center' gap={5}>
-                        <ThemeIcon color={vpnConnected ? 'teal' : 'red.7'} variant='transparent'>
+                        <ThemeIcon color={vpnConnected ? 'green.7' : 'red.7'} variant='transparent'>
                             {vpnConnected ? <BsShieldFillCheck size={25} /> : <BsShieldFillExclamation size={25} />}
                         </ThemeIcon>
-                        <Text size='xl' fw={700} c={vpnConnected ? 'teal' : 'red.7'}>{getStatusTitle()}</Text>
+                        <Title order={4}   fw={600} c={vpnConnected ? 'green.7' : 'red.7'}>{getStatusTitle()}</Title>
                     </Group>
                     <Text c='gray' size='sm' ml={34}>{getStatusSubtitle()}</Text>
                 </Stack>
@@ -312,42 +308,78 @@ function VpnStatusCard() {
                     {getButtonContent()}
                 </Button>
             </Group>
-            {exitPubKey !== undefined &&
+            {appStatus.vpnStatus.connected !== undefined &&
               <>
                 <Divider my='md' />
-                <Group justify='space-between' w='100%'>
-                  {trafficStats?.connectedMs !== undefined &&
-                    <Stack gap={5}>
-                      <Text c='gray' size='sm'>{t('currentSession')}</Text>
-                      <Group>
-                        <Text size='sm'>{fmtTime(trafficStats?.connectedMs)}</Text>
-                      </Group>
-                    </Stack>
-                  }
-                  <Stack gap={5}>
-                    <Group h='1em' justify='space-between' mr={34}>
-                      <Group gap={3}>
-                        <HoverCard disabled={!showExitPubKey} withArrow arrowSize={15} position='top' shadow='xs' offset={4}>
-                          <HoverCard.Target>
-                            <Text c='gray' size='sm'>{t('exitPubKey')}</Text>
-                          </HoverCard.Target>
-                          <HoverCard.Dropdown bg={colorScheme === 'dark' ? 'dark.8' : 'gray.0'}>
-                            <Text size='xs'><Trans i18nKey='exitPubKeyTooltip' values={{ exitProviderId, exitProviderURL }} components={[<i />, <Anchor href={exitProviderURL} />]} /></Text>
-                          </HoverCard.Dropdown>
-                        </HoverCard>
-                        <ActionIcon variant='subtle' onClick={() => setShowExitPubKey(!showExitPubKey)}>
-                          {showExitPubKey ? <FaEyeSlash size='1em'/> : <FaEye size='1em'/>}
-                        </ActionIcon>
-                      </Group>
-                      {showExitPubKey && <Anchor href={exitProviderURL}><Text size='xs' component='i'>{exitProviderId}</Text></Anchor>}
-                    </Group>
-                    <Group ff='monospace' w={`${exitPubKey.length + 2}ch`} gap={3}>
-                      {showExitPubKey ? <GoldCheckedBadge /> : ''}<TextInput readOnly w={`${exitPubKey.length}ch`} variant='unstyled' size='sm' value={exitPubKey} type={showExitPubKey ? 'text' : 'password'} />
-                    </Group>
-                  </Stack>
-                </Group>
+                <Stack justify='space-between' w='100%'>
+                  <CurrentSession />
+                  <ExitInfoCollapse exitPubKey={appStatus.vpnStatus.connected.exit_public_key} connectedExit={appStatus.vpnStatus.connected.exit} />
+                </Stack>
               </>
             }
         </Card>
     );
+}
+
+function CurrentSession() {
+  const { t } = useTranslation();
+  const { value: trafficStats, refresh: pollTrafficStats } = useAsync({ deps: [], load: commands.getTrafficStats });
+  useInterval(pollTrafficStats, 1000, { autoInvoke: true });
+  if (trafficStats === undefined) return;
+  return (
+    <Stack gap={5}>
+      <Text c='gray' size='sm'>{t('currentSession')}</Text>
+      <Group>
+        <Text size='sm'>{fmtTime(trafficStats.connectedMs)}</Text>
+      </Group>
+    </Stack>
+  );
+}
+
+function ExitInfoCollapse({ exitPubKey, connectedExit }: { exitPubKey: string, connectedExit: Exit}) {
+  const theme = useMantineTheme();
+  const { t } = useTranslation();
+  const [showExitInfo, setShowExitInfo] = useState(false);
+
+  const exitProviderId = connectedExit.provider_id;
+  const exitProviderURL = connectedExit.provider_url;
+  const provider = connectedExit.provider_name;
+  const providerUrl = connectedExit.provider_homepage_url;
+
+  return (
+    <Accordion classNames={{item: classes.item}} variant='contained' value={showExitInfo ? '0' : null} onChange={() => setShowExitInfo(!showExitInfo)} chevron={null} disableChevronRotation>
+      <Accordion.Item key='0' value='0'>
+        <Accordion.Control icon={<OrangeCheckedShield height='1em' width='1em' />}>
+          <Group justify='space-between'>
+            <Text size='sm' c='gray'><Trans i18nKey='securedBy' values={{ provider }} components={[<Anchor onClick={e => e.stopPropagation()} c='orange' href={providerUrl} />]} /></Text>
+            <Group style={{alignItems: 'center'}} gap={5}>
+              {showExitInfo ?
+                <EyeSlash fill={theme.other.dimmed} width='1em' height='1em' /> :
+                <Eye fill={theme.other.dimmed} width='1em' height='1em' />}
+              <Text size='xs' c='dimmed'>{t(showExitInfo ? 'serverInfoHide' : 'serverInfoReveal')}</Text>
+            </Group>
+          </Group>
+        </Accordion.Control>
+        <Accordion.Panel>
+          <Stack gap={2}>
+            <Stack gap={5}>
+              <Text c='gray' size='sm'>{t('Node')}</Text>
+              <Text size='sm'>
+                {exitProviderId}
+                <Text span c='dimmed' size='sm'> ({connectedExit.city_name}, {getExitCountry(connectedExit).name})</Text>
+              </Text>
+            </Stack>
+            <Space h='xs' />
+            <Stack gap={5}>
+              <Text c='gray' size='sm'>{t('publicKey')}</Text>
+              <Group gap={3}>
+                <Text ff='monospace' size='sm'>{exitPubKey}</Text>
+              </Group>
+              <Text size='xs' c='green.7' fw={500}><Trans i18nKey='exitPubKeyTooltip' values={{ exitProviderId, exitProviderURL }} components={[<CheckMarkCircleFill height={11} width={11} fill={theme.colors.green[7]} style={{ marginBottom: -1 }} />, <Anchor underline='always' href={exitProviderURL} />, <ThemeIcon variant='transparent' size={12}><ExternalLinkIcon style={{ height: '100%' }} /></ThemeIcon>]} /></Text>
+            </Stack>
+          </Stack>
+        </Accordion.Panel>
+      </Accordion.Item>
+    </Accordion>
+  );
 }

@@ -1,9 +1,8 @@
 import { Anchor, Box, Button, Center, Code, Group, Loader, Paper, Stack, Text, ThemeIcon, useComputedColorScheme, useMantineTheme } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsQuestionSquareFill } from 'react-icons/bs';
-import { FaExternalLinkSquareAlt } from 'react-icons/fa';
 import { IoIosRefresh } from 'react-icons/io';
 import { IoLogOutOutline } from 'react-icons/io5';
 import { MdOutlineWifiOff } from 'react-icons/md';
@@ -14,6 +13,7 @@ import { AppContext } from '../common/appContext';
 import { fmtErrorI18n } from '../common/danger';
 import { normalizeError } from '../common/utils';
 import { AccountNumberDisplay } from '../components/AccountNumberDisplay';
+import ExternalLinkIcon from '../components/ExternalLinkIcon';
 import AccountExpiredBadge from '../res/account-expired.svg?react';
 import PaidUpExpiringSoonBadge from '../res/paid-up-expiring-soon.svg?react';
 import PaidUpExpiringVerySoonBadge from '../res/paid-up-expiring-very-soon.svg?react';
@@ -76,7 +76,7 @@ function ManageSubscriptionLink({ accountId }: ManagePaymentLinkProps) {
     // TODO: Call the API to get the Stripe URL and go directly there.
     return (
         <Button component='a' href={ObscuraAccount.payUrl(accountId)} size='sm'>
-            <span>{t('Manage Payments')} <FaExternalLinkSquareAlt size={11} /></span>
+            <span>{t('Manage Payments')} <ExternalLinkIcon size={11} /></span>
         </Button>
     );
 }

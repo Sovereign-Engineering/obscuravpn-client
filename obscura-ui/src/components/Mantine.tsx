@@ -7,7 +7,7 @@ import '@mantine/notifications/styles.css';
 // import '@mantine/dates/styles.css';
 // import '@mantine/dropzone/styles.css';
 // import '@mantine/code-highlight/styles.css';
-import { ColorSchemeScript, MantineProvider, createTheme } from '@mantine/core';
+import { Accordion, ColorSchemeScript, MantineProvider, createTheme } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
 import { Notifications } from '@mantine/notifications';
 import { PropsWithChildren } from 'react';
@@ -38,6 +38,11 @@ export default function Mantine({ children }: PropsWithChildren) {
               defaultProps: {
                 radius: 'md'
               }
+            },
+            Accordion: {
+              defaultProps: {
+                radius: 'md'
+              }
             }
         },
         primaryColor: 'orange',
@@ -49,6 +54,7 @@ export default function Mantine({ children }: PropsWithChildren) {
             dark: ['#C1C2C5', '#A6A7AB', '#909296', '#5c5f66', '#4F5156', '#393939', '#353535', '#313131', '#303030', '#222528'],
         },
         other: {
+            dimmed: 'var(--mantine-color-dimmed)',
             buttonDisconnectProps: { variant: 'light', c: 'red.7', bg: 'red.1' }
         }
     });

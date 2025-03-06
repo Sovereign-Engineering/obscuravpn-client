@@ -9,7 +9,9 @@ export interface Exit {
     city_code: string,
     city_name: string,
     provider_id: string,
-    provider_url: string
+    provider_url: string,
+    provider_name: string,
+    provider_homepage_url: string,
 }
 
 export function getCountry(country_code: string): ICountryData {

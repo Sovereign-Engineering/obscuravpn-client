@@ -5,7 +5,6 @@ import { continents } from 'countries-list';
 import { Dispatch, ReactNode, SetStateAction, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsChevronDown, BsPinFill } from 'react-icons/bs';
-import { FaExternalLinkSquareAlt } from 'react-icons/fa';
 import { IoIosEyeOff } from 'react-icons/io';
 import { MdLanguage, MdLaptopMac, MdOutlineWifiOff } from 'react-icons/md';
 import * as ObscuraAccount from '../common/accountUtils';
@@ -16,6 +15,7 @@ import { CityNotFoundError, exitLocation, exitsSortComparator, getExitCountryFla
 import { KeyedSet } from '../common/KeyedSet';
 import { normalizeError, useCookie } from '../common/utils';
 import BoltBadgeAuto from '../components/BoltBadgeAuto';
+import ExternalLinkIcon from '../components/ExternalLinkIcon';
 import ObscuraChip from '../components/ObscuraChip';
 import DecoConnected from '../res/deco/deco-connected.svg';
 import DecoConnectingDark1 from '../res/deco/deco-connecting-dark-1.svg';
@@ -137,7 +137,7 @@ export default function Connection() {
             {
                 vpnConnected && connectionInProgress === ConnectionInProgress.UNSET && <>
                     <Space />
-                    <Anchor href={ObscuraAccount.CHECK_STATUS_WEBPAGE} underline='always' c={colorScheme === 'light' ? 'gray.6' : 'gray.5'}>{t('checkMyConnection')} <FaExternalLinkSquareAlt size={12} /></Anchor>
+                    <Text c={colorScheme === 'light' ? 'gray.6' : 'gray.5'}><Anchor c='inherit' href={ObscuraAccount.CHECK_STATUS_WEBPAGE} underline='always'>{t('checkMyConnection')}</Anchor> <ExternalLinkIcon size={12} style={{ marginBottom: -1 }} /></Text>
                 </>
             }
             <div style={{ flexGrow: 1 }} />

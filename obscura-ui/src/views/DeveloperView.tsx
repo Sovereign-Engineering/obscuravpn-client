@@ -1,4 +1,4 @@
-import { Autocomplete, Button, Group, JsonInput, Space, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Accordion, Autocomplete, Button, Group, JsonInput, Stack, Text, TextInput, Title } from '@mantine/core';
 import { useInterval } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import Cookies from 'js-cookie';
@@ -34,11 +34,25 @@ export default function DeveloperViewer() {
     const [localStorageKey, setLocalStorageKey] = useState('');
     const [localStorageValue, setLocalStorageValue] = useState<string | null>(null);
 
+    const [accordionValues, setAccordionValues] = useState<string[]>([]);
+
     return <Stack p={20} mb={50}>
         <Title order={3}>Developer View</Title>
-        <Title order={4}>Current Status</Title>
-        <JsonInput value={JSON.stringify(appStatus, null, 4)} contentEditable={false} rows={11} />
-        <JsonInput value={JSON.stringify(osStatus, null, 4)} contentEditable={false} rows={4} />
+        <Title order={4}>Statuses</Title>
+        <Accordion multiple value={accordionValues} onChange={setAccordionValues}>
+            <Accordion.Item key='appStatus' value='appStatus'>
+                <Accordion.Control>App Status</Accordion.Control>
+                <Accordion.Panel>
+                    <JsonInput value={JSON.stringify(appStatus, null, 4)} contentEditable={false} rows={10} />
+                </Accordion.Panel>
+            </Accordion.Item>
+            <Accordion.Item key='osStatus' value='osStatus'>
+                <Accordion.Control>OsStatus</Accordion.Control>
+                <Accordion.Panel>
+                    <JsonInput value={JSON.stringify(osStatus, null, 4)} contentEditable={false} rows={10} />
+                </Accordion.Panel>
+            </Accordion.Item>
+        </Accordion>
         <Title order={4}>React variables</Title>
         <Text>vpn is connected: <b>{vpnConnected ? 'Yes' : 'No'}</b></Text>
         <Text>connection in progress: <b>{connectionInProgress ?? 'No'}</b></Text>

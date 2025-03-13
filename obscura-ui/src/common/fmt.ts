@@ -17,7 +17,11 @@ export function fmt(lits: TemplateStringsArray, ...values: unknown[]): string {
                 break;
             case "object":
             case "string":
-                out.push(JSON.stringify(v));
+                if (v instanceof Error) {
+                  out.push(`${v}`);
+                } else {
+                  out.push(JSON.stringify(v));
+                }
                 break;
             case "function":
                 out.push(`[function ${(v as Function).name}]`);

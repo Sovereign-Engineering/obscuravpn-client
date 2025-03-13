@@ -21,20 +21,23 @@ struct StatusItemAccount: View {
         VStack {
             if self.account.expiringSoon() {
                 Label {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Fund your account...")
-                            .font(.system(size: 13))
-                        HStack {
-                            Text(self.account.isActive() ? "Account expires soon" : "Account is expired")
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Text(self.account.isActive() ? getExpiredInDaysText(self.account.daysUntilExpiry()!) : "        ")
-                                .foregroundStyle(.tertiary)
-                                .fixedSize()
-                                .frame(minWidth: 50)
-                        }
-                        .font(.subheadline)
-                    }.fixedSize(horizontal: true, vertical: false)
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Fund your account...")
+                                .font(.system(size: 13))
+                            HStack {
+                                Text(self.account.isActive() ? "Account expires soon" : "Account is expired")
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(self.account.isActive() ? getExpiredInDaysText(self.account.daysUntilExpiry()!) : "        ")
+                                    .foregroundStyle(.tertiary)
+                                    .fixedSize()
+                                    .frame(minWidth: 50)
+                            }
+                            .font(.subheadline)
+                        }.fixedSize(horizontal: true, vertical: false)
+                        Spacer()
+                    }
                 } icon: {
                     Image(systemName: "exclamationmark.arrow.circlepath")
                 }

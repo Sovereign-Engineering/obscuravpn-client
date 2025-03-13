@@ -101,6 +101,7 @@ struct ContentView: View {
     // see https://linear.app/soveng/issue/OBS-1159/ regarding why account could be reset to nil
     @State private var accountBadge: String?
     @State private var badgeColor: Color?
+    @State private var indicateUpdateAvailable: Bool = false
 
     @EnvironmentObject private var appDelegate: AppDelegate
 
@@ -127,7 +128,7 @@ struct ContentView: View {
             columnVisibility: self.$splitViewVisibility,
             sidebar: {
                 List(self.viewMode.getViews(), id: \.self, selection: self.$selectedView) { view in
-                    let label = Label(view.name.capitalized, systemImage: view.systemImageName)
+                    var label = Label(view.name.capitalized, systemImage: view.systemImageName)
                         .listItemTint(Color("ObscuraOrange"))
                     // hide badge if we do not know if it should be shown
                     if view.name == "account" && self.accountBadge != nil && self.badgeColor != nil {
@@ -139,6 +140,16 @@ struct ContentView: View {
                             )
                             // this has to be here, otherwise the label color is system accent default
                             .listItemTint(Color("ObscuraOrange"))
+                    } else if view.name == "about" && self.indicateUpdateAvailable {
+                        HStack {
+                            label
+                            Spacer()
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 8, height: 8)
+                        }
+                        // this has to be here, otherwise the label color is system accent default
+                        .listItemTint(Color("ObscuraOrange"))
                     } else {
                         label
                     }
@@ -154,6 +165,9 @@ struct ContentView: View {
             if let account = self.appState.status.account {
                 self.accountBadge = getBadgeText(account)
                 self.badgeColor = getBadgeColor(account)
+            }
+            if let updaterStatus = self.appState.osStatus.get()?.updaterStatus {
+                self.indicateUpdateAvailable = updaterStatus.type == .available
             }
         })
         .onChange(of: self.selectedView) { view in

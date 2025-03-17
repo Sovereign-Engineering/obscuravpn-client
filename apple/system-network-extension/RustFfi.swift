@@ -5,23 +5,20 @@ import OSLog
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "Rust FFI")
 
-func ffiInitialize(configDir: String, oldConfigDir: String, userAgent: String) {
+func ffiInitialize(configDir: String, oldConfigDir: String, userAgent: String, _ receiveCallback: (@convention(c) (FfiBytes) -> Void)!,
+                   _ networkConfigCallback: (@convention(c) (FfiBytes) -> Void)!,
+                   _ tunnelStatusCallback: (@convention(c) (Bool) -> Void)!) {
     libobscuravpn_client.initialize_macos_system_logging()
     configDir.withFfiStr { ffiConfigDir in
         oldConfigDir.withFfiStr { ffiOldConfigDir in
             userAgent.withFfiStr { ffiUserAgent in
-                libobscuravpn_client.initialize(ffiConfigDir, ffiOldConfigDir, ffiUserAgent)
+                libobscuravpn_client.initialize(ffiConfigDir, ffiOldConfigDir, ffiUserAgent, receiveCallback, networkConfigCallback, tunnelStatusCallback)
             }
         }
     }
 }
 
-func ffiStartTunnel(
-    _ jsonTunnelArgs: String,
-    _ receiveCallback: (@convention(c) (FfiBytes) -> Void)!,
-    _ networkConfigCallback: (@convention(c) (FfiBytes) -> Void)!,
-    _ tunnelStatusCallback: (@convention(c) (Bool) -> Void)!
-) async -> Result<FfiNetworkConfig, String> {
+func ffiStartTunnel(_ jsonTunnelArgs: String) async -> Result<FfiNetworkConfig, String> {
     return await withCheckedContinuation { continuation in
         let context = FfiCb.wrap { (network_config: FfiBytes, err: FfiStr) in
             if let err = err.nonEmptyString() {
@@ -37,7 +34,7 @@ func ffiStartTunnel(
             }
         }
         jsonTunnelArgs.withFfiStr {
-            libobscuravpn_client.start_tunnel(context, $0, receiveCallback, networkConfigCallback, tunnelStatusCallback) { FfiCb.call($0, ($1, $2)) }
+            libobscuravpn_client.start_tunnel(context, $0) { FfiCb.call($0, ($1, $2)) }
         }
     }
 }

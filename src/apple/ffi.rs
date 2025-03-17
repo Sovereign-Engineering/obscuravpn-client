@@ -46,13 +46,28 @@ fn global_manager() -> Arc<Manager> {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn initialize(config_dir: FfiStr, old_config_dir: FfiStr, user_agent: FfiStr) {
+pub unsafe extern "C" fn initialize(
+    config_dir: FfiStr,
+    old_config_dir: FfiStr,
+    user_agent: FfiStr,
+    receive_cb: extern "C" fn(FfiBytes),
+    network_config_cb: extern "C" fn(FfiBytes),
+    tunnel_status_cb: extern "C" fn(isConnected: bool),
+) {
     let mut first_init = false;
     GLOBAL.get_or_init(|| {
         let config_dir = config_dir.to_string().into();
         let old_config_dir = old_config_dir.to_string().into();
         let user_agent = user_agent.to_string();
-        match Manager::new(config_dir, old_config_dir, user_agent, &RUNTIME) {
+        match Manager::new(
+            config_dir,
+            old_config_dir,
+            user_agent,
+            &RUNTIME,
+            receive_cb,
+            network_config_cb,
+            tunnel_status_cb,
+        ) {
             Ok(c) => {
                 first_init = true;
                 tracing::info!("ffi initialized");
@@ -70,9 +85,6 @@ pub unsafe extern "C" fn initialize(config_dir: FfiStr, old_config_dir: FfiStr, 
 pub unsafe extern "C" fn start_tunnel(
     context: usize,
     json_tunnel_args: FfiStr,
-    receive_cb: extern "C" fn(FfiBytes),
-    network_config_cb: extern "C" fn(FfiBytes),
-    tunnel_status_cb: extern "C" fn(isConnected: bool),
     cb: extern "C" fn(context: usize, network_config: FfiBytes, err: FfiStr),
 ) {
     let json_tunnel_args = json_tunnel_args.to_string();
@@ -87,7 +99,7 @@ pub unsafe extern "C" fn start_tunnel(
         }
     };
     RUNTIME.spawn(async move {
-        match global_manager().start(tunnel_args, receive_cb, network_config_cb, tunnel_status_cb).await {
+        match global_manager().start(tunnel_args).await {
             Ok(network_config) => {
                 let network_config_json = serde_json::to_vec(&network_config).unwrap();
                 cb(context, network_config_json.ffi(), "".ffi_str())

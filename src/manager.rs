@@ -33,6 +33,10 @@ use crate::{client_state::ClientState, errors::ConnectErrorCode, network_config:
 use super::ffi_helpers::*;
 
 pub struct Manager {
+    // When we implement support for an OS, which doesn't need to fall back to a C API, we may want to move these callbacks into OS specific code and use some trait or returned stream for received packets and a status stream for network config and tunnel status callbacks.
+    receive_cb: extern "C" fn(FfiBytes),
+    network_config_cb: extern "C" fn(FfiBytes),
+    tunnel_status_cb: extern "C" fn(isConnected: bool),
     client_state: Arc<ClientState>,
     tunnel_state: Arc<RwLock<TunnelState>>,
     status_watch: Sender<Status>,
@@ -131,12 +135,23 @@ impl TunnelState {
 }
 
 impl Manager {
-    pub fn new(config_dir: PathBuf, old_config_dir: PathBuf, user_agent: String, runtime: &Runtime) -> Result<Arc<Self>, ConfigLoadError> {
+    pub fn new(
+        config_dir: PathBuf,
+        old_config_dir: PathBuf,
+        user_agent: String,
+        runtime: &Runtime,
+        receive_cb: extern "C" fn(FfiBytes),
+        network_config_cb: extern "C" fn(FfiBytes),
+        tunnel_status_cb: extern "C" fn(isConnected: bool),
+    ) -> Result<Arc<Self>, ConfigLoadError> {
         let client_state = ClientState::new(config_dir, old_config_dir, user_agent)?;
         let config = client_state.get_config();
         let initial_status = Status::new(Uuid::new_v4(), VpnStatus::Disconnected {}, config, client_state.base_url());
         let background_task_cancellation = CancellationToken::new();
         let this: Arc<Self> = Self {
+            receive_cb,
+            network_config_cb,
+            tunnel_status_cb,
             client_state: client_state.into(),
             tunnel_state: Arc::new(RwLock::new(TunnelState::Disconnected { conn_id: Uuid::new_v4() })),
             status_watch: channel(initial_status).0,
@@ -181,15 +196,7 @@ impl Manager {
     }
 
     // TODO: Maybe specific error type, which absorbs or can be convertedd to high-level error code. Wait how the handling of unexpected tunnel states evolves.
-    // TODO: Once we have more than one user we want to remove `receive_cb` from this method. Eg. use a trait, drive the future from the caller or return packet stream.
-    // TODO: Remove network config and tunnel status callbacks in favor of proper status stream
-    pub async fn start(
-        self: Arc<Self>,
-        args: TunnelArgs,
-        receive_cb: extern "C" fn(FfiBytes),
-        network_config_cb: extern "C" fn(FfiBytes),
-        tunnel_status_cb: extern "C" fn(isConnected: bool),
-    ) -> Result<NetworkConfig, ConnectErrorCode> {
+    pub async fn start(self: Arc<Self>, args: TunnelArgs) -> Result<NetworkConfig, ConnectErrorCode> {
         tracing::info!(
             args =? args,
             "Starting tunnel."
@@ -237,9 +244,7 @@ impl Manager {
                 Ok((conn, net_config, exit, _relay)) => {
                     tracing::info!(%conn_id, "setting TunnelState to Running");
                     let conn: Arc<QuicWgConn> = Arc::new(conn);
-                    let run_task = tokio::spawn(
-                        run_tunnel(self.clone(), conn.clone(), args, conn_id, receive_cb, network_config_cb, tunnel_status_cb).map(|_| ()),
-                    );
+                    let run_task = tokio::spawn(run_tunnel(self.clone(), conn.clone(), args, conn_id).map(|_| ()));
                     *tunnel_state = TunnelState::Running {
                         started_at: Instant::now(),
                         conn_id,
@@ -419,18 +424,10 @@ pub struct ManagerTrafficStats {
     latest_latency_ms: u16,
 }
 
-async fn run_tunnel(
-    manager: Arc<Manager>,
-    mut conn: Arc<QuicWgConn>,
-    args: TunnelArgs,
-    conn_id: Uuid,
-    receive_cb: extern "C" fn(FfiBytes),
-    network_config_cb: extern "C" fn(FfiBytes),
-    tunnel_status_cb: extern "C" fn(isConnected: bool),
-) -> ControlFlow<()> {
+async fn run_tunnel(manager: Arc<Manager>, mut conn: Arc<QuicWgConn>, args: TunnelArgs, conn_id: Uuid) -> ControlFlow<()> {
     loop {
         match conn.receive().await {
-            Ok(packet) => receive_cb(packet.ffi()),
+            Ok(packet) => (manager.receive_cb)(packet.ffi()),
             Err(err) => {
                 tracing::error!(%conn_id, %err, "tunnel failed, reconnecting");
                 manager.write_tunnel_state(|tunnel_state| match tunnel_state {
@@ -452,7 +449,7 @@ async fn run_tunnel(
                         ControlFlow::Continue(())
                     }
                 })?;
-                tunnel_status_cb(false);
+                (manager.tunnel_status_cb)(false);
 
                 let (new_conn, net_config, new_exit, _new_relay) = loop {
                     sleep(Duration::from_secs(1)).await;
@@ -479,7 +476,7 @@ async fn run_tunnel(
                                     ControlFlow::Continue(())
                                 }
                             })?;
-                            tunnel_status_cb(false);
+                            (manager.tunnel_status_cb)(false);
                         }
                     }
                 };
@@ -510,8 +507,8 @@ async fn run_tunnel(
                         ControlFlow::Continue(())
                     }
                 })?;
-                tunnel_status_cb(true);
-                network_config_cb(serde_json::to_vec(&net_config).unwrap().ffi());
+                (manager.tunnel_status_cb)(true);
+                (manager.network_config_cb)(serde_json::to_vec(&net_config).unwrap().ffi());
             }
         }
     }

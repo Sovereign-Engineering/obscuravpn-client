@@ -25,7 +25,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         logger.log("config dir \(configDir, privacy: .public)")
         logger.log("legacy config dir \(oldConfigDir, privacy: .public)")
         logger.log("user agent \(userAgent, privacy: .public)")
-        ffiInitialize(configDir: configDir, oldConfigDir: oldConfigDir, userAgent: userAgent)
+        ffiInitialize(configDir: configDir, oldConfigDir: oldConfigDir, userAgent: userAgent, receiveCallback, networkConfigCallback, tunnelStatusCallback)
 
         super.init()
 
@@ -156,7 +156,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     }
 
     func connect(_ jsonTunnelArgs: String) async -> Result<Void, String> {
-        switch await ffiStartTunnel(jsonTunnelArgs, receiveCallback, networkConfigCallback, tunnelStatusCallback) {
+        switch await ffiStartTunnel(jsonTunnelArgs) {
         case .success(let ffiNetworkConfig):
             logger.log("network config: \(ffiNetworkConfig, privacy: .public)")
             let networkSettings = NEPacketTunnelNetworkSettings.build(ffiNetworkConfig)

@@ -39,6 +39,11 @@ export interface OsStatus {
     osVpnStatus: NEVPNStatus,
     srcVersion: string
     updaterStatus: UpdaterStatus,
+    debugBundleStatus: {
+        inProgress?: boolean,
+        latestPath?: string,
+        inProgressCounter: number,
+    }
 }
 
 export interface VpnStatus {

@@ -63,27 +63,6 @@ class AppState: ObservableObject {
         }
     }
 
-    func accountPollSleep(daysTillExpiry: Int64?, subscriptionExpiry: Int64?) async {
-        if daysTillExpiry == nil, let subscriptionExpiry = subscriptionExpiry {
-            let daysTillRenewal = (subscriptionExpiry - Int64(Date().timeIntervalSince1970)) / 86400
-            if daysTillRenewal > 10 {
-                try! await Task.sleep(seconds: Double(min(daysTillRenewal - 10, 90) * 3600))
-            } else {
-                try! await Task.sleep(seconds: 24 * 3600)
-            }
-        } else if let daysTillExpiry = daysTillExpiry {
-            if daysTillExpiry > 10 {
-                try! await Task.sleep(seconds: Double(min(daysTillExpiry - 10, 90) * 3600))
-            } else {
-                try! await Task.sleep(seconds: 12 * 3600)
-            }
-        } else {
-            // dead
-            Self.logger.error("running account polling expected dead code")
-            try! await Task.sleep(seconds: 24 * 3600)
-        }
-    }
-
     func enableTunnelWithErrorHandling(_ tunnelArgs: TunnelArgs) async throws {
         try await self.enableTunnelWithErrorHandling(jsonTunnelArgs: tunnelArgs.json())
     }

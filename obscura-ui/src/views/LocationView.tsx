@@ -39,7 +39,7 @@ export default function LocationView() {
                 title: t('connectingToCity', { city: exit.city_name }),
                 message: '',
                 autoClose: 15_000,
-                color: 'yellow',
+                color: 'yellow.4',
                 id: NotificationId.VPN_DISCONNECT_CONNECT
             });
             await vpnDisconnectConnect(exit.id);

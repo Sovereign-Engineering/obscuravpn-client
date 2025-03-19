@@ -1,4 +1,4 @@
-import { AppShell, AppShellMain, Group, Modal, Text, Title, useComputedColorScheme, useMantineColorScheme } from '@mantine/core';
+import { AppShell, AppShellMain, Group, Modal, Text, Title, useMantineColorScheme, useMantineTheme } from '@mantine/core';
 import { useDisclosure, useHotkeys, useThrottledValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { ReactNode, useEffect, useRef, useState } from 'react';
@@ -37,7 +37,7 @@ export default function () {
   const navigate = useNavigate();
   const { toggleColorScheme } = useMantineColorScheme();
   useHotkeys([[osPlatform === 'darwin' ? 'mod+J' : 'ctrl+J', toggleColorScheme]]);
-  const colorScheme = useComputedColorScheme();
+  const theme = useMantineTheme();
   const [mobileNavOpened, { toggle: toggleMobileNav }] = useDisclosure();
   const [desktopNavOpenedCookie, setDesktopNavOpenedCookie] = useCookie('desktop-nav-opened', 'true');
   const desktopNavOpened = desktopNavOpenedCookie === 'true';
@@ -137,7 +137,7 @@ export default function () {
       await commands.disconnectBlocking();
       notifications.update({
         id: NotificationId.VPN_DISCONNECT_CONNECT,
-        color: 'white',
+        color: theme.primaryColor,
         autoClose: 10_000,
         // keep same message
         message: undefined

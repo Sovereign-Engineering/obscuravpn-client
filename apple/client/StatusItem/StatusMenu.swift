@@ -4,12 +4,15 @@ import SwiftUI
 import UserNotifications
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "StatusMenu")
+private let creatingDebuggingArchiveStr = "Creating Debugging Archive (takes a few minutes)"
+private let createDebuggingArchiveStr = "Create Debugging Archive"
 
 // https://multi.app/blog/pushing-the-limits-nsstatusitem
 final class StatusItemManager: ObservableObject {
     private var hostingView: NSHostingView<StatusItem>?
     private var statusItem: NSStatusItem?
     private var debuggingMenuItem: NSMenuItem?
+    private var viewLatestDebugItem: NSMenuItem?
     private var accountMenuItemSeperator: NSMenuItem?
     private var accountMenuItem: NSMenuItem?
 
@@ -90,7 +93,6 @@ final class StatusItemManager: ObservableObject {
         } else {
             // fallback on earlier versions
             let bandwidthStatusTitleItem = NSMenuItem(title: "Bandwidth Status", action: nil, keyEquivalent: "")
-            bandwidthStatusTitleItem.isEnabled = false
             menu.addItem(bandwidthStatusTitleItem)
         }
         let bandwidthStatusItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
@@ -99,9 +101,14 @@ final class StatusItemManager: ObservableObject {
 
         menu.addItem(NSMenuItem.separator())
 
-        self.debuggingMenuItem = NSMenuItem(title: "Create Debugging Archive", action: #selector(self.createDebuggingArchiveAction), keyEquivalent: "")
+        self.debuggingMenuItem = NSMenuItem(title: createDebuggingArchiveStr, action: #selector(self.createDebuggingArchiveAction), keyEquivalent: "")
         self.debuggingMenuItem!.target = self
         menu.addItem(self.debuggingMenuItem!)
+
+        self.viewLatestDebugItem = NSMenuItem(title: "View Latest Debug Archive", action: #selector(self.viewLatestDebugArchive), keyEquivalent: "")
+        self.viewLatestDebugItem!.isHidden = true
+        self.viewLatestDebugItem!.target = self
+        menu.addItem(self.viewLatestDebugItem!)
 
         menu.addItem(NSMenuItem(title: sourceVersion(), action: nil, keyEquivalent: ""))
 
@@ -119,6 +126,33 @@ final class StatusItemManager: ObservableObject {
             self?.hostingView?.frame = frame
             self?.statusItem?.button?.frame = frame
         }
+
+        Task { @MainActor in
+            while true {
+                if let debugBundleStatus = self.osStatusModel.osStatus?.debugBundleStatus {
+                    if let debuggingMenuItem = self.debuggingMenuItem {
+                        if debugBundleStatus.inProgress {
+                            debuggingMenuItem.isEnabled = false
+                            debuggingMenuItem.action = nil
+                            debuggingMenuItem.title = creatingDebuggingArchiveStr
+                            self.viewLatestDebugItem?.isHidden = true
+                        } else if !debuggingMenuItem.isEnabled {
+                            debuggingMenuItem.isEnabled = true
+                            debuggingMenuItem.action = #selector(self.createDebuggingArchiveAction)
+                            debuggingMenuItem.title = createDebuggingArchiveStr
+                            let viewLatestAllowed = debugBundleStatus.latestPath != nil
+                            self.viewLatestDebugItem?.isHidden = !viewLatestAllowed
+                            self.viewLatestDebugItem?.isEnabled = viewLatestAllowed
+                        }
+                    }
+                }
+                do {
+                    try await Task.sleep(seconds: 5)
+                } catch {
+                    return
+                }
+            }
+        }
     }
 
     @objc func showWindow() {
@@ -130,17 +164,19 @@ final class StatusItemManager: ObservableObject {
         NSApp.terminate(nil)
     }
 
+    @objc func viewLatestDebugArchive() {
+        if let mostRecentPath = self.osStatusModel.osStatus?.debugBundleStatus.latestPath {
+            NSWorkspace.shared.selectFile(mostRecentPath, inFileViewerRootedAtPath: "")
+        }
+    }
+
     @objc func createDebuggingArchiveAction() {
         Task {
             self.debuggingMenuItem!.isEnabled = false
-            self.debuggingMenuItem?.title = "Creating Debugging Archive (takes a few minutes)"
-            defer {
-                self.debuggingMenuItem!.isEnabled = true
-                self.debuggingMenuItem?.title = "Create Debugging Archive"
-            }
-
+            self.debuggingMenuItem!.action = nil
+            self.debuggingMenuItem!.title = creatingDebuggingArchiveStr
             do {
-                try await createDebuggingArchive()
+                let _ = try await createDebuggingArchive(appState: StartupModel.shared.appState)
             } catch {
                 logger.error("Error creating debug bundle: \(error, privacy: .public)")
 
@@ -171,8 +207,6 @@ let BANDWIDTH_MAX_INTENSITY: Int = 4 // levels
 
 struct StatusItem: View {
     var sizePassthrough: PassthroughSubject<CGSize, Never>
-    @State private var showWave: Bool = false
-    @State private var menuShown: Bool = false
     @State private var osStatus: OsStatus?
     @ObservedObject var startupModel = StartupModel.shared
     @ObservedObject var bandwidthStatusModel: BandwidthStatusModel

@@ -11,6 +11,7 @@ class OsStatus: Encodable {
     var osVpnStatus: NEVPNStatus
     let srcVersion = sourceVersion()
     var updaterStatus = UpdaterStatus()
+    var debugBundleStatus = DebugBundleStatus()
 
     init(osVpnStatus: NEVPNStatus) {
         self.osVpnStatus = osVpnStatus

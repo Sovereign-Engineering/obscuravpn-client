@@ -108,8 +108,12 @@ export async function disconnectBlocking() {
   }
 }
 
-export function debuggingArchive() {
-    return invoke('debuggingArchive');
+export async function debuggingArchive(): Promise<String> {
+    return await invoke('debuggingArchive');
+}
+
+export function revealItemInDir(path: String) {
+    return invoke('revealItemInDir', { path });
 }
 
 export interface Notice {

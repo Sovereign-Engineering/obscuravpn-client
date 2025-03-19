@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import OSLog
 import ServiceManagement
@@ -8,6 +9,7 @@ enum Command: Codable {
     case startTunnel(tunnelArgs: String)
     case stopTunnel
     case debuggingArchive
+    case revealItemInDir(path: String)
     case registerAsLoginItem
     case unregisterAsLoginItem
     case isRegisteredAsLoginItem
@@ -32,8 +34,9 @@ func handleWebViewCommand(command: Command) async throws -> String {
     case .stopTunnel:
         appState.disableTunnel()
     case .debuggingArchive:
-        try await createDebuggingArchive()
-
+        return try (await createDebuggingArchive(appState: appState)).json()
+    case .revealItemInDir(let path):
+        NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
     case .registerAsLoginItem:
         try registerAsLoginItem()
     case .unregisterAsLoginItem:

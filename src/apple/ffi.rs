@@ -99,13 +99,13 @@ pub unsafe extern "C" fn start_tunnel(
         }
     };
     RUNTIME.spawn(async move {
-        match global_manager().start(tunnel_args).await {
+        match global_manager().start_without_setting_network_config(tunnel_args, false).await {
             Ok(network_config) => {
                 let network_config_json = serde_json::to_vec(&network_config).unwrap();
                 cb(context, network_config_json.ffi(), "".ffi_str())
             }
             Err(err) => {
-                let err: &'static str = err.into();
+                let err: &'static str = ConnectErrorCode::from(err).into();
                 cb(context, [].ffi(), err.ffi_str())
             }
         }

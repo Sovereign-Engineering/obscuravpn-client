@@ -3,8 +3,6 @@ use obscuravpn_api::cmd::ListRelays;
 use obscuravpn_api::types::AccountId;
 use obscuravpn_client::client_state::ClientState;
 use obscuravpn_client::relay_selection::race_relay_handshakes;
-use std::time::Duration;
-use tokio::time::sleep;
 
 #[derive(Parser, Debug, PartialEq)]
 #[command(author, version, about, long_about = None)]

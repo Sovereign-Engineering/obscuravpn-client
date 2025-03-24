@@ -30,10 +30,10 @@ pub enum ConnectErrorCode {
     Other,
 }
 
-impl From<&TunnelConnectError> for ConnectErrorCode {
-    fn from(err: &TunnelConnectError) -> Self {
+impl From<TunnelConnectError> for ConnectErrorCode {
+    fn from(err: TunnelConnectError) -> Self {
         use ApiErrorKind::*;
-        tracing::info!("deriving connect error code for {}", &err);
+        tracing::info!("deriving connect error code for {}", err);
         match err {
             TunnelConnectError::ApiError(err) => match err {
                 ApiError::NoAccountId => Self::Other,
@@ -62,6 +62,7 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
             | TunnelConnectError::InvalidTunnelId
             | TunnelConnectError::UnexpectedRelay
             | TunnelConnectError::UnexpectedTunnelKind
+            | TunnelConnectError::UnexpectedInternalTunnelLifecycleState
             | TunnelConnectError::RelaySelection(_)
             | TunnelConnectError::ConfigSave(_) => Self::Other,
         }
@@ -82,6 +83,8 @@ pub enum TunnelConnectError {
     InvalidTunnelId,
     #[error("api returned and unexpected relay")]
     UnexpectedRelay,
+    #[error("tunnel is in unexpected internal lifecycle state")]
+    UnexpectedInternalTunnelLifecycleState,
     #[error("api returned unexpected tunnel kind")]
     UnexpectedTunnelKind,
     #[error("failed to save config file")]

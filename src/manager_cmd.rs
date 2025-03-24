@@ -9,9 +9,9 @@ use serde::{Deserialize, Serialize};
 use strum::IntoStaticStr;
 use uuid::Uuid;
 
-use crate::config::PinnedLocation;
 use crate::manager::{Manager, ManagerTrafficStats, Status};
 use crate::{config::ConfigSaveError, errors::ApiError};
+use crate::{config::PinnedLocation, manager::TunnelArgs};
 
 /// High-level json command error codes, which are actionable for frontends.
 /// Actionable means any of:
@@ -72,16 +72,17 @@ impl From<&ApiError> for ManagerCmdErrorCode {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum ManagerCmd {
-    Ping {},
-    GetTrafficStats {},
-    SetPinnedExits { exits: Vec<PinnedLocation> },
-    Login { account_id: AccountId, validate: bool },
-    Logout {},
-    SetApiUrl { url: Option<String> },
     ApiGetAccountInfo {},
     ApiListExit {},
     GetStatus { known_version: Option<Uuid> },
+    GetTrafficStats {},
+    Login { account_id: AccountId, validate: bool },
+    Logout {},
+    Ping {},
+    SetApiUrl { url: Option<String> },
     SetInNewAccountFlow { value: bool },
+    SetPinnedExits { exits: Vec<PinnedLocation> },
+    SetTunnelArgs { args: TunnelArgs },
     RotateWgKey {},
 }
 
@@ -136,6 +137,10 @@ impl ManagerCmd {
                 Ok(()) => Ok(ManagerCmdOk::Empty),
                 Err(err) => Err((&err).into()),
             },
+            ManagerCmd::SetTunnelArgs { args } => {
+                manager.spawn_start_and_set_network_config(args, true);
+                Ok(ManagerCmdOk::Empty)
+            }
             ManagerCmd::RotateWgKey {} => match manager.rotate_wg_key() {
                 Ok(()) => Ok(ManagerCmdOk::Empty),
                 Err(err) => Err((&err).into()),

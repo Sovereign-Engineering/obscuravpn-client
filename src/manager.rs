@@ -1,7 +1,7 @@
 use std::{
     ops::ControlFlow,
     path::PathBuf,
-    sync::{Arc, RwLock},
+    sync::{Arc, RwLock, Weak},
     time::{Duration, Instant},
 };
 
@@ -13,7 +13,7 @@ use obscuravpn_api::{
 };
 use serde::{Deserialize, Serialize};
 use tokio::{
-    runtime::Runtime,
+    runtime::{Handle, Runtime},
     sync::watch::{channel, Receiver, Sender},
     task::JoinHandle,
     time::sleep,
@@ -24,7 +24,7 @@ use uuid::Uuid;
 use crate::{
     client_state::AccountStatus,
     config::{Config, ConfigLoadError, ConfigSaveError, PinnedLocation},
-    errors::ApiError,
+    errors::{ApiError, TunnelConnectError},
     quicwg::{QuicWgConn, QuicWgTrafficStats},
 };
 
@@ -33,9 +33,15 @@ use crate::{client_state::ClientState, errors::ConnectErrorCode, network_config:
 use super::ffi_helpers::*;
 
 pub struct Manager {
+    // When we implement support for an OS, which doesn't need to fall back to a C API, we may want to move these callbacks into OS specific code and use some trait or returned stream for received packets and a status stream for network config and tunnel status callbacks.
+    receive_cb: extern "C" fn(FfiBytes),
+    network_config_cb: extern "C" fn(FfiBytes),
+    tunnel_status_cb: extern "C" fn(isConnected: bool),
     client_state: Arc<ClientState>,
     tunnel_state: Arc<RwLock<TunnelState>>,
     status_watch: Sender<Status>,
+    this: Weak<Self>,
+    runtime: Handle,
     _background_task_cancellation: DropGuard,
 }
 
@@ -131,23 +137,39 @@ impl TunnelState {
 }
 
 impl Manager {
-    pub fn new(config_dir: PathBuf, old_config_dir: PathBuf, user_agent: String, runtime: &Runtime) -> Result<Arc<Self>, ConfigLoadError> {
+    pub fn new(
+        config_dir: PathBuf,
+        old_config_dir: PathBuf,
+        user_agent: String,
+        runtime: &Runtime,
+        receive_cb: extern "C" fn(FfiBytes),
+        network_config_cb: extern "C" fn(FfiBytes),
+        tunnel_status_cb: extern "C" fn(isConnected: bool),
+    ) -> Result<Arc<Self>, ConfigLoadError> {
         let client_state = ClientState::new(config_dir, old_config_dir, user_agent)?;
         let config = client_state.get_config();
         let initial_status = Status::new(Uuid::new_v4(), VpnStatus::Disconnected {}, config, client_state.base_url());
         let background_task_cancellation = CancellationToken::new();
-        let this: Arc<Self> = Self {
+        let this: Arc<Self> = Arc::new_cyclic(|weak| Self {
+            receive_cb,
+            network_config_cb,
+            tunnel_status_cb,
             client_state: client_state.into(),
             tunnel_state: Arc::new(RwLock::new(TunnelState::Disconnected { conn_id: Uuid::new_v4() })),
             status_watch: channel(initial_status).0,
+            this: weak.clone(),
+            runtime: runtime.handle().clone(),
             _background_task_cancellation: background_task_cancellation.clone().drop_guard(),
-        }
-        .into();
+        });
         let background_fut = this.clone().wireguard_key_registraction_task();
         runtime.spawn(async move {
             background_task_cancellation.run_until_cancelled(background_fut).await;
         });
         Ok(this)
+    }
+
+    pub fn arc(&self) -> Arc<Self> {
+        self.this.upgrade().expect("could not upgrade Weak<Manager>")
     }
 
     // Non-async exclusive mutable access to tunnel state
@@ -180,85 +202,102 @@ impl Manager {
         self.status_watch.subscribe()
     }
 
-    // TODO: Maybe specific error type, which absorbs or can be convertedd to high-level error code. Wait how the handling of unexpected tunnel states evolves.
-    // TODO: Once we have more than one user we want to remove `receive_cb` from this method. Eg. use a trait, drive the future from the caller or return packet stream.
-    // TODO: Remove network config and tunnel status callbacks in favor of proper status stream
-    pub async fn start(
+    pub fn spawn_start_and_set_network_config(&self, args: TunnelArgs, keep_trying: bool) {
+        let this = self.arc();
+        let network_config_cb = self.network_config_cb;
+        self.runtime.spawn(async move {
+            match this.start_without_setting_network_config(args.clone(), keep_trying).await {
+                Ok(net_config) => network_config_cb(serde_json::to_vec(&net_config).unwrap().ffi()),
+                Err(error) => tracing::error!(message_id = "9S8ZfXC6", ?error, "spawned start failed: {error}"),
+            }
+        });
+    }
+
+    pub async fn start_without_setting_network_config(
         self: Arc<Self>,
         args: TunnelArgs,
-        receive_cb: extern "C" fn(FfiBytes),
-        network_config_cb: extern "C" fn(FfiBytes),
-        tunnel_status_cb: extern "C" fn(isConnected: bool),
-    ) -> Result<NetworkConfig, ConnectErrorCode> {
-        tracing::info!(
-            args =? args,
-            "Starting tunnel."
-        );
+        keep_trying: bool,
+    ) -> Result<NetworkConfig, TunnelConnectError> {
+        let mut current_conn_id: Option<Uuid> = None;
+        let (connect_result, conn_id) = loop {
+            tracing::info!(?args, ?current_conn_id, "Starting tunnel.");
+            let conn_id = self.write_tunnel_state(|tunnel_state| {
+                let conn_id = match &*tunnel_state {
+                    TunnelState::Disconnected { conn_id } => Some(*conn_id),
+                    TunnelState::Starting { conn_id: prev_conn_id, .. } => {
+                        if current_conn_id == Some(*prev_conn_id) {
+                            current_conn_id
+                        } else {
+                            tracing::warn!(%prev_conn_id, "TunnelState already Starting");
+                            None
+                        }
+                    }
+                    TunnelState::Running { conn_id: prev_conn_id, run_task, .. } => {
+                        tracing::warn!(%prev_conn_id, "TunnelState already Running");
+                        run_task.abort();
+                        None
+                    }
+                };
 
-        let conn_id = self.write_tunnel_state(|tunnel_state| {
-            let conn_id = match &*tunnel_state {
-                TunnelState::Disconnected { conn_id } => Some(*conn_id),
-                TunnelState::Starting { conn_id: prev_conn_id, .. } => {
-                    tracing::warn!(%prev_conn_id, "TunnelState already Starting");
-                    None
+                let conn_id = conn_id.unwrap_or_else(Uuid::new_v4);
+                *tunnel_state = TunnelState::Starting { conn_id };
+                tracing::info!(%conn_id, "setting TunnelState to Starting");
+                conn_id
+            });
+            current_conn_id = Some(conn_id);
+
+            let connect_result = self.client_state.connect(args.exit.clone()).await;
+            if let Err(error) = &connect_result {
+                tracing::error!(message_id = "o6d6UGrk", %conn_id, %error, "could not connect");
+                if keep_trying {
+                    // TODO: implement backoff: https://linear.app/soveng/issue/OBS-1441/native-client-rust-backoff-helper-type
+                    sleep(Duration::from_secs(1)).await;
+                    continue;
                 }
-                TunnelState::Running { conn_id: prev_conn_id, run_task, .. } => {
-                    tracing::warn!(%prev_conn_id, "TunnelState already Running");
-                    run_task.abort();
-                    None
-                }
-            };
-
-            let conn_id = conn_id.unwrap_or_else(Uuid::new_v4);
-            *tunnel_state = TunnelState::Starting { conn_id };
-            tracing::info!(%conn_id, "setting TunnelState to Starting");
-            conn_id
-        });
-
-        let connect_result = self.client_state.connect(args.exit.clone()).await;
-        if let Err(err) = &connect_result {
-            tracing::error!(%conn_id, %err, "could not connect");
-        }
+            }
+            break (connect_result, conn_id);
+        };
 
         self.write_tunnel_state(|tunnel_state| match tunnel_state {
             TunnelState::Disconnected { conn_id: other_conn_id } => {
                 tracing::warn!(%conn_id, %other_conn_id, "TunnelState was set to Disconnected before completing connection attempt");
-                Err(ConnectErrorCode::Other)
-            }
-            TunnelState::Starting { conn_id: other_conn_id, .. } if *other_conn_id != conn_id => {
-                tracing::warn!(%conn_id, %other_conn_id, "TunnelState connection id does not match");
-                Err(ConnectErrorCode::Other)
+                Err(TunnelConnectError::UnexpectedInternalTunnelLifecycleState)
             }
             TunnelState::Running { conn_id: other_conn_id, .. } => {
                 tracing::warn!(%conn_id, %other_conn_id, "TunnelState was set to Running before completing connection attempt");
-                Err(ConnectErrorCode::Other)
+                Err(TunnelConnectError::UnexpectedInternalTunnelLifecycleState)
             }
-            TunnelState::Starting { conn_id: _, .. } => match connect_result {
-                Ok((conn, net_config, exit, _relay)) => {
-                    tracing::info!(%conn_id, "setting TunnelState to Running");
-                    let conn: Arc<QuicWgConn> = Arc::new(conn);
-                    let run_task = tokio::spawn(
-                        run_tunnel(self.clone(), conn.clone(), args, conn_id, receive_cb, network_config_cb, tunnel_status_cb).map(|_| ()),
-                    );
-                    *tunnel_state = TunnelState::Running {
-                        started_at: Instant::now(),
-                        conn_id,
-                        conn,
-                        run_task,
-                        reconnect_err: None,
-                        reconnecting: false,
-                        traffic_stats_offset: Default::default(),
-                        exit,
-                    };
-                    Ok(net_config)
+            TunnelState::Starting { conn_id: other_conn_id, .. } => {
+                if *other_conn_id != conn_id {
+                    tracing::warn!(%conn_id, %other_conn_id, "TunnelState connection id does not match");
+                    Err(TunnelConnectError::UnexpectedInternalTunnelLifecycleState)
+                } else {
+                    match connect_result {
+                        Ok((conn, net_config, exit, _relay)) => {
+                            tracing::info!(%conn_id, "setting TunnelState to Running");
+                            let conn: Arc<QuicWgConn> = Arc::new(conn);
+                            let run_task = tokio::spawn(run_tunnel(self.clone(), conn.clone(), args, conn_id).map(|_| ()));
+                            *tunnel_state = TunnelState::Running {
+                                started_at: Instant::now(),
+                                conn_id,
+                                conn,
+                                run_task,
+                                reconnect_err: None,
+                                reconnecting: false,
+                                traffic_stats_offset: Default::default(),
+                                exit,
+                            };
+                            Ok(net_config)
+                        }
+                        Err(err) => {
+                            let new_conn_id = Uuid::new_v4();
+                            tracing::info!(%conn_id, %new_conn_id,"setting TunnelState to Disconnected due to error");
+                            *tunnel_state = TunnelState::Disconnected { conn_id: new_conn_id };
+                            Err(err)
+                        }
+                    }
                 }
-                Err(err) => {
-                    let new_conn_id = Uuid::new_v4();
-                    tracing::info!(%conn_id, %new_conn_id,"setting TunnelState to Disconnected due to error");
-                    *tunnel_state = TunnelState::Disconnected { conn_id: new_conn_id };
-                    Err(ConnectErrorCode::from(&err))
-                }
-            },
+            }
         })
     }
 
@@ -419,18 +458,10 @@ pub struct ManagerTrafficStats {
     latest_latency_ms: u16,
 }
 
-async fn run_tunnel(
-    manager: Arc<Manager>,
-    mut conn: Arc<QuicWgConn>,
-    args: TunnelArgs,
-    conn_id: Uuid,
-    receive_cb: extern "C" fn(FfiBytes),
-    network_config_cb: extern "C" fn(FfiBytes),
-    tunnel_status_cb: extern "C" fn(isConnected: bool),
-) -> ControlFlow<()> {
+async fn run_tunnel(manager: Arc<Manager>, mut conn: Arc<QuicWgConn>, args: TunnelArgs, conn_id: Uuid) -> ControlFlow<()> {
     loop {
         match conn.receive().await {
-            Ok(packet) => receive_cb(packet.ffi()),
+            Ok(packet) => (manager.receive_cb)(packet.ffi()),
             Err(err) => {
                 tracing::error!(%conn_id, %err, "tunnel failed, reconnecting");
                 manager.write_tunnel_state(|tunnel_state| match tunnel_state {
@@ -452,7 +483,7 @@ async fn run_tunnel(
                         ControlFlow::Continue(())
                     }
                 })?;
-                tunnel_status_cb(false);
+                (manager.tunnel_status_cb)(false);
 
                 let (new_conn, net_config, new_exit, _new_relay) = loop {
                     sleep(Duration::from_secs(1)).await;
@@ -475,11 +506,11 @@ async fn run_tunnel(
                                 }
                                 TunnelState::Running { reconnect_err, .. } => {
                                     tracing::info!(%conn_id, "setting TunnelState reconnect error");
-                                    *reconnect_err = Some((&err).into());
+                                    *reconnect_err = Some(err.into());
                                     ControlFlow::Continue(())
                                 }
                             })?;
-                            tunnel_status_cb(false);
+                            (manager.tunnel_status_cb)(false);
                         }
                     }
                 };
@@ -510,8 +541,8 @@ async fn run_tunnel(
                         ControlFlow::Continue(())
                     }
                 })?;
-                tunnel_status_cb(true);
-                network_config_cb(serde_json::to_vec(&net_config).unwrap().ffi());
+                (manager.tunnel_status_cb)(true);
+                (manager.network_config_cb)(serde_json::to_vec(&net_config).unwrap().ffi());
             }
         }
     }

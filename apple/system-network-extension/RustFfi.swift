@@ -7,7 +7,8 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
 
 func ffiInitialize(configDir: String, oldConfigDir: String, userAgent: String, _ receiveCallback: (@convention(c) (FfiBytes) -> Void)!,
                    _ networkConfigCallback: (@convention(c) (FfiBytes) -> Void)!,
-                   _ tunnelStatusCallback: (@convention(c) (Bool) -> Void)!) {
+                   _ tunnelStatusCallback: (@convention(c) (Bool) -> Void)!)
+{
     libobscuravpn_client.initialize_macos_system_logging()
     configDir.withFfiStr { ffiConfigDir in
         oldConfigDir.withFfiStr { ffiOldConfigDir in

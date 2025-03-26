@@ -404,6 +404,7 @@ private class DebugBundleBuilder {
         self.bundleCmd("dig-v1.api.prod.obscura.net", ["/usr/bin/dig", "+time=2", "v1.api.prod.obscura.net"])
         self.bundleCmd("dns", ["/usr/sbin/scutil", "--dns", "-dv"])
         self.bundleCmd("hostinfo", ["/usr/bin/hostinfo"])
+        self.bundleCmd("http-v1.api.prod.obscura.net", ["/usr/bin/curl", "--verbose", "--insecure", "--location", "https://v1.api.prod.obscura.net/api/ping"])
         self.bundleCmd("ifconfig", ["/sbin/ifconfig", "-aLbmrvv"])
         self.bundleCmd("netstat-interface-stats", ["/usr/sbin/netstat", "-ind"])
         self.bundleCmd("netstat-listen-queues", ["/usr/sbin/netstat", "-Lanv"])

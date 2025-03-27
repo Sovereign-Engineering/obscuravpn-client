@@ -38,7 +38,7 @@
 		C90161AE2BE01A9B005B14AF /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		CA0090E2379FFD96F1473BE9 /* libobscuravpn-client.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libobscuravpn-client.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		CA01272F0B60B8156098F4D0 /* obscuravpn-client */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "obscuravpn-client"; sourceTree = BUILT_PRODUCTS_DIR; };
-		CAF9DEE597793EF4668187A5 /* Cargo.toml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = Cargo.toml; path = ../Cargo.toml; sourceTree = "<group>"; };
+		CAF9DEE597793EF4668187A5 /* Cargo.toml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = Cargo.toml; path = ../rustlib/Cargo.toml; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -162,7 +162,7 @@
 			);
 			inputPaths = (
 				"$(SRCROOT)/xcodescripts/cargo-build-static-lib.bash",
-				"$(SRCROOT)/../Cargo.toml",
+				"$(SRCROOT)/../rustlib/Cargo.toml",
 				"$(SRCROOT)/cbindgen-apple.toml",
 			);
 			name = "Run Script";

@@ -15,16 +15,13 @@
         overlays = [ (import ./nix/overlays) (import rust-overlay) napalm.overlays.default ];
         pkgs = import nixpkgs { inherit overlays system; };
         lib = pkgs.lib;
-        rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
+        rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./rustlib/rust-toolchain.toml;
         swiftfmt = swiftformat.packages.${system}.default;
 
         craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
 
         rustDepsArgs = {
-          src = lib.fileset.toSource {
-            root = ./.;
-            fileset = lib.fileset.unions [ ./.cargo ./Cargo.lock ./Cargo.toml ./rustfmt.toml ./src ];
-          };
+          src = ./rustlib;
 
           strictDeps = true;
 
@@ -32,6 +29,13 @@
         };
 
         rustArgs = rustDepsArgs // { cargoArtifacts = craneLib.buildDepsOnly rustDepsArgs; };
+
+        rustlibBindgenArgs = {
+          # Environment variables for cbindgen, see rustlib/build.rs
+          outputs = [ "out" "dev" ]; # Assumes that crane's derivation only has "out"
+          OBSCURA_CLIENT_RUSTLIB_CBINDGEN_CONFIG_PATH = ./apple/cbindgen-apple.toml;
+          OBSCURA_CLIENT_RUSTLIB_CBINDGEN_OUTPUT_HEADER_PATH = "${placeholder "dev"}/include/libobscuravpn_client.h";
+        };
 
         nodeModules = pkgs.napalm.buildPackage (lib.fileset.toSource {
           root = ./obscura-ui;
@@ -98,8 +102,6 @@
         };
 
         packages = rec {
-          inherit (pkgs) rust-cbindgen;
-
           licenses = pkgs.runCommand "licenses.json" {
             nativeBuildInputs = [ pkgs.nodejs ];
 
@@ -133,22 +135,14 @@
           licenses-rust = craneLib.mkCargoDerivation (rustArgs // {
             name = "licenses-rust.json";
             nativeBuildInputs = [ pkgs.cargo-about ];
-            src = lib.fileset.toSource {
-              root = ./.;
-              fileset = lib.fileset.unions [
-                ./about.toml
-                ./Cargo.lock
-                ./Cargo.toml
-                src/lib.rs # Required for cargo-metadata not to fail.
-              ];
-            };
+            src = ./rustlib;
             buildPhaseCargoCommand = ''
               cargo-about generate --format=json --fail >"$out"
             '';
             installPhase = " ";
           });
 
-          rust = craneLib.buildPackage rustArgs;
+          rust = craneLib.buildPackage (rustArgs // rustlibBindgenArgs);
         };
       });
 }

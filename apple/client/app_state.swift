@@ -26,9 +26,9 @@ class AppState: ObservableObject {
                     version = status.version
                     self.status = status
                     switch status.vpnStatus {
-                    case .reconnecting(exit: _, err: let err):
+                    case .connecting(_, connectError: let err, _):
                         if err == "accountExpired" {
-                            Self.logger.info("found reconnecting error accountExpired")
+                            Self.logger.info("found connecting error accountExpired")
                             // can't use openURL due to a runtime warning stating that it was called outside of a view
                             NSApp.delegate?.application?(NSApp, open: [URLs.AppAccountPage])
                         }
@@ -63,77 +63,33 @@ class AppState: ObservableObject {
         }
     }
 
-    func enableTunnelWithErrorHandling(_ tunnelArgs: TunnelArgs) async throws {
-        try await self.enableTunnelWithErrorHandling(jsonTunnelArgs: tunnelArgs.json())
-    }
-
-    func enableTunnelWithErrorHandling(jsonTunnelArgs: String) async throws {
-        do {
-            try await self.enableTunnel(jsonTunnelArgs: jsonTunnelArgs)
-        } catch {
-            if error.localizedDescription != "tunnelNotDisconnected" && error.localizedDescription != "failedWithoutDisconnectError" && self.manager.connection.status != .disconnecting {
-                notifyConnectError(error)
+    func enableTunnel(_ tunnelArgs: TunnelArgs) async throws(String) {
+        for _ in 1 ..< 3 {
+            // Checking the status to decide whether to use `startVPNTunnel` or the `setTunnelArgs` command is not necessary for correct behavior. Handling of the `errorCodeTunnelInactive` error code is sufficient to always do the right thing eventually. However, this does require an app message round-trip to the NE, which can be a little slow at times.
+            if self.manager.connection.status != .disconnected {
+                do {
+                    Self.logger.log("Setting tunnel args")
+                    let _: Empty = try await runNeCommand(self.manager, .setTunnelArgs(args: tunnelArgs))
+                    Self.logger.log("Tunnel args set without error")
+                    return
+                } catch errorCodeTunnelInactive {
+                    Self.logger.warning("Received \(errorCodeTunnelInactive, privacy: .public), starting tunnel instead")
+                } catch {
+                    throw error
+                }
             }
-            throw error
+            Self.logger.log("Starting tunnel")
+            do {
+                try self.manager.connection.startVPNTunnel(options: ["tunnelArgs": NSString(string: tunnelArgs.json())])
+                Self.logger.log("startVPNTunnel called without error")
+                return
+            } catch {
+                Self.logger.error("Could not start tunnel \(error, privacy: .public)")
+            }
+            try! await Task.sleep(seconds: 1)
         }
-    }
-
-    func enableTunnel(jsonTunnelArgs: String) async throws {
-        let connection = self.manager.connection
-        let status = connection.status
-        if status != .disconnected {
-            Self.logger.error("Not starting tunnel, because it isn't disconnected: \(status, privacy: .public)")
-            throw "tunnelNotDisconnected"
-        }
-        Self.logger.log("Starting tunnel")
-        do {
-            try self.manager.connection.startVPNTunnel(options: ["tunnelArgs": NSString(string: jsonTunnelArgs)])
-            Self.logger.log("startVPNTunnel called without error")
-        } catch {
-            throw errorCodeOther
-        }
-        // We are observed the disconnected status right before calling startVPNTunnel and expect to observe the connecting state
-        // very soon after. However, startVPNTunnel may have been called from different sources (system settings, status menu, UI toggle)
-        // concurrently, which is inherently racy.
-        // To make sure we don't get stuck waiting for a status change that may never happen (possibly due to racy startVPNTunnel invocations)
-        // we set a short timeout.
-        guard let status = await Self.waitForStateChange(connection: connection, initial: status, maxSeconds: 3) else {
-            Self.logger.error("Timeout waiting for first status change after 'startVPNTunnel'")
-            throw errorCodeOther
-        }
-        switch status {
-        case .connecting:
-            Self.logger.log("Observed 'connecting' status after 'startVPNTunnel'")
-        case .connected:
-            // We missed the connecting status, or multiple attempts to call startTunnel are racing.
-            // Either way, we are in the state we want to be in, so return.
-            Self.logger.error("Observed 'connected' status early after 'startVPNTunnel'")
-            return
-        case .disconnecting, .disconnected:
-            Self.logger.error("Observed \(status) status early after 'startVPNTunnel'")
-            throw await Self.fetchDisconnectErrorAsErrorCode(connection: connection)
-        default:
-            Self.logger.error("Unexpected first status change after 'startVPNTunnel': \(status, privacy: .public)")
-            throw errorCodeOther
-        }
-
-        // Unfortunately we need to subscribe again, which is racy. But we check that we are in the connecting state before we wait.
-        // No matter how we ended up there, we should receive another change notification soon.
-        guard let status = await Self.waitForStateChange(connection: connection, initial: status, maxSeconds: 60) else {
-            Self.logger.error("Timeout waiting for status change after observing 'connecting'")
-            throw errorCodeOther
-        }
-        switch status {
-        case .connected:
-            Self.logger.log("Observed 'connected' status after 'connecting'")
-            return
-        case .disconnecting, .disconnected:
-            Self.logger.error("Observed \(status) status after 'connecting'")
-            throw await Self.fetchDisconnectErrorAsErrorCode(connection: connection)
-        default:
-            Self.logger.log("unexpected status change after observing 'connecting': \(status, privacy: .public)")
-            throw errorCodeOther
-        }
+        Self.logger.error("Could not enable tunnel repeatedly, giving up...")
+        throw errorCodeOther
     }
 
     func disableTunnel() {
@@ -145,21 +101,18 @@ class AppState: ObservableObject {
         return try await getNeStatus(self.manager, knownVersion: knownVersion)
     }
 
-    func getOsStatus(knownVersion: UUID?) async throws -> OsStatus {
+    func getOsStatus(knownVersion: UUID?) async -> OsStatus {
         return await self.osStatus.getIfOrNext { current in
             current.version != knownVersion
         }
     }
 
-    func ping() async throws {
-        let cmd = ["ping": [String: String]()]
-        _ = try await encodeAndRunNeJsonCommand(self.manager, cmd)
+    func ping() async throws(String) {
+        let _: Empty = try await runNeCommand(self.manager, .ping)
     }
 
-    func getTrafficStats() async throws -> TrafficStats {
-        let cmd = ["getTrafficStats": [String: String]()]
-        let json = try await encodeAndRunNeJsonCommand(self.manager, cmd)
-        return try TrafficStats(json: json)
+    func getTrafficStats() async throws(String) -> TrafficStats {
+        return try await runNeCommand(self.manager, .getTrafficStats)
     }
 
     func resetUserDefaults() {
@@ -171,7 +124,7 @@ class AppState: ObservableObject {
     // Unfortunately async notification iterators are not sendable, so we often need to resubscribe to state changes.
     // This function:
     //    - subscribes to state changes
-    //    - checks if the initial status is unchanged (because subscribing may races with changes)
+    //    - checks if the initial status is unchanged (because subscribing may race with changes)
     //    - waits for a state change notification or timeout
     //    - returns the changed state if it didn't time out
     private static func waitForStateChange(connection: NEVPNConnection, initial: NEVPNStatus, maxSeconds: Double) async -> NEVPNStatus? {

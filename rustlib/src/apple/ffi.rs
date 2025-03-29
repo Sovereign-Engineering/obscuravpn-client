@@ -1,10 +1,8 @@
 use std::sync::{Arc, LazyLock, OnceLock};
 use tokio::runtime::Runtime;
 
-use crate::errors::ConnectErrorCode;
 use crate::ffi_helpers::*;
 use crate::manager::Manager;
-use crate::manager::TunnelArgs;
 use crate::manager_cmd::ManagerCmd;
 use crate::manager_cmd::ManagerCmdErrorCode;
 
@@ -46,28 +44,13 @@ fn global_manager() -> Arc<Manager> {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn initialize(
-    config_dir: FfiStr,
-    old_config_dir: FfiStr,
-    user_agent: FfiStr,
-    receive_cb: extern "C" fn(FfiBytes),
-    network_config_cb: extern "C" fn(FfiBytes),
-    tunnel_status_cb: extern "C" fn(isConnected: bool),
-) {
+pub unsafe extern "C" fn initialize(config_dir: FfiStr, old_config_dir: FfiStr, user_agent: FfiStr, receive_cb: extern "C" fn(FfiBytes)) {
     let mut first_init = false;
     GLOBAL.get_or_init(|| {
         let config_dir = config_dir.to_string().into();
         let old_config_dir = old_config_dir.to_string().into();
         let user_agent = user_agent.to_string();
-        match Manager::new(
-            config_dir,
-            old_config_dir,
-            user_agent,
-            &RUNTIME,
-            receive_cb,
-            network_config_cb,
-            tunnel_status_cb,
-        ) {
+        match Manager::new(config_dir, old_config_dir, user_agent, &RUNTIME, receive_cb) {
             Ok(c) => {
                 first_init = true;
                 tracing::info!("ffi initialized");
@@ -82,59 +65,23 @@ pub unsafe extern "C" fn initialize(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn start_tunnel(
-    context: usize,
-    json_tunnel_args: FfiStr,
-    cb: extern "C" fn(context: usize, network_config: FfiBytes, err: FfiStr),
-) {
-    let json_tunnel_args = json_tunnel_args.to_string();
-    tracing::info!("start_tunnel args: {}", &json_tunnel_args);
-    let tunnel_args: TunnelArgs = match serde_json::from_str(&json_tunnel_args) {
-        Ok(cmd) => cmd,
-        Err(err) => {
-            tracing::error!(?err, "could not decode json tunnel args: {err}");
-            let err: &'static str = ConnectErrorCode::Other.into();
-            cb(context, [].ffi(), err.ffi_str());
-            return;
-        }
-    };
-    RUNTIME.spawn(async move {
-        match global_manager().start_without_setting_network_config(tunnel_args, false).await {
-            Ok(network_config) => {
-                let network_config_json = serde_json::to_vec(&network_config).unwrap();
-                cb(context, network_config_json.ffi(), "".ffi_str())
-            }
-            Err(err) => {
-                let err: &'static str = ConnectErrorCode::from(err).into();
-                cb(context, [].ffi(), err.ffi_str())
-            }
-        }
-    });
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn send_packet(packet: FfiBytes) {
     let packet = packet.to_vec();
     global_manager().send_packet(&packet);
 }
 
 #[no_mangle]
-pub extern "C" fn stop_tunnel() {
-    global_manager().stop();
-}
+pub unsafe extern "C" fn json_ffi_cmd(context: usize, json_cmd: FfiBytes, cb: extern "C" fn(context: usize, json_ret: FfiStr, json_err: FfiStr)) {
+    let json_cmd = json_cmd.to_vec();
 
-#[no_mangle]
-pub unsafe extern "C" fn json_ffi_cmd(context: usize, json_cmd: FfiStr, cb: extern "C" fn(context: usize, json_ret: FfiStr, json_err: FfiStr)) {
-    let json_cmd = json_cmd.to_string();
+    let hash = ring::digest::digest(&ring::digest::SHA1_FOR_LEGACY_USE_ONLY, &json_cmd);
 
-    let hash = ring::digest::digest(&ring::digest::SHA1_FOR_LEGACY_USE_ONLY, json_cmd.as_bytes());
-
-    let cmd: ManagerCmd = match serde_json::from_str(&json_cmd) {
+    let cmd: ManagerCmd = match serde_json::from_slice(&json_cmd) {
         Ok(cmd) => cmd,
         Err(error) => {
             tracing::error!(
                 ?error,
-                cmd = json_cmd,
+                cmd =? String::from_utf8_lossy(&json_cmd),
                 hash =? hash,
                 message_id = "ahsh9Aec",
                 "could not decode json command: {error}",

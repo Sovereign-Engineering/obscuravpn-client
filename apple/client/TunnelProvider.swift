@@ -168,9 +168,7 @@ func getNeStatus(
     attemptTimeout: Duration? = nil,
     maxAttempts: UInt = 10
 ) async throws -> NeStatus {
-    let cmd = ["getStatus": ["knownVersion": knownVersion]]
-    let json = try await encodeAndRunNeJsonCommand(manager, cmd, attemptTimeout: attemptTimeout, maxAttempts: maxAttempts)
-    return try NeStatus(json: json)
+    try await runNeCommand(manager, NeManagerCmd.getStatus(knownVersion: knownVersion), attemptTimeout: attemptTimeout, maxAttempts: maxAttempts)
 }
 
 func getAccountInfo(
@@ -178,34 +176,31 @@ func getAccountInfo(
     attemptTimeout: Duration? = nil,
     maxAttempts: UInt = 10
 ) async throws -> AccountInfo {
-    let jsonCmd = "{\"apiGetAccountInfo\":{}}"
-    let json = try await runNeCommand(manager, jsonCmd, attemptTimeout: attemptTimeout, maxAttempts: maxAttempts)
-    return try AccountInfo(json: json)
+    return try await runNeCommand(manager, NeManagerCmd.apiGetAccountInfo, attemptTimeout: attemptTimeout, maxAttempts: maxAttempts)
 }
 
-func encodeAndRunNeJsonCommand(
+func runNeCommand<T: Codable>(
     _ manager: NETunnelProviderManager,
-    _ cmd: Encodable,
+    _ cmd: NeManagerCmd,
     attemptTimeout: Duration? = .seconds(10),
     maxAttempts: UInt = 10
-) async throws -> String {
-    let jsonCmd = try cmd.json()
-    return try await runNeCommand(manager, jsonCmd, attemptTimeout: attemptTimeout, maxAttempts: maxAttempts)
+) async throws(String) -> T {
+    return try T(json: await runNeJsonCommand(manager, cmd.json(), attemptTimeout: attemptTimeout, maxAttempts: maxAttempts))
 }
 
-func runNeCommand(
+func runNeJsonCommand(
     _ manager: NETunnelProviderManager,
     _ jsonCmd: String,
     attemptTimeout: Duration?,
     maxAttempts: UInt = 10
-) async throws -> String {
-    var result: NeFfiJsonResult
+) async throws(String) -> String {
+    var result: NeManagerCmdResult
     do {
         let resultJson = try await manager.sendAppMessage(
             jsonCmd.data(using: .utf8)!,
             maxAttempts: maxAttempts, attemptTimeout: attemptTimeout
         )
-        result = try NeFfiJsonResult(json: resultJson)
+        result = try NeManagerCmdResult(json: resultJson)
     } catch {
         logger.error("could not run ne command: \(error, privacy: .public)")
         result = .error(errorCodeOther)

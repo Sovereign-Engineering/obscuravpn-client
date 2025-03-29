@@ -69,6 +69,7 @@ impl From<&ApiError> for ManagerCmdErrorCode {
     }
 }
 
+// Keep synchronized with ../../apple/shared/NetworkExtensionIpc.swift
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum ManagerCmd {
@@ -82,12 +83,11 @@ pub enum ManagerCmd {
     SetApiUrl { url: Option<String> },
     SetInNewAccountFlow { value: bool },
     SetPinnedExits { exits: Vec<PinnedLocation> },
-    SetTunnelArgs { args: TunnelArgs },
+    SetTunnelArgs { args: Option<TunnelArgs> },
     RotateWgKey {},
 }
 
-#[allow(clippy::large_enum_variant)]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
 #[serde(untagged)]
 pub enum ManagerCmdOk {
     Empty,
@@ -138,7 +138,7 @@ impl ManagerCmd {
                 Err(err) => Err((&err).into()),
             },
             ManagerCmd::SetTunnelArgs { args } => {
-                manager.spawn_start_and_set_network_config(args, true);
+                manager.set_target_state(args);
                 Ok(ManagerCmdOk::Empty)
             }
             ManagerCmd::RotateWgKey {} => match manager.rotate_wg_key() {

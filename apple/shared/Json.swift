@@ -4,7 +4,7 @@ import OSLog
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "json")
 
 extension Encodable {
-    func json(function: String = #function, file: String = #fileID, line: Int = #line) throws -> String {
+    func json(function: String = #function, file: String = #fileID, line: Int = #line) throws(String) -> String {
         do {
             let json = try JSONEncoder().encode(self)
             return String(data: json, encoding: .utf8)!
@@ -16,7 +16,7 @@ extension Encodable {
 }
 
 extension Decodable {
-    init(json: Data, function: String = #function, file: String = #fileID, line: Int = #line) throws {
+    init(json: Data, function: String = #function, file: String = #fileID, line: Int = #line) throws(String) {
         do {
             self = try JSONDecoder().decode(Self.self, from: json)
         } catch let err {
@@ -25,7 +25,7 @@ extension Decodable {
         }
     }
 
-    init(json: String, function: String = #function, file: String = #fileID, line: Int = #line) throws {
+    init(json: String, function: String = #function, file: String = #fileID, line: Int = #line) throws(String) {
         try self.init(json: json.data(using: .utf8)!, function: function, file: file, line: line)
     }
 }
@@ -56,4 +56,8 @@ func prepareForJson(_ value: inout Any) {
             value = debugFormat(value)
         }
     }
+}
+
+public struct Empty: Codable {
+    public init() {}
 }

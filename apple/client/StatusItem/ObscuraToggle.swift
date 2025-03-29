@@ -32,7 +32,7 @@ struct ObscuraToggle: View {
     func toggleClick() {
         self.allowToggleSync = false
         switch self.getVpnStatus()?.vpnStatus {
-        case .connected, .reconnecting:
+        case .connected:
             self.isToggled = false
             // this returns faster than the UI could show "Disconnecting"
             self.toggleLabel = ToggleLabels.disconnecting
@@ -47,15 +47,12 @@ struct ObscuraToggle: View {
             Task {
                 self.toggleLabel = ToggleLabels.connecting
                 do {
-                    try await self.startupModel.appState?.enableTunnelWithErrorHandling(TunnelArgs())
+                    try await self.startupModel.appState?.enableTunnel(TunnelArgs())
                     self.isToggled = true
                     self.toggleLabel = ToggleLabels.connected
                 } catch {
                     logger.error("Failed to connect from status menu \(error, privacy: .public)")
                     self.toggleLabel = ToggleLabels.notConnected
-                    if error.localizedDescription == "accountExpired" {
-                        self.openURL(URLs.AppAccountPage)
-                    }
                 }
                 self.allowToggleSync = true
             }
@@ -117,12 +114,9 @@ struct ObscuraToggle: View {
                 case .connected:
                     self.isToggled = true
                     self.toggleLabel = ToggleLabels.connected
-                case .connecting:
+                case .connecting(tunnelArgs: _, connectError: _, reconnecting: let reconnecting):
                     self.isToggled = false
-                    self.toggleLabel = ToggleLabels.connecting
-                case .reconnecting:
-                    self.isToggled = false
-                    self.toggleLabel = ToggleLabels.reconnecting
+                    self.toggleLabel = reconnecting ? ToggleLabels.reconnecting : ToggleLabels.connecting
                 default:
                     self.isToggled = false
                     self.toggleLabel = ToggleLabels.notConnected

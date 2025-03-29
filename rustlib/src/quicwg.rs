@@ -105,8 +105,9 @@ pub struct QuicWgConn {
     _control_stream: (quinn::SendStream, quinn::RecvStream),
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct QuicWgTrafficStats {
+    pub connected_at: Instant,
     pub tx_bytes: u64,
     pub rx_bytes: u64,
     pub latest_latency_ms: u16,
@@ -121,7 +122,6 @@ struct WgState {
 }
 
 impl QuicWgConn {
-    #[allow(clippy::too_many_arguments)]
     pub async fn connect(
         relay_handshaking: QuicWgConnHandshaking,
         client_secret_key: StaticSecret,
@@ -155,7 +155,7 @@ impl QuicWgConn {
         let now = Instant::now();
         let wg_state = Mutex::new(WgState {
             wg,
-            traffic_stats: QuicWgTrafficStats::default(),
+            traffic_stats: QuicWgTrafficStats { connected_at: now, tx_bytes: 0, rx_bytes: 0, latest_latency_ms: 0 },
             buffer: vec![0u8; u16::MAX as usize],
             ticks_since_last_packet: 0,
             last_send_err_logged_at: None,

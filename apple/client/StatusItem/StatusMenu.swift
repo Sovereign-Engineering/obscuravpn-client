@@ -236,7 +236,7 @@ struct StatusItem: View {
                                 return
                             }
                             switch self.getVpnStatus() {
-                            case .connecting, .reconnecting:
+                            case .connecting:
                                 self.menuBarImage = self.connectingImageNames[self.statusIconIdx]
                                 self.statusIconIdx = (self.statusIconIdx + 1) % self.connectingImageNames.count
                             case .connected:

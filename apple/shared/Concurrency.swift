@@ -1,3 +1,4 @@
+import DequeModule
 import Foundation
 import OSLog
 
@@ -166,5 +167,76 @@ extension Atomic where T: Equatable {
             }
             return (exchanged, original)
         }
+    }
+}
+
+class AsyncMutex<T> {
+    class AsyncMutexGuard {
+        let mutex: AsyncMutex
+        var value: T {
+            get {
+                return self.mutex.value
+            }
+            set(newValue) {
+                self.mutex.value = newValue
+            }
+        }
+
+        init(mutex: AsyncMutex) {
+            self.mutex = mutex
+        }
+
+        deinit {
+            self.mutex.unlock()
+        }
+    }
+
+    private enum State {
+        case unlocked
+        case locked(Box<Deque<CheckedContinuation<AsyncMutexGuard, Never>>>)
+    }
+
+    private var sync = NSLock()
+    private var state: State = .unlocked
+    private var value: T
+
+    init(_ value: T) {
+        self.value = value
+    }
+
+    func lock() async -> AsyncMutexGuard {
+        await withCheckedContinuation { continuation in
+            self.sync.withLock {
+                switch self.state {
+                case .unlocked:
+                    self.state = .locked(Box([]))
+                    continuation.resume(returning: AsyncMutexGuard(mutex: self))
+                    return
+                case .locked(let waiting):
+                    waiting.boxed.append(continuation)
+                }
+            }
+        }
+    }
+
+    private func unlock() {
+        self.sync.withLock {
+            switch self.state {
+            case .unlocked:
+                logger.critical("unlock in unlocked state")
+            case .locked(let waiting):
+                guard let continuation = waiting.boxed.popFirst() else {
+                    self.state = .unlocked
+                    return
+                }
+                continuation.resume(returning: AsyncMutexGuard(mutex: self))
+            }
+        }
+    }
+
+    func withLock<R, E>(_ body: (AsyncMutexGuard) async throws(E) -> R) async throws(E) -> R {
+        let mutexGuard = await self.lock()
+        defer { withExtendedLifetime(mutexGuard) {}}
+        return try await body(mutexGuard)
     }
 }

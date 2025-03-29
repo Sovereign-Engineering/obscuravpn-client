@@ -1,4 +1,5 @@
 use std::io;
+use std::time::Instant;
 
 use obscuravpn_api::{cmd::ApiErrorKind, ClientError};
 use serde::{Deserialize, Serialize};
@@ -30,8 +31,8 @@ pub enum ConnectErrorCode {
     Other,
 }
 
-impl From<TunnelConnectError> for ConnectErrorCode {
-    fn from(err: TunnelConnectError) -> Self {
+impl From<&TunnelConnectError> for ConnectErrorCode {
+    fn from(err: &TunnelConnectError) -> Self {
         use ApiErrorKind::*;
         tracing::info!("deriving connect error code for {}", err);
         match err {
@@ -118,4 +119,16 @@ pub enum RelaySelectionError {
     QuicSetup(anyhow::Error),
     #[error("all relay connections failed")]
     NoSuccess,
+}
+
+#[derive(Debug, Error)]
+pub struct ErrorAt<T: std::error::Error> {
+    pub error: T,
+    pub at: Instant,
+}
+
+impl<T: std::error::Error> From<T> for ErrorAt<T> {
+    fn from(error: T) -> Self {
+        Self { error, at: Instant::now() }
+    }
 }

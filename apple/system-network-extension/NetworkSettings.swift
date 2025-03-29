@@ -2,7 +2,7 @@ import Foundation
 import NetworkExtension
 
 extension NEPacketTunnelNetworkSettings {
-    static func build(_ ffiNetworkConfig: FfiNetworkConfig) -> NEPacketTunnelNetworkSettings {
+    static func build(_ ffiNetworkConfig: NetworkConfig) -> NEPacketTunnelNetworkSettings {
         let networkSettings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
 
         networkSettings.mtu = 1280

@@ -6,5 +6,6 @@ extension String: LocalizedError {
 }
 
 let errorCodeOther: String = "other"
+let errorCodeTunnelInactive: String = "tunnelInactive"
 let errorCodeUpdaterCheck: String = "updaterFailedToCheck"
 let errorCodeUpdaterInstall: String = "updaterFailedToStartInstall"

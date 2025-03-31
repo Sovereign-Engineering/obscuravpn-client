@@ -270,7 +270,13 @@ impl ClientState {
                     "creating tunnel");
             Self::change_config(&mut self.lock(), |config| config.local_tunnels_ids.push(tunnel_id.to_string()))?;
 
-            let cmd = CreateTunnel::Obfuscated { id: Some(tunnel_id), wg_pubkey, relay: Some(closest_relay.id.clone()), exit: exit.clone() };
+            let cmd = CreateTunnel::Obfuscated {
+                id: Some(tunnel_id),
+                label: None,
+                wg_pubkey,
+                relay: Some(closest_relay.id.clone()),
+                exit: exit.clone(),
+            };
             let error = match self.api_request(cmd.clone()).await {
                 Ok(t) => break (t, sk, tunnel_id),
                 Err(error) => match error.api_error_kind() {

@@ -109,13 +109,15 @@ private class DebugBundleBuilder {
     let bundleTimestamp = Date()
     let jsonEncoder = JSONEncoder()
     let logStartTimestamp: Date
+    let appState: AppState?
 
     let dispatchQueue = DispatchQueue.global(qos: .userInitiated)
     var lock = NSLock()
     var pendingTasks = PendingTasks()
     var tasks: [String: TaskResult] = [:]
 
-    init() throws {
+    init(appState: AppState?) throws {
+        self.appState = appState
         self.tmpFolder = try FileManager.default.url(
             for: FileManager.SearchPathDirectory.itemReplacementDirectory,
             in: FileManager.SearchPathDomainMask.userDomainMask,
@@ -123,7 +125,7 @@ private class DebugBundleBuilder {
             create: true
         )
         self.archiveFolder = self.tmpFolder.appending(
-            component: "Obscura Debuging Archive \(utcDateFormat.string(from: self.bundleTimestamp))"
+            component: "Obscura Debugging Archive \(utcDateFormat.string(from: self.bundleTimestamp))"
         )
         try FileManager.default.createDirectory(
             at: self.archiveFolder,
@@ -371,6 +373,24 @@ private class DebugBundleBuilder {
         }
     }
 
+    func bundleNEDebugInfo() async {
+        guard let manager = self.appState?.manager else {
+            self.writeError(name: "ne-debug-info", error: "appState or manager is nil")
+            return
+        }
+        do {
+            let neDebugInfoJsonString = try await runNeJsonCommand(manager, NeManagerCmd.getDebugInfo.json(), attemptTimeout: .seconds(10))
+            let value = try JSONSerialization.jsonObject(with: Data(neDebugInfoJsonString.utf8))
+            let json = try JSONSerialization.data(
+                withJSONObject: value,
+                options: [.fragmentsAllowed, .prettyPrinted, .sortedKeys]
+            )
+            try self.writeFile(name: "ne-debug-info.json", data: json)
+        } catch {
+            self.writeError(name: "ne-debug-info", error: error)
+        }
+    }
+
     func bundleTask(_ name: String, _ block: @escaping (BundleTask) async throws -> Void) {
         BundleTask(self, name, block)
     }
@@ -395,6 +415,7 @@ private class DebugBundleBuilder {
         }
 
         self.bundleTask("extensions") { _task in try await self.bundleExtensions() }
+        self.bundleTask("ne-debug-info") { _task in await self.bundleNEDebugInfo() }
         self.bundleTask("info") { _task in try self.bundleInfo() }
 
         self.bundleCmd("arp", ["/usr/sbin/arp", "-na"])
@@ -556,7 +577,7 @@ public class DebugBundleRC {
     }
 }
 
-func _createDebuggingArchive() async throws -> String {
+func _createDebuggingArchive(appState: AppState?) async throws -> String {
     let _activity = ProcessInfo.processInfo.beginActivity(
         options: [
             .automaticTerminationDisabled,
@@ -569,7 +590,7 @@ func _createDebuggingArchive() async throws -> String {
 
     var start = SuspendingClock.now
 
-    let builder = try DebugBundleBuilder()
+    let builder = try DebugBundleBuilder(appState: appState)
     await builder.bundleAll()
     let zipPath = try builder.createArchive()
 
@@ -587,7 +608,7 @@ func createDebuggingArchive(appState: AppState?) async throws -> String {
         _debugBundleRc = DebugBundleRC(appState)
     }
     do {
-        let path = try await _createDebuggingArchive()
+        let path = try await _createDebuggingArchive(appState: appState)
         _ = appState?.osStatus.update { value in
             value.debugBundleStatus.setPath(path)
         }

@@ -8,13 +8,13 @@
 # check formatting
 format-check: _check-in-obscura-nix-shell
 	swiftformat --lint .
-	cargo --offline fmt --check
+	cd rustlib && cargo --offline fmt --check
 	./contrib/bin/nixfmt-auto-files.bash --check
 
 # fix formatting
 format-fix: _check-in-obscura-nix-shell
 	swiftformat .
-	cargo --offline fmt
+	cd rustlib && cargo --offline fmt
 	./contrib/bin/nixfmt-auto-files.bash
 
 # lint checks

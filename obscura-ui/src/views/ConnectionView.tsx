@@ -161,6 +161,7 @@ function ConnectionProgressBar() {
     const progressBg = colorScheme === 'light' ? 'dark.4' : 'dark.3';
 
     const connectingProgressBars = usePulsingProgress({ activated: isConnecting(connectionInProgress), bars: 2, inactiveColor: progressBg, w: 50 });
+    const isOffline = !internetAvailable && !vpnConnected && !isConnecting(connectionInProgress);
 
     return (
         <Paper shadow='xl' withBorder w='80%' maw={600} bg={bg} p='md' pt={5} pb='xs' mb='lg' radius='lg'>
@@ -172,7 +173,7 @@ function ConnectionProgressBar() {
                     <Text size='xs' c='white'>{t('yourDevice')}</Text>
                 </Stack>
                 {
-                    !internetAvailable && !isConnecting(connectionInProgress) &&
+                    isOffline &&
                     <>
                         <Progress w={80} value={0} h={2} bg={progressBg} />
                         <Stack gap='0' align='center'>
@@ -211,10 +212,10 @@ function ConnectionProgressBar() {
                     <Progress w={50} value={(vpnConnected && connectionInProgress !== ConnectionInProgress.ChangingLocations) ? 100 : 0} h={2} bg={progressBg} />
                 </>}
                 <Stack gap='0' align='center'>
-                    <ThemeIcon variant='transparent' c={internetAvailable ? (connectionInProgress === ConnectionInProgress.UNSET ? 'white' : 'dimmed') : 'red.6'}>
+                    <ThemeIcon variant='transparent' c={isOffline ? 'red.6' : (connectionInProgress === ConnectionInProgress.UNSET ? 'white' : 'dimmed')}>
                         <MdLanguage size={20} />
                     </ThemeIcon>
-                    <Text size='xs' c={internetAvailable ? (connectionInProgress === ConnectionInProgress.UNSET ? 'white' : 'dimmed') : 'red.6'}>{t('Internet')}</Text>
+                    <Text size='xs' c={isOffline ? 'red.6' : (connectionInProgress === ConnectionInProgress.UNSET ? 'white' : 'dimmed')}>{t('Internet')}</Text>
                 </Stack>
             </Group>
         </Paper>
@@ -303,21 +304,22 @@ function Deco() {
         return () => stop();
     }, [connectionInProgress, start, stop]);
 
-      if (!internetAvailable) return colorScheme === 'light' ? DecoOfflineLight : DecoOfflineDark;
+    const isOffline = !internetAvailable && !vpnConnected && !isConnecting(connectionInProgress);
+    if (isOffline) return colorScheme === 'light' ? DecoOfflineLight : DecoOfflineDark;
 
-      if (connectionInProgress !== ConnectionInProgress.UNSET) {
-          // want to allow reverse animations
-          const adjustedIdx = connectionInProgress === ConnectionInProgress.Disconnecting ? DEC_LAST_IDX - connectingIndex : connectingIndex;
-          const connectionDeco = DECO_CONNECTING_ARRAY[colorScheme][adjustedIdx];
-          if (connectionDeco === undefined) {
-              console.error(`adjustedIdx/connectingIndex (${adjustedIdx} or ${connectingIndex}) longer than DECO_CONNECTING_ARRAY`);
-              return DECO_CONNECTING_ARRAY[colorScheme][0];
-          }
-          return connectionDeco;
-      };
+    if (connectionInProgress !== ConnectionInProgress.UNSET) {
+        // want to allow reverse animations
+        const adjustedIdx = connectionInProgress === ConnectionInProgress.Disconnecting ? DEC_LAST_IDX - connectingIndex : connectingIndex;
+        const connectionDeco = DECO_CONNECTING_ARRAY[colorScheme][adjustedIdx];
+        if (connectionDeco === undefined) {
+            console.error(`adjustedIdx/connectingIndex (${adjustedIdx} or ${connectingIndex}) longer than DECO_CONNECTING_ARRAY`);
+            return DECO_CONNECTING_ARRAY[colorScheme][0];
+        }
+        return connectionDeco;
+    };
 
-      if (vpnConnected) return DecoConnected;
-      return colorScheme === 'light' ? DecoDisconnectedLight : DecoDisconnectedDark;
+    if (vpnConnected) return DecoConnected;
+    return colorScheme === 'light' ? DecoDisconnectedLight : DecoDisconnectedDark;
 }
 
 const MASCOT_CONNECTING = [
@@ -374,8 +376,10 @@ function Mascot() {
         return () => stop();
     }, [connectionInProgress, start, stop]);
 
+    const isOffline = !internetAvailable && !vpnConnected && !isConnecting(connectionInProgress);
+
     const getMascot = () => {
-        if (!internetAvailable) return MascotDead;
+        if (isOffline) return MascotDead;
         if (connectionInProgress !== ConnectionInProgress.UNSET) {
             const mascotConnecting = MASCOT_CONNECTING[connectingIndex];
             if (mascotConnecting === undefined) {

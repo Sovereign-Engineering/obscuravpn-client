@@ -7,7 +7,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { BsPin, BsPinFill, BsShieldFillCheck, BsShieldFillExclamation } from 'react-icons/bs';
 import * as commands from '../bridge/commands';
 import { Exit, getExitCountry } from '../common/api';
-import { AppContext, ConnectionInProgress, ExitsContext } from '../common/appContext';
+import { AppContext, ConnectionInProgress, ExitsContext, isConnecting } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { fmtErrorI18n } from '../common/danger';
 import { CityNotFoundError, exitLocation, exitsSortComparator, getExitCountryFlag, getRandomExitFromCity } from '../common/exitUtils';
@@ -173,15 +173,16 @@ interface LocationCarProps {
 
 function LocationCard({ exit, connected, onSelect, togglePin, pinned }: LocationCarProps) {
     const { t } = useTranslation();
-    const { connectionInProgress, osStatus } = useContext(AppContext);
+    const { connectionInProgress, osStatus, vpnConnected } = useContext(AppContext);
     const { internetAvailable } = osStatus;
+    const isOffline = !internetAvailable && !vpnConnected && !isConnecting(connectionInProgress);
 
     const onPinClick = (e: MouseEvent) => {
         e.stopPropagation();
         togglePin(exit);
     };
 
-    const disableClick = connectionInProgress !== ConnectionInProgress.UNSET || !internetAvailable;
+    const disableClick = connectionInProgress !== ConnectionInProgress.UNSET || isOffline;
     const cardClasses = [];
     if (connected) cardClasses.push(classes.locationCardConnected);
     if (disableClick) cardClasses.push(classes.locationCardDisabled);
@@ -260,9 +261,10 @@ function VpnStatusCard() {
     const { t } = useTranslation();
     const { appStatus, vpnConnected, connectionInProgress, vpnDisconnect, vpnConnect, osStatus } = useContext(AppContext);
     const { internetAvailable } = osStatus;
+    const isOffline = !internetAvailable && !vpnConnected && !isConnecting(connectionInProgress);
 
     const getStatusTitle = () => {
-        if (!internetAvailable) return t('Offline');
+        if (isOffline) return t('Offline');
         if (connectionInProgress !== ConnectionInProgress.UNSET && connectionInProgress !== ConnectionInProgress.ChangingLocations) return t(connectionInProgress) + '...';
         const selectedLocation = appStatus.vpnStatus.connected?.exit.city_name;
         // vpnConnected <-> vpnStatus.connected.exit defined
@@ -271,12 +273,12 @@ function VpnStatusCard() {
     };
 
     const getStatusSubtitle = () => {
-        if (!internetAvailable) return t('connectToInternet');
+        if (isOffline) return t('connectToInternet');
         return vpnConnected ? t('trafficProtected') : t('trafficVulnerable');
     };
 
     const allowCancel = connectionInProgress === ConnectionInProgress.Connecting || connectionInProgress === ConnectionInProgress.Reconnecting;
-    const btnDisabled = !allowCancel && (connectionInProgress === ConnectionInProgress.Disconnecting || connectionInProgress === ConnectionInProgress.ChangingLocations || (!vpnConnected && !internetAvailable));
+    const btnDisabled = !allowCancel && (connectionInProgress === ConnectionInProgress.Disconnecting || connectionInProgress === ConnectionInProgress.ChangingLocations || isOffline);
     const buttonDisconnectProps = ((allowCancel || vpnConnected) && !btnDisabled) ? theme.other.buttonDisconnectProps : {};
 
     const getButtonContent = () => {
@@ -288,7 +290,7 @@ function VpnStatusCard() {
 
     const btnTitle = () => {
         if (!btnDisabled) return;
-        if (!internetAvailable) return t('noInternet');
+        if (isOffline) return t('noInternet');
         return t('busyConnection');
     };
 
@@ -313,7 +315,7 @@ function VpnStatusCard() {
                 <Divider my='md' />
                 <Stack justify='space-between' w='100%'>
                   <CurrentSession />
-                  <ExitInfoCollapse exitPubKey={appStatus.vpnStatus.connected.exit_public_key} connectedExit={appStatus.vpnStatus.connected.exit} />
+                  <ExitInfoCollapse exitPubKey={appStatus.vpnStatus.connected.exitPublicKey} connectedExit={appStatus.vpnStatus.connected.exit} />
                 </Stack>
               </>
             }

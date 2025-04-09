@@ -13,6 +13,7 @@ import { logReactError, useSystemContext } from './bridge/SystemProvider';
 import { Exit } from './common/api';
 import { AppContext, AppStatus, ConnectionInProgress, ExitsContext, OsStatus } from './common/appContext';
 import { fmtVpnError } from './common/danger';
+import { fmt } from './common/fmt';
 import { NotificationId } from './common/notifIds';
 import { useAsync } from './common/useAsync';
 import { useLoadable } from './common/useLoadable';
@@ -177,16 +178,21 @@ export default function () {
       });
     } else if (vpnStatus.connecting !== undefined) {
       setVpnConnected(false);
+      const reconnecting = vpnStatus.connecting.reconnecting;
       setConnectionInProgress(value => {
+        if (reconnecting) return ConnectionInProgress.Reconnecting;
         if (value === ConnectionInProgress.ChangingLocations) return value;
         return ConnectionInProgress.Connecting;
       });
-    } else if (vpnStatus.reconnecting !== undefined) {
-      setVpnConnected(false);
-      setConnectionInProgress(ConnectionInProgress.Reconnecting);
-      if (vpnStatus.reconnecting.err !== undefined) {
-        console.error(`got error while reconnecting: ${vpnStatus.reconnecting.err}`);
-        notifyVpnError(vpnStatus.reconnecting.err);
+      const connectError = vpnStatus.connecting?.connectError;
+      if (connectError !== undefined) {
+        if (reconnecting) {
+          console.error(`got error while reconnecting: ${connectError}`);
+        } else {
+          console.error(`got error while connecting: ${connectError}`);
+        }
+        console.log(fmt`vpnStatus = ${vpnStatus}`);
+        notifyVpnError(connectError);
       }
     } else if (vpnStatus.disconnected !== undefined) {
       setConnectionInProgress(value => {

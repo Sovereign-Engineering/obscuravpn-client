@@ -10,6 +10,7 @@ enum Command: Codable {
     case stopTunnel
     case debuggingArchive
     case revealItemInDir(path: String)
+    case setStrictLeakPrevention(enable: Bool)
     case registerAsLoginItem
     case unregisterAsLoginItem
     case isRegisteredAsLoginItem
@@ -55,6 +56,13 @@ func handleWebViewCommand(command: Command) async throws(String) -> String {
     case .resetUserDefaults:
         // NOTE: only shown in the Developer View
         appState.resetUserDefaults()
+    case .setStrictLeakPrevention(let enable):
+        do {
+            try await appState.setIncludeAllNetworks(enable: enable)
+        } catch {
+            logger.error("Could not set includeAllNetworks \(error, privacy: .public)")
+            throw errorCodeOther
+        }
     case .jsonFfiCmd(cmd: let jsonCmd, let timeoutMs):
         let attemptTimeout: Duration? = switch timeoutMs {
         case .some(let ms): .milliseconds(ms)

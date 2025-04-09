@@ -3,21 +3,21 @@ import ServiceManagement
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "loginitem")
 
-func unregisterAsLoginItem() throws {
+func unregisterAsLoginItem() throws(String) {
     do {
         try SMAppService.mainApp.unregister()
     } catch {
-        logger.info("failed to unregister app at login")
-        throw error
+        logger.error("failed to unregister app at login \(error, privacy: .public)")
+        throw errorCodeOther
     }
 }
 
-func registerAsLoginItem() throws {
+func registerAsLoginItem() throws(String) {
     do {
         try SMAppService.mainApp.register()
     } catch {
-        logger.info("failed to register app at login")
-        throw error
+        logger.error("failed to register app at login \(error, privacy: .public)")
+        throw errorCodeOther
     }
 }
 

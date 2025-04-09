@@ -9,6 +9,19 @@
 /* Begin PBXBuildFile section */
 		300452782C49BC90000B78F7 /* Json.swift in Sources */ = {isa = PBXBuildFile; fileRef = 300452772C49BC90000B78F7 /* Json.swift */; };
 		300452792C49BC90000B78F7 /* Json.swift in Sources */ = {isa = PBXBuildFile; fileRef = 300452772C49BC90000B78F7 /* Json.swift */; };
+		30497E662D9EC09E008B22F9 /* ConcurrencyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30497E652D9EC09E008B22F9 /* ConcurrencyTests.swift */; };
+		30497E672D9EC0BA008B22F9 /* Concurrency.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35230C152C764B97007ECFEC /* Concurrency.swift */; };
+		30497E682D9EC129008B22F9 /* Swift.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35230C182C764F0D007ECFEC /* Swift.swift */; };
+		30497E692D9EC16A008B22F9 /* String.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C920682CD91D94002C85EA /* String.swift */; };
+		30497E6A2D9EC19E008B22F9 /* StringError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309B467C2C4C152900A1B00F /* StringError.swift */; };
+		30497E6B2D9EC7AC008B22F9 /* Sleep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309BA9122C45DFC8000A7428 /* Sleep.swift */; };
+		30497E6E2D9ED584008B22F9 /* Box.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30497E6D2D9ED57F008B22F9 /* Box.swift */; };
+		30497E6F2D9ED584008B22F9 /* Box.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30497E6D2D9ED57F008B22F9 /* Box.swift */; };
+		30497E702D9ED5AD008B22F9 /* Box.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30497E6D2D9ED57F008B22F9 /* Box.swift */; };
+		30497E722D9ED7D4008B22F9 /* DequeModule in Frameworks */ = {isa = PBXBuildFile; productRef = 30497E712D9ED7D4008B22F9 /* DequeModule */; };
+		30497E742D9ED7DF008B22F9 /* DequeModule in Frameworks */ = {isa = PBXBuildFile; productRef = 30497E732D9ED7DF008B22F9 /* DequeModule */; };
+		30497E762D9ED7E9008B22F9 /* DequeModule in Frameworks */ = {isa = PBXBuildFile; productRef = 30497E752D9ED7E9008B22F9 /* DequeModule */; };
+		30497E782D9ED7EE008B22F9 /* DequeModule in Frameworks */ = {isa = PBXBuildFile; productRef = 30497E772D9ED7EE008B22F9 /* DequeModule */; };
 		30761C222B6EB17100E5F60D /* ClientApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30761C212B6EB17100E5F60D /* ClientApp.swift */; };
 		30761C242B6EB17100E5F60D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30761C232B6EB17100E5F60D /* ContentView.swift */; };
 		30761C262B6EB17200E5F60D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 30761C252B6EB17200E5F60D /* Assets.xcassets */; };
@@ -36,6 +49,7 @@
 		309BA90C2C446125000A7428 /* NetworkSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309BA90B2C446125000A7428 /* NetworkSettings.swift */; };
 		309BA9132C45DFC8000A7428 /* Sleep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309BA9122C45DFC8000A7428 /* Sleep.swift */; };
 		309BA9142C45DFC8000A7428 /* Sleep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309BA9122C45DFC8000A7428 /* Sleep.swift */; };
+		309BFE3F2D9C169500366431 /* WatchableValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30C532092CC9558000936E1F /* WatchableValue.swift */; };
 		30C5320A2CC9558000936E1F /* WatchableValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30C532092CC9558000936E1F /* WatchableValue.swift */; };
 		30C5320C2CC959AE00936E1F /* OsStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30C5320B2CC959AE00936E1F /* OsStatus.swift */; };
 		30EF74C12BFFE48C0095439F /* FfiCb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30EF74C02BFFE48C0095439F /* FfiCb.swift */; };
@@ -115,6 +129,9 @@
 
 /* Begin PBXFileReference section */
 		300452772C49BC90000B78F7 /* Json.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Json.swift; sourceTree = "<group>"; };
+		30497E5E2D9EC038008B22F9 /* Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		30497E652D9EC09E008B22F9 /* ConcurrencyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcurrencyTests.swift; sourceTree = "<group>"; };
+		30497E6D2D9ED57F008B22F9 /* Box.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Box.swift; sourceTree = "<group>"; };
 		30761C1E2B6EB17100E5F60D /* Obscura VPN (Debug).app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Obscura VPN (Debug).app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		30761C212B6EB17100E5F60D /* ClientApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientApp.swift; sourceTree = "<group>"; };
 		30761C232B6EB17100E5F60D /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -188,11 +205,20 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		30497E5B2D9EC038008B22F9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				30497E722D9ED7D4008B22F9 /* DequeModule in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		30761C1B2B6EB17100E5F60D /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				A082F8232C46BF5B002AF810 /* Sparkle in Frameworks */,
+				30497E782D9ED7EE008B22F9 /* DequeModule in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -202,6 +228,7 @@
 			files = (
 				30920D942C3D51EC008690C3 /* NetworkExtension.framework in Frameworks */,
 				30920DA92C3D53F1008690C3 /* libobscuravpn-client.a in Frameworks */,
+				30497E742D9ED7DF008B22F9 /* DequeModule in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -211,6 +238,7 @@
 			files = (
 				C90161572BE011B2005B14AF /* libobscuravpn-client.a in Frameworks */,
 				3098C18F2B921489008877AA /* NetworkExtension.framework in Frameworks */,
+				30497E762D9ED7E9008B22F9 /* DequeModule in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -239,6 +267,7 @@
 				30761C1E2B6EB17100E5F60D /* Obscura VPN (Debug).app */,
 				3098C18E2B921489008877AA /* net.obscura.vpn-client-app.system-network-extension.systemextension */,
 				30920D932C3D51EC008690C3 /* App Network Extension.appex */,
+				30497E5E2D9EC038008B22F9 /* Tests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -323,10 +352,12 @@
 		30EF74BF2BFFC2A90095439F /* shared */ = {
 			isa = PBXGroup;
 			children = (
+				30497E6D2D9ED57F008B22F9 /* Box.swift */,
 				968B02B82CFF5B7B0053D0EF /* Account.swift */,
 				96C920682CD91D94002C85EA /* String.swift */,
 				35230C182C764F0D007ECFEC /* Swift.swift */,
 				35230C152C764B97007ECFEC /* Concurrency.swift */,
+				30497E652D9EC09E008B22F9 /* ConcurrencyTests.swift */,
 				35219C3A2C6BD57F00E63BB8 /* Debug.swift */,
 				35A6F2532C6121C2004E1A7C /* time.swift */,
 				352D58DF2C4AE796002F3404 /* ObservableValue.swift */,
@@ -394,6 +425,26 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		30497E5D2D9EC038008B22F9 /* Tests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 30497E622D9EC038008B22F9 /* Build configuration list for PBXNativeTarget "Tests" */;
+			buildPhases = (
+				30497E5A2D9EC038008B22F9 /* Sources */,
+				30497E5B2D9EC038008B22F9 /* Frameworks */,
+				30497E5C2D9EC038008B22F9 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Tests;
+			packageProductDependencies = (
+				30497E712D9ED7D4008B22F9 /* DequeModule */,
+			);
+			productName = Tests;
+			productReference = 30497E5E2D9EC038008B22F9 /* Tests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		30761C1D2B6EB17100E5F60D /* Obscura VPN */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 30761C2D2B6EB17200E5F60D /* Build configuration list for PBXNativeTarget "Obscura VPN" */;
@@ -411,6 +462,7 @@
 			name = "Obscura VPN";
 			packageProductDependencies = (
 				A082F8222C46BF5B002AF810 /* Sparkle */,
+				30497E772D9ED7EE008B22F9 /* DequeModule */,
 			);
 			productName = client;
 			productReference = 30761C1E2B6EB17100E5F60D /* Obscura VPN (Debug).app */;
@@ -457,9 +509,12 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1520;
+				LastSwiftUpdateCheck = 1620;
 				LastUpgradeCheck = 1520;
 				TargetAttributes = {
+					30497E5D2D9EC038008B22F9 = {
+						CreatedOnToolsVersion = 16.2;
+					};
 					30761C1D2B6EB17100E5F60D = {
 						CreatedOnToolsVersion = 15.2;
 					};
@@ -482,6 +537,7 @@
 			mainGroup = 30761C152B6EB17100E5F60D;
 			packageReferences = (
 				A082F8212C46BF5B002AF810 /* XCRemoteSwiftPackageReference "Sparkle" */,
+				30497E6C2D9ED476008B22F9 /* XCRemoteSwiftPackageReference "swift-collections" */,
 			);
 			productRefGroup = 30761C1F2B6EB17100E5F60D /* Products */;
 			projectDirPath = "";
@@ -496,6 +552,7 @@
 				30761C1D2B6EB17100E5F60D /* Obscura VPN */,
 				3098C18D2B921489008877AA /* System Network Extension */,
 				30920D922C3D51EC008690C3 /* App Network Extension */,
+				30497E5D2D9EC038008B22F9 /* Tests */,
 			);
 		};
 /* End PBXProject section */
@@ -518,6 +575,13 @@
 /* End PBXReferenceProxy section */
 
 /* Begin PBXResourcesBuildPhase section */
+		30497E5C2D9EC038008B22F9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		30761C1C2B6EB17100E5F60D /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -545,6 +609,20 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		30497E5A2D9EC038008B22F9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				30497E672D9EC0BA008B22F9 /* Concurrency.swift in Sources */,
+				30497E702D9ED5AD008B22F9 /* Box.swift in Sources */,
+				30497E692D9EC16A008B22F9 /* String.swift in Sources */,
+				30497E6A2D9EC19E008B22F9 /* StringError.swift in Sources */,
+				30497E662D9EC09E008B22F9 /* ConcurrencyTests.swift in Sources */,
+				30497E682D9EC129008B22F9 /* Swift.swift in Sources */,
+				30497E6B2D9EC7AC008B22F9 /* Sleep.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		30761C1A2B6EB17100E5F60D /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -555,6 +633,7 @@
 				352D58E02C4AE796002F3404 /* ObservableValue.swift in Sources */,
 				962325232C8A3B58008A9B76 /* MenuItemView.swift in Sources */,
 				30C5320C2CC959AE00936E1F /* OsStatus.swift in Sources */,
+				30497E6E2D9ED584008B22F9 /* Box.swift in Sources */,
 				9632E4642D19C5EC00BC8E3F /* AccountStatusItem.swift in Sources */,
 				30920D752C1F71BB008690C3 /* startup.swift in Sources */,
 				30920D792C2057B1008690C3 /* initNetworkExtension.swift in Sources */,
@@ -605,6 +684,7 @@
 			files = (
 				35A6F2552C613366004E1A7C /* time.swift in Sources */,
 				30EF74CE2C02244C0095439F /* NetworkExtensionIpc.swift in Sources */,
+				30497E6F2D9ED584008B22F9 /* Box.swift in Sources */,
 				309BA9142C45DFC8000A7428 /* Sleep.swift in Sources */,
 				35230C1A2C764F0D007ECFEC /* Swift.swift in Sources */,
 				352D58E12C4AE796002F3404 /* ObservableValue.swift in Sources */,
@@ -612,6 +692,7 @@
 				35219C3C2C6BD57F00E63BB8 /* Debug.swift in Sources */,
 				3098C1942B921489008877AA /* main.swift in Sources */,
 				35230C172C764B97007ECFEC /* Concurrency.swift in Sources */,
+				309BFE3F2D9C169500366431 /* WatchableValue.swift in Sources */,
 				309B467E2C4C152900A1B00F /* StringError.swift in Sources */,
 				309BA90C2C446125000A7428 /* NetworkSettings.swift in Sources */,
 				300452792C49BC90000B78F7 /* Json.swift in Sources */,
@@ -634,6 +715,43 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		30497E632D9EC038008B22F9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5G943LR562;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = net.obscura.Tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		30497E642D9EC038008B22F9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5G943LR562;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = net.obscura.Tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 		30761C2C2B6EB17200E5F60D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -871,6 +989,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		30497E622D9EC038008B22F9 /* Build configuration list for PBXNativeTarget "Tests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				30497E632D9EC038008B22F9 /* Debug */,
+				30497E642D9EC038008B22F9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		30761C192B6EB17100E5F60D /* Build configuration list for PBXProject "client" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -910,6 +1037,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		30497E6C2D9ED476008B22F9 /* XCRemoteSwiftPackageReference "swift-collections" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-collections.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.1.4;
+			};
+		};
 		A082F8212C46BF5B002AF810 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/sparkle-project/Sparkle";
@@ -921,6 +1056,26 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		30497E712D9ED7D4008B22F9 /* DequeModule */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 30497E6C2D9ED476008B22F9 /* XCRemoteSwiftPackageReference "swift-collections" */;
+			productName = DequeModule;
+		};
+		30497E732D9ED7DF008B22F9 /* DequeModule */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 30497E6C2D9ED476008B22F9 /* XCRemoteSwiftPackageReference "swift-collections" */;
+			productName = DequeModule;
+		};
+		30497E752D9ED7E9008B22F9 /* DequeModule */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 30497E6C2D9ED476008B22F9 /* XCRemoteSwiftPackageReference "swift-collections" */;
+			productName = DequeModule;
+		};
+		30497E772D9ED7EE008B22F9 /* DequeModule */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 30497E6C2D9ED476008B22F9 /* XCRemoteSwiftPackageReference "swift-collections" */;
+			productName = DequeModule;
+		};
 		A082F8222C46BF5B002AF810 /* Sparkle */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = A082F8212C46BF5B002AF810 /* XCRemoteSwiftPackageReference "Sparkle" */;

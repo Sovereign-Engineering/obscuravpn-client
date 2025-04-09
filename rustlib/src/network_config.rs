@@ -5,7 +5,8 @@ use std::net::{IpAddr, Ipv4Addr};
 use thiserror::Error;
 
 // Keep synchronized with ../apple/system-network-extension/RustFfi.swift
-#[derive(Serialize)]
+// Avoid adding information with high-frequency of change to this type, to prevent triggering frequent changes OS network configuration, which can't be deduplicated by checking for changes.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct NetworkConfig {
     pub dns: Vec<IpAddr>,
     pub ipv4: Ipv4Addr,
@@ -31,7 +32,7 @@ impl NetworkConfig {
     }
 }
 
-#[derive(Debug, Error)]
+#[derive(Clone, Debug, Error)]
 pub enum NetworkConfigError {
     #[error("no ipv4 ip")]
     NoIpv4Ip,

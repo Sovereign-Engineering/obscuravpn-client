@@ -4,9 +4,17 @@ import OSLog
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "network extension ipc")
 
-enum NeFfiJsonResult: Codable {
+enum NeManagerCmdResult: Codable {
     case ok_json(String)
     case error(String)
+}
+
+enum NeManagerCmd: Codable {
+    case apiGetAccountInfo
+    case getStatus(knownVersion: UUID?)
+    case getTrafficStats
+    case ping
+    case setTunnelArgs(args: TunnelArgs?)
 }
 
 struct TunnelArgs: Codable {
@@ -35,9 +43,8 @@ struct PinnedLocation: Codable, Equatable {
 }
 
 enum NeVpnStatus: Codable {
-    case connecting
-    case connected(exit: ExitInfo, client_public_key: String, exit_public_key: String)
-    case reconnecting(exit: ExitInfo, err: String?)
+    case connecting(tunnelArgs: TunnelArgs, connectError: String?, reconnecting: Bool)
+    case connected(tunnelArgs: TunnelArgs, exit: ExitInfo, networkConfig: NetworkConfig, exitPublicKey: String, clientPublicKey: String)
     case disconnected
 }
 
@@ -45,6 +52,17 @@ struct ExitInfo: Codable {
     var id: String
     var country_code: String
     var city_name: String
+}
+
+// Keep synchronized with rustlib/src/apple/network_config.rs
+struct NetworkConfig: Codable, CustomStringConvertible, Equatable {
+    var description: String {
+        return "ipv4: \(self.ipv4), dns: \(self.dns), ipv6: \(self.ipv6)"
+    }
+
+    var ipv4: String
+    var dns: [String]
+    var ipv6: String
 }
 
 // We must use NSError to communicate errors via startTunnel.

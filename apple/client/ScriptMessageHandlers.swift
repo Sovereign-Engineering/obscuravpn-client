@@ -23,8 +23,8 @@ class CommandHandler: NSObject, WKScriptMessageHandlerWithReply {
             do {
                 let response = try await handleWebViewCommand(command: command)
                 replyHandler(response, nil)
-            } catch {
-                replyHandler(nil, error.localizedDescription)
+            } catch let error as String {
+                replyHandler(nil, error)
             }
         }
     }

@@ -1,3 +1,5 @@
+#![allow(clippy::large_enum_variant, clippy::too_many_arguments)]
+
 pub mod client_state;
 pub mod config;
 pub mod errors;
@@ -9,6 +11,7 @@ pub mod network_config;
 pub mod quicwg;
 pub mod relay_selection;
 mod serde_safe;
+pub mod tunnel_state;
 pub mod virt;
 
 #[cfg(target_os = "macos")]

@@ -89,6 +89,10 @@ The network extension manages the virtual device and maintains the tunnel using 
 
 💡 **TIP**: It is highly recommended to read through various sections in [Development Tips](#development-tips) to better understand the various ways we've configured the Xcode build system to work with our development process.
 
+## Swift unit tests
+
+"Swift Testing" tests are placed in `*Test.swift` files, which need to be a member of the `Tests` target. Testing (not running) with the `Tests` scheme builds and executes all tests.
+
 ## Debugging
 
 ### Logs

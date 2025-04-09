@@ -23,18 +23,26 @@ enum Command: Codable {
     )
 }
 
-func handleWebViewCommand(command: Command) async throws -> String {
+func handleWebViewCommand(command: Command) async throws(String) -> String {
     guard let appState = StartupModel.shared.appState else {
         logger.critical("received web view command before `appState` was initialized")
         throw errorCodeOther
     }
     switch command {
-    case .startTunnel(tunnelArgs: let args):
-        try await appState.enableTunnelWithErrorHandling(jsonTunnelArgs: args)
+    case .startTunnel(tunnelArgs: let jsonArgs):
+        let args = try TunnelArgs(json: jsonArgs)
+        try await appState.enableTunnel(args)
     case .stopTunnel:
         appState.disableTunnel()
     case .debuggingArchive:
-        return try (await createDebuggingArchive(appState: appState)).json()
+        let path: String
+        do {
+            path = try await createDebuggingArchive(appState: appState)
+        } catch {
+            logger.error("could not create debugging archive \(error, privacy: .public)")
+            throw errorCodeOther
+        }
+        return try path.json()
     case .revealItemInDir(let path):
         NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
     case .registerAsLoginItem:
@@ -52,7 +60,7 @@ func handleWebViewCommand(command: Command) async throws -> String {
         case .some(let ms): .milliseconds(ms)
         case .none: nil
         }
-        return try await runNeCommand(
+        return try await runNeJsonCommand(
             appState.manager,
             jsonCmd,
             attemptTimeout: attemptTimeout

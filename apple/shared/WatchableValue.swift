@@ -45,4 +45,14 @@ class WatchableValue<T> {
             }
         }
     }
+
+    /// Returns the current value if `predicate` returns true, otherwise returns the next published value that does
+    func waitUntil(_ predicate: (T) -> Bool) async -> T {
+        while true {
+            let value = await self.getIfOrNext(predicate)
+            if predicate(value) {
+                return value
+            }
+        }
+    }
 }

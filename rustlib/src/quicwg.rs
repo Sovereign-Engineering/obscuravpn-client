@@ -25,12 +25,6 @@ use tokio::time::{Duration, Instant};
 use uuid::Uuid;
 
 const QUIC_MAX_IDLE_MS: u32 = 5000;
-
-// The primary reason for these retries is that Mullvad's key propagation to exits is sometimes slow. Handshakes will be ignored until the key is known so we need to keep retrying.
-// Based on a day of measurements on a good network connection while 97% of handshakes will succeed within 10s we need to wait 21.2s to get a 99% success rate.
-// Importantly we have never seen a complete propagation failure, just delays. So it is better to wait and succeed than to cancel.
-// A better solution is being tracked in https://linear.app/soveng/issue/OBS-824
-const WG_FIRST_HANDSHAKE_RETRIES: usize = 9; // 22.5s total.
 const WG_FIRST_HANDSHAKE_RESENDS: usize = 25; // 2.5s per handshake.
 const WG_FIRST_HANDSHAKE_TIMEOUT: Duration = Duration::from_millis(100);
 pub(crate) const RELAY_SNI: &str = "relay.obscura.net";
@@ -137,7 +131,7 @@ impl QuicWgConn {
 
         let index = random();
         let mut wg = Tunn::new(client_secret_key, exit_public_key, None, None, index, None).unwrap();
-        Self::first_wg_handshake(&mut wg, &quic, WG_FIRST_HANDSHAKE_RETRIES, WG_FIRST_HANDSHAKE_RESENDS)
+        Self::first_wg_handshake(&mut wg, &quic, WG_FIRST_HANDSHAKE_RESENDS)
             .await
             .map_err(QuicWgConnectError::WireguardHandshake)?;
         tracing::info!("connected to exit");
@@ -240,37 +234,27 @@ impl QuicWgConn {
         .map_err(|_| QuicWgWireguardHandshakeError::RespMessageTimeout)?
     }
 
-    async fn first_wg_handshake(
-        wg: &mut Tunn,
-        quic: &quinn::Connection,
-        mut retries: usize,
-        resends: usize,
-    ) -> Result<(), QuicWgWireguardHandshakeError> {
+    async fn first_wg_handshake(wg: &mut Tunn, quic: &quinn::Connection, resends: usize) -> Result<(), QuicWgWireguardHandshakeError> {
+        let handshake_init = Self::build_first_wg_handshake_init(wg)?;
+        let mut resends = resends;
         loop {
-            retries -= 1;
-            let handshake_init = Self::build_first_wg_handshake_init(wg)?;
-            let mut resends = resends;
-            loop {
-                resends -= 1;
-                quic.send_datagram(handshake_init.clone().into())?;
-                match Self::wait_for_first_handshake_response(wg, quic).await {
-                    Ok(()) => return Ok(()),
-                    Err(err) => match err {
-                        QuicWgWireguardHandshakeError::RespMessageTimeout => {
-                            tracing::info!("exit handshake timeout, packet may have gotten lost");
-                            if resends == 0 {
-                                tracing::info!("too many exit handshake resend attempts, exit may not be configured");
-                                break;
-                            }
+            resends -= 1;
+            quic.send_datagram(handshake_init.clone().into())?;
+            match Self::wait_for_first_handshake_response(wg, quic).await {
+                Ok(()) => return Ok(()),
+                Err(err) => match err {
+                    QuicWgWireguardHandshakeError::RespMessageTimeout => {
+                        tracing::info!("exit handshake timeout, packet may have gotten lost");
+                        if resends == 0 {
+                            tracing::info!("too many exit handshake resend attempts, exit may not be configured");
+                            break;
                         }
-                        err => return Err(err),
-                    },
-                }
-            }
-            if retries == 0 {
-                return Err(QuicWgWireguardHandshakeError::RespMessageTimeout);
+                    }
+                    err => return Err(err),
+                },
             }
         }
+        Err(QuicWgWireguardHandshakeError::RespMessageTimeout)
     }
 
     fn handle_result(quic: &quinn::Connection, res: TunnResult<'_>) -> Result<ControlFlow<Option<Vec<u8>>>, quinn::SendDatagramError> {

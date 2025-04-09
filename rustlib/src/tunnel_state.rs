@@ -1,3 +1,4 @@
+use std::time::Duration;
 use std::{future::Future, sync::Arc};
 
 use futures::future::pending;
@@ -6,6 +7,7 @@ use strum::EnumIs;
 use tokio::runtime::Runtime;
 use tokio::select;
 use tokio::sync::watch::{channel, Receiver, Sender};
+use tokio::time::{sleep_until, Instant};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
@@ -128,9 +130,18 @@ impl TunnelState {
         client_state: Arc<ClientState>,
         receive_cb: extern "C" fn(FfiBytes),
     ) -> ! {
+        // Delay processing new states or retrying after error for at least this long.
+        const DEBOUNCE_PERIOD: Duration = Duration::from_secs(1);
+
+        let mut last_start: Option<Instant> = None;
         let mut disconnect_reason = None;
 
         loop {
+            if let Some(last_start) = last_start {
+                sleep_until(last_start + DEBOUNCE_PERIOD).await;
+            }
+            last_start = Some(Instant::now());
+
             let target_args = target_args_recv.borrow_and_update().clone();
             tracing::info!(message_id = "Azzlo6j2", ?target_args, "new target args");
 

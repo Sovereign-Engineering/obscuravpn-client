@@ -313,7 +313,7 @@ function VpnStatusCard() {
                 <Divider my='md' />
                 <Stack justify='space-between' w='100%'>
                   <CurrentSession />
-                  <ExitInfoCollapse exitPubKey={appStatus.vpnStatus.connected.exit_public_key} connectedExit={appStatus.vpnStatus.connected.exit} />
+                  <ExitInfoCollapse exitPubKey={appStatus.vpnStatus.connected.exitPublicKey} connectedExit={appStatus.vpnStatus.connected.exit} />
                 </Stack>
               </>
             }

@@ -49,14 +49,14 @@ export interface OsStatus {
 export interface VpnStatus {
     connected?: {
       exit: Exit,
-      client_public_key: string,
-      exit_public_key: string,
+      clientPublicKey: string,
+      exitPublicKey: string
     },
-    connecting: {},
-    disconnected: {},
-    reconnecting?: {
-        err: string,
+    connecting?: {
+      connectError: string,
+      reconnecting: boolean
     },
+    disconnected?: {}
 }
 
 export interface PinnedLocation {

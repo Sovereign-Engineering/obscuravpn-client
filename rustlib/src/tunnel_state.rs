@@ -145,8 +145,8 @@ impl TunnelState {
             let target_args = target_args_recv.borrow_and_update().clone();
             tracing::info!(message_id = "Azzlo6j2", ?target_args, "new target args");
 
-            if !tunnel_state.borrow().is_target_state(&target_args) {
-                tracing::info!(message_id = "KT91bgvI", "not in target state");
+            if !tunnel_state.borrow().is_target_state(&target_args) || disconnect_reason.is_some() {
+                tracing::info!(message_id = "KT91bgvI", ?disconnect_reason, "not in target state or tunnel broke");
 
                 // Drop tunnel if args changed and change to connecting or disconnected as desired
                 tunnel_state.send_modify(|tunnel_state| match &target_args {

@@ -16,7 +16,7 @@ class AppState: ObservableObject {
     ) {
         self.manager = manager
         self.status = initialStatus
-        self.osStatus = OsStatus.watchable(connection: manager.connection)
+        self.osStatus = OsStatus.watchable(manager: manager)
 
         Task { @MainActor in
             var version: UUID = initialStatus.version
@@ -61,6 +61,36 @@ class AppState: ObservableObject {
                 }
             }
         }
+    }
+
+    func setIncludeAllNetworks(enable: Bool) async throws {
+        guard let proto = self.manager.protocolConfiguration else {
+            throw "NEVPNManager.protocolConfiguration is nil"
+        }
+
+        Self.logger.info("setIncludeAllNetworks \(proto.includeAllNetworks, privacy: .public) → \(enable, privacy: .public)")
+
+        if proto.includeAllNetworks == enable { return }
+
+        proto.includeAllNetworks = enable
+        do {
+            try await self.manager.saveToPreferences()
+            return
+        } catch {
+            Self.logger.error("Failed to save NEVPNManager: \(error.localizedDescription)")
+        }
+
+        do {
+            try await self.manager.loadFromPreferences()
+            return
+        } catch {
+            Self.logger.error("Failed to reload NEVPNManager: \(error.localizedDescription)")
+        }
+
+        proto.includeAllNetworks = false
+        Self.logger.warning("Marking local includeAllNetworks to false as a safe default.")
+
+        throw "Unable to save VPN configuration."
     }
 
     func enableTunnel(_ tunnelArgs: TunnelArgs) async throws(String) {

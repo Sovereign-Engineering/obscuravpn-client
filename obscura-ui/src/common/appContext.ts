@@ -38,6 +38,7 @@ export interface OsStatus {
     internetAvailable: boolean,
     osVpnStatus: NEVPNStatus,
     srcVersion: string
+    strictLeakPrevention: boolean,
     updaterStatus: UpdaterStatus,
     debugBundleStatus: {
         inProgress?: boolean,

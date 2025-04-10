@@ -73,6 +73,10 @@ export function logout() {
     return jsonFfiCmd('logout');
 }
 
+export async function setStrictLeakPrevention(enable: boolean): Promise<void> {
+    await invoke('setStrictLeakPrevention', { enable });
+}
+
 export function connect(exit: string | null = null) {
     let jsonTunnelArgs = JSON.stringify(({ exit }));
     return invoke('startTunnel', { tunnelArgs: jsonTunnelArgs });

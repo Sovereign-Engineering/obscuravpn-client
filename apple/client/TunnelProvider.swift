@@ -77,6 +77,7 @@ class TunnelProviderInit {
             let proto = NETunnelProviderProtocol()
             proto.providerBundleIdentifier = extensionBundleID()
             proto.serverAddress = "obscura.net"
+            proto.includeAllNetworks = manager.protocolConfiguration?.includeAllNetworks ?? false
             manager.protocolConfiguration = proto
             manager.isEnabled = true
 

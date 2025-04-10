@@ -110,6 +110,14 @@ export function percentEncodeQuery(params: Record<string, string>) {
 
 const DEFAULT_ERROR_MSG = "An unexpected error has occurred.";
 
+export function errMsg(error: unknown): string {
+    if (error instanceof Error) {
+        return error.message;
+    }
+    console.warn(fmt`errMsg: error = ${error} is not an instance of Error`);
+    return DEFAULT_ERROR_MSG;
+}
+
 export function normalizeError(error: unknown): Error {
     if (error instanceof Error) {
         return error;

@@ -21,7 +21,7 @@ use uuid::Uuid;
 
 use crate::{
     client_state::AccountStatus,
-    config::{Config, ConfigLoadError, ConfigSaveError, PinnedLocation},
+    config::{Config, ConfigDebug, ConfigLoadError, ConfigSaveError, PinnedLocation},
     errors::ApiError,
     tunnel_state::TunnelState,
 };
@@ -307,6 +307,15 @@ impl Manager {
     pub fn rotate_wg_key(&self) -> Result<(), ConfigSaveError> {
         self.client_state.rotate_wg_key()
     }
+
+    pub fn get_debug_info(&self) -> DebugInfo {
+        DebugInfo { config: self.client_state.get_config().into() }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DebugInfo {
+    config: ConfigDebug,
 }
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]

@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use strum::IntoStaticStr;
 use uuid::Uuid;
 
-use crate::manager::{Manager, ManagerTrafficStats, Status};
+use crate::manager::{DebugInfo, Manager, ManagerTrafficStats, Status};
 use crate::{config::ConfigSaveError, errors::ApiError};
 use crate::{config::PinnedLocation, manager::TunnelArgs};
 
@@ -75,6 +75,7 @@ impl From<&ApiError> for ManagerCmdErrorCode {
 pub enum ManagerCmd {
     ApiGetAccountInfo {},
     ApiListExit {},
+    GetDebugInfo {},
     GetStatus { known_version: Option<Uuid> },
     GetTrafficStats {},
     Login { account_id: AccountId, validate: bool },
@@ -91,10 +92,11 @@ pub enum ManagerCmd {
 #[serde(untagged)]
 pub enum ManagerCmdOk {
     Empty,
-    GetTrafficStats(ManagerTrafficStats),
     ApiListExit(<ListExits2 as Cmd>::Output),
     ApiGetAccountInfo(<GetAccountInfo as Cmd>::Output),
+    GetDebugInfo(DebugInfo),
     GetStatus(Status),
+    GetTrafficStats(ManagerTrafficStats),
 }
 
 impl ManagerCmd {
@@ -145,6 +147,7 @@ impl ManagerCmd {
                 Ok(()) => Ok(ManagerCmdOk::Empty),
                 Err(err) => Err((&err).into()),
             },
+            ManagerCmd::GetDebugInfo {} => Ok(ManagerCmdOk::GetDebugInfo(manager.get_debug_info())),
         }
     }
 }

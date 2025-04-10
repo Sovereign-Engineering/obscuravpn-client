@@ -10,6 +10,7 @@ enum NeManagerCmdResult: Codable {
 }
 
 enum NeManagerCmd: Codable {
+    case getDebugInfo
     case apiGetAccountInfo
     case getStatus(knownVersion: UUID?)
     case getTrafficStats

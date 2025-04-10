@@ -246,6 +246,51 @@ pub struct Config {
     pub cached_account_status: Option<AccountStatus>,
 }
 
+// Redact sensitive fields by default
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ConfigDebug {
+    pub api_url: Option<String>,
+    pub local_tunnels_ids: Vec<String>,
+    pub in_new_account_flow: bool,
+    pub pinned_exits: Vec<String>,
+    pub pinned_locations: Option<Vec<PinnedLocation>>,
+    pub last_chosen_exit: Option<String>,
+    pub use_wireguard_key_cache: (),
+    pub has_account_id: bool,
+    pub has_cached_auth_token: bool,
+}
+
+impl From<Config> for ConfigDebug {
+    fn from(config: Config) -> Self {
+        let Config {
+            api_url,
+            account_id,
+            old_account_ids: _,
+            local_tunnels_ids,
+            exit: (),
+            in_new_account_flow,
+            cached_auth_token,
+            pinned_exits,
+            pinned_locations,
+            last_chosen_exit,
+            wireguard_key_cache: _,
+            use_wireguard_key_cache,
+            cached_account_status: _,
+        } = config;
+        Self {
+            api_url,
+            local_tunnels_ids,
+            in_new_account_flow,
+            pinned_exits,
+            pinned_locations,
+            last_chosen_exit,
+            use_wireguard_key_cache,
+            has_account_id: account_id.is_some(),
+            has_cached_auth_token: cached_auth_token.is_some(),
+        }
+    }
+}
+
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct PinnedLocation {

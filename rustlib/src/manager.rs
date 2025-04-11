@@ -148,8 +148,26 @@ impl Manager {
         self.status_watch.subscribe()
     }
 
-    pub fn set_target_state(&self, target_args: Option<TunnelArgs>) {
-        _ = self.target_tunnel_args.send(target_args)
+    pub fn set_target_state(&self, new_target_args: Option<TunnelArgs>, allow_activation: bool) -> Result<(), ()> {
+        let mut ret = Ok(());
+        let ret_ref = &mut ret;
+        _ = self.target_tunnel_args.send_if_modified(move |target_args| {
+            if target_args == &new_target_args {
+                tracing::warn!(
+                    message_id = "oqQ8GZEE",
+                    "not setting target state, because the new one is identical to the current one"
+                );
+                return false;
+            }
+            if target_args.is_none() && new_target_args.is_some() && !allow_activation {
+                *ret_ref = Err(());
+                tracing::warn!(message_id = "juurJ3bm", "not setting target state, because activation is not allowed");
+                return false;
+            }
+            *target_args = new_target_args;
+            true
+        });
+        ret
     }
 
     pub fn send_packet(&self, packet: &[u8]) {

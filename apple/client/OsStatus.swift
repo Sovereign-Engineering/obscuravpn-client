@@ -14,17 +14,12 @@ class OsStatus: Encodable {
     var updaterStatus = UpdaterStatus()
     var debugBundleStatus = DebugBundleStatus()
 
-    init(
-        strictLeakPrevention: Bool,
-        osVpnStatus: NEVPNStatus,
-    ) {
+    init(strictLeakPrevention: Bool, osVpnStatus: NEVPNStatus) {
         self.osVpnStatus = osVpnStatus
         self.strictLeakPrevention = strictLeakPrevention
     }
 
-    static func watchable(
-        manager: NEVPNManager,
-    ) -> WatchableValue<OsStatus> {
+    static func watchable(manager: NEVPNManager) -> WatchableValue<OsStatus> {
         var lastIncludeAllNetworks = switch manager.protocolConfiguration {
         case let .some(proto): proto.includeAllNetworks
         case nil: false // Report safe default.

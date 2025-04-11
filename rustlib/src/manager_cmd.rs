@@ -31,6 +31,7 @@ pub enum ManagerCmdErrorCode {
     ApiRateLimitExceeded,
     ApiSignupLimitExceeded,
     ConfigSaveError,
+    TunnelInactive,
     Other,
 }
 
@@ -84,7 +85,7 @@ pub enum ManagerCmd {
     SetApiUrl { url: Option<String> },
     SetInNewAccountFlow { value: bool },
     SetPinnedExits { exits: Vec<PinnedLocation> },
-    SetTunnelArgs { args: Option<TunnelArgs> },
+    SetTunnelArgs { args: Option<TunnelArgs>, allow_activation: bool },
     RotateWgKey {},
 }
 
@@ -139,10 +140,10 @@ impl ManagerCmd {
                 Ok(()) => Ok(ManagerCmdOk::Empty),
                 Err(err) => Err((&err).into()),
             },
-            ManagerCmd::SetTunnelArgs { args } => {
-                manager.set_target_state(args);
-                Ok(ManagerCmdOk::Empty)
-            }
+            ManagerCmd::SetTunnelArgs { args, allow_activation } => match manager.set_target_state(args, allow_activation) {
+                Ok(()) => Ok(ManagerCmdOk::Empty),
+                Err(()) => Err(ManagerCmdErrorCode::TunnelInactive),
+            },
             ManagerCmd::RotateWgKey {} => match manager.rotate_wg_key() {
                 Ok(()) => Ok(ManagerCmdOk::Empty),
                 Err(err) => Err((&err).into()),

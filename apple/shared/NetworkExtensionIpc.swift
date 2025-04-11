@@ -15,7 +15,7 @@ enum NeManagerCmd: Codable {
     case getStatus(knownVersion: UUID?)
     case getTrafficStats
     case ping
-    case setTunnelArgs(args: TunnelArgs?)
+    case setTunnelArgs(args: TunnelArgs?, allowActivation: Bool = false)
 }
 
 struct TunnelArgs: Codable {

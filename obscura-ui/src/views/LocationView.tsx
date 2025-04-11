@@ -26,7 +26,7 @@ import classes from './Location.module.css';
 
 export default function LocationView() {
     const { t } = useTranslation();
-    const { vpnConnected, vpnConnect, connectionInProgress, vpnDisconnectConnect, appStatus } = useContext(AppContext);
+    const { vpnConnected, vpnConnect, connectionInProgress, appStatus } = useContext(AppContext);
     const { exitList } = useContext(ExitsContext);
 
     const onExitSelect = async (exit: Exit) => {
@@ -42,7 +42,7 @@ export default function LocationView() {
                 color: 'yellow.4',
                 id: NotificationId.VPN_DISCONNECT_CONNECT
             });
-            await vpnDisconnectConnect(exit.id);
+            await vpnConnect(exit.id);
         } else if (exitList !== null) {
             try {
               exit = getRandomExitFromCity(exitList, exit.country_code, exit.city_code);
@@ -265,7 +265,7 @@ function VpnStatusCard() {
 
     const getStatusTitle = () => {
         if (isOffline) return t('Offline');
-        if (connectionInProgress !== ConnectionInProgress.UNSET && connectionInProgress !== ConnectionInProgress.ChangingLocations) return t(connectionInProgress) + '...';
+        if (connectionInProgress !== ConnectionInProgress.UNSET) return t(connectionInProgress) + '...';
         const selectedLocation = appStatus.vpnStatus.connected?.exit.city_name;
         // vpnConnected <-> vpnStatus.connected.exit defined
         if (selectedLocation !== undefined) return t('connectedToLocation', { location: selectedLocation });
@@ -274,6 +274,9 @@ function VpnStatusCard() {
 
     const getStatusSubtitle = () => {
         if (isOffline) return t('connectToInternet');
+        if (connectionInProgress === ConnectionInProgress.ChangingLocations) {
+          return t('trafficSuspended');
+        }
         return vpnConnected ? t('trafficProtected') : t('trafficVulnerable');
     };
 
@@ -294,15 +297,20 @@ function VpnStatusCard() {
         return t('busyConnection');
     };
 
+    const statusColor = vpnConnected ? 'green.7' : (connectionInProgress === ConnectionInProgress.ChangingLocations ? 'gray' : 'red.7');
+
     return (
         <Card shadow='sm' padding='lg' radius='md' withBorder w='90%' mb='xs'>
             <Group justify='space-between'>
                 <Stack gap={0}>
                     <Group align='center' gap={5}>
-                        <ThemeIcon color={vpnConnected ? 'green.7' : 'red.7'} variant='transparent'>
-                            {vpnConnected ? <BsShieldFillCheck size={25} /> : <BsShieldFillExclamation size={25} />}
+                        <ThemeIcon color={statusColor} variant='transparent'>
+                            {connectionInProgress === ConnectionInProgress.ChangingLocations
+                            ? <Loader  size='xs' color='gray' /> : vpnConnected
+                            ? <BsShieldFillCheck size={25} />
+                            : <BsShieldFillExclamation size={25} />}
                         </ThemeIcon>
-                        <Title order={4}   fw={600} c={vpnConnected ? 'green.7' : 'red.7'}>{getStatusTitle()}</Title>
+                    <Title order={4} fw={600} c={statusColor}>{getStatusTitle()}</Title>
                     </Group>
                     <Text c='gray' size='sm' ml={34}>{getStatusSubtitle()}</Text>
                 </Stack>

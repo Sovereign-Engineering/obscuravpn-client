@@ -186,6 +186,7 @@
   "toggleTheme": "Toggle theme",
   "tosAndPrivacyPolicy": "Terms of Service and Privacy Policy",
   "trafficProtected": "Traffic is protected",
+  "trafficSuspended": "Traffic is suspended",
   "trafficVulnerable": "Traffic is vulnerable",
   "unresponsiveDaemonError": "Daemon is Unresponsive ({{ timeStamp }})",
   "updateAvailable": "update available: v{{ version }}",

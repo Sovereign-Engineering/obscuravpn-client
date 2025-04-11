@@ -404,7 +404,7 @@ interface LocationSelectProps {
 function LocationSelect({ cityConnectingTo, setCityConnectingTo }: LocationSelectProps) {
     const { t } = useTranslation();
     const { exitList } = useContext(ExitsContext);
-    const { appStatus, vpnConnect, vpnConnected, vpnDisconnectConnect, connectionInProgress, osStatus } = useContext(AppContext);
+    const { appStatus, vpnConnect, vpnConnected, connectionInProgress, osStatus } = useContext(AppContext);
     const { internetAvailable } = osStatus;
     const { lastChosenExit, pinnedLocations } = appStatus;
     const connectedExit = appStatus.vpnStatus.connected?.exit;
@@ -506,11 +506,7 @@ function LocationSelect({ cityConnectingTo, setCityConnectingTo }: LocationSelec
                                         const exit = getRandomExitFromCity(exitList, country_code, city_code);
                                         setSelectedExit(exit);
                                         setCityConnectingTo(exit.city_name);
-                                        if (vpnConnected) {
-                                            vpnDisconnectConnect(exit.id);
-                                        } else {
-                                            vpnConnect(exit.id);
-                                        }
+                                        vpnConnect(exit.id);
                                     } catch (error) {
                                         const e = normalizeError(error);
                                         if (e instanceof CityNotFoundError) {

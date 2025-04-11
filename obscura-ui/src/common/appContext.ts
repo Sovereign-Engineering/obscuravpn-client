@@ -89,7 +89,6 @@ interface IAppContext {
     toggleVpnConnection: () => Promise<void>,
     vpnConnect: (exit?: string) => Promise<void>,
     vpnDisconnect: () => Promise<void>,
-    vpnDisconnectConnect: (exit: string) => Promise<void>,
     pollAccount: () => Promise<void>,
     accountLoading: boolean,
     appStatus: AppStatus,

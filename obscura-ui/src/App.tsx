@@ -93,8 +93,10 @@ export default function () {
     })
   }, []);
 
-  async function tryConnect(exit: string | null = null, changingLocation = false) {
-    if (!changingLocation) {
+  async function tryConnect(exit: string | null = null) {
+    if (vpnConnected) {
+      setConnectionInProgress(ConnectionInProgress.ChangingLocations);
+    } else {
       setConnectionInProgress(ConnectionInProgress.Connecting);
     }
     ignoreConnectingErrors.current = false;
@@ -129,21 +131,6 @@ export default function () {
       await disconnectFromVpn();
     } else {
       await tryConnect()
-    }
-  }
-
-  async function disconnectThenConnect(exitId: string) {
-    if (vpnConnected) {
-      setConnectionInProgress(ConnectionInProgress.ChangingLocations);
-      await commands.disconnectBlocking();
-      notifications.update({
-        id: NotificationId.VPN_DISCONNECT_CONNECT,
-        color: theme.primaryColor,
-        autoClose: 10_000,
-        // keep same message
-        message: undefined
-      });
-      await tryConnect(exitId, true);
     }
   }
 
@@ -195,6 +182,7 @@ export default function () {
         notifyVpnError(connectError);
       }
     } else if (vpnStatus.disconnected !== undefined) {
+      console.log('got disconnected')
       setConnectionInProgress(value => {
         if (value === ConnectionInProgress.ChangingLocations) return value;
         return ConnectionInProgress.UNSET;
@@ -361,7 +349,6 @@ export default function () {
     vpnConnect: tryConnect,
     vpnConnected,
     vpnDisconnect: disconnectFromVpn,
-    vpnDisconnectConnect: disconnectThenConnect,
   }
 
   const exitsContext = {

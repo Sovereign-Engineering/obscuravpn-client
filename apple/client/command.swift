@@ -52,7 +52,6 @@ func handleWebViewCommand(command: Command) async throws(String) -> String {
         try unregisterAsLoginItem()
     case .isRegisteredAsLoginItem:
         return try isRegisteredAsLoginItem().json()
-
     case .resetUserDefaults:
         // NOTE: only shown in the Developer View
         appState.resetUserDefaults()

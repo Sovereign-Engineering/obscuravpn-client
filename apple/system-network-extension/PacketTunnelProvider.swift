@@ -78,7 +78,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
             let networkConfig = NetworkConfig(ipv4: "10.75.76.77", dns: ["10.64.0.99"], ipv6: "fc00:bbbb:bbbb:bb01::c:4c4d/128")
             try await self.setTunnelNetworkSettings(NEPacketTunnelNetworkSettings.build(networkConfig))
-            let _: Empty = try await runManagerCmd(.setTunnelArgs(args: tunnelArgs))
+            let _: Empty = try await runManagerCmd(.setTunnelArgs(args: tunnelArgs, allowActivation: true))
 
             logger.log("set tunnel active flag \(self.providerId, privacy: .public)")
             isActiveGuard.value = true
@@ -104,7 +104,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
             logger.log("stopping tunnel \(self.providerId, privacy: .public)")
             do {
-                let _: Empty = try await runManagerCmd(.setTunnelArgs(args: .none))
+                let _: Empty = try await runManagerCmd(.setTunnelArgs(args: .none, allowActivation: false))
             } catch {
                 logger.critical("setting empty tunnel args failed: \(error, privacy: .public)")
             }
@@ -123,23 +123,9 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             logger.error("received app message without completion handler")
             return
         }
-        guard let isSetTunnelArgs = try? [String: Empty].self.init(json: msg).keys.contains("setTunnelArgs") else {
-            logger.error("received invalid app message, expected JSON encoded manager command")
-            let json_error = try! NeManagerCmdResult.error(errorCodeOther).json().data(using: .utf8)
-            completionHandler(json_error)
-            return
-        }
         Task {
-            let isActiveGuard = isSetTunnelArgs ? await self.isActive.lock() : nil
-            defer { withExtendedLifetime(isActiveGuard) {}}
-            if isActiveGuard?.value == .some(false) {
-                // Prevent accidental tunnel starts due to a "setTunnelArgs" command that lost a race with "stopTunnel".
-                let json_error = try! NeManagerCmdResult.error(errorCodeTunnelInactive).json().data(using: .utf8)
-                completionHandler(json_error)
-            } else {
-                let json_result = try! await ffiJsonManagerCmd(msg).json()
-                completionHandler(json_result.data(using: .utf8))
-            }
+            let json_result = try! await ffiJsonManagerCmd(msg).json()
+            completionHandler(json_result.data(using: .utf8))
         }
     }
 

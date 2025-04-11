@@ -65,7 +65,6 @@ export default function Connection() {
     const accountHasExpired = accountInfo !== null && accountIsExpired(accountInfo);
 
     const getTitle = () => {
-        if (vpnConnected) return t('connectedToObscura');
         if (accountHasExpired) return t('account-Expired');
         if (connectionTransition) {
             switch (connectionInProgress) {
@@ -78,16 +77,17 @@ export default function Connection() {
                     return t('Disconnecting');
             }
         }
+        if (vpnConnected) return t('connectedToObscura');
         if (!internetAvailable) return t('disconnected');
         if (accountInfo === null) return t('validatingAccount')
         return t('notConnected');
     }
 
     const Subtitle = () => {
-        if (vpnConnected) return t('enjoyObscura');
+        if (vpnConnected && !connectionTransition) return t('enjoyObscura');
         if (accountHasExpired) return t('continueUsingObscura');
-        if (!internetAvailable) return t('connectToInternet');
         if (connectionTransition) return t('pleaseWaitAMoment');
+        if (!internetAvailable) return t('connectToInternet');
         if (accountInfo === null) return '';
         return t('connectToEnjoy');
     }
@@ -162,7 +162,6 @@ function ConnectionProgressBar() {
 
     const connectingProgressBars = usePulsingProgress({ activated: isConnecting(connectionInProgress), bars: 2, inactiveColor: progressBg, w: 50 });
     const isOffline = !internetAvailable && !vpnConnected && !isConnecting(connectionInProgress);
-
     return (
         <Paper shadow='xl' withBorder w='80%' maw={600} bg={bg} p='md' pt={5} pb='xs' mb='lg' radius='lg'>
             <Group mih={50} className={classes.connectionProgressBarGroup} align='center'>
@@ -186,7 +185,7 @@ function ConnectionProgressBar() {
                     </>
                 }
                 {
-                    internetAvailable && !vpnConnected && !isConnecting(connectionInProgress) &&
+                    internetAvailable && (connectionInProgress === ConnectionInProgress.Disconnecting || (!vpnConnected && connectionInProgress === ConnectionInProgress.UNSET)) &&
                     <Stack gap='xs' align='center' justify='flex-end' h={50}>
                         <Progress className={classes.trafficVulnerableProgressBar} value={100} color='red.6' h={2} bg={progressBg} />
                         <Text size='xs' c='red.6'>
@@ -194,7 +193,8 @@ function ConnectionProgressBar() {
                         </Text>
                     </Stack>
                 }
-                {(vpnConnected || isConnecting(connectionInProgress)) && <>
+                {
+                    ((vpnConnected && connectionInProgress === ConnectionInProgress.UNSET) || isConnecting(connectionInProgress)) && <>
                     {connectingProgressBars[0]}
                     <Stack gap='0' align='center'>
                         <ThemeIcon variant='transparent' c='white'>
@@ -538,7 +538,7 @@ function LocationSelect({ cityConnectingTo, setCityConnectingTo }: LocationSelec
 function LocationConnectTopCaption({ cityConnectingTo }: { cityConnectingTo: string | null }) {
     const { t } = useTranslation();
     const { vpnConnected, connectionInProgress } = useContext(AppContext);
-    if (vpnConnected && connectionInProgress !== ConnectionInProgress.ChangingLocations)
+    if (vpnConnected && connectionInProgress === ConnectionInProgress.UNSET)
         return <Text c='green.8' fw={550}>{t('connectedTo')}</Text>;
 
     if (connectionInProgress === ConnectionInProgress.UNSET && !vpnConnected)

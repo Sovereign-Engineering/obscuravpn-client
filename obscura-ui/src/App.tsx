@@ -235,6 +235,15 @@ export default function () {
     if (appStatus !== null) handleNewStatus(appStatus);
   }, [appStatus]);
 
+  useEffect(() => {
+    if (osStatus !== null) {
+      const { osVpnStatus } = osStatus;
+      if (osVpnStatus === 'disconnecting') {
+        setConnectionInProgress(ConnectionInProgress.Disconnecting);
+      }
+    }
+  }, [osStatus]);
+
   function resetState() {
     // Useful for runtime rendering exceptions
     if (vpnConnected) toggleVpnConnection();

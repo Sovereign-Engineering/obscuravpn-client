@@ -277,7 +277,7 @@ function VpnStatusCard() {
         if (connectionInProgress === ConnectionInProgress.ChangingLocations) {
           return t('trafficSuspended');
         }
-        return vpnConnected ? t('trafficProtected') : t('trafficVulnerable');
+        return (vpnConnected && connectionInProgress === ConnectionInProgress.UNSET) ? t('trafficProtected') : t('trafficVulnerable');
     };
 
     const allowCancel = connectionInProgress === ConnectionInProgress.Connecting || connectionInProgress === ConnectionInProgress.Reconnecting;
@@ -297,7 +297,8 @@ function VpnStatusCard() {
         return t('busyConnection');
     };
 
-    const statusColor = vpnConnected ? 'green.7' : (connectionInProgress === ConnectionInProgress.ChangingLocations ? 'gray' : 'red.7');
+    const statusColor = (vpnConnected && connectionInProgress === ConnectionInProgress.UNSET) ? 'green.7'
+        : (connectionInProgress === ConnectionInProgress.ChangingLocations ? 'gray' : 'red.7');
 
     return (
         <Card shadow='sm' padding='lg' radius='md' withBorder w='90%' mb='xs'>
@@ -306,7 +307,7 @@ function VpnStatusCard() {
                     <Group align='center' gap={5}>
                         <ThemeIcon color={statusColor} variant='transparent'>
                             {connectionInProgress === ConnectionInProgress.ChangingLocations
-                            ? <Loader  size='xs' color='gray' /> : vpnConnected
+                            ? <Loader size='xs' color='gray.5' /> : (vpnConnected && connectionInProgress === ConnectionInProgress.UNSET)
                             ? <BsShieldFillCheck size={25} />
                             : <BsShieldFillExclamation size={25} />}
                         </ThemeIcon>
@@ -318,7 +319,7 @@ function VpnStatusCard() {
                     {getButtonContent()}
                 </Button>
             </Group>
-            {appStatus.vpnStatus.connected !== undefined &&
+            {appStatus.vpnStatus.connected !== undefined && connectionInProgress !== ConnectionInProgress.Disconnecting &&
               <>
                 <Divider my='md' />
                 <Stack justify='space-between' w='100%'>

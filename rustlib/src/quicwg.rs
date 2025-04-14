@@ -13,7 +13,7 @@ use quinn::{rustls, ClientConfig, MtuDiscoveryConfig};
 use rand::random;
 use static_assertions::const_assert;
 use std::net::{Ipv4Addr, SocketAddr};
-use std::num::NonZeroU32;
+use std::num::{NonZeroU32, Saturating};
 use std::ops::ControlFlow;
 use std::sync::{Arc, Mutex};
 use thiserror::Error;
@@ -111,7 +111,8 @@ struct WgState {
     buffer: Vec<u8>,
     wg: Tunn,
     traffic_stats: QuicWgTrafficStats,
-    ticks_since_last_packet: u32,
+    ticks_since_last_packet: Saturating<u32>,
+    ticks_since_last_pong: Saturating<u32>,
     last_send_err_logged_at: Option<Instant>,
 }
 
@@ -151,7 +152,8 @@ impl QuicWgConn {
             wg,
             traffic_stats: QuicWgTrafficStats { connected_at: now, tx_bytes: 0, rx_bytes: 0, latest_latency_ms: 0 },
             buffer: vec![0u8; u16::MAX as usize],
-            ticks_since_last_packet: 0,
+            ticks_since_last_packet: Saturating(0),
+            ticks_since_last_pong: Saturating(0),
             last_send_err_logged_at: None,
         });
         Ok(Self {
@@ -293,9 +295,10 @@ impl QuicWgConn {
             select_biased! {
                 _ = self.wg_tick_notify.notified().fuse() => {
                     let mut wg_state = self.wg_state.lock().unwrap();
-                    let WgState {buffer,wg, ticks_since_last_packet, .. } = &mut *wg_state;
-                    if ticks_since_last_packet.saturating_mul(WG_TICK_MS) > WG_MAX_IDLE_MS {
-                        tracing::error!("no packets received for at least {WG_MAX_IDLE_MS}ms");
+                    let WgState {buffer, wg, ticks_since_last_packet, ticks_since_last_pong, .. } = &mut *wg_state;
+                    tracing::info!(message_id = "WKqFjXMA", ticks_since_last_packet = ticks_since_last_packet.0 , ticks_since_last_pong = ticks_since_last_pong.0, "wg tick");
+                    if (*ticks_since_last_packet * Saturating(WG_TICK_MS)).0 > WG_MAX_IDLE_MS {
+                        tracing::error!(message_id = "YQwnx6rF", "no packets received for {WG_MAX_IDLE_MS}ms");
                         return Err(QuicWgReceiveError::WireguardIdleTimeout)
                     }
                     loop {
@@ -309,12 +312,13 @@ impl QuicWgConn {
                     let ping_packet = self.build_ping_keepalive_packet();
                     let ping_result = wg.encapsulate(&ping_packet, buffer);
                     Self::handle_result(&self.quic, ping_result)?;
-                    *ticks_since_last_packet += 1;
+                    *ticks_since_last_packet += 1 ;
+                    *ticks_since_last_pong += 1;
                 }
                 receive_quic = self.receive_quic().fuse() => {
                     let mut datagram = receive_quic?;
                     let mut wg_state = self.wg_state.lock().unwrap();
-                    let WgState {buffer,wg, ticks_since_last_packet, traffic_stats, .. } = &mut *wg_state;
+                    let WgState {buffer,wg, ticks_since_last_packet, ticks_since_last_pong, traffic_stats, .. } = &mut *wg_state;
                     loop {
                         let res = wg.decapsulate(None, &datagram, buffer);
                         match Self::handle_result(&self.quic, res)? {
@@ -323,11 +327,12 @@ impl QuicWgConn {
                                 continue
                             }
                             ControlFlow::Break(Some(packet)) => {
-                                *ticks_since_last_packet = 0;
+                                *ticks_since_last_packet = Saturating(0);
                                 traffic_stats.rx_bytes += packet.len() as u64;
                                 if let Some(latest_latency_ms) = self.latency_ms_from_pong_keepalive_packet(&packet) {
                                     tracing::info!("received keepalive pong after {}ms", latest_latency_ms);
                                     traffic_stats.latest_latency_ms = latest_latency_ms;
+                                    *ticks_since_last_pong = Saturating(0);
                                     break
                                 }
                                 return Ok(packet)

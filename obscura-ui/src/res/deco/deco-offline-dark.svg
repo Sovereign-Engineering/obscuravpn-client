@@ -1,1 +1,747 @@
-<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2" viewBox="0 0 660 132"><path d="M79 985h660v132H79z" style="fill:none" transform="translate(-79 -985)"/><path d="M648 36h12v12h-12z" style="fill:#575757;fill-opacity:.76;fill-rule:nonzero"/><path d="M444 72h12v12h-12z" style="fill:#575757;fill-opacity:.89;fill-rule:nonzero"/><path d="M420 84h12v12h-12z" style="fill:#575757;fill-opacity:.49;fill-rule:nonzero"/><path d="M408 108h12v12h-12z" style="fill:#575757;fill-opacity:.6;fill-rule:nonzero"/><path d="M408 120h12v12h-12z" style="fill:#575757;fill-opacity:.49;fill-rule:nonzero"/><path d="M432 120h12v12h-12z" style="fill:#575757;fill-opacity:.69;fill-rule:nonzero"/><path d="M444 120h12v12h-12z" style="fill:#575757;fill-opacity:.41;fill-rule:nonzero"/><path d="M444 108h12v12h-12z" style="fill:#575757;fill-opacity:.82;fill-rule:nonzero"/><path d="M456 108h12v12h-12z" style="fill:#575757;fill-rule:nonzero"/><path d="M480 84h12v12h-12z" style="fill:#575757;fill-opacity:.2;fill-rule:nonzero"/><path d="M456 72h12v12h-12z" style="fill:#575757;fill-opacity:.55;fill-rule:nonzero"/><path d="M456 60h12v12h-12z" style="fill:#575757;fill-opacity:.64;fill-rule:nonzero"/><path d="M492 96h12v12h-12z" style="fill:#575757;fill-opacity:.24;fill-rule:nonzero"/><path d="M468 108v12h12v-12h-12Zm0 12v12h12v-12h-12Z" style="fill:#575757;fill-opacity:.42;fill-rule:nonzero"/><path d="M492 120h12v12h-12z" style="fill:#575757;fill-opacity:.78;fill-rule:nonzero"/><path d="M480 120h12v12h-12z" style="fill:#575757;fill-opacity:.81;fill-rule:nonzero"/><path d="M480 108h12v12h-12z" style="fill:#575757;fill-opacity:.51;fill-rule:nonzero"/><path d="M480 96h12v12h-12z" style="fill:#575757;fill-opacity:.89;fill-rule:nonzero"/><path d="M528 120h12v12h-12z" style="fill:#575757;fill-opacity:.47;fill-rule:nonzero"/><path d="M516 120h12v12h-12z" style="fill:#575757;fill-opacity:.52;fill-rule:nonzero"/><path d="M516 108h12v12h-12z" style="fill:#575757;fill-opacity:.28;fill-rule:nonzero"/><path d="M468 96h12v12h-12z" style="fill:#575757;fill-opacity:.88;fill-rule:nonzero"/><path d="M396 96h12v12h-12z" style="fill:#575757;fill-opacity:.94;fill-rule:nonzero"/><path d="M396 108h12v12h-12z" style="fill:#575757;fill-opacity:.43;fill-rule:nonzero"/><path d="M396 120h12v12h-12z" style="fill:#575757;fill-opacity:.37;fill-rule:nonzero"/><path d="M372 84h12v12h-12z" style="fill:#575757;fill-opacity:.56;fill-rule:nonzero"/><path d="M396 72h12v12h-12z" style="fill:#575757;fill-opacity:.32;fill-rule:nonzero"/><path d="M372 120h12v12h-12z" style="fill:#575757;fill-opacity:.88;fill-rule:nonzero"/><path d="M360 96h12v12h-12z" style="fill:#575757;fill-opacity:.22;fill-rule:nonzero"/><path d="M360 120h12v12h-12z" style="fill:#575757;fill-opacity:.2;fill-rule:nonzero"/><path d="M360 108h12v12h-12z" style="fill:#575757;fill-opacity:.73;fill-rule:nonzero"/><path d="M336 108h12v12h-12z" style="fill:#575757;fill-opacity:.88;fill-rule:nonzero"/><path d="M336 96h12v12h-12z" style="fill:#575757;fill-opacity:.51;fill-rule:nonzero"/><path d="M336 84h12v12h-12z" style="fill:#575757;fill-opacity:.25;fill-rule:nonzero"/><path d="M324 108h12v12h-12z" style="fill:#575757;fill-opacity:.64;fill-rule:nonzero"/><path d="M324 120h12v12h-12z" style="fill:#575757;fill-opacity:.68;fill-rule:nonzero"/><path d="M312 108h12v12h-12z" style="fill:#575757;fill-opacity:.6;fill-rule:nonzero"/><path d="M300 120h12v12h-12z" style="fill:#575757;fill-opacity:.81;fill-rule:nonzero"/><path d="M276 120h12v12h-12z" style="fill:#575757;fill-opacity:.22;fill-rule:nonzero"/><path d="M288 120h12v12h-12z" style="fill:#575757;fill-opacity:.3;fill-rule:nonzero"/><path d="M36 84h12v12H36z" style="fill:#575757;fill-opacity:.59;fill-rule:nonzero"/><path d="M24 108h12v12H24z" style="fill:#575757;fill-opacity:.52;fill-rule:nonzero"/><path d="M24 120h12v12H24z" style="fill:#575757;fill-opacity:.71;fill-rule:nonzero"/><path d="M48 120h12v12H48z" style="fill:#575757;fill-opacity:.79;fill-rule:nonzero"/><path d="M60 120h12v12H60z" style="fill:#575757;fill-opacity:.69;fill-rule:nonzero"/><path d="M60 108h12v12H60z" style="fill:#575757;fill-opacity:.45;fill-rule:nonzero"/><path d="M72 108h12v12H72z" style="fill:#575757;fill-opacity:.84;fill-rule:nonzero"/><path d="M72 84h12v12H72z" style="fill:#575757;fill-opacity:.76;fill-rule:nonzero"/><path d="M84 84h12v12H84z" style="fill:#575757;fill-opacity:.9;fill-rule:nonzero"/><path d="M72 60h12v12H72z" style="fill:#575757;fill-opacity:.81;fill-rule:nonzero"/><path d="M108 96h12v12h-12z" style="fill:#575757;fill-opacity:.94;fill-rule:nonzero"/><path d="M84 108h12v12H84z" style="fill:#575757;fill-opacity:.97;fill-rule:nonzero"/><path d="M84 120h12v12H84z" style="fill:#575757;fill-opacity:.33;fill-rule:nonzero"/><path d="M108 120h12v12h-12z" style="fill:#575757;fill-opacity:.62;fill-rule:nonzero"/><path d="M96 120h12v12H96z" style="fill:#575757;fill-opacity:.66;fill-rule:nonzero"/><path d="M96 108h12v12H96z" style="fill:#575757;fill-opacity:.54;fill-rule:nonzero"/><path d="M96 96h12v12H96z" style="fill:#575757;fill-opacity:.43;fill-rule:nonzero"/><path d="M144 120h12v12h-12z" style="fill:#575757;fill-opacity:.23;fill-rule:nonzero"/><path d="M132 120h12v12h-12z" style="fill:#575757;fill-rule:nonzero"/><path d="M132 108h12v12h-12z" style="fill:#575757;fill-opacity:.83;fill-rule:nonzero"/><path d="M84 96h12v12H84z" style="fill:#575757;fill-opacity:.54;fill-rule:nonzero"/><path d="M12 96h12v12H12z" style="fill:#575757;fill-opacity:.41;fill-rule:nonzero"/><path d="M12 108h12v12H12z" style="fill:#575757;fill-opacity:.71;fill-rule:nonzero"/><path d="M12 120h12v12H12z" style="fill:#575757;fill-opacity:.3;fill-rule:nonzero"/><path d="M0 96h12v12H0z" style="fill:#575757;fill-opacity:.34;fill-rule:nonzero"/><path d="M0 120h12v12H0z" style="fill:#575757;fill-opacity:.41;fill-rule:nonzero"/><path d="M12 72h12v12H12z" style="fill:#575757;fill-opacity:.79;fill-rule:nonzero"/><path d="M48 0h12v12H48z" style="fill:#575757;fill-opacity:.87;fill-rule:nonzero"/><path d="M36 12h12v12H36z" style="fill:#575757;fill-opacity:.69;fill-rule:nonzero"/><path d="M24 36h12v12H24z" style="fill:#575757;fill-opacity:.53;fill-rule:nonzero"/><path d="M24 48h12v12H24z" style="fill:#575757;fill-opacity:.69;fill-rule:nonzero"/><path d="M48 48h12v12H48z" style="fill:#575757;fill-opacity:.64;fill-rule:nonzero"/><path d="M60 48h12v12H60z" style="fill:#575757;fill-opacity:.93;fill-rule:nonzero"/><path d="M60 36h12v12H60z" style="fill:#575757;fill-opacity:.77;fill-rule:nonzero"/><path d="M72 36h12v12H72z" style="fill:#575757;fill-opacity:.91;fill-rule:nonzero"/><path d="M72 12h12v12H72z" style="fill:#575757;fill-opacity:.46;fill-rule:nonzero"/><path d="M84 12h12v12H84z" style="fill:#575757;fill-opacity:.42;fill-rule:nonzero"/><path d="M96 12h12v12H96z" style="fill:#575757;fill-opacity:.6;fill-rule:nonzero"/><path d="M72 0h12v12H72z" style="fill:#575757;fill-opacity:.4;fill-rule:nonzero"/><path d="M108 24h12v12h-12z" style="fill:#575757;fill-opacity:.6;fill-rule:nonzero"/><path d="M84 36h12v12H84z" style="fill:#575757;fill-opacity:.89;fill-rule:nonzero"/><path d="M84 48h12v12H84z" style="fill:#575757;fill-opacity:.57;fill-rule:nonzero"/><path d="M108 48h12v12h-12z" style="fill:#575757;fill-opacity:.82;fill-rule:nonzero"/><path d="M96 48h12v12H96z" style="fill:#575757;fill-opacity:.22;fill-rule:nonzero"/><path d="M96 36h12v12H96z" style="fill:#575757;fill-opacity:.44;fill-rule:nonzero"/><path d="M96 24h12v12H96z" style="fill:#575757;fill-opacity:.24;fill-rule:nonzero"/><path d="M84 60h12v12H84z" style="fill:#575757;fill-opacity:.6;fill-rule:nonzero"/><path d="M84 72h12v12H84z" style="fill:#575757;fill-opacity:.92;fill-rule:nonzero"/><path d="M72 72h12v12H72z" style="fill:#575757;fill-opacity:.87;fill-rule:nonzero"/><path d="M60 72h12v12H60z" style="fill:#575757;fill-opacity:.26;fill-rule:nonzero"/><path d="M48 72h12v12H48z" style="fill:#575757;fill-opacity:.5;fill-rule:nonzero"/><path d="M48 84h12v12H48z" style="fill:#575757;fill-opacity:.81;fill-rule:nonzero"/><path d="M60 84h12v12H60z" style="fill:#575757;fill-opacity:.98;fill-rule:nonzero"/><path d="M96 84h12v12H96z" style="fill:#575757;fill-opacity:.99;fill-rule:nonzero"/><path d="M108 84h12v12h-12z" style="fill:#575757;fill-opacity:.22;fill-rule:nonzero"/><path d="M120 84h12v12h-12z" style="fill:#575757;fill-opacity:.84;fill-rule:nonzero"/><path d="M120 60h12v12h-12z" style="fill:#575757;fill-opacity:.88;fill-rule:nonzero"/><path d="M132 60h12v12h-12z" style="fill:#575757;fill-opacity:.36;fill-rule:nonzero"/><path d="M132 72h12v12h-12z" style="fill:#575757;fill-opacity:.75;fill-rule:nonzero"/><path d="M144 60h12v12h-12z" style="fill:#575757;fill-opacity:.64;fill-rule:nonzero"/><path d="M156 60h12v12h-12z" style="fill:#575757;fill-opacity:.87;fill-rule:nonzero"/><path d="M156 72h12v12h-12z" style="fill:#575757;fill-opacity:.97;fill-rule:nonzero"/><path d="M144 72h12v12h-12z" style="fill:#575757;fill-opacity:.95;fill-rule:nonzero"/><path d="M120 72h12v12h-12z" style="fill:#575757;fill-opacity:.5;fill-rule:nonzero"/><path d="M156 84h12v12h-12z" style="fill:#575757;fill-opacity:.75;fill-rule:nonzero"/><path d="M144 48h12v12h-12z" style="fill:#575757;fill-opacity:.9;fill-rule:nonzero"/><path d="M132 48h12v12h-12z" style="fill:#575757;fill-opacity:.91;fill-rule:nonzero"/><path d="M132 36h12v12h-12z" style="fill:#575757;fill-opacity:.5;fill-rule:nonzero"/><path d="M132 84h12v12h-12z" style="fill:#575757;fill-opacity:.92;fill-rule:nonzero"/><path d="M144 84h12v12h-12z" style="fill:#575757;fill-opacity:.85;fill-rule:nonzero"/><path d="M84 24h12v12H84z" style="fill:#575757;fill-opacity:.23;fill-rule:nonzero"/><path d="M24 60h12v12H24z" style="fill:#575757;fill-opacity:.65;fill-rule:nonzero"/><path d="M36 60h12v12H36z" style="fill:#575757;fill-opacity:.6;fill-rule:nonzero"/><path d="M24 72h12v12H24z" style="fill:#575757;fill-opacity:.62;fill-rule:nonzero"/><path d="M24 84h12v12H24z" style="fill:#575757;fill-opacity:.72;fill-rule:nonzero"/><path d="M12 24h12v12H12z" style="fill:#575757;fill-opacity:.64;fill-rule:nonzero"/><path d="M12 36h12v12H12z" style="fill:#575757;fill-opacity:.47;fill-rule:nonzero"/><path d="M12 48h12v12H12z" style="fill:#575757;fill-opacity:.59;fill-rule:nonzero"/><path d="M12 60h12v12H12z" style="fill:#575757;fill-opacity:.74;fill-rule:nonzero"/><path d="M12 84h12v12H12z" style="fill:#575757;fill-opacity:.89;fill-rule:nonzero"/><path d="M0 24h12v12H0z" style="fill:#575757;fill-opacity:.46;fill-rule:nonzero"/><path d="M0 48h12v12H0z" style="fill:#575757;fill-opacity:.24;fill-rule:nonzero"/><path d="M0 60h12v12H0z" style="fill:#575757;fill-opacity:.52;fill-rule:nonzero"/><path d="M0 72h12v12H0z" style="fill:#575757;fill-opacity:.35;fill-rule:nonzero"/><path d="M0 84h12v12H0z" style="fill:#575757;fill-opacity:.81;fill-rule:nonzero"/><path d="M12 0h12v12H12z" style="fill:#575757;fill-opacity:.6;fill-rule:nonzero"/><path d="M216 72h12v12h-12z" style="fill:#575757;fill-opacity:.58;fill-rule:nonzero"/><path d="M228 84h12v12h-12z" style="fill:#575757;fill-opacity:.27;fill-rule:nonzero"/><path d="M240 108h12v12h-12z" style="fill:#575757;fill-opacity:.38;fill-rule:nonzero"/><path d="M240 120h12v12h-12z" style="fill:#575757;fill-opacity:.56;fill-rule:nonzero"/><path d="M216 120h12v12h-12z" style="fill:#575757;fill-opacity:.55;fill-rule:nonzero"/><path d="M204 120h12v12h-12z" style="fill:#575757;fill-opacity:.46;fill-rule:nonzero"/><path d="M204 108h12v12h-12z" style="fill:#575757;fill-opacity:.67;fill-rule:nonzero"/><path d="M192 108h12v12h-12z" style="fill:#575757;fill-opacity:.68;fill-rule:nonzero"/><path d="M192 84h12v12h-12z" style="fill:#575757;fill-opacity:.79;fill-rule:nonzero"/><path d="M180 84h12v12h-12z" style="fill:#575757;fill-opacity:.66;fill-rule:nonzero"/><path d="M168 84h12v12h-12z" style="fill:#575757;fill-opacity:.89;fill-rule:nonzero"/><path d="M192 60h12v12h-12z" style="fill:#575757;fill-opacity:.3;fill-rule:nonzero"/><path d="M156 96h12v12h-12z" style="fill:#575757;fill-opacity:.77;fill-rule:nonzero"/><path d="M180 108h12v12h-12z" style="fill:#575757;fill-opacity:.8;fill-rule:nonzero"/><path d="M180 120h12v12h-12z" style="fill:#575757;fill-opacity:.63;fill-rule:nonzero"/><path d="M156 120h12v12h-12z" style="fill:#575757;fill-opacity:.79;fill-rule:nonzero"/><path d="M168 120h12v12h-12z" style="fill:#575757;fill-opacity:.77;fill-rule:nonzero"/><path d="M168 108h12v12h-12z" style="fill:#575757;fill-opacity:.99;fill-rule:nonzero"/><path d="M168 96h12v12h-12z" style="fill:#575757;fill-opacity:.44;fill-rule:nonzero"/><path d="M120 120h12v12h-12z" style="fill:#575757;fill-opacity:.93;fill-rule:nonzero"/><path d="M180 96h12v12h-12z" style="fill:#575757;fill-opacity:.7;fill-rule:nonzero"/><path d="M252 96h12v12h-12z" style="fill:#575757;fill-opacity:.43;fill-rule:nonzero"/><path d="M252 108h12v12h-12z" style="fill:#575757;fill-rule:nonzero"/><path d="M252 120h12v12h-12z" style="fill:#575757;fill-opacity:.48;fill-rule:nonzero"/><path d="M264 96h12v12h-12z" style="fill:#575757;fill-opacity:.87;fill-rule:nonzero"/><path d="M264 120h12v12h-12z" style="fill:#575757;fill-opacity:.32;fill-rule:nonzero"/><path d="M276 84h12v12h-12z" style="fill:#575757;fill-opacity:.35;fill-rule:nonzero"/><path d="M252 72h12v12h-12z" style="fill:#575757;fill-opacity:.62;fill-rule:nonzero"/><path d="M276 120h12v12h-12z" style="fill:#575757;fill-opacity:.47;fill-rule:nonzero"/><path d="M288 96h12v12h-12z" style="fill:#575757;fill-opacity:.35;fill-rule:nonzero"/><path d="M288 120h12v12h-12z" style="fill:#575757;fill-opacity:.93;fill-rule:nonzero"/><path d="M288 108h12v12h-12z" style="fill:#575757;fill-opacity:.63;fill-rule:nonzero"/><path d="M312 96h12v12h-12z" style="fill:#575757;fill-opacity:.39;fill-rule:nonzero"/><path d="M312 84h12v12h-12z" style="fill:#575757;fill-opacity:.37;fill-rule:nonzero"/><path d="M348 120h12v12h-12z" style="fill:#575757;fill-opacity:.74;fill-rule:nonzero"/><path d="M360 120h12v12h-12z" style="fill:#575757;fill-opacity:.94;fill-rule:nonzero"/><path d="M624 72h12v12h-12z" style="fill:#575757;fill-opacity:.99;fill-rule:nonzero"/><path d="M600 120h12v12h-12z" style="fill:#575757;fill-opacity:.25;fill-rule:nonzero"/><path d="M624 120h12v12h-12z" style="fill:#575757;fill-opacity:.71;fill-rule:nonzero"/><path d="M636 120h12v12h-12z" style="fill:#575757;fill-opacity:.86;fill-rule:nonzero"/><path d="M648 60h12v12h-12z" style="fill:#575757;fill-opacity:.76;fill-rule:nonzero"/><path d="M588 120h12v12h-12z" style="fill:#575757;fill-opacity:.29;fill-rule:nonzero"/><path d="M576 120h12v12h-12z" style="fill:#575757;fill-opacity:.22;fill-rule:nonzero"/><path d="M588 72h12v12h-12z" style="fill:#575757;fill-opacity:.89;fill-rule:nonzero"/><path d="M564 120h12v12h-12z" style="fill:#575757;fill-opacity:.54;fill-rule:nonzero"/><path d="M540 120h12v12h-12z" style="fill:#575757;fill-opacity:.59;fill-rule:nonzero"/><path d="M552 120h12v12h-12z" style="fill:#575757;fill-opacity:.64;fill-rule:nonzero"/><path d="M552 108h12v12h-12z" style="fill:#575757;fill-opacity:.47;fill-rule:nonzero"/><path d="M528 108h12v12h-12z" style="fill:#575757;fill-opacity:.63;fill-rule:nonzero"/><path d="M516 108h12v12h-12z" style="fill:#575757;fill-opacity:.65;fill-rule:nonzero"/><path d="M504 108h12v12h-12z" style="fill:#575757;fill-opacity:.8;fill-rule:nonzero"/><path d="M564 24h12v12h-12z" style="fill:#575757;fill-opacity:.98;fill-rule:nonzero"/><path d="M576 36h12v12h-12z" style="fill:#575757;fill-opacity:.69;fill-rule:nonzero"/><path d="M588 60h12v12h-12z" style="fill:#575757;fill-opacity:.34;fill-rule:nonzero"/><path d="M564 72h12v12h-12z" style="fill:#575757;fill-opacity:.38;fill-rule:nonzero"/><path d="M552 72h12v12h-12z" style="fill:#575757;fill-opacity:.97;fill-rule:nonzero"/><path d="M552 60h12v12h-12z" style="fill:#575757;fill-opacity:.88;fill-rule:nonzero"/><path d="M540 60h12v12h-12z" style="fill:#575757;fill-opacity:.51;fill-rule:nonzero"/><path d="M540 36h12v12h-12z" style="fill:#575757;fill-opacity:.91;fill-rule:nonzero"/><path d="M528 36h12v12h-12z" style="fill:#575757;fill-opacity:.36;fill-rule:nonzero"/><path d="M516 36h12v12h-12z" style="fill:#575757;fill-opacity:.42;fill-rule:nonzero"/><path d="M540 24h12v12h-12z" style="fill:#575757;fill-opacity:.47;fill-rule:nonzero"/><path d="M540 12h12v12h-12z" style="fill:#575757;fill-opacity:.35;fill-rule:nonzero"/><path d="M504 48h12v12h-12z" style="fill:#575757;fill-opacity:.21;fill-rule:nonzero"/><path d="M528 60h12v12h-12z" style="fill:#575757;fill-opacity:.23;fill-rule:nonzero"/><path d="M528 72h12v12h-12z" style="fill:#575757;fill-opacity:.75;fill-rule:nonzero"/><path d="M504 72h12v12h-12z" style="fill:#575757;fill-opacity:.67;fill-rule:nonzero"/><path d="M516 72h12v12h-12z" style="fill:#575757;fill-opacity:.42;fill-rule:nonzero"/><path d="M516 60h12v12h-12z" style="fill:#575757;fill-opacity:.31;fill-rule:nonzero"/><path d="M516 48h12v12h-12z" style="fill:#575757;fill-opacity:.78;fill-rule:nonzero"/><path d="M564 108h12v12h-12z" style="fill:#575757;fill-opacity:.56;fill-rule:nonzero"/><path d="M540 108h12v12h-12z" style="fill:#575757;fill-opacity:.85;fill-rule:nonzero"/><path d="M492 108h12v12h-12z" style="fill:#575757;fill-opacity:.97;fill-rule:nonzero"/><path d="M492 84h12v12h-12z" style="fill:#575757;fill-opacity:.34;fill-rule:nonzero"/><path d="M480 84h12v12h-12z" style="fill:#575757;fill-opacity:.92;fill-rule:nonzero"/><path d="M468 84h12v12h-12z" style="fill:#575757;fill-opacity:.2;fill-rule:nonzero"/><path d="M456 84h12v12h-12z" style="fill:#575757;fill-opacity:.95;fill-rule:nonzero"/><path d="M432 96h12v12h-12z" style="fill:#575757;fill-opacity:.8;fill-rule:nonzero"/><path d="M456 96h12v12h-12z" style="fill:#575757;fill-opacity:.54;fill-rule:nonzero"/><path d="M492 96h12v12h-12z" style="fill:#575757;fill-opacity:.89;fill-rule:nonzero"/><path d="M468 72h12v12h-12z" style="fill:#575757;fill-opacity:.96;fill-rule:nonzero"/><path d="M480 72h12v12h-12z" style="fill:#575757;fill-opacity:.35;fill-rule:nonzero"/><path d="M480 60h12v12h-12z" style="fill:#575757;fill-opacity:.64;fill-rule:nonzero"/><path d="M528 48h12v12h-12z" style="fill:#575757;fill-opacity:.29;fill-rule:nonzero"/><path d="M600 48h12v12h-12z" style="fill:#575757;fill-opacity:.27;fill-rule:nonzero"/><path d="M600 60h12v12h-12z" style="fill:#575757;fill-opacity:.89;fill-rule:nonzero"/><path d="M600 72h12v12h-12z" style="fill:#575757;fill-opacity:.5;fill-rule:nonzero"/><path d="M600 84h12v12h-12z" style="fill:#575757;fill-opacity:.3;fill-rule:nonzero"/><path d="M612 48h12v12h-12z" style="fill:#575757;fill-opacity:.46;fill-rule:nonzero"/><path d="M612 72h12v12h-12z" style="fill:#575757;fill-opacity:.75;fill-rule:nonzero"/><path d="M624 36h12v12h-12z" style="fill:#575757;fill-opacity:.49;fill-rule:nonzero"/><path d="M600 24h12v12h-12z" style="fill:#575757;fill-opacity:.88;fill-rule:nonzero"/><path d="M636 48h12v12h-12z" style="fill:#575757;fill-opacity:.62;fill-rule:nonzero"/><path d="M648 72h12v12h-12z" style="fill:#575757;fill-opacity:.22;fill-rule:nonzero"/><path d="M636 72h12v12h-12z" style="fill:#575757;fill-opacity:.78;fill-rule:nonzero"/><path d="M636 60h12v12h-12z" style="fill:#575757;fill-opacity:.51;fill-rule:nonzero"/><path d="M576 96h12v12h-12z" style="fill:#575757;fill-opacity:.33;fill-rule:nonzero"/><path d="M528 96h12v12h-12z" style="fill:#575757;fill-opacity:.99;fill-rule:nonzero"/><path d="M540 96h12v12h-12z" style="fill:#575757;fill-opacity:.78;fill-rule:nonzero"/><path d="M552 96h12v12h-12z" style="fill:#575757;fill-opacity:.26;fill-rule:nonzero"/><path d="M564 96h12v12h-12z" style="fill:#575757;fill-opacity:.82;fill-rule:nonzero"/><path d="M588 96h12v12h-12z" style="fill:#575757;fill-opacity:.44;fill-rule:nonzero"/><path d="M600 96h12v12h-12z" style="fill:#575757;fill-opacity:.8;fill-rule:nonzero"/><path d="M612 96h12v12h-12z" style="fill:#575757;fill-opacity:.35;fill-rule:nonzero"/><path d="M564 84h12v12h-12z" style="fill:#575757;fill-opacity:.82;fill-rule:nonzero"/><path d="M528 84h12v12h-12z" style="fill:#575757;fill-opacity:.96;fill-rule:nonzero"/><path d="M588 84h12v12h-12z" style="fill:#575757;fill-rule:nonzero"/><path d="M576 84h12v12h-12z" style="fill:#575757;fill-opacity:.6;fill-rule:nonzero"/><path d="M636 96h12v12h-12z" style="fill:#575757;fill-opacity:.63;fill-rule:nonzero"/><path d="M648 96h12v12h-12z" style="fill:#575757;fill-opacity:.9;fill-rule:nonzero"/><path d="M648 84h12v12h-12z" style="fill:#575757;fill-opacity:.96;fill-rule:nonzero"/><path d="M612 84h12v12h-12z" style="fill:#575757;fill-opacity:.5;fill-rule:nonzero"/><path d="M624 84h12v12h-12z" style="fill:#575757;fill-opacity:.59;fill-rule:nonzero"/><path d="M636 84h12v12h-12z" style="fill:#575757;fill-opacity:.84;fill-rule:nonzero"/><path d="M624 108h12v12h-12z" style="fill:#575757;fill-opacity:.94;fill-rule:nonzero"/><path d="M636 108h12v12h-12z" style="fill:#575757;fill-opacity:.7;fill-rule:nonzero"/><path d="M648 108h12v12h-12z" style="fill:#575757;fill-opacity:.22;fill-rule:nonzero"/><path d="M588 108h12v12h-12z" style="fill:#575757;fill-rule:nonzero"/><path d="M600 108h12v12h-12z" style="fill:#575757;fill-opacity:.41;fill-rule:nonzero"/><path d="M612 108h12v12h-12z" style="fill:#575757;fill-opacity:.33;fill-rule:nonzero"/></svg>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 660 132" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <g transform="matrix(1,0,0,1,-696,-3)">
+        <g id="Offline--Dark-" serif:id="Offline (Dark)" transform="matrix(1,0,0,1,617,-982)">
+            <rect x="79" y="985" width="660" height="132" style="fill:none;"/>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="648" y="36" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.76;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="444" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.89;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="420" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.49;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="408" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.6;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="408" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.49;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="432" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.69;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="444" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.41;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="444" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.82;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="456" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="480" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.2;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="456" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.55;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="456" y="60" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.64;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="492" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.24;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <path d="M468,108L468,120L480,120L480,108L468,108ZM468,120L468,132L480,132L480,120L468,120Z" style="fill:rgb(87,87,87);fill-opacity:0.42;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="492" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.78;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="480" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.81;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="480" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.51;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="480" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.89;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="528" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.47;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="516" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.52;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="516" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.28;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="468" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.88;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="396" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.94;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="396" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.43;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="396" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.37;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="372" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.56;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="396" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.32;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="372" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.88;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="360" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.22;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="360" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.2;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="360" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.73;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="336" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.88;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="336" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.51;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="336" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.25;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="324" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.64;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="324" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.68;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="312" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.6;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="300" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.81;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="276" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.22;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="288" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.3;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="36" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.59;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="24" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.52;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="24" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.71;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="48" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.79;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="60" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.69;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="60" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.45;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="72" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.84;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="72" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.76;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="84" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.9;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="72" y="60" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.81;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="108" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.94;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="84" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.97;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="84" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.33;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="108" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.62;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="96" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.66;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="96" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.54;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="96" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.43;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="144" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.23;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="132" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="132" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.83;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="84" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.54;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="12" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.41;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="12" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.71;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="12" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.3;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="0" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.34;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="0" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.41;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="12" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.79;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="48" y="0" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.87;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="36" y="12" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.69;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="24" y="36" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.53;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="24" y="48" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.69;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="48" y="48" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.64;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="60" y="48" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.93;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="60" y="36" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.77;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="72" y="36" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.91;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="72" y="12" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.46;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="84" y="12" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.42;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="96" y="12" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.6;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="72" y="0" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.4;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="108" y="24" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.6;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="84" y="36" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.89;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="84" y="48" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.57;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="108" y="48" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.82;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="96" y="48" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.22;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="96" y="36" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.44;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="96" y="24" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.24;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="84" y="60" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.6;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="84" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.92;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="72" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.87;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="60" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.26;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="48" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.5;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="48" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.81;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="60" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.98;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="96" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.99;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="108" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.22;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="120" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.84;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="120" y="60" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.88;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="132" y="60" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.36;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="132" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.75;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="144" y="60" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.64;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="156" y="60" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.87;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="156" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.97;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="144" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.95;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="120" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.5;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="156" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.75;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="144" y="48" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.9;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="132" y="48" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.91;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="132" y="36" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.5;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="132" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.92;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="144" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.85;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="84" y="24" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.23;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="24" y="60" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.65;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="36" y="60" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.6;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="24" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.62;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="24" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.72;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="12" y="24" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.64;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="12" y="36" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.47;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="12" y="48" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.59;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="12" y="60" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.74;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="12" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.89;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="0" y="24" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.46;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="0" y="48" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.24;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="0" y="60" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.52;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="0" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.35;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="0" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.81;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="12" y="0" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.6;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="216" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.58;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="228" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.27;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="240" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.38;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="240" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.56;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="216" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.55;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="204" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.46;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="204" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.67;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="192" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.68;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="192" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.79;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="180" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.66;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="168" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.89;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="192" y="60" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.3;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="156" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.77;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="180" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.8;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="180" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.63;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="156" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.79;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="168" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.77;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="168" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.99;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="168" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.44;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="120" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.93;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="180" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.7;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="252" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.43;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="252" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="252" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.48;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="264" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.87;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="264" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.32;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="276" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.35;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="252" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.62;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="276" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.47;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="288" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.35;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="288" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.93;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="288" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.63;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="312" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.39;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="312" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.37;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="348" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.74;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="360" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.94;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="624" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.99;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="600" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.25;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="624" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.71;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="636" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.86;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="648" y="60" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.76;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="588" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.29;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="576" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.22;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="588" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.89;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="564" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.54;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="540" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.59;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="552" y="120" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.64;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="552" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.47;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="528" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.63;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="516" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.65;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="504" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.8;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="564" y="24" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.98;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="576" y="36" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.69;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="588" y="60" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.34;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="564" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.38;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="552" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.97;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="552" y="60" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.88;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="540" y="60" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.51;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="540" y="36" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.91;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="528" y="36" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.36;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="516" y="36" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.42;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="540" y="24" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.47;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="540" y="12" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.35;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="504" y="48" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.21;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="528" y="60" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.23;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="528" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.75;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="504" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.67;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="516" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.42;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="516" y="60" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.31;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="516" y="48" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.78;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="564" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.56;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="540" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.85;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="492" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.97;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="492" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.34;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="480" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.92;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="468" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.2;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="456" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.95;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="432" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.8;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="456" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.54;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="492" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.89;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="468" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.96;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="480" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.35;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="480" y="60" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.64;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="528" y="48" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.29;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="600" y="48" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.27;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="600" y="60" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.89;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="600" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.5;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="600" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.3;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="612" y="48" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.46;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="612" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.75;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="624" y="36" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.49;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="600" y="24" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.88;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="636" y="48" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.62;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="648" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.22;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="636" y="72" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.78;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="636" y="60" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.51;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="576" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.33;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="528" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.99;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="540" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.78;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="552" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.26;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="564" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.82;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="588" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.44;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="600" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.8;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="612" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.35;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="564" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.82;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="528" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.96;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="588" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="576" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.6;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="636" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.63;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="648" y="96" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.9;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="648" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.96;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="612" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.5;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="624" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.59;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="636" y="84" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.84;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="624" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.94;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="636" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.7;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="648" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.22;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="588" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="600" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.41;fill-rule:nonzero;"/>
+            </g>
+            <g transform="matrix(1,0,0,1,79,985)">
+                <rect x="612" y="108" width="12" height="12" style="fill:rgb(87,87,87);fill-opacity:0.33;fill-rule:nonzero;"/>
+            </g>
+        </g>
+    </g>
+</svg>

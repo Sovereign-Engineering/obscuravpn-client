@@ -4,8 +4,10 @@
 set -euo pipefail
 export PATH="$HOME/.cargo/bin:$PATH:/usr/local/bin:/opt/homebrew/bin"
 ## don't use ios/watchos linker for build scripts and proc macros
-#export CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER=/usr/bin/ld
-#export CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER=/usr/bin/ld
+CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER=$(xcrun --find ld)
+export CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER
+CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER=$(xcrun --find ld)
+export CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER
 
 export OBSCURA_CLIENT_RUSTLIB_CBINDGEN_OUTPUT_HEADER_PATH="$SCRIPT_OUTPUT_FILE_1"
 export OBSCURA_CLIENT_RUSTLIB_CBINDGEN_CONFIG_PATH="$SCRIPT_INPUT_FILE_2"

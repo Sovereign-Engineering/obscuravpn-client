@@ -31,7 +31,7 @@
 		30920D7D2C207379008690C3 /* TunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30920D7C2C207379008690C3 /* TunnelProvider.swift */; };
 		30920D942C3D51EC008690C3 /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 30761C362B6EB1F900E5F60D /* NetworkExtension.framework */; };
 		30920D972C3D51EC008690C3 /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30920D962C3D51EC008690C3 /* PacketTunnelProvider.swift */; };
-		30920DA92C3D53F1008690C3 /* libobscuravpn-client.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C90161542BE01159005B14AF /* libobscuravpn-client.a */; };
+		30920DA92C3D53F1008690C3 /* libobscuravpn-client.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C90161542BE01159005B14AF /* libobscuravpn-client.a */; platformFilter = ios; };
 		30920DAD2C3DC174008690C3 /* InfoDict.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30920DAC2C3DC174008690C3 /* InfoDict.swift */; };
 		30920DAE2C3DC174008690C3 /* InfoDict.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30920DAC2C3DC174008690C3 /* InfoDict.swift */; };
 		30920DAF2C3DC174008690C3 /* InfoDict.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30920DAC2C3DC174008690C3 /* InfoDict.swift */; };
@@ -86,6 +86,12 @@
 		96C920692CD91D96002C85EA /* String.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C920682CD91D94002C85EA /* String.swift */; };
 		96C9206A2CD91D96002C85EA /* String.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C920682CD91D94002C85EA /* String.swift */; };
 		A082F8232C46BF5B002AF810 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A082F8222C46BF5B002AF810 /* Sparkle */; };
+		A98F1BCE2DADFF17007F04D3 /* DequeModule in Frameworks */ = {isa = PBXBuildFile; productRef = A98F1BA22DADFF17007F04D3 /* DequeModule */; };
+		A98F1BD02DADFF17007F04D3 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 30761C282B6EB17200E5F60D /* Preview Assets.xcassets */; };
+		A98F1BD12DADFF17007F04D3 /* build in Resources */ = {isa = PBXBuildFile; fileRef = 96516AC22BF928DD00576562 /* build */; };
+		A98F1BD22DADFF17007F04D3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 30761C252B6EB17200E5F60D /* Assets.xcassets */; };
+		A98F1BDA2DAE00A0007F04D3 /* App Network Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 30920D932C3D51EC008690C3 /* App Network Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A9A166A42DAF9B60006B852F /* iOSClientApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9A166A32DAF9B60006B852F /* iOSClientApp.swift */; };
 		C90161572BE011B2005B14AF /* libobscuravpn-client.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C90161542BE01159005B14AF /* libobscuravpn-client.a */; };
 /* End PBXBuildFile section */
 
@@ -96,6 +102,20 @@
 			proxyType = 1;
 			remoteGlobalIDString = 3098C18D2B921489008877AA;
 			remoteInfo = "system-network-extension";
+		};
+		A98F1BDB2DAE00A0007F04D3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 30761C162B6EB17100E5F60D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 30920D922C3D51EC008690C3;
+			remoteInfo = "App Network Extension";
+		};
+		A98F1BDE2DAE00A5007F04D3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 30761C162B6EB17100E5F60D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 30920D922C3D51EC008690C3;
+			remoteInfo = "App Network Extension";
 		};
 		C90161532BE01159005B14AF /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -123,6 +143,17 @@
 				3098C1992B921489008877AA /* net.obscura.vpn-client-app.system-network-extension.systemextension in Embed System Extensions */,
 			);
 			name = "Embed System Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A98F1BDD2DAE00A0007F04D3 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				A98F1BDA2DAE00A0007F04D3 /* App Network Extension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -189,6 +220,8 @@
 		A06E85A62C2ECA680087C8C8 /* bundle-ids.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "bundle-ids.xcconfig"; sourceTree = "<group>"; };
 		A06E85A92C2ECA680087C8C8 /* app.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = app.xcconfig; sourceTree = "<group>"; };
 		A06E85AA2C2ECA680087C8C8 /* buildversion.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = buildversion.xcconfig; sourceTree = "<group>"; };
+		A98F1BD82DADFF17007F04D3 /* Obscura VPN iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Obscura VPN iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A9A166A32DAF9B60006B852F /* iOSClientApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSClientApp.swift; sourceTree = "<group>"; };
 		C901614E2BE01159005B14AF /* obscuravpn-client.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "obscuravpn-client.xcodeproj"; sourceTree = "<group>"; };
 		C90161A62BE01A8E005B14AF /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		C90161A72BE01A8E005B14AF /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
@@ -242,6 +275,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A98F1BCC2DADFF17007F04D3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A98F1BCE2DADFF17007F04D3 /* DequeModule in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -268,6 +309,7 @@
 				3098C18E2B921489008877AA /* net.obscura.vpn-client-app.system-network-extension.systemextension */,
 				30920D932C3D51EC008690C3 /* App Network Extension.appex */,
 				30497E5E2D9EC038008B22F9 /* Tests.xctest */,
+				A98F1BD82DADFF17007F04D3 /* Obscura VPN iOS.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -287,6 +329,7 @@
 				3096E0452BF0F5860026DE7F /* app_state.swift */,
 				356D94262C48368100135DF9 /* CheckForUpdatesView.swift */,
 				30761C212B6EB17100E5F60D /* ClientApp.swift */,
+				A9A166A32DAF9B60006B852F /* iOSClientApp.swift */,
 				3096E03F2BEFC6770026DE7F /* command.swift */,
 				967D0C852C41A1E500FD0767 /* Constants.swift */,
 				30761C232B6EB17100E5F60D /* ContentView.swift */,
@@ -502,6 +545,29 @@
 			productReference = 3098C18E2B921489008877AA /* net.obscura.vpn-client-app.system-network-extension.systemextension */;
 			productType = "com.apple.product-type.system-extension";
 		};
+		A98F1B9D2DADFF17007F04D3 /* Obscura VPN iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A98F1BD52DADFF17007F04D3 /* Build configuration list for PBXNativeTarget "Obscura VPN iOS" */;
+			buildPhases = (
+				A98F1BA42DADFF17007F04D3 /* Sources */,
+				A98F1BCC2DADFF17007F04D3 /* Frameworks */,
+				A98F1BCF2DADFF17007F04D3 /* Resources */,
+				A98F1BDD2DAE00A0007F04D3 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A98F1BDC2DAE00A0007F04D3 /* PBXTargetDependency */,
+				A98F1BDF2DAE00A5007F04D3 /* PBXTargetDependency */,
+			);
+			name = "Obscura VPN iOS";
+			packageProductDependencies = (
+				A98F1BA22DADFF17007F04D3 /* DequeModule */,
+			);
+			productName = client;
+			productReference = A98F1BD82DADFF17007F04D3 /* Obscura VPN iOS.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -553,6 +619,7 @@
 				3098C18D2B921489008877AA /* System Network Extension */,
 				30920D922C3D51EC008690C3 /* App Network Extension */,
 				30497E5D2D9EC038008B22F9 /* Tests */,
+				A98F1B9D2DADFF17007F04D3 /* Obscura VPN iOS */,
 			);
 		};
 /* End PBXProject section */
@@ -603,6 +670,16 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A98F1BCF2DADFF17007F04D3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A98F1BD02DADFF17007F04D3 /* Preview Assets.xcassets in Resources */,
+				A98F1BD12DADFF17007F04D3 /* build in Resources */,
+				A98F1BD22DADFF17007F04D3 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -704,6 +781,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A98F1BA42DADFF17007F04D3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A9A166A42DAF9B60006B852F /* iOSClientApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -711,6 +796,16 @@
 			isa = PBXTargetDependency;
 			target = 3098C18D2B921489008877AA /* System Network Extension */;
 			targetProxy = 3098C1972B921489008877AA /* PBXContainerItemProxy */;
+		};
+		A98F1BDC2DAE00A0007F04D3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 30920D922C3D51EC008690C3 /* App Network Extension */;
+			targetProxy = A98F1BDB2DAE00A0007F04D3 /* PBXContainerItemProxy */;
+		};
+		A98F1BDF2DAE00A5007F04D3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 30920D922C3D51EC008690C3 /* App Network Extension */;
+			targetProxy = A98F1BDE2DAE00A5007F04D3 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -801,7 +896,6 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
-				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 			};
 			name = Release;
@@ -823,6 +917,7 @@
 				);
 				OBSCURA_MAGIC_NO_NIX = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -839,9 +934,13 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -856,9 +955,13 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -878,6 +981,7 @@
 					"$(PROJECT_DIR)/libobscuravpn_client",
 				);
 				PRODUCT_NAME = "$(inherited)";
+				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -935,8 +1039,6 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
-				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) LOAD_DEV_SERVER";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -959,6 +1061,7 @@
 				);
 				OBSCURA_MAGIC_NO_NIX = "";
 				PRODUCT_NAME = "$(TARGET_NAME) (Debug)";
+				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -980,11 +1083,72 @@
 					"$(PROJECT_DIR)/libobscuravpn_client",
 				);
 				PRODUCT_NAME = "$(inherited)";
+				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
+		};
+		A98F1BD62DADFF17007F04D3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = C92777D22C248A740058BBFB /* Debug-app.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_ASSET_PATHS = "\"client/Preview Content\"";
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = client/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Obscura;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OBSCURA_MAGIC_NO_NIX = "";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A98F1BD72DADFF17007F04D3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = C9D486352C123078007D5F2F /* Release-app.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_ASSET_PATHS = "\"client/Preview Content\"";
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = client/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Obscura;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OBSCURA_MAGIC_NO_NIX = "";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
@@ -1034,6 +1198,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		A98F1BD52DADFF17007F04D3 /* Build configuration list for PBXNativeTarget "Obscura VPN iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A98F1BD62DADFF17007F04D3 /* Debug */,
+				A98F1BD72DADFF17007F04D3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -1051,6 +1224,14 @@
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 2.6.4;
+			};
+		};
+		A98F1BA32DADFF17007F04D3 /* XCRemoteSwiftPackageReference "swift-collections" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-collections.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.1.4;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
@@ -1080,6 +1261,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A082F8212C46BF5B002AF810 /* XCRemoteSwiftPackageReference "Sparkle" */;
 			productName = Sparkle;
+		};
+		A98F1BA22DADFF17007F04D3 /* DequeModule */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A98F1BA32DADFF17007F04D3 /* XCRemoteSwiftPackageReference "swift-collections" */;
+			productName = DequeModule;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

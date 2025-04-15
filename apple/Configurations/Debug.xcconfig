@@ -5,9 +5,6 @@
 #include "Base.xcconfig"
 
 DEVELOPMENT_TEAM = 5G943LR562
-
-OBSCURA_APP_PRODUCT_BUNDLE_IDENTIFIER = net.obscura.vpn-client-app
-
 CODE_SIGN_IDENTITY = Apple Development
 CODE_SIGN_STYLE = Automatic
 

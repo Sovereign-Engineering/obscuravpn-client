@@ -12,7 +12,12 @@ after_includes = """
 #if TARGET_OS_OSX
     #define OBSCURA_DEFINE_TARGET_OS_MACOS
 #endif
+
+#if TARGET_OS_IOS
+    #define OBSCURA_DEFINE_TARGET_OS_IOS
+#endif
 """
 
 [defines]
 "target_os = macos" = "OBSCURA_DEFINE_TARGET_OS_MACOS"
+"target_os = ios" = "OBSCURA_DEFINE_TARGET_OS_IOS"

@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
 
 # Originally generated with cargo-xcode 1.10.0, since modified heavily
+# See original cargo-xcode build script here https://gitlab.com/kornelski/cargo-xcode/-/blob/v1.10.0/src/xcodebuild.sh?ref_type=tags
+
 set -euo pipefail
 export PATH="$HOME/.cargo/bin:$PATH:/usr/local/bin:/opt/homebrew/bin"
 ## don't use ios/watchos linker for build scripts and proc macros
-CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER=$(xcrun --find ld)
-export CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER
-CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER=$(xcrun --find ld)
-export CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER
+## This If statement is due to an oddity where defining these creates issues on Archive see OBS-1521
+if [ "${CONFIGURATION}" != "Release" ]; then
+	CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER=$(xcrun --find ld)
+	export CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER
+	CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER=$(xcrun --find ld)
+	export CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER
+fi
 
 export OBSCURA_CLIENT_RUSTLIB_CBINDGEN_OUTPUT_HEADER_PATH="$SCRIPT_OUTPUT_FILE_1"
 export OBSCURA_CLIENT_RUSTLIB_CBINDGEN_CONFIG_PATH="$SCRIPT_INPUT_FILE_2"

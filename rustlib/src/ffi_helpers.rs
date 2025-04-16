@@ -39,7 +39,7 @@ pub struct FfiStr<'a> {
     bytes: FfiBytes<'a>,
 }
 
-impl<'a> FfiStr<'a> {
+impl FfiStr<'_> {
     pub unsafe fn to_string(&self) -> String {
         String::from_utf8(self.bytes.to_vec()).expect("ffi buffer does not contain valid utf8")
     }

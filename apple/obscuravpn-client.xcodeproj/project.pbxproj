@@ -195,7 +195,6 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = C90161AC2BE01A9B005B14AF /* Debug.xcconfig */;
 			buildSettings = {
-				"ADDITIONAL_SDKS[sdk=i*]" = macosx;
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CARGO_TARGET_DIR = "$(PROJECT_TEMP_DIR)/cargo_target";
 				CARGO_XCODE_BUILD_PROFILE = debug;
@@ -204,7 +203,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "obscuravpn-client";
 				RUSTUP_TOOLCHAIN = "";
-				SDKROOT = macosx;
+				SDKROOT = auto;
 				SUPPORTS_MACCATALYST = YES;
 			};
 			name = Debug;
@@ -220,7 +219,9 @@
 				PRODUCT_NAME = "obscuravpn-client";
 				PUBLIC_HEADERS_FOLDER_PATH = "include/$(PRODUCT_NAME)";
 				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "macosx iphonesimulator iphoneos";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -245,7 +246,9 @@
 				PRODUCT_NAME = "obscuravpn-client";
 				PUBLIC_HEADERS_FOLDER_PATH = "include/$(PRODUCT_NAME)";
 				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "macosx iphonesimulator iphoneos";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -263,7 +266,6 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = C90161AD2BE01A9B005B14AF /* Release.xcconfig */;
 			buildSettings = {
-				"ADDITIONAL_SDKS[sdk=i*]" = macosx;
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CARGO_TARGET_DIR = "$(PROJECT_TEMP_DIR)/cargo_target";
 				CARGO_XCODE_BUILD_PROFILE = release;
@@ -271,7 +273,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				PRODUCT_NAME = "obscuravpn-client";
 				RUSTUP_TOOLCHAIN = "";
-				SDKROOT = macosx;
+				SDKROOT = auto;
 				SUPPORTS_MACCATALYST = YES;
 			};
 			name = Release;

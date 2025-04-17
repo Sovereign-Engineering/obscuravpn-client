@@ -18,15 +18,24 @@ concurrency:
 jobs:
   build_all:
     name: Build All
-    runs-on: macos-14
+    runs-on:
+      # https://namespace.so/docs/features/faster-github-actions#using-runner-labels
+      - nscloud-macos-sonoma-arm64-12x28-with-cache
+      - nscloud-cache-tag-obscuravpn-client
+      - nscloud-cache-size-50gb
     steps:
       - name: git checkout
         uses: actions/checkout@v3
+
+      - uses: namespacelabs/nscloud-cache-action@v1
+        with:
+          # The action fails to mount at `/nix` and we want to let the Nix installer handle that anyways.
+          path: /tmp/nix
+
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
         with:
-          use-flakehub: false # Only upload to GitHub Actions cache
+          mac-volume-label: obscuravpn-client
 
       - name: Build Nix
         shell: bash
@@ -43,7 +52,7 @@ jobs:
       github.repository == 'sovereign-engineering/obscuravpn-client-internal'
       && github.ref == 'refs/heads/main'
     needs: build_all
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04-amd64-2x2
     environment: sync
     steps:
       - name: git checkout

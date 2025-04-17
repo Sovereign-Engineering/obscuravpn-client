@@ -52,7 +52,7 @@ jobs:
       github.repository == 'sovereign-engineering/obscuravpn-client-internal'
       && github.ref == 'refs/heads/main'
     needs: build_all
-    runs-on: ubuntu-20.04-amd64-2x2
+    runs-on: nscloud-ubuntu-20.04-amd64-2x2
     environment: sync
     steps:
       - name: git checkout

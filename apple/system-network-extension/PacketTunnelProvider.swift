@@ -13,6 +13,8 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     private let isConnected = WatchableValue(false)
     private let networkConfig: AsyncMutex<NetworkConfig?> = AsyncMutex(.none)
 
+    var selfObservation: NSKeyValueObservation?
+
     override init() {
         logger.log("init entry \(self.providerId, privacy: .public)")
 
@@ -29,6 +31,15 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         ffiInitialize(configDir: configDir, oldConfigDir: oldConfigDir, userAgent: userAgent, receiveCallback)
 
         super.init()
+
+        self.selfObservation = self.observe(
+            \.protocolConfiguration,
+            options: [.old, .new]
+        ) { [weak self] object, change in
+            Task {
+                await self?.handleProtocolConfigurationChange(change: change)
+            }
+        }
 
         Self.shared = self
         self.startSendLoop()
@@ -232,6 +243,51 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
                 networkConfigGuard.value = newNetworkConfig
             } else {
                 logger.info("keeping existing network config \(newNetworkConfig, privacy: .public)")
+            }
+        }
+    }
+
+    func handleProtocolConfigurationChange(change: NSKeyValueObservedChange<NEVPNProtocol>) async {
+        logger.info("handleProtocolConfigurationChange entry \(change.oldValue, privacy: .public) to \(change.newValue, privacy: .public)")
+        defer {
+            logger.info("handleProtocolConfigurationChange exit")
+        }
+
+        guard let old = change.oldValue else {
+            // First value, no need to react.
+            return
+        }
+
+        guard let new = change.newValue else {
+            logger.warning("protocolConfiguration changed to (null)!")
+            return
+        }
+
+        guard !old.includeAllNetworks && new.includeAllNetworks else {
+            logger.info("No interesting changes.")
+            return
+        }
+        logger.info("includeAllNetorks has been enabled.")
+
+        await self.isActive.withLock { isActiveGuard in
+            if !isActiveGuard.value {
+                logger.info("Not active, ignoring.")
+                return
+            }
+
+            await self.networkConfig.withLock { networkConfigGuard in
+                guard let networkConfig = networkConfigGuard.value else {
+                    logger.info("No existing network config, doing nothing.")
+                    return
+                }
+                logger.info("re-setting network config.")
+                let networkSettings = NEPacketTunnelNetworkSettings.build(networkConfig)
+                do {
+                    try await self.setTunnelNetworkSettings(networkSettings)
+                    logger.info("Network settings reconfigured.")
+                } catch {
+                    logger.error("Failed to apply network settings. User is probably offline \(error, privacy: .public)")
+                }
             }
         }
     }

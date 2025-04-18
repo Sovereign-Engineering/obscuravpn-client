@@ -114,6 +114,20 @@ struct WgState {
     ticks_since_last_packet: Saturating<u32>,
     ticks_since_last_pong: Saturating<u32>,
     last_send_err_logged_at: Option<Instant>,
+    tick_stats: TickStats,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+struct TickStats {
+    ip_tx_count: Saturating<u64>,
+    wg_tx_count: Saturating<u64>,
+    quic_tx_count: Saturating<u64>,
+    ip_rx_count: Saturating<u64>,
+    wg_rx_count: Saturating<u64>,
+    min_ip_tx_size: Option<usize>,
+    max_ip_tx_size: Option<usize>,
+    min_ip_rx_size: Option<usize>,
+    max_ip_rx_size: Option<usize>,
 }
 
 impl QuicWgConn {
@@ -155,6 +169,7 @@ impl QuicWgConn {
             ticks_since_last_packet: Saturating(0),
             ticks_since_last_pong: Saturating(0),
             last_send_err_logged_at: None,
+            tick_stats: Default::default(),
         });
         Ok(Self {
             quic,
@@ -276,15 +291,30 @@ impl QuicWgConn {
 
     pub fn send(&self, packet: &[u8]) {
         let mut wg_state = self.wg_state.lock().unwrap();
-        let WgState { buffer, wg, traffic_stats, last_send_err_logged_at, .. } = &mut *wg_state;
+        let WgState { buffer, wg, traffic_stats, last_send_err_logged_at, tick_stats, .. } = &mut *wg_state;
         traffic_stats.tx_bytes += packet.len() as u64;
-        let res = wg.encapsulate(packet, buffer);
-        if let Err(error) = Self::handle_result(&self.quic, res) {
-            // rate-limited logging because this can get VERY noisy and is usually not interesting
-            const SILENCE_SECS: u64 = 1;
-            if !last_send_err_logged_at.is_some_and(|last_log_at| last_log_at.elapsed().as_secs() < SILENCE_SECS) {
-                tracing::error!(?error, "error while sending packet, silencing this log for {SILENCE_SECS}s");
-                *last_send_err_logged_at = Some(Instant::now());
+        tick_stats.ip_tx_count += 1;
+        tick_stats.min_ip_tx_size = Some(tick_stats.min_ip_tx_size.unwrap_or(usize::MAX).min(packet.len()));
+        tick_stats.max_ip_tx_size = Some(tick_stats.max_ip_tx_size.unwrap_or(0).max(packet.len()));
+        match wg.encapsulate(packet, buffer) {
+            TunnResult::Done => tracing::error!(message_id = "10g8g1D1", "WG encapsulate did not yield a datagram to send"),
+            TunnResult::Err(error) => tracing::warn!(message_id = "MAvGA9tf", ?error, "wireguard error"),
+            TunnResult::WriteToNetwork(datagram) => {
+                tick_stats.wg_tx_count += 1;
+                match self.quic.send_datagram(datagram.to_vec().into()) {
+                    Ok(()) => tick_stats.quic_tx_count += 1,
+                    Err(error) => {
+                        // rate-limited logging because this can get VERY noisy and is usually not interesting
+                        const SILENCE_SECS: u64 = 1;
+                        if !last_send_err_logged_at.is_some_and(|last_log_at| last_log_at.elapsed().as_secs() < SILENCE_SECS) {
+                            tracing::error!(?error, "error while sending packet, silencing this log for {SILENCE_SECS}s");
+                            *last_send_err_logged_at = Some(Instant::now());
+                        }
+                    }
+                }
+            }
+            TunnResult::WriteToTunnelV4(_, _) | TunnResult::WriteToTunnelV6(_, _) => {
+                tracing::error!(message_id = "mOwsH8Eu", "WG encapsulate yielded a received ip packet")
             }
         }
     }
@@ -295,8 +325,9 @@ impl QuicWgConn {
             select_biased! {
                 _ = self.wg_tick_notify.notified().fuse() => {
                     let mut wg_state = self.wg_state.lock().unwrap();
-                    let WgState {buffer, wg, ticks_since_last_packet, ticks_since_last_pong, .. } = &mut *wg_state;
-                    tracing::info!(message_id = "WKqFjXMA", ticks_since_last_packet = ticks_since_last_packet.0 , ticks_since_last_pong = ticks_since_last_pong.0, "wg tick");
+                    let WgState {buffer, wg, ticks_since_last_packet, ticks_since_last_pong, tick_stats, .. } = &mut *wg_state;
+                    tracing::info!(message_id = "WKqFjXMA", ticks_since_last_packet = ticks_since_last_packet.0 , ticks_since_last_pong = ticks_since_last_pong.0, ?tick_stats,  "wg tick");
+                    *tick_stats = TickStats::default();
                     if (*ticks_since_last_packet * Saturating(WG_TICK_MS)).0 > WG_MAX_IDLE_MS {
                         tracing::error!(message_id = "YQwnx6rF", "no packets received for {WG_MAX_IDLE_MS}ms");
                         return Err(QuicWgReceiveError::WireguardIdleTimeout)
@@ -318,15 +349,23 @@ impl QuicWgConn {
                 receive_quic = self.receive_quic().fuse() => {
                     let mut datagram = receive_quic?;
                     let mut wg_state = self.wg_state.lock().unwrap();
-                    let WgState {buffer,wg, ticks_since_last_packet, ticks_since_last_pong, traffic_stats, .. } = &mut *wg_state;
+                    let WgState {buffer,wg, ticks_since_last_packet, ticks_since_last_pong, traffic_stats, tick_stats, .. } = &mut *wg_state;
+                    tick_stats.wg_rx_count += 1;
                     loop {
                         let res = wg.decapsulate(None, &datagram, buffer);
+                        if let TunnResult::WriteToNetwork(..) = &res {
+                            tick_stats.wg_tx_count += 1;
+                        }
                         match Self::handle_result(&self.quic, res)? {
                             ControlFlow::Continue(()) => {
+                                tick_stats.quic_tx_count += 1;
                                 datagram.truncate(0);
                                 continue
                             }
                             ControlFlow::Break(Some(packet)) => {
+                                tick_stats.ip_rx_count += 1;
+                                tick_stats.min_ip_rx_size = Some(tick_stats.min_ip_rx_size.unwrap_or(usize::MAX).min(packet.len()));
+                                tick_stats.max_ip_rx_size = Some(tick_stats.max_ip_rx_size.unwrap_or(0).max(packet.len()));
                                 *ticks_since_last_packet = Saturating(0);
                                 traffic_stats.rx_bytes += packet.len() as u64;
                                 if let Some(latest_latency_ms) = self.latency_ms_from_pong_keepalive_packet(&packet) {

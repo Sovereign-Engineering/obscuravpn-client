@@ -1,4 +1,4 @@
-import { Accordion, Autocomplete, Button, Group, JsonInput, Stack, Switch, Text, TextInput, Title } from '@mantine/core';
+import { Accordion, Autocomplete, Button, Group, JsonInput, Stack, Text, TextInput, Title } from '@mantine/core';
 import { useInterval } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import Cookies from 'js-cookie';
@@ -8,7 +8,7 @@ import * as commands from '../bridge/commands';
 import { Exit } from '../common/api';
 import { AppContext } from '../common/appContext';
 import { localStorageGet, LocalStorageKey } from '../common/localStorage';
-import { errMsg, IS_WK_WEB_VIEW } from '../common/utils';
+import { IS_WK_WEB_VIEW } from '../common/utils';
 import DevSendCommand from '../components/DevSendCommand';
 import DevSetApiUrl from '../components/DevSetApiUrl';
 
@@ -35,9 +35,6 @@ export default function DeveloperViewer() {
     const [localStorageValue, setLocalStorageValue] = useState<string | null>(null);
 
     const [accordionValues, setAccordionValues] = useState<string[]>([]);
-
-    const [strictLeakLoading, setStrictLeakLoading] = useState(false);
-    const [strictLeakError, setStrictLeakError] = useState<string>();
 
     return <Stack p={20} mb={50}>
         <Title order={3}>Developer View</Title>
@@ -81,22 +78,6 @@ export default function DeveloperViewer() {
           <Autocomplete onChange={setLocalStorageKey} label='local storage key' data={Object.values(LocalStorageKey)} />
           <Button onClick={() => setLocalStorageValue(localStorageGet(localStorageKey as LocalStorageKey))}>Get</Button>
         </Group>
-        <Switch
-          error={strictLeakError}
-          checked={osStatus.strictLeakPrevention}
-          disabled={strictLeakLoading}
-          onChange={async event => {
-            try {
-              setStrictLeakLoading(true);
-              setStrictLeakError(undefined);
-              await commands.setStrictLeakPrevention(event.currentTarget.checked);
-            } catch (err) {
-              setStrictLeakError(errMsg(err));
-            } finally {
-              setStrictLeakLoading(false);
-            }
-          }}
-          label="Enable Strict Leak Prevention" />
         <JsonInput value={localStorageValue ?? 'null'} contentEditable={false} />
     </Stack>;
 }

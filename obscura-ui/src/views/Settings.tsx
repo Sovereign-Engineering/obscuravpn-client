@@ -1,12 +1,14 @@
-import { ActionIcon, Button, Group, Stack, Switch, Text, Title, useMantineColorScheme } from '@mantine/core';
+import { ActionIcon, Button, Group, Stack, Switch, Text, ThemeIcon, Title, Tooltip, useMantineColorScheme } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
+import { useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsCircleHalf } from 'react-icons/bs';
-import { IoMoon, IoSunnySharp } from 'react-icons/io5';
+import { IoInformationCircleOutline, IoMoon, IoSunnySharp } from 'react-icons/io5';
 import * as commands from '../bridge/commands';
+import { AppContext } from '../common/appContext';
 import { NotificationId } from '../common/notifIds';
 import { useAsync } from '../common/useAsync';
-import { normalizeError } from '../common/utils';
+import { errMsg, normalizeError } from '../common/utils';
 import { fmtErrorI18n } from '../translations/i18n';
 
 export default function Settings() {
@@ -68,31 +70,81 @@ export default function Settings() {
     }
 
     return (
-        <Stack gap='lg' align='flex-start' ml={80} mt={40} m={20}>
-            <Title order={4}>{t('General')}</Title>
-            <Switch error={error === undefined ? undefined : `${error}`} disabled={error !== undefined || loading || loginItemRegistered === undefined} checked={loginItemRegistered} onChange={event => event.currentTarget.checked ? registerAtLogin() : unregisterAtLogin()} label={t('openAtLoginRegister')} />
-            <Title order={4}>{t('Appearance')}</Title>
-            <Group gap='md'>
-                <ActionIcon variant='default' onClick={() => setColorScheme('light')} h={80} w={100} disabled={colorScheme === 'light'}>
-                    <Stack align='center' gap='xs'>
-                        <IoSunnySharp size='1.5em' />
-                        <Text size='sm'>{t('Light')}</Text>
-                    </Stack>
-                </ActionIcon>
-                <ActionIcon variant='default' onClick={() => setColorScheme('dark')} h={80} w={100} disabled={colorScheme === 'dark'}>
-                    <Stack align='center' gap='xs'>
-                        <IoMoon size='1.25em' />
-                        <Text size='sm'>{t('Dark')}</Text>
-                    </Stack>
-                </ActionIcon>
-                <ActionIcon variant='default' onClick={() => setColorScheme('auto')} h={80} w={100} disabled={colorScheme === 'auto'}>
-                    <Stack align='center' gap='xs'>
-                        <BsCircleHalf style={{ transform: 'rotate(180deg)' }} size='1.25em' />
-                        <Text size='sm'>{t('System')}</Text>
-                    </Stack>
-                </ActionIcon>
-            </Group>
-            <Button onClick={rotateWgKey}>{t('rotateWgKey')}</Button>
+        <Stack gap='xl' align='flex-start' ml={80} mt={40}>
+            <Stack gap='lg'>
+              <Title order={4}>{t('General')}</Title>
+              <Switch error={error === undefined ? undefined : `${error}`} disabled={error !== undefined || loading || loginItemRegistered === undefined} checked={loginItemRegistered} onChange={event => event.currentTarget.checked ? registerAtLogin() : unregisterAtLogin()} label={t('openAtLoginRegister')} />
+            </Stack>
+            <Stack gap='lg' align='flex-start'>
+              <Title order={4}>{t('Network')}</Title>
+              <StrictLeakPreventionSwitch />
+              <Button onClick={rotateWgKey}>{t('rotateWgKey')}</Button>
+            </Stack>
+            <Stack gap='lg'>
+              <Title order={4}>{t('Appearance')}</Title>
+              <Group gap='md'>
+                  <ActionIcon variant='default' onClick={() => setColorScheme('light')} h={80} w={100} disabled={colorScheme === 'light'}>
+                      <Stack align='center' gap='xs'>
+                          <IoSunnySharp size='1.5em' />
+                          <Text size='sm'>{t('Light')}</Text>
+                      </Stack>
+                  </ActionIcon>
+                  <ActionIcon variant='default' onClick={() => setColorScheme('dark')} h={80} w={100} disabled={colorScheme === 'dark'}>
+                      <Stack align='center' gap='xs'>
+                          <IoMoon size='1.25em' />
+                          <Text size='sm'>{t('Dark')}</Text>
+                      </Stack>
+                  </ActionIcon>
+                  <ActionIcon variant='default' onClick={() => setColorScheme('auto')} h={80} w={100} disabled={colorScheme === 'auto'}>
+                      <Stack align='center' gap='xs'>
+                          <BsCircleHalf style={{ transform: 'rotate(180deg)' }} size='1.25em' />
+                          <Text size='sm'>{t('System')}</Text>
+                      </Stack>
+                  </ActionIcon>
+              </Group>
+            </Stack>
         </Stack >
     );
+}
+
+function StrictLeakPreventionSwitch() {
+  const { t } = useTranslation();
+  const { vpnConnected, osStatus } = useContext(AppContext);
+  const { strictLeakPrevention } = osStatus;
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>();
+
+  const onChange = async (checked: boolean) => {
+    try {
+      setLoading(true);
+      setError(undefined);
+      await commands.setStrictLeakPrevention(checked);
+    } catch (err) {
+      setError(errMsg(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const disabled = strictLeakPrevention && vpnConnected;
+
+  return (
+    <Group gap={0}>
+      <Switch
+        error={error}
+        checked={strictLeakPrevention}
+        onChange={(event) => onChange(event.currentTarget.checked)}
+        disabled={disabled || loading}
+        label={t('strictLeakPreventionLabel')}
+      />
+      {disabled && (
+        <Tooltip label={t('strictLeakPreventionTooltip')} withArrow>
+          <ThemeIcon variant='transparent' color='gray'>
+            <IoInformationCircleOutline size="1.1em" style={{ display: 'block' }} />
+          </ThemeIcon>
+        </Tooltip>
+      )}
+    </Group>
+  );
 }

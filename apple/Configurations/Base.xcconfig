@@ -3,6 +3,3 @@
 
 MACOSX_DEPLOYMENT_TARGET = 13.0
 IOS_DEPLOYMENT_TARGET = 16.0
-
-OBSCURA_PACKET_TUNNEL_PROVIDER_ENTITLEMENT = packet-tunnel-provider-systemextension
-OBSCURA_PACKET_TUNNEL_PROVIDER_ENTITLEMENT[sdk=iphoneos*] = net.obscura.vpn-client-app-ios

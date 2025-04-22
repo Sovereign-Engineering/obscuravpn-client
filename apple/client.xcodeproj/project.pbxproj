@@ -30,7 +30,6 @@
 		30920D792C2057B1008690C3 /* initNetworkExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30920D782C2057B1008690C3 /* initNetworkExtension.swift */; };
 		30920D7D2C207379008690C3 /* TunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30920D7C2C207379008690C3 /* TunnelProvider.swift */; };
 		30920D942C3D51EC008690C3 /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 30761C362B6EB1F900E5F60D /* NetworkExtension.framework */; };
-		30920D972C3D51EC008690C3 /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30920D962C3D51EC008690C3 /* PacketTunnelProvider.swift */; };
 		30920DA92C3D53F1008690C3 /* libobscuravpn-client.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C90161542BE01159005B14AF /* libobscuravpn-client.a */; platformFilter = ios; };
 		30920DAD2C3DC174008690C3 /* InfoDict.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30920DAC2C3DC174008690C3 /* InfoDict.swift */; };
 		30920DAE2C3DC174008690C3 /* InfoDict.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30920DAC2C3DC174008690C3 /* InfoDict.swift */; };
@@ -91,6 +90,20 @@
 		A98F1BD12DADFF17007F04D3 /* build in Resources */ = {isa = PBXBuildFile; fileRef = 96516AC22BF928DD00576562 /* build */; };
 		A98F1BD22DADFF17007F04D3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 30761C252B6EB17200E5F60D /* Assets.xcassets */; };
 		A98F1BDA2DAE00A0007F04D3 /* App Network Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 30920D932C3D51EC008690C3 /* App Network Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A9963C562DB83FBE00D10893 /* FfiCb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30EF74C02BFFE48C0095439F /* FfiCb.swift */; };
+		A9963C572DB83FC200D10893 /* Account.swift in Sources */ = {isa = PBXBuildFile; fileRef = 968B02B82CFF5B7B0053D0EF /* Account.swift */; };
+		A9963C582DB83FC600D10893 /* Box.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30497E6D2D9ED57F008B22F9 /* Box.swift */; };
+		A9963C592DB83FCB00D10893 /* Debug.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35219C3A2C6BD57F00E63BB8 /* Debug.swift */; };
+		A9963C5A2DB83FCF00D10893 /* NetworkSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309BA90B2C446125000A7428 /* NetworkSettings.swift */; };
+		A9963C5B2DB83FD200D10893 /* Json.swift in Sources */ = {isa = PBXBuildFile; fileRef = 300452772C49BC90000B78F7 /* Json.swift */; };
+		A9963C5C2DB83FD600D10893 /* Swift.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35230C182C764F0D007ECFEC /* Swift.swift */; };
+		A9963C5D2DB83FF300D10893 /* StringError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309B467C2C4C152900A1B00F /* StringError.swift */; };
+		A9963C5E2DB83FF700D10893 /* RustFfi.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309BA9072C44394E000A7428 /* RustFfi.swift */; };
+		A9963C5F2DB83FFD00D10893 /* NetworkExtensionIpc.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30EF74CC2C02244C0095439F /* NetworkExtensionIpc.swift */; };
+		A9963C602DB8400300D10893 /* WatchableValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30C532092CC9558000936E1F /* WatchableValue.swift */; };
+		A9963C612DB8400900D10893 /* Concurrency.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35230C152C764B97007ECFEC /* Concurrency.swift */; };
+		A9963C622DB8400D00D10893 /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3098C1912B921489008877AA /* PacketTunnelProvider.swift */; };
+		A9963C632DB8401100D10893 /* Sleep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309BA9122C45DFC8000A7428 /* Sleep.swift */; };
 		A9A166A42DAF9B60006B852F /* iOSClientApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9A166A32DAF9B60006B852F /* iOSClientApp.swift */; };
 		C90161572BE011B2005B14AF /* libobscuravpn-client.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C90161542BE01159005B14AF /* libobscuravpn-client.a */; };
 /* End PBXBuildFile section */
@@ -174,7 +187,6 @@
 		30920D782C2057B1008690C3 /* initNetworkExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = initNetworkExtension.swift; sourceTree = "<group>"; };
 		30920D7C2C207379008690C3 /* TunnelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunnelProvider.swift; sourceTree = "<group>"; };
 		30920D932C3D51EC008690C3 /* App Network Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "App Network Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
-		30920D962C3D51EC008690C3 /* PacketTunnelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketTunnelProvider.swift; sourceTree = "<group>"; };
 		30920D982C3D51EC008690C3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		30920D992C3D51EC008690C3 /* entitlements.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = entitlements.entitlements; sourceTree = "<group>"; };
 		30920DAC2C3DC174008690C3 /* InfoDict.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoDict.swift; sourceTree = "<group>"; };
@@ -289,6 +301,7 @@
 		30761C152B6EB17100E5F60D = {
 			isa = PBXGroup;
 			children = (
+				A9963C552DB83E4100D10893 /* Packet Tunnel Provider */,
 				96516AC22BF928DD00576562 /* build */,
 				C90161A52BE01A8E005B14AF /* Configurations */,
 				C901614E2BE01159005B14AF /* obscuravpn-client.xcodeproj */,
@@ -364,7 +377,6 @@
 		30920D952C3D51EC008690C3 /* app-network-extension */ = {
 			isa = PBXGroup;
 			children = (
-				30920D962C3D51EC008690C3 /* PacketTunnelProvider.swift */,
 				30920D982C3D51EC008690C3 /* Info.plist */,
 				30920D992C3D51EC008690C3 /* entitlements.entitlements */,
 			);
@@ -382,10 +394,6 @@
 		3098C1902B921489008877AA /* system-network-extension */ = {
 			isa = PBXGroup;
 			children = (
-				3098C1912B921489008877AA /* PacketTunnelProvider.swift */,
-				309BA9072C44394E000A7428 /* RustFfi.swift */,
-				309BA90B2C446125000A7428 /* NetworkSettings.swift */,
-				3098C1932B921489008877AA /* main.swift */,
 				3098C1952B921489008877AA /* Info.plist */,
 				3098C1962B921489008877AA /* entitlements.entitlements */,
 			);
@@ -433,6 +441,17 @@
 				96C9205A2CD549B1002C85EA /* BandwidthStatus.swift */,
 			);
 			path = StatusItem;
+			sourceTree = "<group>";
+		};
+		A9963C552DB83E4100D10893 /* Packet Tunnel Provider */ = {
+			isa = PBXGroup;
+			children = (
+				309BA90B2C446125000A7428 /* NetworkSettings.swift */,
+				309BA9072C44394E000A7428 /* RustFfi.swift */,
+				3098C1912B921489008877AA /* PacketTunnelProvider.swift */,
+				3098C1932B921489008877AA /* main.swift */,
+			);
+			path = "Packet Tunnel Provider";
 			sourceTree = "<group>";
 		};
 		C901614F2BE01159005B14AF /* Products */ = {
@@ -750,7 +769,20 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				30920D972C3D51EC008690C3 /* PacketTunnelProvider.swift in Sources */,
+				A9963C632DB8401100D10893 /* Sleep.swift in Sources */,
+				A9963C622DB8400D00D10893 /* PacketTunnelProvider.swift in Sources */,
+				A9963C612DB8400900D10893 /* Concurrency.swift in Sources */,
+				A9963C602DB8400300D10893 /* WatchableValue.swift in Sources */,
+				A9963C5F2DB83FFD00D10893 /* NetworkExtensionIpc.swift in Sources */,
+				A9963C5E2DB83FF700D10893 /* RustFfi.swift in Sources */,
+				A9963C5D2DB83FF300D10893 /* StringError.swift in Sources */,
+				A9963C5C2DB83FD600D10893 /* Swift.swift in Sources */,
+				A9963C5B2DB83FD200D10893 /* Json.swift in Sources */,
+				A9963C5A2DB83FCF00D10893 /* NetworkSettings.swift in Sources */,
+				A9963C592DB83FCB00D10893 /* Debug.swift in Sources */,
+				A9963C582DB83FC600D10893 /* Box.swift in Sources */,
+				A9963C572DB83FC200D10893 /* Account.swift in Sources */,
+				A9963C562DB83FBE00D10893 /* FfiCb.swift in Sources */,
 				30920DAF2C3DC174008690C3 /* InfoDict.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

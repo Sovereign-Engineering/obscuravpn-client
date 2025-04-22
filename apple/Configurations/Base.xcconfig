@@ -2,3 +2,4 @@
 #include "bundle-ids.xcconfig"
 
 MACOSX_DEPLOYMENT_TARGET = 13.0
+IOS_DEPLOYMENT_TARGET = 16.0

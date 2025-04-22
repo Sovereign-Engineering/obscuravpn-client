@@ -1,4 +1,12 @@
 OBSCURA_SYSTEM_NETWORK_EXTENSION_PRODUCT_BUNDLE_IDENTIFIER = $(OBSCURA_APP_PRODUCT_BUNDLE_IDENTIFIER).system-network-extension
 OBSCURA_APP_NETWORK_EXTENSION_PRODUCT_BUNDLE_IDENTIFIER = $(OBSCURA_APP_PRODUCT_BUNDLE_IDENTIFIER).app-network-extension
 
+DEVELOPMENT_TEAM = 5G943LR562
+// Per https://developer.apple.com/documentation/xcode/configuring-app-groups
+// On macOS app groups must start with team identifier IF the app is sandboxed/app store released. Technically we do not need this.
 OBSCURA_APP_APP_GROUP_ID = $(TeamIdentifierPrefix)group.$(OBSCURA_APP_PRODUCT_BUNDLE_IDENTIFIER)
+// On ios app groups must start with group.
+OBSCURA_APP_APP_GROUP_ID[sdk=iphoneos*] = group.$(OBSCURA_APP_PRODUCT_BUNDLE_IDENTIFIER)
+
+OBSCURA_APP_PRODUCT_BUNDLE_IDENTIFIER = net.obscura.vpn-client-app
+OBSCURA_APP_PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*] = net.obscura.vpn-client-app-ios

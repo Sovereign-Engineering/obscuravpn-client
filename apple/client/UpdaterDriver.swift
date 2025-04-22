@@ -1,3 +1,4 @@
+#if os(macOS)
 import OSLog
 import Sparkle
 
@@ -103,6 +104,8 @@ class UpdaterDriver: NSObject, SPUUserDriver {
 
     func dismissUpdateInstallation() {}
 }
+
+#endif
 
 enum UpdaterStatusType: String, Codable {
     case uninitiated

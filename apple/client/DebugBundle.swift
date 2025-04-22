@@ -1,3 +1,4 @@
+#if os(macOS)
 import AppKit
 import Foundation
 import NetworkExtension
@@ -657,6 +658,7 @@ private class DebugBundleBuilder {
         return zipPath
     }
 }
+#endif
 
 public class DebugBundleStatus: Encodable {
     var inProgressCounter: Int = 0
@@ -696,6 +698,7 @@ public class DebugBundleStatus: Encodable {
     }
 }
 
+#if os(macOS)
 // Abstract DebugBundleStatus manager which ensures that inProgressCounter is appropriately incremented/decremented
 public class DebugBundleRC {
     private let appState: AppState
@@ -758,3 +761,4 @@ func createDebuggingArchive(appState: AppState?) async throws -> String {
         throw error
     }
 }
+#endif

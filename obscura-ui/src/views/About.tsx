@@ -8,9 +8,9 @@ import AppIcon from '../../../apple/client/Assets.xcassets/AppIcon.appiconset/ic
 import * as commands from '../bridge/commands';
 import { LEGAL_WEBPAGE, OBSCURA_WEBPAGE } from '../common/accountUtils';
 import { AppContext, UpdaterStatusType } from '../common/appContext';
-import { fmtErrorI18n } from '../common/danger';
 import { MIN_LOAD_MS, normalizeError } from '../common/utils';
 import Wordmark from '../res/obscura-wordmark.svg?react';
+import { fmtErrorI18n } from '../translations/i18n';
 
 const Licenses = lazy(() => import('../components/Licenses'));
 

@@ -9,9 +9,9 @@ import ExternalLinkIcon from '../components/ExternalLinkIcon';
 import AppIcon from '../../../apple/client/Assets.xcassets/AppIcon.appiconset/icon_128x128.png';
 import * as commands from '../bridge/commands';
 import * as ObscuraAccount from '../common/accountUtils';
-import { fmtErrorI18n, tUnsafe } from '../common/danger';
 import { HEADER_TITLE, multiRef, normalizeError } from '../common/utils';
 import DecoOrangeTop from '../res/deco/deco-orange-top.svg';
+import { fmtErrorI18n, TranslationKey } from '../translations/i18n';
 import classes from './LoginView.module.css';
 
 interface LogInProps {
@@ -116,7 +116,7 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
               {
                 apiError &&
                 <Card shadow='sm' padding='lg' my={0} m={0} radius='md'>
-                  <Text c='red'>{tUnsafe(t, apiError)}</Text>
+                  <Text c='red'>{t(apiError as TranslationKey)}</Text>
                 </Card>
               }
               <AccountNumberInput ref={inputRef} />
@@ -281,7 +281,7 @@ const AccountNumberInput = forwardRef(function AccountNumberInput(props: {}, ref
       ObscuraAccount.parseAccountIdInput(value);
     } catch (e) {
       const error = normalizeError(e);
-      return tUnsafe(t, error instanceof ObscuraAccount.ObscuraAccountIdError ? error.i18nKey() : error.message);
+      return t((error instanceof ObscuraAccount.ObscuraAccountIdError ? error.i18nKey() : error.message) as TranslationKey);
     }
     return null;
   }

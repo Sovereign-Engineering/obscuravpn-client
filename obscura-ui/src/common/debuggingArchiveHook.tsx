@@ -3,7 +3,7 @@ import { notifications } from '@mantine/notifications';
 import { useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { CommandError, debuggingArchive, revealItemInDir } from '../bridge/commands';
-import { fmtErrorI18n } from './danger';
+import { fmtErrorI18n } from '../translations/i18n';
 import { normalizeError } from './utils';
 
 type ArchiveState = { inProgress: boolean, error?: Error };

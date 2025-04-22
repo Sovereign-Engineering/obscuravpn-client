@@ -10,7 +10,6 @@ import * as commands from '../bridge/commands';
 import * as ObscuraAccount from '../common/accountUtils';
 import { AccountInfo, accountIsExpired, getActiveSubscription, isRenewing, paidUntil, paidUntilDays, useReRenderWhenExpired } from '../common/api';
 import { AppContext } from '../common/appContext';
-import { fmtErrorI18n } from '../common/danger';
 import { normalizeError } from '../common/utils';
 import { AccountNumberDisplay } from '../components/AccountNumberDisplay';
 import ExternalLinkIcon from '../components/ExternalLinkIcon';
@@ -21,6 +20,7 @@ import PaidUpSubscriptionActive from '../res/paid-up-subscription-active.svg?rea
 import PaidUpBadge from '../res/paid-up.svg?react';
 import SubscriptionActiveBadge from '../res/subscription-active.svg?react';
 import SubscriptionPausedBadge from '../res/subscription-paused.svg?react';
+import { fmtErrorI18n } from '../translations/i18n';
 
 export default function Account() {
     const { t } = useTranslation();

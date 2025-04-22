@@ -12,13 +12,13 @@ import * as commands from './bridge/commands';
 import { logReactError, useSystemContext } from './bridge/SystemProvider';
 import { Exit } from './common/api';
 import { AppContext, AppStatus, ConnectionInProgress, ExitsContext, OsStatus } from './common/appContext';
-import { fmtVpnError } from './common/danger';
 import { fmt } from './common/fmt';
 import { NotificationId } from './common/notifIds';
 import { useAsync } from './common/useAsync';
 import { useLoadable } from './common/useLoadable';
 import { IS_WK_WEB_VIEW, MIN_LOAD_MS, normalizeError, useCookie } from './common/utils';
 import { ScrollToTop } from './components/ScrollToTop';
+import { fmtVpnError } from './translations/i18n';
 import { About, Account, Connection, DeveloperView, FallbackAppRender, Help, Location, LogIn, Settings, SplashScreen } from './views';
 
 // imported views need to be added to the `views` list variable

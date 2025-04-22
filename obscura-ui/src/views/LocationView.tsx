@@ -9,7 +9,6 @@ import * as commands from '../bridge/commands';
 import { Exit, getExitCountry } from '../common/api';
 import { AppContext, ConnectionInProgress, ExitsContext, isConnecting } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
-import { fmtErrorI18n } from '../common/danger';
 import { CityNotFoundError, exitLocation, exitsSortComparator, getExitCountryFlag, getRandomExitFromCity } from '../common/exitUtils';
 import { KeyedSet } from '../common/KeyedSet';
 import { NotificationId } from '../common/notifIds';
@@ -22,6 +21,7 @@ import CheckMarkCircleFill from '../res/checkmark.circle.fill.svg?react';
 import Eye from '../res/eye.fill.svg?react';
 import EyeSlash from '../res/eye.slash.fill.svg?react';
 import OrangeCheckedShield from '../res/orange-checked-shield.svg?react';
+import { fmtErrorI18n } from '../translations/i18n';
 import classes from './Location.module.css';
 
 export default function LocationView() {

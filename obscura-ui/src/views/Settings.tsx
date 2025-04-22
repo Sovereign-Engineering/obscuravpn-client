@@ -4,10 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { BsCircleHalf } from 'react-icons/bs';
 import { IoMoon, IoSunnySharp } from 'react-icons/io5';
 import * as commands from '../bridge/commands';
-import { fmtErrorI18n } from '../common/danger';
 import { NotificationId } from '../common/notifIds';
 import { useAsync } from '../common/useAsync';
 import { normalizeError } from '../common/utils';
+import { fmtErrorI18n } from '../translations/i18n';
 
 export default function Settings() {
     const { t } = useTranslation();

@@ -8,7 +8,6 @@ use tempfile::tempdir;
 use uuid::Uuid;
 
 use crate::config::load;
-use crate::config::load_one;
 use crate::config::save;
 use crate::config::Config;
 use crate::config::PinnedLocation;
@@ -27,7 +26,7 @@ fn random_config() -> Config {
 #[test]
 fn load_no_config() {
     let dir = Path::new("/var/empty/");
-    assert_eq!(load_one(dir).unwrap(), Default::default());
+    assert_eq!(load(dir).unwrap(), Default::default());
 }
 
 #[test]
@@ -38,7 +37,7 @@ fn load_config() {
 
     save(dir.as_ref(), &config).unwrap();
 
-    assert_eq!(load_one(dir.as_ref()).unwrap(), Some(config));
+    assert_eq!(load(dir.as_ref()).unwrap(), config);
 }
 
 #[test]
@@ -50,7 +49,7 @@ fn load_invalid_json() {
     fs::write(&file, corrupted).unwrap();
 
     // Load returns a default config.
-    assert_eq!(load_one(dir.as_ref()).unwrap(), Some(Default::default()));
+    assert_eq!(load(dir.as_ref()).unwrap(), Default::default());
 
     let backup_files = fs::read_dir(&dir)
         .unwrap()
@@ -79,7 +78,7 @@ fn load_empty() {
     fs::write(&file, empty).unwrap();
 
     // Load returns a default config.
-    assert_eq!(load_one(dir.as_ref()).unwrap(), Some(Default::default()));
+    assert_eq!(load(dir.as_ref()).unwrap(), Default::default());
 
     let backup_files = fs::read_dir(&dir)
         .unwrap()
@@ -108,7 +107,7 @@ fn load_no_permission() {
     fs::set_permissions(&file, permissions).unwrap();
 
     // Load returns a default config.
-    assert_eq!(load_one(dir.as_ref()).unwrap(), Some(Default::default()));
+    assert_eq!(load(dir.as_ref()).unwrap(), Default::default());
 
     let backup_files = fs::read_dir(&dir)
         .unwrap()
@@ -125,7 +124,7 @@ fn load_no_permission() {
     fs::rename(backup_path, file).unwrap();
 
     // The backup file contained the original config.
-    assert_eq!(load_one(dir.as_ref()).unwrap(), Some(config));
+    assert_eq!(load(dir.as_ref()).unwrap(), config);
 }
 
 #[test]
@@ -186,54 +185,4 @@ fn test_ignore_invalid_fields() {
         let reserialized = serde_json::to_string_pretty(&mutated).unwrap();
         let _ = serde_json::from_str::<Config>(&reserialized).unwrap();
     }
-}
-
-#[test]
-fn migrate_path_none() {
-    let dir = tempdir().unwrap();
-    let old_dir = dir.path().join("old");
-    let new_dir = dir.path().join("new");
-
-    assert_eq!(load(new_dir.as_ref(), old_dir.as_ref()).unwrap(), Default::default());
-}
-
-#[test]
-fn migrate_path_old_only() {
-    let config = random_config();
-
-    let dir = tempdir().unwrap();
-    let old_dir = dir.path().join("old");
-    let new_dir = dir.path().join("new");
-
-    save(old_dir.as_ref(), &config).unwrap();
-
-    assert_eq!(load(new_dir.as_ref(), old_dir.as_ref()).unwrap(), config);
-}
-
-#[test]
-fn migrate_path_new_only() {
-    let config = random_config();
-
-    let dir = tempdir().unwrap();
-    let old_dir = dir.path().join("old");
-    let new_dir = dir.path().join("new");
-
-    save(new_dir.as_ref(), &config).unwrap();
-
-    assert_eq!(load(new_dir.as_ref(), old_dir.as_ref()).unwrap(), config);
-}
-
-#[test]
-fn migrate_path_both() {
-    let config_new = random_config();
-    let config_old = random_config();
-
-    let dir = tempdir().unwrap();
-    let old_dir = dir.path().join("old");
-    let new_dir = dir.path().join("new");
-
-    save(new_dir.as_ref(), &config_new).unwrap();
-    save(old_dir.as_ref(), &config_old).unwrap();
-
-    assert_eq!(load(new_dir.as_ref(), old_dir.as_ref()).unwrap(), config_new);
 }

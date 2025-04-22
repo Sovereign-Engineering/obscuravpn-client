@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import NetworkExtension
 import OSLog
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "DebugBundle")
@@ -373,6 +374,142 @@ private class DebugBundleBuilder {
         }
     }
 
+    func bundleNETunnelProviderManager() {
+        guard let manager = self.appState?.manager else {
+            self.writeError(name: "ne-tunnel-provider-manager", error: "appState or manager is nil")
+            return
+        }
+
+        struct ConnectionInfo: Encodable {
+            let status: NEVPNStatus
+
+            init(_ connection: NEVPNConnection) {
+                self.status = connection.status
+            }
+        }
+        struct ProxyServerInfo: Encodable {
+            let address: String
+            let authenticationRequired: Bool
+            let port: Int
+
+            init(_ proxyServer: NEProxyServer) {
+                self.address = proxyServer.address
+                self.authenticationRequired = proxyServer.authenticationRequired
+                self.port = proxyServer.port
+            }
+        }
+        struct ProxySettingsInfo: Encodable {
+            let autoProxyConfigurationEnabled: Bool
+            let exceptionList: [String]?
+            let excludeSimpleHostnames: Bool
+            let httpEnabled: Bool
+            let httpServer: ProxyServerInfo?
+            let matchDomains: [String]?
+            let proxyAutoConfigurationJavaScript: String?
+            let proxyAutoConfigurationURL: URL?
+
+            init(_ proxySettings: NEProxySettings) {
+                self.autoProxyConfigurationEnabled = proxySettings.autoProxyConfigurationEnabled
+                self.exceptionList = proxySettings.exceptionList
+                self.excludeSimpleHostnames = proxySettings.excludeSimpleHostnames
+                self.httpEnabled = proxySettings.httpEnabled
+                self.httpServer = proxySettings.httpServer.map { ProxyServerInfo($0) }
+                self.matchDomains = proxySettings.matchDomains
+                self.proxyAutoConfigurationJavaScript = proxySettings.proxyAutoConfigurationJavaScript
+                self.proxyAutoConfigurationURL = proxySettings.proxyAutoConfigurationURL
+            }
+        }
+        struct ProtocolConfigurationInfo: Encodable {
+            let disconnectOnSleep: Bool
+            let enforceRoutes: Bool
+            let excludeLocalNetworks: Bool
+            let includeAllNetworks: Bool
+            let proxySettings: ProxySettingsInfo?
+            let serverAddress: String?
+
+            init(_ protocolConfiguration: NEVPNProtocol) {
+                self.disconnectOnSleep = protocolConfiguration.disconnectOnSleep
+                self.enforceRoutes = protocolConfiguration.enforceRoutes
+                // TODO: include once our minimal version is macOS 13.3
+                // self.excludeAPNs = protocolConfiguration.excludeAPNs
+                // self.excludeCellularServices = protocolConfiguration.excludeCellularServices
+                // self.excludeDeviceCommunication = protocolConfiguration.excludeDeviceCommunication
+                self.excludeLocalNetworks = protocolConfiguration.excludeLocalNetworks
+                self.includeAllNetworks = protocolConfiguration.includeAllNetworks
+                self.proxySettings = protocolConfiguration.proxySettings.map { ProxySettingsInfo($0) }
+                self.serverAddress = protocolConfiguration.serverAddress
+            }
+        }
+        struct OnDemandRuleInfo: Encodable {
+            let action: String
+            let dnsSearchDomainMatch: [String]?
+            let dnsServerAddressMatch: [String]?
+            let interfaceTypeMatch: String
+            let probeURL: URL?
+            let ssidMatch: [String]?
+            init(_ onDemandRule: NEOnDemandRule) {
+                self.action = switch onDemandRule.action {
+                case .connect:
+                    "connect"
+                case .disconnect:
+                    "disconnect"
+                case .evaluateConnection:
+                    "evaluateConnection"
+                case .ignore:
+                    "ignore"
+                @unknown default:
+                    "unknown"
+                }
+                self.dnsSearchDomainMatch = onDemandRule.dnsSearchDomainMatch
+                self.dnsServerAddressMatch = onDemandRule.dnsServerAddressMatch
+                self.interfaceTypeMatch = switch onDemandRule.interfaceTypeMatch {
+                case .any:
+                    "any"
+                case .ethernet:
+                    "ethernet"
+                case .wiFi: "wiFi"
+                case .cellular: "cellular"
+                @unknown default:
+                    "unknown"
+                }
+                self.probeURL = onDemandRule.probeURL
+                self.ssidMatch = onDemandRule.ssidMatch
+            }
+        }
+        struct ManagerInfo: Encodable {
+            let connection: ConnectionInfo
+            let protocolConfiguration: ProtocolConfigurationInfo?
+            let routingMethod: String
+            let isEnabled: Bool
+            let isOnDemandEnabled: Bool
+            let onDemandRules: [OnDemandRuleInfo]?
+
+            init(_ manager: NETunnelProviderManager) {
+                self.connection = ConnectionInfo(manager.connection)
+                self.protocolConfiguration = manager.protocolConfiguration.map { ProtocolConfigurationInfo($0) }
+                self.routingMethod = switch manager.routingMethod {
+                case .destinationIP:
+                    "destinationIP"
+                case .networkRule:
+                    "networkRule"
+                case .sourceApplication:
+                    "sourceApplication"
+                @unknown default:
+                    "unknown"
+                }
+                self.isEnabled = manager.isEnabled
+                self.isOnDemandEnabled = manager.isOnDemandEnabled
+                self.onDemandRules = manager.onDemandRules.map { $0.map { OnDemandRuleInfo($0) }}
+            }
+        }
+
+        do {
+            try self.writeJson(name: "ne-tunnel-provider-manager.json", ManagerInfo(manager))
+        } catch {
+            self.writeError(name: "ne-tunnel-provider-manager", error: error)
+        }
+    }
+
     func bundleNEDebugInfo() async {
         guard let manager = self.appState?.manager else {
             self.writeError(name: "ne-debug-info", error: "appState or manager is nil")
@@ -415,6 +552,7 @@ private class DebugBundleBuilder {
         }
 
         self.bundleTask("extensions") { _task in try await self.bundleExtensions() }
+        self.bundleTask("ne-tunnel-provider-manager") { _task in self.bundleNETunnelProviderManager() }
         self.bundleTask("ne-debug-info") { _task in await self.bundleNEDebugInfo() }
         self.bundleTask("info") { _task in try self.bundleInfo() }
 

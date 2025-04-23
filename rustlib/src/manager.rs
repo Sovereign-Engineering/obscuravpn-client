@@ -120,13 +120,12 @@ impl VpnStatus {
 impl Manager {
     pub fn new(
         config_dir: PathBuf,
-        old_config_dir: PathBuf,
         user_agent: String,
         runtime: &Runtime,
         receive_cb: extern "C" fn(FfiBytes),
     ) -> Result<Arc<Self>, ConfigLoadError> {
         let cancellation_token = CancellationToken::new();
-        let client_state = Arc::new(ClientState::new(config_dir, old_config_dir, user_agent)?);
+        let client_state = Arc::new(ClientState::new(config_dir, user_agent)?);
         let config = client_state.get_config();
         let (target_tunnel_args, tunnel_state) = TunnelState::new(runtime, client_state.clone(), receive_cb, cancellation_token.clone());
         let initial_status = Status::new(Uuid::new_v4(), VpnStatus::Disconnected {}, config, client_state.base_url());

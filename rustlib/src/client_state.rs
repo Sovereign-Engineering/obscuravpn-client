@@ -66,8 +66,8 @@ impl ClientStateInner {
 }
 
 impl ClientState {
-    pub fn new(config_dir: PathBuf, old_config_dir: PathBuf, user_agent: String) -> Result<Self, ConfigLoadError> {
-        let config = config::load(&config_dir, &old_config_dir)?;
+    pub fn new(config_dir: PathBuf, user_agent: String) -> Result<Self, ConfigLoadError> {
+        let config = config::load(&config_dir)?;
         let inner = ClientStateInner { config_dir, config, cached_api_client: None };
         Ok(Self { user_agent, inner: Mutex::new(inner) })
     }

@@ -63,8 +63,3 @@ func appGroupID() -> String {
 func configDir() -> String {
     return "/Library/Application Support/obscura-vpn/system-network-extension/"
 }
-
-func oldConfigDir() -> String {
-    FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID())!
-        .appending(components: "Library", "Application Support", "obscuravpn", directoryHint: .isDirectory).path(percentEncoded: false)
-}

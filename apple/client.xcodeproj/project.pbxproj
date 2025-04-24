@@ -39,9 +39,13 @@
 		3096E0402BEFC6770026DE7F /* command.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3096E03F2BEFC6770026DE7F /* command.swift */; };
 		3096E0462BF0F5870026DE7F /* app_state.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3096E0452BF0F5860026DE7F /* app_state.swift */; };
 		3098C18F2B921489008877AA /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 30761C362B6EB1F900E5F60D /* NetworkExtension.framework */; };
+		3098C1922B921489008877AA /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3098C1912B921489008877AA /* PacketTunnelProvider.swift */; };
+		3098C1942B921489008877AA /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3098C1932B921489008877AA /* main.swift */; };
 		3098C1992B921489008877AA /* net.obscura.vpn-client-app.system-network-extension.systemextension in Embed System Extensions */ = {isa = PBXBuildFile; fileRef = 3098C18E2B921489008877AA /* net.obscura.vpn-client-app.system-network-extension.systemextension */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		309B467D2C4C152900A1B00F /* StringError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309B467C2C4C152900A1B00F /* StringError.swift */; };
 		309B467E2C4C152900A1B00F /* StringError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309B467C2C4C152900A1B00F /* StringError.swift */; };
+		309BA90A2C443978000A7428 /* RustFfi.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309BA9072C44394E000A7428 /* RustFfi.swift */; };
+		309BA90C2C446125000A7428 /* NetworkSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309BA90B2C446125000A7428 /* NetworkSettings.swift */; };
 		309BA9132C45DFC8000A7428 /* Sleep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309BA9122C45DFC8000A7428 /* Sleep.swift */; };
 		309BA9142C45DFC8000A7428 /* Sleep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309BA9122C45DFC8000A7428 /* Sleep.swift */; };
 		309BFE3F2D9C169500366431 /* WatchableValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30C532092CC9558000936E1F /* WatchableValue.swift */; };
@@ -81,29 +85,7 @@
 		96C920692CD91D96002C85EA /* String.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C920682CD91D94002C85EA /* String.swift */; };
 		96C9206A2CD91D96002C85EA /* String.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C920682CD91D94002C85EA /* String.swift */; };
 		A082F8232C46BF5B002AF810 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A082F8222C46BF5B002AF810 /* Sparkle */; };
-		A908AE852DB7666B00E85F48 /* NoFadeButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A930796D2DB7641200436A95 /* NoFadeButtonStyle.swift */; };
-		A91F9A952DB7698500BBD281 /* DequeModule in Frameworks */ = {isa = PBXBuildFile; productRef = A91F9A942DB7698500BBD281 /* DequeModule */; };
-		A93079552DB7634500436A95 /* app_state.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3096E0452BF0F5860026DE7F /* app_state.swift */; };
-		A93079562DB7634E00436A95 /* OsStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30C5320B2CC959AE00936E1F /* OsStatus.swift */; };
-		A93079572DB7635300436A95 /* UpdaterDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9636E8B82D4BE02500CFB57E /* UpdaterDriver.swift */; };
-		A93079592DB7635E00436A95 /* WatchableValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30C532092CC9558000936E1F /* WatchableValue.swift */; };
-		A930795A2DB7636A00436A95 /* ObservableValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 352D58DF2C4AE796002F3404 /* ObservableValue.swift */; };
-		A930795B2DB7637300436A95 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 967D0C852C41A1E500FD0767 /* Constants.swift */; };
-		A930795C2DB7637700436A95 /* FfiCb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30EF74C02BFFE48C0095439F /* FfiCb.swift */; };
-		A930795D2DB7637D00436A95 /* Swift.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35230C182C764F0D007ECFEC /* Swift.swift */; };
-		A930795E2DB7638100436A95 /* Box.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30497E6D2D9ED57F008B22F9 /* Box.swift */; };
-		A930795F2DB7638600436A95 /* Concurrency.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35230C152C764B97007ECFEC /* Concurrency.swift */; };
-		A93079602DB7638900436A95 /* Sleep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309BA9122C45DFC8000A7428 /* Sleep.swift */; };
-		A93079612DB7639000436A95 /* StringError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309B467C2C4C152900A1B00F /* StringError.swift */; };
-		A93079622DB7639400436A95 /* Json.swift in Sources */ = {isa = PBXBuildFile; fileRef = 300452772C49BC90000B78F7 /* Json.swift */; };
-		A93079652DB763A400436A95 /* OSLogEntryEncodable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35F8DE7E2C6559D20016CEEB /* OSLogEntryEncodable.swift */; };
-		A93079662DB763AD00436A95 /* NEVPNStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3096BFF82CECD50F003D062E /* NEVPNStatus.swift */; };
-		A93079672DB763B300436A95 /* Account.swift in Sources */ = {isa = PBXBuildFile; fileRef = 968B02B82CFF5B7B0053D0EF /* Account.swift */; };
-		A93079682DB763B800436A95 /* InfoDict.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30920DAC2C3DC174008690C3 /* InfoDict.swift */; };
-		A93079692DB763BE00436A95 /* NetworkExtensionIpc.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30EF74CC2C02244C0095439F /* NetworkExtensionIpc.swift */; };
-		A930796A2DB763C400436A95 /* TunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30920D7C2C207379008690C3 /* TunnelProvider.swift */; };
-		A930796C2DB763F800436A95 /* RegisterLoginItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A930796B2DB763F800436A95 /* RegisterLoginItemView.swift */; };
-		A930796E2DB7641200436A95 /* NoFadeButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A930796D2DB7641200436A95 /* NoFadeButtonStyle.swift */; };
+		A98F1BCE2DADFF17007F04D3 /* DequeModule in Frameworks */ = {isa = PBXBuildFile; productRef = A98F1BA22DADFF17007F04D3 /* DequeModule */; };
 		A98F1BD02DADFF17007F04D3 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 30761C282B6EB17200E5F60D /* Preview Assets.xcassets */; };
 		A98F1BD12DADFF17007F04D3 /* build in Resources */ = {isa = PBXBuildFile; fileRef = 96516AC22BF928DD00576562 /* build */; };
 		A98F1BD22DADFF17007F04D3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 30761C252B6EB17200E5F60D /* Assets.xcassets */; };
@@ -112,27 +94,41 @@
 		A9963C572DB83FC200D10893 /* Account.swift in Sources */ = {isa = PBXBuildFile; fileRef = 968B02B82CFF5B7B0053D0EF /* Account.swift */; };
 		A9963C582DB83FC600D10893 /* Box.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30497E6D2D9ED57F008B22F9 /* Box.swift */; };
 		A9963C592DB83FCB00D10893 /* Debug.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35219C3A2C6BD57F00E63BB8 /* Debug.swift */; };
+		A9963C5A2DB83FCF00D10893 /* NetworkSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309BA90B2C446125000A7428 /* NetworkSettings.swift */; };
 		A9963C5B2DB83FD200D10893 /* Json.swift in Sources */ = {isa = PBXBuildFile; fileRef = 300452772C49BC90000B78F7 /* Json.swift */; };
 		A9963C5C2DB83FD600D10893 /* Swift.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35230C182C764F0D007ECFEC /* Swift.swift */; };
 		A9963C5D2DB83FF300D10893 /* StringError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309B467C2C4C152900A1B00F /* StringError.swift */; };
+		A9963C5E2DB83FF700D10893 /* RustFfi.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309BA9072C44394E000A7428 /* RustFfi.swift */; };
 		A9963C5F2DB83FFD00D10893 /* NetworkExtensionIpc.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30EF74CC2C02244C0095439F /* NetworkExtensionIpc.swift */; };
 		A9963C602DB8400300D10893 /* WatchableValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30C532092CC9558000936E1F /* WatchableValue.swift */; };
 		A9963C612DB8400900D10893 /* Concurrency.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35230C152C764B97007ECFEC /* Concurrency.swift */; };
+		A9963C622DB8400D00D10893 /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3098C1912B921489008877AA /* PacketTunnelProvider.swift */; };
 		A9963C632DB8401100D10893 /* Sleep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309BA9122C45DFC8000A7428 /* Sleep.swift */; };
+		A998710E2DBAF7FE0044D136 /* RegisterLoginItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A998710C2DBAF7FE0044D136 /* RegisterLoginItemView.swift */; };
+		A99871112DBAF8080044D136 /* NoFadeButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A998710F2DBAF8080044D136 /* NoFadeButtonStyle.swift */; };
+		A99871122DBAF8080044D136 /* NoFadeButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A998710F2DBAF8080044D136 /* NoFadeButtonStyle.swift */; };
+		A99871152DBAF84D0044D136 /* app_state.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3096E0452BF0F5860026DE7F /* app_state.swift */; };
+		A99871162DBAF8510044D136 /* OsStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30C5320B2CC959AE00936E1F /* OsStatus.swift */; };
+		A99871172DBAF8550044D136 /* UpdaterDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9636E8B82D4BE02500CFB57E /* UpdaterDriver.swift */; };
+		A99871182DBAF8590044D136 /* WatchableValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30C532092CC9558000936E1F /* WatchableValue.swift */; };
+		A99871192DBAF85C0044D136 /* ObservableValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 352D58DF2C4AE796002F3404 /* ObservableValue.swift */; };
+		A998711A2DBAF8610044D136 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 967D0C852C41A1E500FD0767 /* Constants.swift */; };
+		A998711B2DBAF8680044D136 /* FfiCb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30EF74C02BFFE48C0095439F /* FfiCb.swift */; };
+		A998711C2DBAF8700044D136 /* Swift.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35230C182C764F0D007ECFEC /* Swift.swift */; };
+		A998711D2DBAF8740044D136 /* Box.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30497E6D2D9ED57F008B22F9 /* Box.swift */; };
+		A998711E2DBAF8790044D136 /* Concurrency.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35230C152C764B97007ECFEC /* Concurrency.swift */; };
+		A998711F2DBAF87D0044D136 /* Sleep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309BA9122C45DFC8000A7428 /* Sleep.swift */; };
+		A99871202DBAF8810044D136 /* StringError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309B467C2C4C152900A1B00F /* StringError.swift */; };
+		A99871212DBAF8850044D136 /* Json.swift in Sources */ = {isa = PBXBuildFile; fileRef = 300452772C49BC90000B78F7 /* Json.swift */; };
+		A99871222DBAF8890044D136 /* OSLogEntryEncodable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35F8DE7E2C6559D20016CEEB /* OSLogEntryEncodable.swift */; };
+		A99871232DBAF88F0044D136 /* NEVPNStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3096BFF82CECD50F003D062E /* NEVPNStatus.swift */; };
+		A99871242DBAF8940044D136 /* Account.swift in Sources */ = {isa = PBXBuildFile; fileRef = 968B02B82CFF5B7B0053D0EF /* Account.swift */; };
+		A99871252DBAF8990044D136 /* InfoDict.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30920DAC2C3DC174008690C3 /* InfoDict.swift */; };
+		A99871262DBAF89E0044D136 /* NetworkExtensionIpc.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30EF74CC2C02244C0095439F /* NetworkExtensionIpc.swift */; };
+		A99871272DBAF8A60044D136 /* TunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30920D7C2C207379008690C3 /* TunnelProvider.swift */; };
+		A99871282DBAF8FB0044D136 /* DebugBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35A6F2512C611DD1004E1A7C /* DebugBundle.swift */; };
+		A99871292DBAF90B0044D136 /* Debug.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35219C3A2C6BD57F00E63BB8 /* Debug.swift */; };
 		A9A166A42DAF9B60006B852F /* iOSClientApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9A166A32DAF9B60006B852F /* iOSClientApp.swift */; };
-		A9A38D922DBAF33F00147707 /* libobscuravpn-client.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C90161542BE01159005B14AF /* libobscuravpn-client.a */; };
-		A9D231422DB7676200CAA3CB /* DebugBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35A6F2512C611DD1004E1A7C /* DebugBundle.swift */; };
-		A9D231432DB767DE00CAA3CB /* Debug.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35219C3A2C6BD57F00E63BB8 /* Debug.swift */; };
-		A9F1595F2DB8B22E00C302B1 /* NetworkSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F1595B2DB8B22E00C302B1 /* NetworkSettings.swift */; };
-		A9F159602DB8B22E00C302B1 /* RustFfi.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F1595D2DB8B22E00C302B1 /* RustFfi.swift */; };
-		A9F159612DB8B22E00C302B1 /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F1595C2DB8B22E00C302B1 /* PacketTunnelProvider.swift */; };
-		A9F159632DB8B22E00C302B1 /* NetworkSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F1595B2DB8B22E00C302B1 /* NetworkSettings.swift */; };
-		A9F159642DB8B22E00C302B1 /* RustFfi.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F1595D2DB8B22E00C302B1 /* RustFfi.swift */; };
-		A9F159652DB8B22E00C302B1 /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F1595C2DB8B22E00C302B1 /* PacketTunnelProvider.swift */; };
-		A9F159662DB8B22E00C302B1 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F1595A2DB8B22E00C302B1 /* main.swift */; };
-		A9F159672DB8B24F00C302B1 /* RustFfi.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F1595D2DB8B22E00C302B1 /* RustFfi.swift */; };
-		A9F159682DB8B25300C302B1 /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F1595C2DB8B22E00C302B1 /* PacketTunnelProvider.swift */; };
-		A9F159692DB8B29900C302B1 /* NetworkSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F1595B2DB8B22E00C302B1 /* NetworkSettings.swift */; };
 		C90161572BE011B2005B14AF /* libobscuravpn-client.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C90161542BE01159005B14AF /* libobscuravpn-client.a */; };
 /* End PBXBuildFile section */
 
@@ -223,9 +219,13 @@
 		3096E03F2BEFC6770026DE7F /* command.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = command.swift; sourceTree = "<group>"; };
 		3096E0452BF0F5860026DE7F /* app_state.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = app_state.swift; sourceTree = "<group>"; };
 		3098C18E2B921489008877AA /* net.obscura.vpn-client-app.system-network-extension.systemextension */ = {isa = PBXFileReference; explicitFileType = "wrapper.system-extension"; includeInIndex = 0; path = "net.obscura.vpn-client-app.system-network-extension.systemextension"; sourceTree = BUILT_PRODUCTS_DIR; };
+		3098C1912B921489008877AA /* PacketTunnelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketTunnelProvider.swift; sourceTree = "<group>"; };
+		3098C1932B921489008877AA /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		3098C1952B921489008877AA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		3098C1962B921489008877AA /* entitlements.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = entitlements.entitlements; sourceTree = "<group>"; };
 		309B467C2C4C152900A1B00F /* StringError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StringError.swift; sourceTree = "<group>"; };
+		309BA9072C44394E000A7428 /* RustFfi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RustFfi.swift; sourceTree = "<group>"; };
+		309BA90B2C446125000A7428 /* NetworkSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkSettings.swift; sourceTree = "<group>"; };
 		309BA9122C45DFC8000A7428 /* Sleep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sleep.swift; sourceTree = "<group>"; };
 		30C532092CC9558000936E1F /* WatchableValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchableValue.swift; sourceTree = "<group>"; };
 		30C5320B2CC959AE00936E1F /* OsStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OsStatus.swift; sourceTree = "<group>"; };
@@ -256,14 +256,10 @@
 		A06E85A62C2ECA680087C8C8 /* bundle-ids.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "bundle-ids.xcconfig"; sourceTree = "<group>"; };
 		A06E85A92C2ECA680087C8C8 /* app.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = app.xcconfig; sourceTree = "<group>"; };
 		A06E85AA2C2ECA680087C8C8 /* buildversion.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = buildversion.xcconfig; sourceTree = "<group>"; };
-		A930796B2DB763F800436A95 /* RegisterLoginItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterLoginItemView.swift; sourceTree = "<group>"; };
-		A930796D2DB7641200436A95 /* NoFadeButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoFadeButtonStyle.swift; sourceTree = "<group>"; };
 		A98F1BD82DADFF17007F04D3 /* Obscura VPN iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Obscura VPN iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A998710C2DBAF7FE0044D136 /* RegisterLoginItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterLoginItemView.swift; sourceTree = "<group>"; };
+		A998710F2DBAF8080044D136 /* NoFadeButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoFadeButtonStyle.swift; sourceTree = "<group>"; };
 		A9A166A32DAF9B60006B852F /* iOSClientApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSClientApp.swift; sourceTree = "<group>"; };
-		A9F1595A2DB8B22E00C302B1 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
-		A9F1595B2DB8B22E00C302B1 /* NetworkSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkSettings.swift; sourceTree = "<group>"; };
-		A9F1595C2DB8B22E00C302B1 /* PacketTunnelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketTunnelProvider.swift; sourceTree = "<group>"; };
-		A9F1595D2DB8B22E00C302B1 /* RustFfi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RustFfi.swift; sourceTree = "<group>"; };
 		C901614E2BE01159005B14AF /* obscuravpn-client.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "obscuravpn-client.xcodeproj"; sourceTree = "<group>"; };
 		C90161A62BE01A8E005B14AF /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		C90161A72BE01A8E005B14AF /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
@@ -321,8 +317,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A91F9A952DB7698500BBD281 /* DequeModule in Frameworks */,
-				A9A38D922DBAF33F00147707 /* libobscuravpn-client.a in Frameworks */,
+				A98F1BCE2DADFF17007F04D3 /* DequeModule in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -332,6 +327,7 @@
 		30761C152B6EB17100E5F60D = {
 			isa = PBXGroup;
 			children = (
+				A9963C552DB83E4100D10893 /* Packet Tunnel Provider */,
 				96516AC22BF928DD00576562 /* build */,
 				C90161A52BE01A8E005B14AF /* Configurations */,
 				C901614E2BE01159005B14AF /* obscuravpn-client.xcodeproj */,
@@ -342,7 +338,6 @@
 				35A6F2502C611341004E1A7C /* third-party */,
 				30761C352B6EB1F900E5F60D /* Frameworks */,
 				30761C1F2B6EB17100E5F60D /* Products */,
-				A9F1595E2DB8B22E00C302B1 /* Packet Tunnel Provider */,
 			);
 			sourceTree = "<group>";
 		};
@@ -361,8 +356,8 @@
 		30761C202B6EB17100E5F60D /* client */ = {
 			isa = PBXGroup;
 			children = (
-				A93079732DB764A800436A95 /* macOS */,
-				A93079702DB7644300436A95 /* Style */,
+				A99871102DBAF8080044D136 /* Style */,
+				A998710D2DBAF7FE0044D136 /* macOS */,
 				9636E8B82D4BE02500CFB57E /* UpdaterDriver.swift */,
 				966967C02D440B430019AF9F /* LoginItem.swift */,
 				3096BFF72CECD4BA003D062E /* extensions */,
@@ -476,31 +471,31 @@
 			path = StatusItem;
 			sourceTree = "<group>";
 		};
-		A93079702DB7644300436A95 /* Style */ = {
+		A9963C552DB83E4100D10893 /* Packet Tunnel Provider */ = {
 			isa = PBXGroup;
 			children = (
-				A930796D2DB7641200436A95 /* NoFadeButtonStyle.swift */,
+				309BA90B2C446125000A7428 /* NetworkSettings.swift */,
+				309BA9072C44394E000A7428 /* RustFfi.swift */,
+				3098C1912B921489008877AA /* PacketTunnelProvider.swift */,
+				3098C1932B921489008877AA /* main.swift */,
 			);
-			path = Style;
+			path = "Packet Tunnel Provider";
 			sourceTree = "<group>";
 		};
-		A93079732DB764A800436A95 /* macOS */ = {
+		A998710D2DBAF7FE0044D136 /* macOS */ = {
 			isa = PBXGroup;
 			children = (
-				A930796B2DB763F800436A95 /* RegisterLoginItemView.swift */,
+				A998710C2DBAF7FE0044D136 /* RegisterLoginItemView.swift */,
 			);
 			path = macOS;
 			sourceTree = "<group>";
 		};
-		A9F1595E2DB8B22E00C302B1 /* Packet Tunnel Provider */ = {
+		A99871102DBAF8080044D136 /* Style */ = {
 			isa = PBXGroup;
 			children = (
-				A9F1595A2DB8B22E00C302B1 /* main.swift */,
-				A9F1595B2DB8B22E00C302B1 /* NetworkSettings.swift */,
-				A9F1595C2DB8B22E00C302B1 /* PacketTunnelProvider.swift */,
-				A9F1595D2DB8B22E00C302B1 /* RustFfi.swift */,
+				A998710F2DBAF8080044D136 /* NoFadeButtonStyle.swift */,
 			);
-			path = "Packet Tunnel Provider";
+			path = Style;
 			sourceTree = "<group>";
 		};
 		C901614F2BE01159005B14AF /* Products */ = {
@@ -630,7 +625,7 @@
 			);
 			name = "Obscura VPN iOS";
 			packageProductDependencies = (
-				A91F9A942DB7698500BBD281 /* DequeModule */,
+				A98F1BA22DADFF17007F04D3 /* DequeModule */,
 			);
 			productName = client;
 			productReference = A98F1BD82DADFF17007F04D3 /* Obscura VPN iOS.app */;
@@ -778,12 +773,12 @@
 				352D58E02C4AE796002F3404 /* ObservableValue.swift in Sources */,
 				962325232C8A3B58008A9B76 /* MenuItemView.swift in Sources */,
 				30C5320C2CC959AE00936E1F /* OsStatus.swift in Sources */,
-				A930796C2DB763F800436A95 /* RegisterLoginItemView.swift in Sources */,
+				A998710E2DBAF7FE0044D136 /* RegisterLoginItemView.swift in Sources */,
 				30497E6E2D9ED584008B22F9 /* Box.swift in Sources */,
 				9632E4642D19C5EC00BC8E3F /* AccountStatusItem.swift in Sources */,
 				30920D752C1F71BB008690C3 /* startup.swift in Sources */,
 				30920D792C2057B1008690C3 /* initNetworkExtension.swift in Sources */,
-				A930796E2DB7641200436A95 /* NoFadeButtonStyle.swift in Sources */,
+				A99871112DBAF8080044D136 /* NoFadeButtonStyle.swift in Sources */,
 				30920DAD2C3DC174008690C3 /* InfoDict.swift in Sources */,
 				96C9205B2CD549B1002C85EA /* BandwidthStatus.swift in Sources */,
 				966967C12D440B450019AF9F /* LoginItem.swift in Sources */,
@@ -821,15 +816,15 @@
 			buildActionMask = 2147483647;
 			files = (
 				A9963C632DB8401100D10893 /* Sleep.swift in Sources */,
-				A9F1595F2DB8B22E00C302B1 /* NetworkSettings.swift in Sources */,
-				A9F159602DB8B22E00C302B1 /* RustFfi.swift in Sources */,
-				A9F159612DB8B22E00C302B1 /* PacketTunnelProvider.swift in Sources */,
+				A9963C622DB8400D00D10893 /* PacketTunnelProvider.swift in Sources */,
 				A9963C612DB8400900D10893 /* Concurrency.swift in Sources */,
 				A9963C602DB8400300D10893 /* WatchableValue.swift in Sources */,
 				A9963C5F2DB83FFD00D10893 /* NetworkExtensionIpc.swift in Sources */,
+				A9963C5E2DB83FF700D10893 /* RustFfi.swift in Sources */,
 				A9963C5D2DB83FF300D10893 /* StringError.swift in Sources */,
 				A9963C5C2DB83FD600D10893 /* Swift.swift in Sources */,
 				A9963C5B2DB83FD200D10893 /* Json.swift in Sources */,
+				A9963C5A2DB83FCF00D10893 /* NetworkSettings.swift in Sources */,
 				A9963C592DB83FCB00D10893 /* Debug.swift in Sources */,
 				A9963C582DB83FC600D10893 /* Box.swift in Sources */,
 				A9963C572DB83FC200D10893 /* Account.swift in Sources */,
@@ -850,17 +845,17 @@
 				352D58E12C4AE796002F3404 /* ObservableValue.swift in Sources */,
 				30920DAE2C3DC174008690C3 /* InfoDict.swift in Sources */,
 				35219C3C2C6BD57F00E63BB8 /* Debug.swift in Sources */,
+				3098C1942B921489008877AA /* main.swift in Sources */,
 				35230C172C764B97007ECFEC /* Concurrency.swift in Sources */,
 				309BFE3F2D9C169500366431 /* WatchableValue.swift in Sources */,
 				309B467E2C4C152900A1B00F /* StringError.swift in Sources */,
+				309BA90C2C446125000A7428 /* NetworkSettings.swift in Sources */,
 				300452792C49BC90000B78F7 /* Json.swift in Sources */,
-				A9F159632DB8B22E00C302B1 /* NetworkSettings.swift in Sources */,
-				A9F159642DB8B22E00C302B1 /* RustFfi.swift in Sources */,
-				A9F159652DB8B22E00C302B1 /* PacketTunnelProvider.swift in Sources */,
-				A9F159662DB8B22E00C302B1 /* main.swift in Sources */,
 				968B02BA2CFF5B7B0053D0EF /* Account.swift in Sources */,
+				309BA90A2C443978000A7428 /* RustFfi.swift in Sources */,
 				30EF74C22BFFE86B0095439F /* FfiCb.swift in Sources */,
 				96C9206A2CD91D96002C85EA /* String.swift in Sources */,
+				3098C1922B921489008877AA /* PacketTunnelProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -868,31 +863,28 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A9F159692DB8B29900C302B1 /* NetworkSettings.swift in Sources */,
-				A9F159682DB8B25300C302B1 /* PacketTunnelProvider.swift in Sources */,
-				A9F159672DB8B24F00C302B1 /* RustFfi.swift in Sources */,
-				A9D231432DB767DE00CAA3CB /* Debug.swift in Sources */,
-				A9D231422DB7676200CAA3CB /* DebugBundle.swift in Sources */,
-				A908AE852DB7666B00E85F48 /* NoFadeButtonStyle.swift in Sources */,
-				A930796A2DB763C400436A95 /* TunnelProvider.swift in Sources */,
-				A93079692DB763BE00436A95 /* NetworkExtensionIpc.swift in Sources */,
-				A93079682DB763B800436A95 /* InfoDict.swift in Sources */,
-				A93079672DB763B300436A95 /* Account.swift in Sources */,
-				A93079662DB763AD00436A95 /* NEVPNStatus.swift in Sources */,
-				A93079652DB763A400436A95 /* OSLogEntryEncodable.swift in Sources */,
-				A93079622DB7639400436A95 /* Json.swift in Sources */,
-				A93079612DB7639000436A95 /* StringError.swift in Sources */,
-				A93079602DB7638900436A95 /* Sleep.swift in Sources */,
-				A930795F2DB7638600436A95 /* Concurrency.swift in Sources */,
-				A930795E2DB7638100436A95 /* Box.swift in Sources */,
-				A930795D2DB7637D00436A95 /* Swift.swift in Sources */,
-				A930795C2DB7637700436A95 /* FfiCb.swift in Sources */,
-				A930795B2DB7637300436A95 /* Constants.swift in Sources */,
-				A930795A2DB7636A00436A95 /* ObservableValue.swift in Sources */,
-				A93079592DB7635E00436A95 /* WatchableValue.swift in Sources */,
-				A93079572DB7635300436A95 /* UpdaterDriver.swift in Sources */,
-				A93079562DB7634E00436A95 /* OsStatus.swift in Sources */,
-				A93079552DB7634500436A95 /* app_state.swift in Sources */,
+				A99871292DBAF90B0044D136 /* Debug.swift in Sources */,
+				A99871282DBAF8FB0044D136 /* DebugBundle.swift in Sources */,
+				A99871272DBAF8A60044D136 /* TunnelProvider.swift in Sources */,
+				A99871262DBAF89E0044D136 /* NetworkExtensionIpc.swift in Sources */,
+				A99871252DBAF8990044D136 /* InfoDict.swift in Sources */,
+				A99871242DBAF8940044D136 /* Account.swift in Sources */,
+				A99871232DBAF88F0044D136 /* NEVPNStatus.swift in Sources */,
+				A99871222DBAF8890044D136 /* OSLogEntryEncodable.swift in Sources */,
+				A99871212DBAF8850044D136 /* Json.swift in Sources */,
+				A99871202DBAF8810044D136 /* StringError.swift in Sources */,
+				A998711F2DBAF87D0044D136 /* Sleep.swift in Sources */,
+				A998711E2DBAF8790044D136 /* Concurrency.swift in Sources */,
+				A998711D2DBAF8740044D136 /* Box.swift in Sources */,
+				A998711C2DBAF8700044D136 /* Swift.swift in Sources */,
+				A998711B2DBAF8680044D136 /* FfiCb.swift in Sources */,
+				A998711A2DBAF8610044D136 /* Constants.swift in Sources */,
+				A99871192DBAF85C0044D136 /* ObservableValue.swift in Sources */,
+				A99871182DBAF8590044D136 /* WatchableValue.swift in Sources */,
+				A99871172DBAF8550044D136 /* UpdaterDriver.swift in Sources */,
+				A99871162DBAF8510044D136 /* OsStatus.swift in Sources */,
+				A99871152DBAF84D0044D136 /* app_state.swift in Sources */,
+				A99871122DBAF8080044D136 /* NoFadeButtonStyle.swift in Sources */,
 				A9A166A42DAF9B60006B852F /* iOSClientApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1336,6 +1328,14 @@
 				minimumVersion = 2.6.4;
 			};
 		};
+		A98F1BA32DADFF17007F04D3 /* XCRemoteSwiftPackageReference "swift-collections" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-collections.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.1.4;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -1364,9 +1364,9 @@
 			package = A082F8212C46BF5B002AF810 /* XCRemoteSwiftPackageReference "Sparkle" */;
 			productName = Sparkle;
 		};
-		A91F9A942DB7698500BBD281 /* DequeModule */ = {
+		A98F1BA22DADFF17007F04D3 /* DequeModule */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 30497E6C2D9ED476008B22F9 /* XCRemoteSwiftPackageReference "swift-collections" */;
+			package = A98F1BA32DADFF17007F04D3 /* XCRemoteSwiftPackageReference "swift-collections" */;
 			productName = DequeModule;
 		};
 /* End XCSwiftPackageProductDependency section */

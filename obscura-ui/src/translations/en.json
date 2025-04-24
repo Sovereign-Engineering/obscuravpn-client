@@ -210,6 +210,8 @@
   "warningNotice_one": "{{ notice }}",
   "warningNotice_other": "- {{ notice }}",
   "willRelaunch": "GUI will close automatically. Please start the GUI manually if it does not relaunch automatically.",
+  "WireGuard Configurations": "WireGuard Configurations",
+  "Manage Configurations": "Manage Configurations",
   "writeDownAccountNumber": "Please write down your account number or store it in an encrypted vault",
   "yourDevice": "Your device"
 }

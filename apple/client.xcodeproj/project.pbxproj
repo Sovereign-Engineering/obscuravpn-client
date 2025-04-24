@@ -83,7 +83,6 @@
 		A082F8232C46BF5B002AF810 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A082F8222C46BF5B002AF810 /* Sparkle */; };
 		A908AE852DB7666B00E85F48 /* NoFadeButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A930796D2DB7641200436A95 /* NoFadeButtonStyle.swift */; };
 		A91F9A952DB7698500BBD281 /* DequeModule in Frameworks */ = {isa = PBXBuildFile; productRef = A91F9A942DB7698500BBD281 /* DequeModule */; };
-		A91F9A962DB769AE00BBD281 /* libobscuravpn-client.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C90161542BE01159005B14AF /* libobscuravpn-client.a */; };
 		A93079552DB7634500436A95 /* app_state.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3096E0452BF0F5860026DE7F /* app_state.swift */; };
 		A93079562DB7634E00436A95 /* OsStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30C5320B2CC959AE00936E1F /* OsStatus.swift */; };
 		A93079572DB7635300436A95 /* UpdaterDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9636E8B82D4BE02500CFB57E /* UpdaterDriver.swift */; };
@@ -121,6 +120,7 @@
 		A9963C612DB8400900D10893 /* Concurrency.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35230C152C764B97007ECFEC /* Concurrency.swift */; };
 		A9963C632DB8401100D10893 /* Sleep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309BA9122C45DFC8000A7428 /* Sleep.swift */; };
 		A9A166A42DAF9B60006B852F /* iOSClientApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9A166A32DAF9B60006B852F /* iOSClientApp.swift */; };
+		A9A38D922DBAF33F00147707 /* libobscuravpn-client.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C90161542BE01159005B14AF /* libobscuravpn-client.a */; };
 		A9D231422DB7676200CAA3CB /* DebugBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35A6F2512C611DD1004E1A7C /* DebugBundle.swift */; };
 		A9D231432DB767DE00CAA3CB /* Debug.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35219C3A2C6BD57F00E63BB8 /* Debug.swift */; };
 		A9F1595F2DB8B22E00C302B1 /* NetworkSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F1595B2DB8B22E00C302B1 /* NetworkSettings.swift */; };
@@ -260,7 +260,6 @@
 		A930796D2DB7641200436A95 /* NoFadeButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoFadeButtonStyle.swift; sourceTree = "<group>"; };
 		A98F1BD82DADFF17007F04D3 /* Obscura VPN iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Obscura VPN iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A9A166A32DAF9B60006B852F /* iOSClientApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSClientApp.swift; sourceTree = "<group>"; };
-		A9D231452DB7685C00CAA3CB /* NetworkExtension.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NetworkExtension.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/NetworkExtension.framework; sourceTree = DEVELOPER_DIR; };
 		A9F1595A2DB8B22E00C302B1 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		A9F1595B2DB8B22E00C302B1 /* NetworkSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkSettings.swift; sourceTree = "<group>"; };
 		A9F1595C2DB8B22E00C302B1 /* PacketTunnelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketTunnelProvider.swift; sourceTree = "<group>"; };
@@ -323,7 +322,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A91F9A952DB7698500BBD281 /* DequeModule in Frameworks */,
-				A91F9A962DB769AE00BBD281 /* libobscuravpn-client.a in Frameworks */,
+				A9A38D922DBAF33F00147707 /* libobscuravpn-client.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -403,7 +402,6 @@
 		30761C352B6EB1F900E5F60D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				A9D231452DB7685C00CAA3CB /* NetworkExtension.framework */,
 				30761C362B6EB1F900E5F60D /* NetworkExtension.framework */,
 			);
 			name = Frameworks;

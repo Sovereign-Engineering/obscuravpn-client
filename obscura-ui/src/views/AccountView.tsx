@@ -1,18 +1,17 @@
-import { Anchor, Box, Button, Center, Code, Group, Loader, Paper, Stack, Text, ThemeIcon, useComputedColorScheme, useMantineTheme } from '@mantine/core';
+import { Anchor, Box, Center, Group, Loader, Paper, Stack, Text, ThemeIcon, useComputedColorScheme, useMantineTheme } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import React, { useContext, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsQuestionSquareFill } from 'react-icons/bs';
-import { IoIosRefresh } from 'react-icons/io';
-import { IoLogOutOutline } from 'react-icons/io5';
+import { FaRotateRight } from 'react-icons/fa6';
 import { MdOutlineWifiOff } from 'react-icons/md';
 import * as commands from '../bridge/commands';
 import * as ObscuraAccount from '../common/accountUtils';
 import { AccountInfo, accountIsExpired, getActiveSubscription, isRenewing, paidUntil, paidUntilDays, useReRenderWhenExpired } from '../common/api';
 import { AppContext } from '../common/appContext';
 import { normalizeError } from '../common/utils';
-import { AccountNumberDisplay } from '../components/AccountNumberDisplay';
-import ExternalLinkIcon from '../components/ExternalLinkIcon';
+import { AccountNumberSection } from '../components/AccountNumberSection';
+import { ButtonLink } from '../components/ButtonLink';
 import AccountExpiredBadge from '../res/account-expired.svg?react';
 import PaidUpExpiringSoonBadge from '../res/paid-up-expiring-soon.svg?react';
 import PaidUpExpiringVerySoonBadge from '../res/paid-up-expiring-very-soon.svg?react';
@@ -34,50 +33,18 @@ export default function Account() {
 
     // vpnStatus is used because accountInfo will be null if pollAccount fails
     const accountId = appStatus.accountId;
-
-    const logOut = async () => {
-        try {
-            await commands.logout();
-        } catch (e) {
-            const error = normalizeError(e);
-            notifications.show({ title: t('logOutFailed'), message: <Text>{t('pleaseReportError')}<br /><Code>{error.message}</Code></Text> });
-        }
-    }
-
+    const colorScheme = useComputedColorScheme();
     return (
         <Stack align='center' p={20} gap='xl' mt='sm'>
-            <Stack w='100%' align='center'>
-                <AccountStatusCard />
-                <Group w='90%' justify='right'>
-                    <ManageSubscriptionLink accountId={appStatus.accountId} />
+            <AccountStatusCard />
+            <AccountNumberSection accountId={accountId} />
+            <Stack align='start' w='90%' p='md' style={{ borderRadius: theme.radius.md, boxShadow: theme.shadows.sm }} bg={colorScheme === 'light' ? 'gray.1' : 'dark.6'}>
+                <Group w='100%' justify='space-between'>
+                    <Text fw={500}>{t('WGConfigs')}</Text>
+                    <ButtonLink text={t('Manage Configurations')} href={ObscuraAccount.tunnelsUrl(appStatus.accountId)} />
                 </Group>
             </Stack>
-            {accountId && <Box w='90%'>
-                <AccountNumberDisplay accountId={accountId} />
-            </Box>}
-            <Box w='90%'>
-                <Button fw='bolder' onClick={logOut} {...theme.other.buttonDisconnectProps}>
-                    <Group gap={5}>
-                        <IoLogOutOutline size={19} />
-                        <Text fw={550}>{t('logOut')}</Text>
-                    </Group>
-                </Button>
-            </Box>
-        </Stack >
-    );
-}
-
-interface ManagePaymentLinkProps {
-    accountId: ObscuraAccount.AccountId,
-}
-
-function ManageSubscriptionLink({ accountId }: ManagePaymentLinkProps) {
-    const { t } = useTranslation();
-    // TODO: Call the API to get the Stripe URL and go directly there.
-    return (
-        <Button component='a' href={ObscuraAccount.payUrl(accountId)} size='sm'>
-            <span>{t('Manage Payments')} <ExternalLinkIcon size={11} /></span>
-        </Button>
+        </Stack>
     );
 }
 
@@ -238,14 +205,19 @@ function AccountStatusCardTemplate({
     shaveOff = 60
 }: AccountStatusCardTemplateProps) {
     const colorScheme = useComputedColorScheme();
+    const { appStatus } = useContext(AppContext);
+    const { t } = useTranslation();
     return (
-        <Paper w='90%' p='md' radius='md' bg={colorScheme === 'light' ? 'gray.1' : 'dark.6'}>
+        <Paper w='90%' p='md' radius='md' bg={colorScheme === 'light' ? 'gray.1' : 'dark.6'} shadow='sm'>
             <Group>
                 {icon}
                 <Box w={`calc(100% - ${shaveOff}px)`}>
                     <Group justify='space-between'>
                         <Text fw={500}>{heading}</Text>
-                        <CheckAgain />
+                        <Group>
+                          <CheckAgain />
+                          <ButtonLink text={t('Manage Payments')} href={ObscuraAccount.payUrl(appStatus.accountId)} />
+                        </Group>
                     </Group>
                     {subtitle}
                 </Box>
@@ -257,6 +229,7 @@ function AccountStatusCardTemplate({
 function CheckAgain() {
     const { t } = useTranslation();
     const { pollAccount, accountLoading } = useContext(AppContext);
+    const theme = useMantineTheme();
 
     return (
         <Group>
@@ -273,7 +246,7 @@ function CheckAgain() {
                         color: 'red',
                     });
                 }
-            }} c='gray.6'>{(accountLoading) ? <Center w={100}><Loader size='sm' /></Center> : <><IoIosRefresh size={13} /> <u>{t('Recheck')}</u></>}</Anchor>
+            }} fw={550} c={theme.primaryColor}>{(accountLoading) ? <Center w={100}><Loader size='sm' /></Center> : <><FaRotateRight size={13} /> {t('Recheck')}</>}</Anchor>
         </Group>
     );
 }

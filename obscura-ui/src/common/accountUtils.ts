@@ -132,9 +132,13 @@ export const LEGAL_WEBPAGE = `${OBSCURA_WEBPAGE}/legal`;
 export const APP_ACCOUNT_TAB = 'obscuravpn:///account';
 
 export function payUrl(accountId: AccountId): string {
-  return `${OBSCURA_WEBPAGE}/pay#account_id=${encodeURIComponent(String(accountId))}`;
+  return `${OBSCURA_WEBPAGE}/pay#account_id=${encodeURIComponent(accountIdToString(accountId))}`;
 }
 
 export function subscriptionUrl(accountId: AccountId): string {
-  return `${OBSCURA_WEBPAGE}/subscription/stripe/checkout#account_id=${encodeURIComponent(String(accountId))}`;
+  return `${OBSCURA_WEBPAGE}/subscription/stripe/checkout#account_id=${encodeURIComponent(accountIdToString(accountId))}`;
+}
+
+export function tunnelsUrl(accountId: AccountId): string {
+  return `${OBSCURA_WEBPAGE}/account/tunnels#account_id=${encodeURIComponent(accountIdToString(accountId))}`;
 }

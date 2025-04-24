@@ -40,7 +40,7 @@ export default function Account() {
             <AccountNumberSection accountId={accountId} />
             <Stack align='start' w='90%' p='md' style={{ borderRadius: theme.radius.md, boxShadow: theme.shadows.sm }} bg={colorScheme === 'light' ? 'gray.1' : 'dark.6'}>
                 <Group w='100%' justify='space-between'>
-                    <Text fw={500}>{t('WireGuard Configurations')}</Text>
+                    <Text fw={500}>{t('WGConfigs')}</Text>
                     <ButtonLink text={t('Manage Configurations')} href={ObscuraAccount.tunnelsUrl(appStatus.accountId)} />
                 </Group>
             </Stack>

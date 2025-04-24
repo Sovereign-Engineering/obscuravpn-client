@@ -15,23 +15,9 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "300E9E302B79346F00600505"
-               BuildableName = "tun.appex"
-               BlueprintName = "tun"
-               ReferencedContainer = "container:client.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "30761C1D2B6EB17100E5F60D"
-               BuildableName = "Obscura VPN.app"
-               BlueprintName = "Obscura VPN"
+               BlueprintIdentifier = "30920D922C3D51EC008690C3"
+               BuildableName = "App Network Extension.appex"
+               BlueprintName = "App Network Extension"
                ReferencedContainer = "container:client.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -56,16 +42,6 @@
       debugServiceExtension = "internal"
       allowLocationSimulation = "YES"
       launchAutomaticallySubstyle = "2">
-      <BuildableProductRunnable
-         runnableDebuggingMode = "0">
-         <BuildableReference
-            BuildableIdentifier = "primary"
-            BlueprintIdentifier = "30761C1D2B6EB17100E5F60D"
-            BuildableName = "Obscura VPN.app"
-            BlueprintName = "Obscura VPN"
-            ReferencedContainer = "container:client.xcodeproj">
-         </BuildableReference>
-      </BuildableProductRunnable>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
@@ -75,16 +51,15 @@
       debugDocumentVersioning = "YES"
       askForAppToLaunch = "Yes"
       launchAutomaticallySubstyle = "2">
-      <BuildableProductRunnable
-         runnableDebuggingMode = "0">
+      <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "30761C1D2B6EB17100E5F60D"
-            BuildableName = "Obscura VPN.app"
-            BlueprintName = "Obscura VPN"
+            BlueprintIdentifier = "30920D922C3D51EC008690C3"
+            BuildableName = "App Network Extension.appex"
+            BlueprintName = "App Network Extension"
             ReferencedContainer = "container:client.xcodeproj">
          </BuildableReference>
-      </BuildableProductRunnable>
+      </MacroExpansion>
    </ProfileAction>
    <AnalyzeAction
       buildConfiguration = "Debug">

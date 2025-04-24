@@ -66,18 +66,29 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
         logger.debug("from applicationShouldHandleReopen. hasVisibleWindows = \(hasVisibleWindows)")
+
+        if NSApp.activationPolicy() == .regular {
+            openWindow(id: WindowIds.RootWindowId)
+            return true
+        }
+
+        NSApp.setActivationPolicy(.regular)
+
+        if #available(macOS 14.0, *) {
+            openWindow(id: WindowIds.RootWindowId)
+            return true
+        }
+
         // On macos ventura or earlier, without this workaround, if the user
         // reopens the App using Finder while the App is already running, the
         // App Menu (the left side) becomes completely frozen and unusable
         // (even the  one)
         /// more info here:
         // https://linear.app/soveng/issue/OBS-175/no-obscura-vpn-in-menu-bar-dock-or-app-switcher-when-application-is#comment-2ecf3e57
-        NSApp.setActivationPolicy(.regular)
-        NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock").first?.activate(options: [])
-        OperationQueue.current?.underlyingQueue?.asyncAfter(deadline: .now() + .milliseconds(200)) {
-            NSApp.activate(ignoringOtherApps: true)
-            openWindow(id: WindowIds.RootWindowId)
-        }
+        NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.systemuiserver").first!.activate(options: [])
+        openWindow(id: WindowIds.RootWindowId)
+        NSApp.activate(ignoringOtherApps: true)
+
         return true
     }
 

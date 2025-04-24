@@ -11,6 +11,8 @@
 	</dict>
 	<key>Obscura</key>
 	<dict>
+		<key>ObscuraSourceVersion</key>
+		<string>$(OBSCURA_SOURCE_VERSION)</string>
 		<key>AppGroupIdentifier</key>
 		<string>$(OBSCURA_APP_APP_GROUP_ID)</string>
 	</dict>

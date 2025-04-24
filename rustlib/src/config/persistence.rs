@@ -64,11 +64,11 @@ fn try_load(path: &Path) -> Result<Option<Config>, ConfigLoadError> {
 /// Load a single config path.
 ///
 /// TODO: Remove after some migration period.
-pub(in crate::config) fn load_one(config_dir: &Path) -> Result<Option<Config>, ConfigLoadError> {
+pub fn load(config_dir: &Path) -> Result<Config, ConfigLoadError> {
     let path = Path::new(config_dir).join(CONFIG_FILE);
 
     let err = match try_load(&path) {
-        Ok(c) => return Ok(c),
+        Ok(c) => return Ok(c.unwrap_or_default()),
         Err(error) => {
             tracing::error!(
                 config.path =? path,
@@ -100,37 +100,7 @@ pub(in crate::config) fn load_one(config_dir: &Path) -> Result<Option<Config>, C
     // Ensure that we can write the config. Otherwise we may just crash when the user logs in if the disk is full or some other endemic issue.
     save(config_dir, &default_config).map_err(ConfigLoadError::SaveEror)?;
 
-    Ok(Some(default_config))
-}
-
-/// Load and migrate a configuration.
-pub fn load(config_dir: &Path, old_config_dir: &Path) -> Result<Config, ConfigLoadError> {
-    // Note: We don't continue down the list on errors to avoid reading a potentially old config file (for example a new version stops writing the old one then the user rolls back). It also makes the whole process more predictable. We only fall back if the new location does not exist.
-    if let Some(c) = load_one(config_dir)? {
-        return Ok(c);
-    }
-
-    if let Some(c) = load_one(old_config_dir)? {
-        tracing::info!(
-            config.dir =? config_dir,
-            config.old_dir =? old_config_dir,
-            "Migrating config file to new location"
-        );
-
-        save(config_dir, &c).map_err(ConfigLoadError::SaveEror)?;
-
-        tracing::info!(
-            config.dir =? config_dir,
-            config.old_dir =? old_config_dir,
-            "Config migrated successfully"
-        );
-
-        // NOTE: We leave the old config in place. This is mostly because the app doesn't yet have a logout button so it is very difficult for the user to enter valuable data (their account ID) if we leave them logged in.
-
-        return Ok(c);
-    }
-
-    Ok(Default::default())
+    Ok(default_config)
 }
 
 pub fn save(config_dir: &Path, config: &Config) -> Result<(), ConfigSaveError> {

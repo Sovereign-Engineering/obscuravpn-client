@@ -5,13 +5,11 @@ import OSLog
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "Rust FFI")
 
-func ffiInitialize(configDir: String, oldConfigDir: String, userAgent: String, _ receiveCallback: (@convention(c) (FfiBytes) -> Void)!) {
+func ffiInitialize(configDir: String, userAgent: String, _ receiveCallback: (@convention(c) (FfiBytes) -> Void)!) {
     libobscuravpn_client.initialize_macos_system_logging()
     configDir.withFfiStr { ffiConfigDir in
-        oldConfigDir.withFfiStr { ffiOldConfigDir in
-            userAgent.withFfiStr { ffiUserAgent in
-                libobscuravpn_client.initialize(ffiConfigDir, ffiOldConfigDir, ffiUserAgent, receiveCallback)
-            }
+        userAgent.withFfiStr { ffiUserAgent in
+            libobscuravpn_client.initialize(ffiConfigDir, ffiUserAgent, receiveCallback)
         }
     }
 }

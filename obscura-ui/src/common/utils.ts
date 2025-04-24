@@ -2,6 +2,7 @@ import Cookies from 'js-cookie';
 import localforage from 'localforage';
 import { Dispatch, ForwardedRef, RefCallback, SetStateAction, useEffect, useLayoutEffect, useState } from 'react';
 import { fmt } from './fmt';
+import { useMantineTheme } from '@mantine/core';
 export { localforage };
 
 export const HEADER_TITLE = 'Obscura VPN';
@@ -162,4 +163,9 @@ export function fmtTime(ms: number) {
 
 function zeroPad(num: number, width: number) {
   return num.toString().padStart(width, '0');
+}
+
+export function usePrimaryColorResolved() {
+  const theme = useMantineTheme();
+  return theme.variantColorResolver({color: theme.primaryColor, theme, variant: 'subtle'}).color;
 }

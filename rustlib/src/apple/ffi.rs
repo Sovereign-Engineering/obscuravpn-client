@@ -44,13 +44,12 @@ fn global_manager() -> Arc<Manager> {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn initialize(config_dir: FfiStr, old_config_dir: FfiStr, user_agent: FfiStr, receive_cb: extern "C" fn(FfiBytes)) {
+pub unsafe extern "C" fn initialize(config_dir: FfiStr, user_agent: FfiStr, receive_cb: extern "C" fn(FfiBytes)) {
     let mut first_init = false;
     GLOBAL.get_or_init(|| {
         let config_dir = config_dir.to_string().into();
-        let old_config_dir = old_config_dir.to_string().into();
         let user_agent = user_agent.to_string();
-        match Manager::new(config_dir, old_config_dir, user_agent, &RUNTIME, receive_cb) {
+        match Manager::new(config_dir, user_agent, &RUNTIME, receive_cb) {
             Ok(c) => {
                 first_init = true;
                 tracing::info!("ffi initialized");

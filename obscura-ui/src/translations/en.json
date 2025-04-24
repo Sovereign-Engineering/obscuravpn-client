@@ -174,7 +174,7 @@
   "releaseNotes": "Release Notes",
   "revealFile": "Show {{ item }} in file system",
   "revealFile_darwin": "Reveal {{ item }} in Finder",
-  "rotateWgKey": "Rotate WireGuard key",
+  "rotateWgKey": "Rotate WireGuard® key",
   "securedBy": "Secured by <0>{{ provider }}</0>",
   "selectLocation": "Select Location",
   "serverInfoHide": "Hide server info",
@@ -210,7 +210,8 @@
   "warningNotice_one": "{{ notice }}",
   "warningNotice_other": "- {{ notice }}",
   "willRelaunch": "GUI will close automatically. Please start the GUI manually if it does not relaunch automatically.",
-  "WireGuard Configurations": "WireGuard Configurations",
+  "WGConfigs": "WireGuard® Configurations",
+  "WGTrademark": "WireGuard® is a registered trademark of Jason A. Donenfeld.",
   "Manage Configurations": "Manage Configurations",
   "writeDownAccountNumber": "Please write down your account number or store it in an encrypted vault",
   "yourDevice": "Your device"

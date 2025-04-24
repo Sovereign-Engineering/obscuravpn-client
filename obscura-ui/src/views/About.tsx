@@ -74,7 +74,7 @@ export default function About() {
           }
         </Group>
       </Stack>
-      <Stack m={40} align='center'>
+      <Stack mb={10} align='center'>
         <Text c='dimmed'>{t('copyright')}</Text>
         <Modal opened={showLicenses} onClose={() => setShowLicenses(false)} size='lg' title={<Title order={3}>{t('openSourceLicenses')}</Title>}>
           <Suspense fallback={<Center><Loader type='bars' size='md' /></Center>}>
@@ -89,6 +89,7 @@ export default function About() {
           </Anchor>
           <Anchor href={LEGAL_WEBPAGE}>{t('tosAndPrivacyPolicy')}</Anchor>
         </Group>
+        <Text c='dimmed'>{t('WGTrademark')}</Text>
       </Stack>
     </Stack>
   );

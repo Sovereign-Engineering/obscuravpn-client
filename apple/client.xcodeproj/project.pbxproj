@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 73;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -75,6 +75,8 @@
 		962325232C8A3B58008A9B76 /* MenuItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 962325222C8A3B58008A9B76 /* MenuItemView.swift */; };
 		9632E4642D19C5EC00BC8E3F /* AccountStatusItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9632E4632D19C5EA00BC8E3F /* AccountStatusItem.swift */; };
 		9636E8B92D4BE02500CFB57E /* UpdaterDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9636E8B82D4BE02500CFB57E /* UpdaterDriver.swift */; };
+		9649F9592DA4233F009EFF4F /* LoopingVideoPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9649F9582DA4233F009EFF4F /* LoopingVideoPlayer.swift */; };
+		9649F9732DA56142009EFF4F /* AVKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9649F9722DA56142009EFF4F /* AVKit.framework */; };
 		96516AC32BF928DD00576562 /* build in Resources */ = {isa = PBXBuildFile; fileRef = 96516AC22BF928DD00576562 /* build */; };
 		96615E292C598A9600120DEF /* CwlSysctl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96615E282C598A9600120DEF /* CwlSysctl.swift */; };
 		966967C12D440B450019AF9F /* LoginItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 966967C02D440B430019AF9F /* LoginItem.swift */; };
@@ -158,6 +160,16 @@
 			name = "Embed System Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9649F96E2DA45808009EFF4F /* Copy Files */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = videos;
+			dstSubfolderSpec = 7;
+			files = (
+			);
+			name = "Copy Files";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A98F1BDD2DAE00A0007F04D3 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -222,6 +234,8 @@
 		962325222C8A3B58008A9B76 /* MenuItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuItemView.swift; sourceTree = "<group>"; };
 		9632E4632D19C5EA00BC8E3F /* AccountStatusItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountStatusItem.swift; sourceTree = "<group>"; };
 		9636E8B82D4BE02500CFB57E /* UpdaterDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdaterDriver.swift; sourceTree = "<group>"; };
+		9649F9582DA4233F009EFF4F /* LoopingVideoPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoopingVideoPlayer.swift; sourceTree = "<group>"; };
+		9649F9722DA56142009EFF4F /* AVKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVKit.framework; path = System/Library/Frameworks/AVKit.framework; sourceTree = SDKROOT; };
 		96516AC22BF928DD00576562 /* build */ = {isa = PBXFileReference; lastKnownFileType = folder; name = build; path = "../obscura-ui/build"; sourceTree = "<group>"; };
 		96615E282C598A9600120DEF /* CwlSysctl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CwlSysctl.swift; sourceTree = "<group>"; };
 		966967C02D440B430019AF9F /* LoginItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginItem.swift; sourceTree = "<group>"; };
@@ -249,6 +263,32 @@
 		C9D486352C123078007D5F2F /* Release-app.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Release-app.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		9614762B2DAEE5210081B2DE /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"macOS 14 System Extension Demo.mov",
+				"macOS 15 System Extension Demo.mov",
+			);
+			target = 30761C1D2B6EB17100E5F60D /* Obscura VPN */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+		9614762E2DAEE5270081B2DE /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
+			buildPhase = 9649F96E2DA45808009EFF4F /* Copy Files */;
+			membershipExceptions = (
+				"macOS 14 System Extension Demo.mov",
+				"macOS 15 System Extension Demo.mov",
+			);
+		};
+/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		9649F96A2DA457B2009EFF4F /* videos */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (9614762B2DAEE5210081B2DE /* PBXFileSystemSynchronizedBuildFileExceptionSet */, 9614762E2DAEE5270081B2DE /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = videos; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
+
 /* Begin PBXFrameworksBuildPhase section */
 		30497E5B2D9EC038008B22F9 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
@@ -262,6 +302,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9649F9732DA56142009EFF4F /* AVKit.framework in Frameworks */,
 				A082F8232C46BF5B002AF810 /* Sparkle in Frameworks */,
 				30497E782D9ED7EE008B22F9 /* DequeModule in Frameworks */,
 			);
@@ -302,6 +343,7 @@
 			isa = PBXGroup;
 			children = (
 				A9963C552DB83E4100D10893 /* Packet Tunnel Provider */,
+				9649F96A2DA457B2009EFF4F /* videos */,
 				96516AC22BF928DD00576562 /* build */,
 				C90161A52BE01A8E005B14AF /* Configurations */,
 				C901614E2BE01159005B14AF /* obscuravpn-client.xcodeproj */,
@@ -330,6 +372,7 @@
 		30761C202B6EB17100E5F60D /* client */ = {
 			isa = PBXGroup;
 			children = (
+				9649F9582DA4233F009EFF4F /* LoopingVideoPlayer.swift */,
 				9636E8B82D4BE02500CFB57E /* UpdaterDriver.swift */,
 				966967C02D440B430019AF9F /* LoginItem.swift */,
 				3096BFF72CECD4BA003D062E /* extensions */,
@@ -369,6 +412,7 @@
 		30761C352B6EB1F900E5F60D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				9649F9722DA56142009EFF4F /* AVKit.framework */,
 				30761C362B6EB1F900E5F60D /* NetworkExtension.framework */,
 			);
 			name = Frameworks;
@@ -514,12 +558,16 @@
 				30761C1A2B6EB17100E5F60D /* Sources */,
 				30761C1B2B6EB17100E5F60D /* Frameworks */,
 				30761C1C2B6EB17100E5F60D /* Resources */,
+				9649F96E2DA45808009EFF4F /* Copy Files */,
 				3098C1862B9211B1008877AA /* Embed System Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				3098C1982B921489008877AA /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				9649F96A2DA457B2009EFF4F /* videos */,
 			);
 			name = "Obscura VPN";
 			packageProductDependencies = (
@@ -612,7 +660,6 @@
 				};
 			};
 			buildConfigurationList = 30761C192B6EB17100E5F60D /* Build configuration list for PBXProject "client" */;
-			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -624,6 +671,7 @@
 				A082F8212C46BF5B002AF810 /* XCRemoteSwiftPackageReference "Sparkle" */,
 				30497E6C2D9ED476008B22F9 /* XCRemoteSwiftPackageReference "swift-collections" */,
 			);
+			preferredProjectObjectVersion = 56;
 			productRefGroup = 30761C1F2B6EB17100E5F60D /* Products */;
 			projectDirPath = "";
 			projectReferences = (
@@ -750,6 +798,7 @@
 				968B02B92CFF5B7B0053D0EF /* Account.swift in Sources */,
 				35A6F2522C611DD1004E1A7C /* DebugBundle.swift in Sources */,
 				96615E292C598A9600120DEF /* CwlSysctl.swift in Sources */,
+				9649F9592DA4233F009EFF4F /* LoopingVideoPlayer.swift in Sources */,
 				30EF74CD2C02244C0095439F /* NetworkExtensionIpc.swift in Sources */,
 				35230C282C775FF1007ECFEC /* Notifications.swift in Sources */,
 				30761C222B6EB17100E5F60D /* ClientApp.swift in Sources */,
@@ -1087,6 +1136,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"client/Preview Content\"";
+				DEVELOPMENT_TEAM = 5G943LR562;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (

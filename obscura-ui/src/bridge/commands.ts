@@ -47,6 +47,7 @@ export class CommandError extends Error {
 
 export async function jsonFfiCmd(cmd: string, arg = {}, timeoutMs: number | null = 10_000): Promise<unknown> {
     let jsonCmd = JSON.stringify(({ [cmd]: arg }));
+    console.log(`invoked FFI command: ${cmd}`);
     return await invoke('jsonFfiCmd', {
         cmd: jsonCmd,
         timeoutMs,
@@ -206,4 +207,8 @@ export function setPinnedExits(newPinnedExits: PinnedLocation[]) {
 
 export function rotateWgKey() {
     return jsonFfiCmd('rotateWgKey');
+}
+
+export function setAutoConnect(enable: boolean) {
+  return jsonFfiCmd('setAutoConnect', { enable });
 }

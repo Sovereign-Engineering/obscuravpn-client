@@ -1,8 +1,8 @@
 import Foundation
-import UserNotifications
 import NetworkExtension
 import OSLog
 import SwiftUI
+import UserNotifications
 
 class AppState: ObservableObject {
     private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "AppState")
@@ -21,24 +21,51 @@ class AppState: ObservableObject {
 
         if initialStatus.autoConnect {
             Task {
-                do {
-                    // TODO: Notification doesn't show try { throw "asdfadsf" }()
-                    try await self.enableTunnel(TunnelArgs())
-                } catch {
-                    Self.logger.error("Could not trigger auto connect \(error, privacy: .public)")
-                    // TODO: Notification doesn't show
-                    let content = UNMutableNotificationContent()
-                    content.title = "Automatic connect failed"
-                    content.body = "Could not connect automatically at launch."
-                    content.interruptionLevel = .active
-                    content.sound = UNNotificationSound.defaultCritical
-                    displayNotification(
-                        UNNotificationRequest(
-                            identifier: "obscura-auto-connect-failed",
-                            content: content,
-                            trigger: nil
+                Self.logger.info("Auto-connect is enabled, waiting for internet availability before connecting")
+                while true {
+                    _ = await self.osStatus.waitUntil { $0.internetAvailable }
+                    // Wait a little to increase the chance that the OS NE session manager realizes internet is available, otherwise the NE will fail to start connecting and restart, which can cost much more time.
+                    try! await Task.sleep(seconds: 0.2)
+
+                    if self.osStatus.get().internetAvailable == false {
+                        Self.logger.info("Internet became unavailability before auto-connect was triggered. Retrying.")
+                        continue
+                    }
+                    if !self.status.autoConnect {
+                        Self.logger.info("Auto-connect was disabled while waiting for internet availability, not connecting")
+                        return
+                    }
+                    if self.osStatus.get().tunnelActivated() {
+                        Self.logger.info("Tunnel already activated abandoning auto-connect")
+                        return
+                    }
+
+                    Self.logger.info("Auto-connecting")
+
+                    do {
+                        try await self.enableTunnel(TunnelArgs())
+                    } catch {
+                        Self.logger.error("Could not trigger auto connect \(error, privacy: .public)")
+                        let content = UNMutableNotificationContent()
+                        content.title = "Automatic connect failed"
+                        content.body = "Could not connect automatically at launch."
+                        content.interruptionLevel = .active
+                        content.sound = UNNotificationSound.defaultCritical
+                        displayNotification(
+                            UNNotificationRequest(
+                                identifier: "obscura-auto-connect-failed",
+                                content: content,
+                                trigger: nil
+                            )
                         )
-                    )
+                        return
+                    }
+
+                    if await self.waitForTunnelActivation(Duration.seconds(1)) {
+                        Self.logger.info("Successfully triggered auto-connect")
+                        return
+                    }
+                    Self.logger.info("Auto-connect timed out, trying again")
                 }
             }
         }
@@ -174,6 +201,20 @@ class AppState: ObservableObject {
         for k in UserDefaultKeys.allKeys {
             UserDefaults.standard.removeObject(forKey: k)
         }
+    }
+
+    func waitForTunnelActivation(_ timeout: Duration) async -> Bool {
+        let result = await self.osStatus.waitUntilWithTimeout(timeout) {
+            switch $0.osVpnStatus {
+            case .connected, .connecting, .reasserting:
+                return true
+            case .disconnected, .disconnecting, .invalid:
+                return false
+            @unknown default:
+                return false
+            }
+        }
+        return result != nil
     }
 
     // Unfortunately async notification iterators are not sendable, so we often need to resubscribe to state changes.

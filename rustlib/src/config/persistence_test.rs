@@ -16,7 +16,6 @@ use crate::config::save;
 use crate::config::Config;
 use crate::config::PinnedLocation;
 use crate::config::CONFIG_FILE;
-use crate::manager::TunnelArgs;
 
 fn random_config() -> Config {
     Config {

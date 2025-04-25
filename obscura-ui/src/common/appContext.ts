@@ -81,7 +81,8 @@ export interface AppStatus {
     lastChosenExit: string,
     inNewAccountFlow: boolean,
     apiUrl: string,
-    account: AccountStatus | null
+    account: AccountStatus | null,
+    autoConnect: boolean,
 }
 
 interface IAppContext {

@@ -77,6 +77,17 @@ class OsStatus: Encodable {
 
         return w
     }
+
+    func tunnelActivated() -> Bool {
+        switch self.osVpnStatus {
+        case .connected, .connecting, .reasserting:
+            return true
+        case .disconnected, .disconnecting, .invalid:
+            return false
+        @unknown default:
+            return false
+        }
+    }
 }
 
 // Remove this once min OS versions become macOS 14 and iOS 17

@@ -207,6 +207,8 @@ pub struct Config {
     pub pinned_locations: Vec<PinnedLocation>,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub last_chosen_exit: Option<String>,
+    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
+    pub auto_connect: bool,
 
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub wireguard_key_cache: WireGuardKeyCache,
@@ -228,6 +230,7 @@ pub struct ConfigDebug {
     pub use_wireguard_key_cache: (),
     pub has_account_id: bool,
     pub has_cached_auth_token: bool,
+    pub auto_connect: bool,
 }
 
 impl From<Config> for ConfigDebug {
@@ -246,6 +249,7 @@ impl From<Config> for ConfigDebug {
             wireguard_key_cache: _,
             use_wireguard_key_cache,
             cached_account_status: _,
+            auto_connect,
         } = config;
         Self {
             api_url,
@@ -257,6 +261,7 @@ impl From<Config> for ConfigDebug {
             use_wireguard_key_cache,
             has_account_id: account_id.is_some(),
             has_cached_auth_token: cached_auth_token.is_some(),
+            auto_connect,
         }
     }
 }

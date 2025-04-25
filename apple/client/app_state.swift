@@ -1,4 +1,5 @@
 import Foundation
+import UserNotifications
 import NetworkExtension
 import OSLog
 import SwiftUI
@@ -17,6 +18,30 @@ class AppState: ObservableObject {
         self.manager = manager
         self.status = initialStatus
         self.osStatus = OsStatus.watchable(manager: manager)
+
+        if initialStatus.autoConnect {
+            Task {
+                do {
+                    // TODO: Notification doesn't show try { throw "asdfadsf" }()
+                    try await self.enableTunnel(TunnelArgs())
+                } catch {
+                    Self.logger.error("Could not trigger auto connect \(error, privacy: .public)")
+                    // TODO: Notification doesn't show
+                    let content = UNMutableNotificationContent()
+                    content.title = "Automatic connect failed"
+                    content.body = "Could not connect automatically at launch."
+                    content.interruptionLevel = .active
+                    content.sound = UNNotificationSound.defaultCritical
+                    displayNotification(
+                        UNNotificationRequest(
+                            identifier: "obscura-auto-connect-failed",
+                            content: content,
+                            trigger: nil
+                        )
+                    )
+                }
+            }
+        }
 
         Task { @MainActor in
             var version: UUID = initialStatus.version

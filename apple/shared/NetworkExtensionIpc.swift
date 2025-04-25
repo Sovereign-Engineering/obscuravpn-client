@@ -31,6 +31,7 @@ struct NeStatus: Codable, Equatable {
     var lastChosenExit: String?
     var apiUrl: String
     var account: AccountStatus?
+    var autoConnect: Bool
 
     static func == (left: NeStatus, right: NeStatus) -> Bool {
         return left.version == right.version

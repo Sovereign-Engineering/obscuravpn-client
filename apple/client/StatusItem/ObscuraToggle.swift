@@ -47,7 +47,7 @@ struct ObscuraToggle: View {
             Task {
                 self.toggleLabel = ToggleLabels.connecting
                 do {
-                    try await self.startupModel.appState?.enableTunnel(TunnelArgs())
+                    try await self.startupModel.appState?.enableTunnel(TunnelArgs(exit: .any))
                 } catch {
                     logger.error("Failed to connect from status menu \(error, privacy: .public)")
                     self.toggleLabel = ToggleLabels.notConnected

@@ -4,11 +4,13 @@ import OSLog
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "network extension ipc")
 
+// See ../../rustlib/src/manager_cmd.rs
 enum NeManagerCmdResult: Codable {
     case ok_json(String)
     case error(String)
 }
 
+// See ../../rustlib/src/manager_cmd.rs
 enum NeManagerCmd: Codable {
     case getDebugInfo
     case apiGetAccountInfo
@@ -18,8 +20,20 @@ enum NeManagerCmd: Codable {
     case setTunnelArgs(args: TunnelArgs?, allowActivation: Bool = false)
 }
 
+// See ../../rustlib/src/manager.rs
 struct TunnelArgs: Codable {
-    var exit: String?
+    var exit: ExitSelector
+}
+
+// See ../../rustlib/src/manager.rs
+enum ExitSelector: Codable {
+    case any
+    case exit(id: String)
+    case country(country_code: String)
+    case city(
+        country_code: String,
+        city_code: String,
+    )
 }
 
 struct NeStatus: Codable, Equatable {

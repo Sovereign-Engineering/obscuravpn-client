@@ -43,7 +43,7 @@ class AppState: ObservableObject {
                     Self.logger.info("Auto-connecting")
 
                     do {
-                        try await self.enableTunnel(TunnelArgs())
+                        try await self.enableTunnel(TunnelArgs(exit: .any))
                     } catch {
                         Self.logger.error("Could not trigger auto connect \(error, privacy: .public)")
                         let content = UNMutableNotificationContent()

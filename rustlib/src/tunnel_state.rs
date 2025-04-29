@@ -156,7 +156,7 @@ impl TunnelState {
 
                 // Try to connect if desired
                 if let Some(target_args) = &target_args {
-                    match poll_until_change(&mut target_args_recv, client_state.connect(target_args.exit.clone())).await {
+                    match poll_until_change(&mut target_args_recv, client_state.connect(&target_args.exit.clone())).await {
                         None => {
                             tracing::info!(
                                 message_id = "SmLhzVwY",

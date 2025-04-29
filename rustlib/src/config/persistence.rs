@@ -20,6 +20,7 @@ use x25519_dalek::PublicKey;
 
 use crate::client_state::AccountStatus;
 use crate::config::cached::ConfigCached;
+use crate::manager::ExitSelector;
 
 pub(super) const CONFIG_FILE: &str = "config.json";
 
@@ -192,6 +193,8 @@ pub struct Config {
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub account_id: Option<AccountId>,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
+    pub auto_connect: bool,
+    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub old_account_ids: Vec<AccountId>,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub local_tunnels_ids: Vec<String>,
@@ -205,17 +208,29 @@ pub struct Config {
     pub cached_exits: Option<ConfigCached<Arc<ExitList>>>,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub pinned_locations: Vec<PinnedLocation>,
+
+    // Deprecated, left in for migration only.
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub last_chosen_exit: Option<String>,
-    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
-    pub auto_connect: bool,
 
+    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
+    pub last_chosen_exit_selector: ExitSelector,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub wireguard_key_cache: WireGuardKeyCache,
     #[serde(skip)]
     pub use_wireguard_key_cache: (), // Removed
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub cached_account_status: Option<AccountStatus>,
+}
+
+impl Config {
+    pub fn migrate(&mut self) {
+        if self.last_chosen_exit_selector == (ExitSelector::Any {}) {
+            if let Some(exit) = &self.last_chosen_exit {
+                self.last_chosen_exit_selector = ExitSelector::Exit { id: exit.clone() };
+            }
+        }
+    }
 }
 
 // Redact sensitive fields by default
@@ -227,6 +242,7 @@ pub struct ConfigDebug {
     pub in_new_account_flow: bool,
     pub pinned_locations: Vec<PinnedLocation>,
     pub last_chosen_exit: Option<String>,
+    pub last_chosen_exit_selector: ExitSelector,
     pub use_wireguard_key_cache: (),
     pub has_account_id: bool,
     pub has_cached_auth_token: bool,
@@ -246,6 +262,7 @@ impl From<Config> for ConfigDebug {
             cached_exits,
             pinned_locations,
             last_chosen_exit,
+            last_chosen_exit_selector,
             wireguard_key_cache: _,
             use_wireguard_key_cache,
             cached_account_status: _,
@@ -258,6 +275,7 @@ impl From<Config> for ConfigDebug {
             in_new_account_flow,
             pinned_locations,
             last_chosen_exit,
+            last_chosen_exit_selector,
             use_wireguard_key_cache,
             has_account_id: account_id.is_some(),
             has_cached_auth_token: cached_auth_token.is_some(),

@@ -1,12 +1,16 @@
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
+use std::sync::Arc;
 use std::time::SystemTime;
 
+use obscuravpn_api::cmd::ExitList;
 use obscuravpn_api::types::AccountId;
+use obscuravpn_api::types::OneExit;
 use tempfile::tempdir;
 use uuid::Uuid;
 
+use crate::config::cached::ConfigCached;
 use crate::config::load;
 use crate::config::save;
 use crate::config::Config;
@@ -137,12 +141,22 @@ fn test_ignore_invalid_fields() {
         exit: (),
         in_new_account_flow: true,
         cached_auth_token: Some("myauth".into()),
-        pinned_exits: vec!["mypinnedexit".into()],
-        pinned_locations: Some(vec![PinnedLocation {
-            country_code: "CA".into(),
-            city_code: "yyz".into(),
-            pinned_at: SystemTime::UNIX_EPOCH,
-        }]),
+        cached_exits: Some(ConfigCached::new(
+            Arc::new(ExitList {
+                exits: vec![OneExit {
+                    id: "ABC-123".into(),
+                    country_code: "ca".into(),
+                    city_code: "yyz".into(),
+                    city_name: "Toronto".into(),
+                    provider_id: "foo123".into(),
+                    provider_url: "https://servers.example/foo123".into(),
+                    provider_name: "Cheap Server Rentals".into(),
+                    provider_homepage_url: "https://example.com".into(),
+                }],
+            }),
+            super::cached::Version::artificial(),
+        )),
+        pinned_locations: vec![PinnedLocation { country_code: "CA".into(), city_code: "yyz".into(), pinned_at: SystemTime::UNIX_EPOCH }],
         last_chosen_exit: Some("mylastexit".into()),
         wireguard_key_cache: Default::default(),
         use_wireguard_key_cache: (),

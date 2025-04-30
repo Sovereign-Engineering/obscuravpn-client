@@ -2,8 +2,8 @@ use super::{
     errors::{ApiError, TunnelConnectError},
     network_config::NetworkConfig,
 };
-use crate::config::ConfigSaveError;
 use crate::config::PinnedLocation;
+use crate::config::{cached::ConfigCached, ConfigSaveError};
 use crate::quicwg::QuicWgConnHandshaking;
 use crate::quicwg::{QuicWgConnectError, QuicWgWireguardHandshakeError};
 use crate::relay_selection::race_relay_handshakes;
@@ -14,7 +14,7 @@ use crate::{
 };
 use boringtun::x25519::{PublicKey, StaticSecret};
 use chrono::Utc;
-use obscuravpn_api::cmd::CacheWgKey;
+use obscuravpn_api::cmd::{CacheWgKey, ETagCmd, ExitList, ListExits2};
 use obscuravpn_api::types::{AccountId, AccountInfo, AuthToken, OneExit};
 use obscuravpn_api::{
     cmd::{ApiErrorKind, Cmd, CreateTunnel, DeleteTunnel, ListRelays, ListTunnels},
@@ -35,8 +35,9 @@ use tokio::spawn;
 use uuid::Uuid;
 
 pub struct ClientState {
-    user_agent: String,
+    exit_update_lock: tokio::sync::Mutex<()>,
     inner: Mutex<ClientStateInner>,
+    user_agent: String,
 }
 
 struct ClientStateInner {
@@ -69,7 +70,7 @@ impl ClientState {
     pub fn new(config_dir: PathBuf, user_agent: String) -> Result<Self, ConfigLoadError> {
         let config = config::load(&config_dir)?;
         let inner = ClientStateInner { config_dir, config, cached_api_client: None };
-        Ok(Self { user_agent, inner: Mutex::new(inner) })
+        Ok(Self { exit_update_lock: Default::default(), inner: Mutex::new(inner), user_agent })
     }
 
     fn lock(&self) -> MutexGuard<ClientStateInner> {
@@ -132,71 +133,14 @@ impl ClientState {
         self.lock().config.clone()
     }
 
-    pub fn maybe_migrate_pinned_exits(&self, exits: &obscuravpn_api::cmd::ExitList) -> Result<(), ConfigSaveError> {
-        let mut inner = self.lock();
-        if inner.config.pinned_locations.is_some() {
-            return Ok(());
-        }
-
-        tracing::info!(
-            message_id = "aezee9No",
-            pinned_exits =? &inner.config.pinned_exits,
-            "Migrating pinned exits."
-        );
-
-        let exits_by_id = exits
-            .exits
-            .iter()
-            .map(|exit| (&exit.id, exit))
-            .collect::<std::collections::HashMap<_, _>>();
-
-        let mut duplicates = std::collections::HashSet::new();
-
-        let mut pinned_locations = Vec::new();
-        for pin in &inner.config.pinned_exits {
-            let Some(exit) = exits_by_id.get(pin) else {
-                tracing::warn!(
-                    message_id = "eich1Uo5",
-                    exit.id =? pin,
-                    "Pinned exit not in exit list, ignoring",
-                );
-                continue;
-            };
-
-            // While we should assume the possibility of duplicates in the pin list in general we will remove duplicates during the migration.
-            if !duplicates.insert((&exit.country_code, &exit.city_code)) {
-                tracing::info!(
-                    message_id = "ohPh5obi",
-                    exit.id = pin,
-                    exit.country_code = exit.country_code,
-                    exit.city_code = exit.city_code,
-                    "Duplicate exit for location ignored.",
-                );
-                continue;
-            }
-
-            pinned_locations.push(PinnedLocation {
-                country_code: exit.country_code.clone(),
-                city_code: exit.city_code.clone(),
-                pinned_at: SystemTime::UNIX_EPOCH,
-            });
-        }
-
-        tracing::info!(
-            message_id = "aca0CeiY",
-            pinned_locations =? pinned_locations,
-            "Pinned exits migration complete.",
-        );
-
-        Self::change_config(&mut inner, move |config| config.pinned_locations = Some(pinned_locations))?;
-
-        Ok(())
+    pub fn get_exit_list(&self) -> Option<ConfigCached<Arc<ExitList>>> {
+        self.lock().config.cached_exits.clone()
     }
 
     pub fn set_pinned_locations(&self, pinned_locations: Vec<PinnedLocation>) -> Result<(), ConfigSaveError> {
         let mut inner = self.lock();
         Self::change_config(&mut inner, move |config| {
-            config.pinned_locations = Some(pinned_locations);
+            config.pinned_locations = pinned_locations;
         })?;
         Ok(())
     }
@@ -365,36 +309,48 @@ impl ClientState {
         Ok((relay, handshaking))
     }
 
-    pub async fn api_request<C: Cmd>(&self, cmd: C) -> Result<C::Output, ApiError> {
-        let api_client = {
-            // MUST NOT BLOCK UNTIL `MutexGuard` IS DROPPED
-            let mut inner: MutexGuard<'_, ClientStateInner> = self.lock();
-            let Some(account_id) = inner.config.account_id.clone() else {
-                return Err(ApiError::NoAccountId);
-            };
-            if let Some(api_client) = inner.cached_api_client.clone() {
-                api_client
-            } else {
-                let base_url = inner.base_url();
-                let api_client = Arc::new(Client::new(base_url, account_id, &self.user_agent).map_err(ClientError::from)?);
-                if let Some(auth_token) = inner.config.cached_auth_token.clone() {
-                    api_client.set_auth_token(Some(auth_token.into()));
-                }
-                inner.cached_api_client.insert(api_client).clone()
-            }
-            // IMPLICITLY DROPPING `MutexGuard`
+    fn api_client(&self) -> Result<Arc<Client>, ApiError> {
+        let mut inner = self.lock();
+
+        let Some(account_id) = inner.config.account_id.clone() else {
+            return Err(ApiError::NoAccountId);
         };
 
+        if let Some(api_client) = inner.cached_api_client.clone() {
+            Ok(api_client)
+        } else {
+            let base_url = inner.base_url();
+            let api_client = Arc::new(Client::new(base_url, account_id, &self.user_agent).map_err(ClientError::from)?);
+            if let Some(auth_token) = inner.config.cached_auth_token.clone() {
+                api_client.set_auth_token(Some(auth_token.into()));
+            }
+            Ok(inner.cached_api_client.insert(api_client).clone())
+        }
+    }
+
+    fn cache_auth_token(&self) -> Result<(), ConfigSaveError> {
+        let mut inner = self.lock();
+
+        let auth_token = inner.cached_api_client.as_ref().and_then(|c| c.get_auth_token());
+        Self::change_config(&mut inner, |config| {
+            config.cached_auth_token = auth_token.map(Into::into);
+        })?;
+
+        Ok(())
+    }
+
+    pub async fn api_request<C: Cmd>(&self, cmd: C) -> Result<C::Output, ApiError> {
+        let api_client = self.api_client()?;
         let result = api_client.run(cmd).await;
-
-        // MUST NOT BLOCK UNTIL `MutexGuard` IS DROPPED
-        let mut inner: MutexGuard<'_, ClientStateInner> = self.lock();
-        let auth_token = inner.cached_api_client.clone().and_then(|c| c.get_auth_token());
-        Self::change_config(&mut inner, |config| config.cached_auth_token = auth_token.map(Into::into))?;
-        drop(inner);
-        // DROPPED `MutexGuard`
-
+        self.cache_auth_token()?;
         Ok(result?)
+    }
+
+    pub async fn cached_api_request<C: ETagCmd>(&self, cmd: C, etag: Option<&[u8]>) -> Result<obscuravpn_api::Response<C::Output>, ApiError> {
+        let api_client = self.api_client()?;
+        let result = api_client.run_with_etag(cmd, etag).await?;
+        self.cache_auth_token()?;
+        Ok(result)
     }
 
     pub fn base_url(&self) -> String {
@@ -403,6 +359,37 @@ impl ClientState {
 
     pub fn user_agent(&self) -> &str {
         &self.user_agent
+    }
+
+    pub async fn maybe_update_exits(&self, freshness: Duration) -> Result<(), ApiError> {
+        let _update_lock = self.exit_update_lock.lock().await;
+
+        let prev = self.lock().config.cached_exits.clone();
+        let prev = prev.as_ref();
+        if prev.is_some_and(|c| c.staleness() < freshness) {
+            tracing::info!(message_id = "fao5ciJu", "Exit list is already up to date.");
+            return Ok(());
+        }
+
+        let res = self.cached_api_request(ListExits2 {}, prev.as_ref().and_then(|p| p.etag())).await?;
+
+        let etag = res.etag().map(|e| e.to_vec());
+
+        let Some(body) = res.into_body() else { return Ok(()) };
+
+        let mut inner = self.lock();
+        Self::change_config(&mut inner, |config| {
+            let version = match etag {
+                Some(b) => config::cached::Version::ETag(b),
+                None => {
+                    tracing::warn!(message_id = "meequa8P", "Exit list had not ETag.");
+                    config::cached::Version::artificial()
+                }
+            };
+            config.cached_exits = Some(ConfigCached::new(Arc::new(body), version));
+        })?;
+
+        Ok(())
     }
 
     pub fn update_account_info(&self, account_info: &AccountInfo) -> Result<(), ConfigSaveError> {

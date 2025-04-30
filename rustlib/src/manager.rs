@@ -6,7 +6,7 @@ use std::{
 };
 
 use obscuravpn_api::{
-    cmd::{Cmd, GetAccountInfo, ListExits2},
+    cmd::{Cmd, ExitList, GetAccountInfo},
     types::{AccountId, AccountInfo, OneExit, OneRelay, WgPubkey},
     Client, ClientError,
 };
@@ -21,7 +21,7 @@ use uuid::Uuid;
 
 use crate::{
     client_state::AccountStatus,
-    config::{Config, ConfigDebug, ConfigLoadError, ConfigSaveError, PinnedLocation},
+    config::{cached::ConfigCached, Config, ConfigDebug, ConfigLoadError, ConfigSaveError, PinnedLocation},
     errors::ApiError,
     tunnel_state::TunnelState,
 };
@@ -33,6 +33,7 @@ use super::ffi_helpers::*;
 pub struct Manager {
     background_taks_cancellation_token: CancellationToken,
     client_state: Arc<ClientState>,
+    exit_list_watch: Sender<Option<ConfigCached<Arc<ExitList>>>>,
     tunnel_state: Receiver<TunnelState>,
     target_tunnel_args: Sender<Option<TunnelArgs>>,
     status_watch: Sender<Status>,
@@ -62,7 +63,7 @@ impl Status {
             vpn_status,
             account_id,
             in_new_account_flow,
-            pinned_locations: pinned_locations.unwrap_or_default(),
+            pinned_locations,
             last_chosen_exit,
             api_url,
             account: cached_account_status,
@@ -130,6 +131,7 @@ impl Manager {
         let (target_tunnel_args, tunnel_state) = TunnelState::new(runtime, client_state.clone(), receive_cb, cancellation_token.clone());
         let initial_status = Status::new(Uuid::new_v4(), VpnStatus::Disconnected {}, config, client_state.base_url());
         let this = Arc::new(Self {
+            exit_list_watch: channel(client_state.get_exit_list()).0,
             target_tunnel_args,
             tunnel_state,
             client_state,
@@ -143,8 +145,40 @@ impl Manager {
         Ok(this)
     }
 
+    pub async fn maybe_update_exits(&self, freshness: Duration) -> Result<(), ApiError> {
+        self.client_state.maybe_update_exits(freshness).await?;
+
+        self.exit_list_watch.send_if_modified(|prev| {
+            let Some(new) = self.client_state.get_exit_list() else {
+                tracing::error!(message_id = "eeZ1eiMa", "Exit list is still None after update.");
+                return false;
+            };
+
+            match prev {
+                Some(prev) => {
+                    if new == *prev {
+                        return false;
+                    }
+
+                    *prev = new;
+                }
+                None => {
+                    *prev = Some(new);
+                }
+            }
+
+            true
+        });
+
+        Ok(())
+    }
+
     pub fn subscribe(&self) -> Receiver<Status> {
         self.status_watch.subscribe()
+    }
+
+    pub fn subscribe_exit_list(&self) -> Receiver<Option<ConfigCached<Arc<ExitList>>>> {
+        self.exit_list_watch.subscribe()
     }
 
     pub fn set_target_state(&self, new_target_args: Option<TunnelArgs>, allow_activation: bool) -> Result<(), ()> {
@@ -210,12 +244,6 @@ impl Manager {
         let ret = self.client_state.set_account_id(None, None);
         self.update_status_if_changed(None);
         ret
-    }
-
-    pub async fn list_exits(&self) -> Result<obscuravpn_api::cmd::ExitList, ApiError> {
-        let exits = self.api_request(ListExits2 {}).await?;
-        self.client_state.maybe_migrate_pinned_exits(&exits)?;
-        Ok(exits)
     }
 
     pub fn set_pinned_exits(&self, exits: Vec<PinnedLocation>) -> Result<(), ConfigSaveError> {

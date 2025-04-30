@@ -23,7 +23,7 @@ export class UseAsyncState<T> {
 
     refreshToken: unknown;
     refreshCallbacks: RefreshCallback<T>[] | undefined;
-    refresh: () => Promise<void>;
+    refresh?: () => Promise<void>;
 
     setValue(version: number, value: T, callbacks?: RefreshCallback<T>[]): boolean {
         for (let callback of callbacks ?? []) {
@@ -120,9 +120,9 @@ export function useAsync<T>({
                 state.inner.refreshToken = {};
                 state.inner.refreshCallbacks = [];
             }
-            state.inner.refreshCallbacks.push((value, error) => {
+            state.inner.refreshCallbacks.push((_, error) => {
                 if (error) reject(error);
-                else resolve(value);
+                else resolve();
             });
             setState({ inner: state.inner });
         })
@@ -177,5 +177,6 @@ export function useAsync<T>({
         currentValue: loading ? undefined : state.inner.value,
         everLoaded: state.inner.valueVersion > NEVER_LOADED,
         loading,
+        refresh: state.inner.refresh!,
     };
 }

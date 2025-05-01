@@ -7,7 +7,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { BsPin, BsPinFill, BsShieldFillCheck, BsShieldFillExclamation } from 'react-icons/bs';
 import * as commands from '../bridge/commands';
 import { Exit, getExitCountry } from '../common/api';
-import { AppContext, ConnectionInProgress, ExitsContext, isConnecting } from '../common/appContext';
+import { AppContext, ConnectionInProgress, isConnecting } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { CityNotFoundError, exitLocation, exitsSortComparator, getExitCountryFlag, getRandomExitFromCity } from '../common/exitUtils';
 import { KeyedSet } from '../common/KeyedSet';
@@ -23,11 +23,15 @@ import EyeSlash from '../res/eye.slash.fill.svg?react';
 import OrangeCheckedShield from '../res/orange-checked-shield.svg?react';
 import { fmtErrorI18n } from '../translations/i18n';
 import classes from './Location.module.css';
+import { useExitList } from '../common/useExitList';
 
 export default function LocationView() {
     const { t } = useTranslation();
     const { vpnConnected, vpnConnect, connectionInProgress, appStatus } = useContext(AppContext);
-    const { exitList } = useContext(ExitsContext);
+
+    const { exitList } = useExitList({
+      periodS: 60,
+    });
 
     const onExitSelect = async (exit: Exit) => {
         // connected already to the desired exit
@@ -43,7 +47,7 @@ export default function LocationView() {
                 id: NotificationId.VPN_DISCONNECT_CONNECT
             });
             await vpnConnect(exit.id);
-        } else if (exitList !== null) {
+        } else if (exitList) {
             try {
               exit = getRandomExitFromCity(exitList, exit.country_code, exit.city_code);
             } catch (error) {
@@ -68,7 +72,7 @@ export default function LocationView() {
     };
 
     const toggleExitPin = (exit: Exit) => {
-      if (exitList === null) {
+      if (!exitList) {
         console.error("Toggling pin with no exit list")
         return;
       }
@@ -91,7 +95,7 @@ export default function LocationView() {
       }
     };
 
-    const locations = exitList === null ? [] : exitList;
+    const locations = exitList ?? [];
     const pinnedLocationSet = new KeyedSet(
       loc => JSON.stringify([loc.country_code, loc.city_code]),
       appStatus.pinnedLocations,
@@ -212,7 +216,6 @@ function LocationCard({ exit, connected, onSelect, togglePin, pinned }: Location
 
 function NoExitServers() {
     const { t } = useTranslation();
-    const { fetchExitList } = useContext(ExitsContext);
     const [isLoading, setIsLoading] = useState(false);
 
     if (isLoading) {
@@ -223,7 +226,7 @@ function NoExitServers() {
         try {
             setIsLoading(true);
             console.log("Fetching exits");
-            await fetchExitList();
+            await commands.refreshExitList(0);
         } catch (error) {
           let message = error instanceof commands.CommandError
             ? fmtErrorI18n(t, error)

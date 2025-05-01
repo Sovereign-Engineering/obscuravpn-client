@@ -10,8 +10,7 @@ import 'simplebar-react/dist/simplebar.min.css';
 import classes from './App.module.css';
 import * as commands from './bridge/commands';
 import { logReactError, useSystemContext } from './bridge/SystemProvider';
-import { Exit } from './common/api';
-import { AppContext, AppStatus, ConnectionInProgress, ExitsContext, OsStatus } from './common/appContext';
+import { AppContext, AppStatus, ConnectionInProgress, OsStatus } from './common/appContext';
 import { fmt } from './common/fmt';
 import { NotificationId } from './common/notifIds';
 import { useAsync } from './common/useAsync';
@@ -295,27 +294,6 @@ export default function () {
   }
 
   const {
-    lastSuccessfulValue: exitList,
-    error: exitListError,
-    refresh: fetchExitList,
-  } = useLoadable({
-    skip:
-      !osStatus?.internetAvailable
-      || !isLoggedIn, // The API client currently fails all requests until logged in even if they don't require auth.
-    load: commands.getExitServers,
-    periodMs: 12 * 3600 * 1000,
-    returnError: true,
-  });
-
-  useEffect(() => {
-    if (exitListError) {
-      console.error("Failed to fetch exits", exitListError);
-
-      // We just ignore errors, they will be shown if the user goes to a page that displays exits.
-    }
-  }, [exitListError]);
-
-  const {
     lastSuccessfulValue: accountInfo,
     error: accountInfoError,
     refresh: pollAccount,
@@ -360,11 +338,6 @@ export default function () {
     vpnDisconnect: disconnectFromVpn,
   }
 
-  const exitsContext = {
-    exitList: exitList as Exit[] ?? null,
-    fetchExitList,
-  }
-
   // <> is an alias for <React.Fragment>
   return <>
     {/* non-closable notice */}
@@ -379,14 +352,12 @@ export default function () {
       <AppShellMain p={0}>
         <SimpleBar scrollableNodeProps={{ ref: setScroller }} autoHide={false} className={classes.simpleBar}>
           <AppContext.Provider value={appContext}>
-            <ExitsContext.Provider value={exitsContext}>
-              <ErrorBoundary FallbackComponent={FallbackAppRender} onReset={_details => resetState()} onError={logReactError}>
-                <Routes>
-                  {views[0] !== undefined && <Route path='/' element={<Navigate to={views[0].path} />} />}
-                  {views.map((view, index) => <Route key={index} path={view.path} element={<view.component />} />)}
-                </Routes>
-              </ErrorBoundary>
-            </ExitsContext.Provider>
+            <ErrorBoundary FallbackComponent={FallbackAppRender} onReset={_details => resetState()} onError={logReactError}>
+              <Routes>
+                {views[0] !== undefined && <Route path='/' element={<Navigate to={views[0].path} />} />}
+                {views.map((view, index) => <Route key={index} path={view.path} element={<view.component />} />)}
+              </Routes>
+            </ErrorBoundary>
           </AppContext.Provider>
           <ScrollToTop scroller={scroller} bottom={20} />
         </SimpleBar>

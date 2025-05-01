@@ -169,13 +169,26 @@ export async function getTrafficStats(): Promise<TrafficStats> {
 }
 
 
-export interface ApiListExitResponse {
+export interface CachedValue<T> {
+  version: string,
+  last_updated: number,
+  value: T,
+}
+
+export interface ExitList {
     exits: Exit[]
 }
 
-export async function getExitServers(): Promise<Exit[]> {
-    const { exits } = await jsonFfiCmd('apiListExit') as ApiListExitResponse;
-    return exits;
+export async function getExitList(version?: string): Promise<CachedValue<ExitList>> {
+  return await jsonFfiCmd('getExitList', {
+    knownVersion: version,
+  }) as CachedValue<ExitList>;
+}
+
+export async function refreshExitList(freshnessS: number): Promise<void> {
+  await jsonFfiCmd('refreshExitList', {
+    freshness: freshnessS,
+  });
 }
 
 export async function getAccount(): Promise<AccountInfo> {

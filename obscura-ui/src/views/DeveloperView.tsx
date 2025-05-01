@@ -16,7 +16,6 @@ export default function DeveloperViewer() {
     const { t } = useTranslation();
     const { vpnConnected, connectionInProgress, appStatus, osStatus } = useContext(AppContext);
     const [trafficStats, setTrafficStats] = useState({});
-    const [exitServers, setExitServers] = useState<Exit[]>([]);
     const cookieToDeleteRef = useRef<HTMLInputElement | null>(null);
 
     const trafficStatsInterval = useInterval(async () => {
@@ -24,7 +23,6 @@ export default function DeveloperViewer() {
     }, 1000);
 
     useEffect(() => {
-        (async () => { setExitServers(await commands.getExitServers()); })();
         trafficStatsInterval.start();
         return () => {
             trafficStatsInterval.stop();
@@ -62,7 +60,6 @@ export default function DeveloperViewer() {
         <Text>Since this is cumulative, to get the average bandwidth speed, you must do a slope calculation between the time of two captures (recommended gap of 500ms to 1000ms). See code in the <code>apple/client/StatusItem</code> directory for reference</Text>
         <JsonInput value={JSON.stringify(trafficStats, null, 4)} contentEditable={false} rows={6} />
         <Title order={4}>Exit Servers</Title>
-        <JsonInput value={JSON.stringify(exitServers, null, 4)} contentEditable={false} rows={4} />
         <DevSendCommand />
         <Button onClick={() => commands.setInNewAccountFlow(true)}>setInNewAccountFlow</Button>
         <Title order={4}>Cookies</Title>

@@ -117,10 +117,3 @@ export function isConnecting(connectionInProgress: ConnectionInProgress) {
     }
     return false;
 }
-
-interface IExitsContext {
-  fetchExitList: () => Promise<void>,
-  exitList: Exit[] | null,
-}
-
-export const ExitsContext = createContext(null as any as IExitsContext);

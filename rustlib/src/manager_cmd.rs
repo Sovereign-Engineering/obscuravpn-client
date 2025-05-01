@@ -1,15 +1,21 @@
 // Command interface for commands, whose arguments and return values can be serialized and deserialized. You should usually prefer other methods unless you are implementing an FFI interface. All commands map more or less directly to another method.
 
+use std::{sync::Arc, time::Duration};
+
 use obscuravpn_api::{
-    cmd::{ApiErrorKind, Cmd, GetAccountInfo, ListExits2},
+    cmd::{ApiErrorKind, Cmd, ExitList, GetAccountInfo},
     types::AccountId,
     ClientError,
 };
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use strum::IntoStaticStr;
 use uuid::Uuid;
 
-use crate::manager::{DebugInfo, Manager, ManagerTrafficStats, Status};
+use crate::{
+    cached_value::CachedValue,
+    manager::{DebugInfo, Manager, ManagerTrafficStats, Status},
+};
 use crate::{config::ConfigSaveError, errors::ApiError};
 use crate::{config::PinnedLocation, manager::TunnelArgs};
 
@@ -71,31 +77,53 @@ impl From<&ApiError> for ManagerCmdErrorCode {
 }
 
 // Keep synchronized with ../../apple/shared/NetworkExtensionIpc.swift
+#[serde_with::serde_as]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum ManagerCmd {
     ApiGetAccountInfo {},
-    ApiListExit {},
     GetDebugInfo {},
-    GetStatus { known_version: Option<Uuid> },
+    GetExitList {
+        #[serde_as(as = "Option<serde_with::base64::Base64>")]
+        known_version: Option<Vec<u8>>,
+    },
+    GetStatus {
+        known_version: Option<Uuid>,
+    },
     GetTrafficStats {},
-    Login { account_id: AccountId, validate: bool },
+    Login {
+        account_id: AccountId,
+        validate: bool,
+    },
     Logout {},
     Ping {},
-    SetApiUrl { url: Option<String> },
-    SetInNewAccountFlow { value: bool },
-    SetPinnedExits { exits: Vec<PinnedLocation> },
-    SetTunnelArgs { args: Option<TunnelArgs>, allow_activation: bool },
+    SetApiUrl {
+        url: Option<String>,
+    },
+    SetInNewAccountFlow {
+        value: bool,
+    },
+    SetPinnedExits {
+        exits: Vec<PinnedLocation>,
+    },
+    SetTunnelArgs {
+        args: Option<TunnelArgs>,
+        allow_activation: bool,
+    },
+    RefreshExitList {
+        #[serde_as(as = "serde_with::DurationMilliSeconds")]
+        freshness: Duration,
+    },
     RotateWgKey {},
 }
 
 #[derive(Debug, Serialize)]
 #[serde(untagged)]
 pub enum ManagerCmdOk {
-    Empty,
-    ApiListExit(<ListExits2 as Cmd>::Output),
     ApiGetAccountInfo(<GetAccountInfo as Cmd>::Output),
+    Empty,
     GetDebugInfo(DebugInfo),
+    GetExitList(CachedValue<Arc<ExitList>>),
     GetStatus(Status),
     GetTrafficStats(ManagerTrafficStats),
 }
@@ -103,6 +131,23 @@ pub enum ManagerCmdOk {
 impl ManagerCmd {
     pub(super) async fn run(self, manager: &Manager) -> Result<ManagerCmdOk, ManagerCmdErrorCode> {
         match self {
+            ManagerCmd::GetExitList { known_version } => {
+                let mut recv = manager.subscribe_exit_list();
+                let res = recv
+                    .wait_for(|exits| exits.as_ref().is_some_and(|e| Some(e.version()) != known_version.as_deref()))
+                    .await
+                    .map_err(|error| {
+                        tracing::error!(?error, message_id = "ahcieM1h", "exit list subscription channel closed: {}", error,);
+                        ManagerCmdErrorCode::Other
+                    })?;
+                let res = res.as_ref().unwrap();
+
+                Ok(ManagerCmdOk::GetExitList(CachedValue {
+                    version: res.version().to_vec(),
+                    last_updated: res.last_updated,
+                    value: res.value.clone(),
+                }))
+            }
             ManagerCmd::GetTrafficStats {} => Ok(ManagerCmdOk::GetTrafficStats(manager.traffic_stats())),
             ManagerCmd::SetPinnedExits { exits } => match manager.set_pinned_exits(exits) {
                 Ok(()) => Ok(ManagerCmdOk::Empty),
@@ -118,10 +163,6 @@ impl ManagerCmd {
             },
             ManagerCmd::ApiGetAccountInfo {} => match manager.get_account_info().await {
                 Ok(account_info) => Ok(ManagerCmdOk::ApiGetAccountInfo(account_info)),
-                Err(error) => Err((&error).into()),
-            },
-            ManagerCmd::ApiListExit {} => match manager.list_exits().await {
-                Ok(exit_list) => Ok(ManagerCmdOk::ApiListExit(exit_list)),
                 Err(error) => Err((&error).into()),
             },
             ManagerCmd::GetStatus { known_version } => match manager.subscribe().wait_for(|s| Some(s.version) != known_version).await {
@@ -143,6 +184,10 @@ impl ManagerCmd {
             ManagerCmd::SetTunnelArgs { args, allow_activation } => match manager.set_target_state(args, allow_activation) {
                 Ok(()) => Ok(ManagerCmdOk::Empty),
                 Err(()) => Err(ManagerCmdErrorCode::TunnelInactive),
+            },
+            ManagerCmd::RefreshExitList { freshness } => match manager.maybe_update_exits(freshness).await {
+                Ok(()) => Ok(ManagerCmdOk::Empty),
+                Err(err) => Err((&err).into()),
             },
             ManagerCmd::RotateWgKey {} => match manager.rotate_wg_key() {
                 Ok(()) => Ok(ManagerCmdOk::Empty),

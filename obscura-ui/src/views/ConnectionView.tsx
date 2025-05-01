@@ -9,7 +9,7 @@ import { IoIosEyeOff } from 'react-icons/io';
 import { MdLanguage, MdLaptopMac, MdOutlineWifiOff } from 'react-icons/md';
 import * as ObscuraAccount from '../common/accountUtils';
 import { accountIsExpired, Exit, getCountry, getExitCountry, useReRenderWhenExpired } from '../common/api';
-import { AppContext, ConnectionInProgress, ExitsContext, isConnecting, PinnedLocation } from '../common/appContext';
+import { AppContext, ConnectionInProgress, isConnecting, PinnedLocation } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { CityNotFoundError, exitLocation, exitsSortComparator, getExitCountryFlag, getRandomExitFromCity } from '../common/exitUtils';
 import { KeyedSet } from '../common/KeyedSet';
@@ -39,6 +39,7 @@ import MascotNotConnected from '../res/mascots/not-connected-mascot.svg';
 import MascotValidating from '../res/mascots/validating-mascot.svg';
 import ObscuraIconHappy from '../res/obscura-icon-happy.svg';
 import classes from './ConnectionView.module.css';
+import { useExitList } from '../common/useExitList';
 
 // Los Angeles, CA
 const BUTTON_WIDTH = 320;
@@ -403,7 +404,9 @@ interface LocationSelectProps {
 
 function LocationSelect({ cityConnectingTo, setCityConnectingTo }: LocationSelectProps) {
     const { t } = useTranslation();
-    const { exitList } = useContext(ExitsContext);
+    const { exitList } = useExitList({
+        periodS: 60,
+    });
     const { appStatus, vpnConnect, vpnConnected, connectionInProgress, osStatus } = useContext(AppContext);
     const { internetAvailable } = osStatus;
     const { lastChosenExit, pinnedLocations } = appStatus;
@@ -415,7 +418,7 @@ function LocationSelect({ cityConnectingTo, setCityConnectingTo }: LocationSelec
 
     const getComboboxExit = () => {
         if (connectedExit !== undefined) return connectedExit;
-        if (exitList === null) return;
+        if (!exitList) return;
         if (lastChosenExit !== null) return exitList.find(loc => loc.id === lastChosenExit);
 
         let firstPin = pinnedLocations[0];
@@ -444,7 +447,7 @@ function LocationSelect({ cityConnectingTo, setCityConnectingTo }: LocationSelec
 
     // need to disable both combo (forces a collapsed dropdown) and button (non-clickable)
     const comboDisabled = !internetAvailable || connectionInProgress !== ConnectionInProgress.UNSET;
-    const showLastChosenLabel = lastChosenExit !== null && exitList !== null && selectedExit?.id === lastChosenExit && !vpnConnected && !isConnecting(connectionInProgress);
+    const showLastChosenLabel = lastChosenExit !== null && !!exitList && selectedExit?.id === lastChosenExit && !vpnConnected && !isConnecting(connectionInProgress);
     const showPinned = selectedExit !== null && pinnedLocationSet.has(exitLocation(selectedExit)) && (vpnConnected || isConnecting(connectionInProgress));
 
     const combobox = useCombobox({
@@ -497,13 +500,13 @@ function LocationSelect({ cityConnectingTo, setCityConnectingTo }: LocationSelec
                     <Combobox.Dropdown>
                         <Combobox.Options>
                             <ScrollArea.Autosize type='always' mah={200} hidden={false} pt={10}>
-                                <CityOptions exitList={exitList} onExitSelect={(country_code: string, city_code: string) => {
+                                <CityOptions exitList={exitList ?? null} onExitSelect={(country_code: string, city_code: string) => {
                                     combobox.closeDropdown();
                                     if (connectedExit?.country_code === country_code && connectedExit?.city_code === city_code) {
                                       return;
                                     }
                                     try {
-                                        const exit = getRandomExitFromCity(exitList, country_code, city_code);
+                                        const exit = getRandomExitFromCity(exitList ?? null, country_code, city_code);
                                         setSelectedExit(exit);
                                         setCityConnectingTo(exit.city_name);
                                         vpnConnect(exit.id);

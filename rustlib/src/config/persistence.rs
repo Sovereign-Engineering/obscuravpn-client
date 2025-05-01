@@ -4,10 +4,12 @@ use std::fs;
 use std::fs::create_dir_all;
 use std::io::{ErrorKind, Write};
 use std::path::Path;
+use std::sync::Arc;
 use std::time::SystemTime;
 
 use boringtun::x25519::StaticSecret;
 use chrono::Utc;
+use obscuravpn_api::cmd::ExitList;
 use obscuravpn_api::types::{AccountId, WgPubkey};
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
@@ -17,6 +19,7 @@ use thiserror::Error;
 use x25519_dalek::PublicKey;
 
 use crate::client_state::AccountStatus;
+use crate::config::cached::ConfigCached;
 
 pub(super) const CONFIG_FILE: &str = "config.json";
 
@@ -199,12 +202,9 @@ pub struct Config {
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub cached_auth_token: Option<String>,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
-    pub pinned_exits: Vec<String>,
-
-    // Note: This is optional just for the migration. After migration we can make the default an empty list.
+    pub cached_exits: Option<ConfigCached<Arc<ExitList>>>,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
-    pub pinned_locations: Option<Vec<PinnedLocation>>,
-
+    pub pinned_locations: Vec<PinnedLocation>,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub last_chosen_exit: Option<String>,
 
@@ -220,10 +220,10 @@ pub struct Config {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ConfigDebug {
     pub api_url: Option<String>,
+    pub cached_exits: Option<ConfigCached<Arc<ExitList>>>,
     pub local_tunnels_ids: Vec<String>,
     pub in_new_account_flow: bool,
-    pub pinned_exits: Vec<String>,
-    pub pinned_locations: Option<Vec<PinnedLocation>>,
+    pub pinned_locations: Vec<PinnedLocation>,
     pub last_chosen_exit: Option<String>,
     pub use_wireguard_key_cache: (),
     pub has_account_id: bool,
@@ -240,7 +240,7 @@ impl From<Config> for ConfigDebug {
             exit: (),
             in_new_account_flow,
             cached_auth_token,
-            pinned_exits,
+            cached_exits,
             pinned_locations,
             last_chosen_exit,
             wireguard_key_cache: _,
@@ -249,9 +249,9 @@ impl From<Config> for ConfigDebug {
         } = config;
         Self {
             api_url,
+            cached_exits,
             local_tunnels_ids,
             in_new_account_flow,
-            pinned_exits,
             pinned_locations,
             last_chosen_exit,
             use_wireguard_key_cache,

@@ -161,6 +161,7 @@ fn test_ignore_invalid_fields() {
         wireguard_key_cache: Default::default(),
         use_wireguard_key_cache: (),
         cached_account_status: Default::default(),
+        auto_connect: true,
     };
     let example_json = match serde_json::to_value(&example_config).unwrap() {
         serde_json::Value::Object(m) => m,

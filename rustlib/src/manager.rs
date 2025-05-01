@@ -53,11 +53,20 @@ pub struct Status {
     pub last_chosen_exit: Option<String>,
     pub api_url: String,
     pub account: Option<AccountStatus>,
+    pub auto_connect: bool,
 }
 
 impl Status {
     fn new(version: Uuid, vpn_status: VpnStatus, config: Config, api_url: String) -> Self {
-        let Config { account_id, in_new_account_flow, pinned_locations, last_chosen_exit, cached_account_status, .. } = config;
+        let Config {
+            account_id,
+            in_new_account_flow,
+            pinned_locations,
+            last_chosen_exit,
+            cached_account_status,
+            auto_connect,
+            ..
+        } = config;
         Self {
             version,
             vpn_status,
@@ -67,6 +76,7 @@ impl Status {
             last_chosen_exit,
             api_url,
             account: cached_account_status,
+            auto_connect,
         }
     }
 }
@@ -355,6 +365,12 @@ impl Manager {
 
     pub fn get_debug_info(&self) -> DebugInfo {
         DebugInfo { config: self.client_state.get_config().into() }
+    }
+
+    pub fn set_auto_connect(&self, enable: bool) -> Result<(), ConfigSaveError> {
+        self.client_state.set_auto_connect(enable)?;
+        self.update_status_if_changed(None);
+        Ok(())
     }
 }
 

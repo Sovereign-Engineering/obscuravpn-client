@@ -14,7 +14,8 @@ import { fmtErrorI18n } from '../translations/i18n';
 export default function Settings() {
     const { t } = useTranslation();
     const { colorScheme, setColorScheme } = useMantineColorScheme();
-    const { value: loginItemRegistered, refresh: recheckLoginItem, loading, error } = useAsync({ load: commands.isRegisteredAsLoginItem, returnError: true });
+    const { value: loginItemRegistered, refresh: recheckLoginItem, loading, error: loginItemError } = useAsync({ load: commands.isRegisteredAsLoginItem, returnError: true });
+    const { appStatus } = useContext(AppContext);
 
     const registerAtLogin = async () => {
         let success = true;
@@ -73,7 +74,8 @@ export default function Settings() {
         <Stack gap='xl' align='flex-start' ml={80} mt={40}>
             <Stack gap='lg'>
               <Title order={4}>{t('General')}</Title>
-              <Switch error={error === undefined ? undefined : `${error}`} disabled={error !== undefined || loading || loginItemRegistered === undefined} checked={loginItemRegistered} onChange={event => event.currentTarget.checked ? registerAtLogin() : unregisterAtLogin()} label={t('openAtLoginRegister')} />
+              <Switch error={loginItemError === undefined ? undefined : `${loginItemError}`} disabled={loginItemError !== undefined || loading || loginItemRegistered === undefined} checked={loginItemRegistered} onChange={event => event.currentTarget.checked ? registerAtLogin() : unregisterAtLogin()} label={t('openAtLoginRegister')} />
+              <Switch checked={appStatus.autoConnect} onChange={event => commands.setAutoConnect(event.currentTarget.checked)} label={t('autoConnectStartup')} />
             </Stack>
             <Stack gap='lg' align='flex-start'>
               <Title order={4}>{t('Network')}</Title>

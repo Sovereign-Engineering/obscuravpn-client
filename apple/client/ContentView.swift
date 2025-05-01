@@ -166,9 +166,7 @@ struct ContentView: View {
                 self.accountBadge = getBadgeText(account)
                 self.badgeColor = getBadgeColor(account)
             }
-            if let updaterStatus = self.appState.osStatus.get()?.updaterStatus {
-                self.indicateUpdateAvailable = updaterStatus.type == .available
-            }
+            self.indicateUpdateAvailable = self.appState.osStatus.get().updaterStatus.type == .available
         })
         .onChange(of: self.selectedView) { view in
             // inform webUI to update navigation

@@ -100,6 +100,9 @@ pub enum ManagerCmd {
     SetApiUrl {
         url: Option<String>,
     },
+    SetAutoConnect {
+        enable: bool,
+    },
     SetInNewAccountFlow {
         value: bool,
     },
@@ -186,6 +189,10 @@ impl ManagerCmd {
                 Err(()) => Err(ManagerCmdErrorCode::TunnelInactive),
             },
             ManagerCmd::RefreshExitList { freshness } => match manager.maybe_update_exits(freshness).await {
+                Ok(()) => Ok(ManagerCmdOk::Empty),
+                Err(err) => Err((&err).into()),
+            },
+            ManagerCmd::SetAutoConnect { enable } => match manager.set_auto_connect(enable) {
                 Ok(()) => Ok(ManagerCmdOk::Empty),
                 Err(err) => Err((&err).into()),
             },

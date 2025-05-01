@@ -158,6 +158,12 @@ impl ClientState {
         Ok(())
     }
 
+    pub fn set_auto_connect(&self, enable: bool) -> Result<(), ConfigSaveError> {
+        let mut inner = self.lock();
+        Self::change_config(&mut inner, move |config| config.auto_connect = enable)?;
+        Ok(())
+    }
+
     pub(crate) async fn connect(&self, exit: Option<String>) -> Result<(QuicWgConn, NetworkConfig, OneExit, OneRelay), TunnelConnectError> {
         let chose_exit = exit.is_some();
         let (token, tunnel_config, wg_sk, exit, relay, handshaking) = self.new_tunnel(exit).await?;

@@ -27,7 +27,7 @@ class WatchableValue<T> {
     }
 
     /// Get the current value.
-    func get() -> T? {
+    func get() -> T {
         self.lock.withLock {
             self.value
         }
@@ -53,6 +53,14 @@ class WatchableValue<T> {
             if predicate(value) {
                 return value
             }
+        }
+    }
+
+    func waitUntilWithTimeout(_ timeout: Duration, _ predicate: @escaping (T) -> Bool) async -> T? {
+        do {
+            return try await withTimeout(timeout, operation: { await self.waitUntil(predicate) })
+        } catch {
+            return nil
         }
     }
 }

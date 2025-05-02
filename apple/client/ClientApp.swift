@@ -44,31 +44,51 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         logger.debug("from applicationShouldTerminateAfterLastWindowClosed")
-        // Without this workaround, if the user closes the window using a keyboard shortcut that highlights an
+
+        if NSApp.activationPolicy() == .accessory {
+            return false
+        }
+
+        // Without these workarounds, if the user closes the window using a keyboard shortcut that highlights an
         // App Menu item (e.g. Command-Q or Command-W) and tries to open it again there will be either:
         //   - A brief flash of highlight of the App Menu item on next start
         //   - A persistent highlight of the App Menu item (when it's a "reopen" via double-clicking on Finder or similar)
-        NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock").first?.activate(options: [])
-        OperationQueue.current?.underlyingQueue?.asyncAfter(deadline: .now() + .milliseconds(200)) {
+        if #available(macOS 14.0, *) {
+            NSApp.mainMenu?.cancelTracking()
             NSApp.setActivationPolicy(.accessory)
+        } else {
+            OperationQueue.current?.underlyingQueue?.asyncAfter(deadline: .now() + .milliseconds(200)) {
+                NSApp.setActivationPolicy(.accessory)
+            }
         }
         return false
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
         logger.debug("from applicationShouldHandleReopen. hasVisibleWindows = \(hasVisibleWindows)")
+
+        if NSApp.activationPolicy() == .regular {
+            openWindow(id: WindowIds.RootWindowId)
+            return true
+        }
+
+        NSApp.setActivationPolicy(.regular)
+
+        if #available(macOS 14.0, *) {
+            openWindow(id: WindowIds.RootWindowId)
+            return true
+        }
+
         // On macos ventura or earlier, without this workaround, if the user
         // reopens the App using Finder while the App is already running, the
         // App Menu (the left side) becomes completely frozen and unusable
         // (even the  one)
         /// more info here:
         // https://linear.app/soveng/issue/OBS-175/no-obscura-vpn-in-menu-bar-dock-or-app-switcher-when-application-is#comment-2ecf3e57
-        NSApp.setActivationPolicy(.regular)
-        NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock").first?.activate(options: [])
-        OperationQueue.current?.underlyingQueue?.asyncAfter(deadline: .now() + .milliseconds(200)) {
-            NSApp.activate(ignoringOtherApps: true)
-            openWindow(id: WindowIds.RootWindowId)
-        }
+        NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.systemuiserver").first!.activate(options: [])
+        openWindow(id: WindowIds.RootWindowId)
+        NSApp.activate(ignoringOtherApps: true)
+
         return true
     }
 

@@ -65,7 +65,7 @@
 		352D58E02C4AE796002F3404 /* ObservableValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 352D58DF2C4AE796002F3404 /* ObservableValue.swift */; };
 		352D58E12C4AE796002F3404 /* ObservableValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 352D58DF2C4AE796002F3404 /* ObservableValue.swift */; };
 		356D94272C48368100135DF9 /* CheckForUpdatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 356D94262C48368100135DF9 /* CheckForUpdatesView.swift */; };
-		35A6F2522C611DD1004E1A7C /* DebugBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35A6F2512C611DD1004E1A7C /* DebugBundle.swift */; };
+		35A6F2522C611DD1004E1A7C /* DebugBundle+XP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35A6F2512C611DD1004E1A7C /* DebugBundle+XP.swift */; };
 		35A6F2542C6121C2004E1A7C /* time.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35A6F2532C6121C2004E1A7C /* time.swift */; };
 		35A6F2552C613366004E1A7C /* time.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35A6F2532C6121C2004E1A7C /* time.swift */; };
 		35F8DE7F2C6559D20016CEEB /* OSLogEntryEncodable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35F8DE7E2C6559D20016CEEB /* OSLogEntryEncodable.swift */; };
@@ -106,7 +106,33 @@
 		A9963C612DB8400900D10893 /* Concurrency.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35230C152C764B97007ECFEC /* Concurrency.swift */; };
 		A9963C622DB8400D00D10893 /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3098C1912B921489008877AA /* PacketTunnelProvider.swift */; };
 		A9963C632DB8401100D10893 /* Sleep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309BA9122C45DFC8000A7428 /* Sleep.swift */; };
+		A998710E2DBAF7FE0044D136 /* RegisterLoginItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A998710C2DBAF7FE0044D136 /* RegisterLoginItemView.swift */; };
+		A99871112DBAF8080044D136 /* NoFadeButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A998710F2DBAF8080044D136 /* NoFadeButtonStyle.swift */; };
+		A99871122DBAF8080044D136 /* NoFadeButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A998710F2DBAF8080044D136 /* NoFadeButtonStyle.swift */; };
+		A99871152DBAF84D0044D136 /* app_state.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3096E0452BF0F5860026DE7F /* app_state.swift */; };
+		A99871162DBAF8510044D136 /* OsStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30C5320B2CC959AE00936E1F /* OsStatus.swift */; };
+		A99871182DBAF8590044D136 /* WatchableValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30C532092CC9558000936E1F /* WatchableValue.swift */; };
+		A99871192DBAF85C0044D136 /* ObservableValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 352D58DF2C4AE796002F3404 /* ObservableValue.swift */; };
+		A998711A2DBAF8610044D136 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 967D0C852C41A1E500FD0767 /* Constants.swift */; };
+		A998711B2DBAF8680044D136 /* FfiCb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30EF74C02BFFE48C0095439F /* FfiCb.swift */; };
+		A998711C2DBAF8700044D136 /* Swift.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35230C182C764F0D007ECFEC /* Swift.swift */; };
+		A998711D2DBAF8740044D136 /* Box.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30497E6D2D9ED57F008B22F9 /* Box.swift */; };
+		A998711E2DBAF8790044D136 /* Concurrency.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35230C152C764B97007ECFEC /* Concurrency.swift */; };
+		A998711F2DBAF87D0044D136 /* Sleep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309BA9122C45DFC8000A7428 /* Sleep.swift */; };
+		A99871202DBAF8810044D136 /* StringError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309B467C2C4C152900A1B00F /* StringError.swift */; };
+		A99871212DBAF8850044D136 /* Json.swift in Sources */ = {isa = PBXBuildFile; fileRef = 300452772C49BC90000B78F7 /* Json.swift */; };
+		A99871222DBAF8890044D136 /* OSLogEntryEncodable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35F8DE7E2C6559D20016CEEB /* OSLogEntryEncodable.swift */; };
+		A99871232DBAF88F0044D136 /* NEVPNStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3096BFF82CECD50F003D062E /* NEVPNStatus.swift */; };
+		A99871242DBAF8940044D136 /* Account.swift in Sources */ = {isa = PBXBuildFile; fileRef = 968B02B82CFF5B7B0053D0EF /* Account.swift */; };
+		A99871252DBAF8990044D136 /* InfoDict.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30920DAC2C3DC174008690C3 /* InfoDict.swift */; };
+		A99871262DBAF89E0044D136 /* NetworkExtensionIpc.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30EF74CC2C02244C0095439F /* NetworkExtensionIpc.swift */; };
+		A99871272DBAF8A60044D136 /* TunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30920D7C2C207379008690C3 /* TunnelProvider.swift */; };
+		A99871282DBAF8FB0044D136 /* DebugBundle+XP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35A6F2512C611DD1004E1A7C /* DebugBundle+XP.swift */; };
+		A99871292DBAF90B0044D136 /* Debug.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35219C3A2C6BD57F00E63BB8 /* Debug.swift */; };
 		A9A166A42DAF9B60006B852F /* iOSClientApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9A166A32DAF9B60006B852F /* iOSClientApp.swift */; };
+		A9BCB05E2DC54AC0006C0133 /* DebugBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9BCB05D2DC54AC0006C0133 /* DebugBundle.swift */; };
+		A9BCB0612DC54B68006C0133 /* UpdaterDriver+XP.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9BCB0602DC54B68006C0133 /* UpdaterDriver+XP.swift */; };
+		A9BCB0622DC54B68006C0133 /* UpdaterDriver+XP.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9BCB0602DC54B68006C0133 /* UpdaterDriver+XP.swift */; };
 		C90161572BE011B2005B14AF /* libobscuravpn-client.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C90161542BE01159005B14AF /* libobscuravpn-client.a */; };
 /* End PBXBuildFile section */
 
@@ -225,7 +251,7 @@
 		35230C272C775FF1007ECFEC /* Notifications.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Notifications.swift; sourceTree = "<group>"; };
 		352D58DF2C4AE796002F3404 /* ObservableValue.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ObservableValue.swift; sourceTree = "<group>"; };
 		356D94262C48368100135DF9 /* CheckForUpdatesView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CheckForUpdatesView.swift; sourceTree = "<group>"; };
-		35A6F2512C611DD1004E1A7C /* DebugBundle.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DebugBundle.swift; sourceTree = "<group>"; };
+		35A6F2512C611DD1004E1A7C /* DebugBundle+XP.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "DebugBundle+XP.swift"; sourceTree = "<group>"; };
 		35A6F2532C6121C2004E1A7C /* time.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = time.swift; sourceTree = "<group>"; };
 		35F8DE7E2C6559D20016CEEB /* OSLogEntryEncodable.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OSLogEntryEncodable.swift; sourceTree = "<group>"; };
 		35F8DE862C6666C40016CEEB /* DebugBundleExtensionInfo.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DebugBundleExtensionInfo.swift; sourceTree = "<group>"; };
@@ -247,7 +273,11 @@
 		A06E85A92C2ECA680087C8C8 /* app.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = app.xcconfig; sourceTree = "<group>"; };
 		A06E85AA2C2ECA680087C8C8 /* buildversion.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = buildversion.xcconfig; sourceTree = "<group>"; };
 		A98F1BD82DADFF17007F04D3 /* Obscura VPN iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Obscura VPN iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A998710C2DBAF7FE0044D136 /* RegisterLoginItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterLoginItemView.swift; sourceTree = "<group>"; };
+		A998710F2DBAF8080044D136 /* NoFadeButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoFadeButtonStyle.swift; sourceTree = "<group>"; };
 		A9A166A32DAF9B60006B852F /* iOSClientApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSClientApp.swift; sourceTree = "<group>"; };
+		A9BCB05D2DC54AC0006C0133 /* DebugBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugBundle.swift; sourceTree = "<group>"; };
+		A9BCB0602DC54B68006C0133 /* UpdaterDriver+XP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UpdaterDriver+XP.swift"; sourceTree = "<group>"; };
 		C901614E2BE01159005B14AF /* obscuravpn-client.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "obscuravpn-client.xcodeproj"; sourceTree = "<group>"; };
 		C90161A62BE01A8E005B14AF /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		C90161A72BE01A8E005B14AF /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
@@ -372,8 +402,11 @@
 		30761C202B6EB17100E5F60D /* client */ = {
 			isa = PBXGroup;
 			children = (
+				A99871102DBAF8080044D136 /* Style */,
+				A998710D2DBAF7FE0044D136 /* macOS */,
 				9649F9582DA4233F009EFF4F /* LoopingVideoPlayer.swift */,
 				9636E8B82D4BE02500CFB57E /* UpdaterDriver.swift */,
+				A9BCB0602DC54B68006C0133 /* UpdaterDriver+XP.swift */,
 				966967C02D440B430019AF9F /* LoginItem.swift */,
 				3096BFF72CECD4BA003D062E /* extensions */,
 				9623252A2C8BACBC008A9B76 /* StatusItem */,
@@ -389,7 +422,8 @@
 				3096E03F2BEFC6770026DE7F /* command.swift */,
 				967D0C852C41A1E500FD0767 /* Constants.swift */,
 				30761C232B6EB17100E5F60D /* ContentView.swift */,
-				35A6F2512C611DD1004E1A7C /* DebugBundle.swift */,
+				A9BCB05D2DC54AC0006C0133 /* DebugBundle.swift */,
+				35A6F2512C611DD1004E1A7C /* DebugBundle+XP.swift */,
 				35F8DE862C6666C40016CEEB /* DebugBundleExtensionInfo.swift */,
 				30920D782C2057B1008690C3 /* initNetworkExtension.swift */,
 				35F8DE7E2C6559D20016CEEB /* OSLogEntryEncodable.swift */,
@@ -496,6 +530,22 @@
 				3098C1932B921489008877AA /* main.swift */,
 			);
 			path = "Packet Tunnel Provider";
+			sourceTree = "<group>";
+		};
+		A998710D2DBAF7FE0044D136 /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				A998710C2DBAF7FE0044D136 /* RegisterLoginItemView.swift */,
+			);
+			path = macOS;
+			sourceTree = "<group>";
+		};
+		A99871102DBAF8080044D136 /* Style */ = {
+			isa = PBXGroup;
+			children = (
+				A998710F2DBAF8080044D136 /* NoFadeButtonStyle.swift */,
+			);
+			path = Style;
 			sourceTree = "<group>";
 		};
 		C901614F2BE01159005B14AF /* Products */ = {
@@ -777,10 +827,12 @@
 				352D58E02C4AE796002F3404 /* ObservableValue.swift in Sources */,
 				962325232C8A3B58008A9B76 /* MenuItemView.swift in Sources */,
 				30C5320C2CC959AE00936E1F /* OsStatus.swift in Sources */,
+				A998710E2DBAF7FE0044D136 /* RegisterLoginItemView.swift in Sources */,
 				30497E6E2D9ED584008B22F9 /* Box.swift in Sources */,
 				9632E4642D19C5EC00BC8E3F /* AccountStatusItem.swift in Sources */,
 				30920D752C1F71BB008690C3 /* startup.swift in Sources */,
 				30920D792C2057B1008690C3 /* initNetworkExtension.swift in Sources */,
+				A99871112DBAF8080044D136 /* NoFadeButtonStyle.swift in Sources */,
 				30920DAD2C3DC174008690C3 /* InfoDict.swift in Sources */,
 				96C9205B2CD549B1002C85EA /* BandwidthStatus.swift in Sources */,
 				966967C12D440B450019AF9F /* LoginItem.swift in Sources */,
@@ -793,16 +845,18 @@
 				35F8DE872C6666C40016CEEB /* DebugBundleExtensionInfo.swift in Sources */,
 				9636E8B92D4BE02500CFB57E /* UpdaterDriver.swift in Sources */,
 				35A6F2542C6121C2004E1A7C /* time.swift in Sources */,
+				A9BCB0622DC54B68006C0133 /* UpdaterDriver+XP.swift in Sources */,
 				300452782C49BC90000B78F7 /* Json.swift in Sources */,
 				356D94272C48368100135DF9 /* CheckForUpdatesView.swift in Sources */,
 				968B02B92CFF5B7B0053D0EF /* Account.swift in Sources */,
-				35A6F2522C611DD1004E1A7C /* DebugBundle.swift in Sources */,
+				35A6F2522C611DD1004E1A7C /* DebugBundle+XP.swift in Sources */,
 				96615E292C598A9600120DEF /* CwlSysctl.swift in Sources */,
 				9649F9592DA4233F009EFF4F /* LoopingVideoPlayer.swift in Sources */,
 				30EF74CD2C02244C0095439F /* NetworkExtensionIpc.swift in Sources */,
 				35230C282C775FF1007ECFEC /* Notifications.swift in Sources */,
 				30761C222B6EB17100E5F60D /* ClientApp.swift in Sources */,
 				967D0C862C41A1E500FD0767 /* Constants.swift in Sources */,
+				A9BCB05E2DC54AC0006C0133 /* DebugBundle.swift in Sources */,
 				30920D7D2C207379008690C3 /* TunnelProvider.swift in Sources */,
 				3096E0462BF0F5870026DE7F /* app_state.swift in Sources */,
 				30C5320A2CC9558000936E1F /* WatchableValue.swift in Sources */,
@@ -866,6 +920,28 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A99871292DBAF90B0044D136 /* Debug.swift in Sources */,
+				A99871282DBAF8FB0044D136 /* DebugBundle+XP.swift in Sources */,
+				A99871272DBAF8A60044D136 /* TunnelProvider.swift in Sources */,
+				A99871262DBAF89E0044D136 /* NetworkExtensionIpc.swift in Sources */,
+				A99871252DBAF8990044D136 /* InfoDict.swift in Sources */,
+				A99871242DBAF8940044D136 /* Account.swift in Sources */,
+				A99871232DBAF88F0044D136 /* NEVPNStatus.swift in Sources */,
+				A99871222DBAF8890044D136 /* OSLogEntryEncodable.swift in Sources */,
+				A99871212DBAF8850044D136 /* Json.swift in Sources */,
+				A99871202DBAF8810044D136 /* StringError.swift in Sources */,
+				A998711F2DBAF87D0044D136 /* Sleep.swift in Sources */,
+				A998711E2DBAF8790044D136 /* Concurrency.swift in Sources */,
+				A998711D2DBAF8740044D136 /* Box.swift in Sources */,
+				A9BCB0612DC54B68006C0133 /* UpdaterDriver+XP.swift in Sources */,
+				A998711C2DBAF8700044D136 /* Swift.swift in Sources */,
+				A998711B2DBAF8680044D136 /* FfiCb.swift in Sources */,
+				A998711A2DBAF8610044D136 /* Constants.swift in Sources */,
+				A99871192DBAF85C0044D136 /* ObservableValue.swift in Sources */,
+				A99871182DBAF8590044D136 /* WatchableValue.swift in Sources */,
+				A99871162DBAF8510044D136 /* OsStatus.swift in Sources */,
+				A99871152DBAF84D0044D136 /* app_state.swift in Sources */,
+				A99871122DBAF8080044D136 /* NoFadeButtonStyle.swift in Sources */,
 				A9A166A42DAF9B60006B852F /* iOSClientApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

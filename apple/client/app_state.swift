@@ -81,8 +81,11 @@ class AppState: ObservableObject {
                     case .connecting(_, connectError: let err, _):
                         if err == "accountExpired" {
                             Self.logger.info("found connecting error accountExpired")
-                            // can't use openURL due to a runtime warning stating that it was called outside of a view
-                            NSApp.delegate?.application?(NSApp, open: [URLs.AppAccountPage])
+                            // TODO: iOS app should respond to this error OBS-1542
+                            #if os(macOS)
+                                // can't use openURL due to a runtime warning stating that it was called outside of a view
+                                NSApp.delegate?.application?(NSApp, open: [URLs.AppAccountPage])
+                            #endif
                         }
                     default:
                         break

@@ -2,7 +2,6 @@ import Foundation
 import Network
 import NetworkExtension
 import OSLog
-import SystemExtensions
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "PacketTunnelProvider")
 

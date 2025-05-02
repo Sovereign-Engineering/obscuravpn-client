@@ -271,54 +271,6 @@ struct VpnFailedView: View {
     }
 }
 
-struct RegisterLoginItemView: View {
-    var value: ObservableValue<Bool>
-    @Environment(\.openURL) private var openURL
-    @State private var isRegistering = false
-
-    var body: some View {
-        Image(systemName: "desktopcomputer.and.arrow.down")
-            .font(.system(size: 48))
-            .symbolRenderingMode(.palette)
-            .foregroundStyle(.white, .blue)
-            .padding()
-            .buttonStyle(.plain)
-
-        Text("Open at Login")
-            .font(.title)
-
-        Text("Do you want Obscura VPN to open automatically when you log in?")
-            .font(.body)
-            .multilineTextAlignment(.center)
-            .padding()
-
-        if self.isRegistering {
-            ProgressView()
-        } else {
-            Button(action: { self.value.publish(true) }) {
-                Text("Yes")
-                    .font(.headline)
-                    .frame(width: 300)
-            }
-            .buttonStyle(NoFadeButtonStyle())
-
-            Button(action: { self.value.publish(false) }) {
-                Text("No")
-                    .frame(width: 300)
-            }
-            .buttonStyle(NoFadeButtonStyle(backgroundColor: Color(.darkGray)))
-        }
-    }
-}
-
-enum StartupStatus {
-    case initial
-    case networkExtensionInit(NetworkExtensionInit, NetworkExtensionInitStatus)
-    case tunnelProviderInit(TunnelProviderInit, TunnelProviderInitStatus)
-    case askToRegisterLoginItem(ObservableValue<Bool>)
-    case ready
-}
-
 class StartupModel: ObservableObject {
     static let shared = StartupModel()
 
@@ -405,20 +357,5 @@ class StartupModel: ObservableObject {
             }
             UserDefaults.standard.set(true, forKey: UserDefaultKeys.LoginItemRegistered)
         }
-    }
-}
-
-struct NoFadeButtonStyle: ButtonStyle {
-    var backgroundColor: Color = .init("ObscuraOrange")
-    @Environment(\.isEnabled) private var isEnabled: Bool
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .padding()
-            .background(self.isEnabled ? self.backgroundColor : Color.gray)
-            .foregroundColor(.white)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(.snappy(duration: 0.2), value: configuration.isPressed)
     }
 }

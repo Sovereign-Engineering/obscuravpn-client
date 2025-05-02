@@ -192,12 +192,14 @@ impl ClientState {
             }
         };
         tracing::info!("tunnel connected");
-        if *exit_selector != (ExitSelector::Any {}) {
-            Self::change_config(&mut self.lock(), |config| {
-                config.last_chosen_exit = Some(exit.id.clone());
+        let exit_id = exit.id.clone();
+        Self::change_config(&mut self.lock(), move |config| {
+            if *exit_selector != (ExitSelector::Any {}) {
+                config.last_chosen_exit = Some(exit_id);
                 config.last_chosen_exit_selector = exit_selector.clone();
-            })?;
-        }
+            };
+            config.last_exit_selector = exit_selector.clone();
+        })?;
         Ok((conn, network_config, exit, relay))
     }
 

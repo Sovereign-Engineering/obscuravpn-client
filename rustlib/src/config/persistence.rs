@@ -216,6 +216,8 @@ pub struct Config {
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub last_chosen_exit_selector: ExitSelector,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
+    pub last_exit_selector: ExitSelector,
+    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub wireguard_key_cache: WireGuardKeyCache,
     #[serde(skip)]
     pub use_wireguard_key_cache: (), // Removed
@@ -243,6 +245,7 @@ pub struct ConfigDebug {
     pub pinned_locations: Vec<PinnedLocation>,
     pub last_chosen_exit: Option<String>,
     pub last_chosen_exit_selector: ExitSelector,
+    pub last_exit_selector: ExitSelector,
     pub use_wireguard_key_cache: (),
     pub has_account_id: bool,
     pub has_cached_auth_token: bool,
@@ -263,6 +266,7 @@ impl From<Config> for ConfigDebug {
             pinned_locations,
             last_chosen_exit,
             last_chosen_exit_selector,
+            last_exit_selector,
             wireguard_key_cache: _,
             use_wireguard_key_cache,
             cached_account_status: _,
@@ -276,6 +280,7 @@ impl From<Config> for ConfigDebug {
             pinned_locations,
             last_chosen_exit,
             last_chosen_exit_selector,
+            last_exit_selector,
             use_wireguard_key_cache,
             has_account_id: account_id.is_some(),
             has_cached_auth_token: cached_auth_token.is_some(),

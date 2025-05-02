@@ -50,6 +50,7 @@ pub struct Status {
     pub in_new_account_flow: bool,
     pub pinned_locations: Vec<PinnedLocation>,
     pub last_chosen_exit: ExitSelector,
+    pub last_exit: ExitSelector,
     pub api_url: String,
     pub account: Option<AccountStatus>,
     pub auto_connect: bool,
@@ -62,6 +63,7 @@ impl Status {
             in_new_account_flow,
             pinned_locations,
             last_chosen_exit_selector,
+            last_exit_selector,
             cached_account_status,
             auto_connect,
             ..
@@ -73,6 +75,7 @@ impl Status {
             in_new_account_flow,
             pinned_locations,
             last_chosen_exit: last_chosen_exit_selector,
+            last_exit: last_exit_selector,
             api_url,
             account: cached_account_status,
             auto_connect,

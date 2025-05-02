@@ -4,6 +4,7 @@ use super::{
 };
 use crate::config::PinnedLocation;
 use crate::config::{cached::ConfigCached, ConfigSaveError};
+use crate::manager::ExitSelector;
 use crate::quicwg::QuicWgConnHandshaking;
 use crate::quicwg::{QuicWgConnectError, QuicWgWireguardHandshakeError};
 use crate::relay_selection::race_relay_handshakes;
@@ -21,8 +22,7 @@ use obscuravpn_api::{
     types::{ObfuscatedTunnelConfig, OneRelay, TunnelConfig, WgPubkey},
     Client, ClientError,
 };
-use rand::seq::SliceRandom;
-use rand::thread_rng;
+use rand::{seq::SliceRandom, thread_rng};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::path::PathBuf;
@@ -35,15 +35,16 @@ use tokio::spawn;
 use uuid::Uuid;
 
 pub struct ClientState {
+    exit_list_watch: tokio::sync::watch::Sender<Option<ConfigCached<Arc<ExitList>>>>,
     exit_update_lock: tokio::sync::Mutex<()>,
     inner: Mutex<ClientStateInner>,
     user_agent: String,
 }
 
 struct ClientStateInner {
-    config_dir: PathBuf,
-    config: Config,
     cached_api_client: Option<Arc<Client>>,
+    config: Config,
+    config_dir: PathBuf,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -68,9 +69,11 @@ impl ClientStateInner {
 
 impl ClientState {
     pub fn new(config_dir: PathBuf, user_agent: String) -> Result<Self, ConfigLoadError> {
-        let config = config::load(&config_dir)?;
+        let mut config = config::load(&config_dir)?;
+        config.migrate();
+        let exit_list_watch = tokio::sync::watch::channel(config.cached_exits.clone()).0;
         let inner = ClientStateInner { config_dir, config, cached_api_client: None };
-        Ok(Self { exit_update_lock: Default::default(), inner: Mutex::new(inner), user_agent })
+        Ok(Self { exit_list_watch, exit_update_lock: Default::default(), inner: Mutex::new(inner), user_agent })
     }
 
     fn lock(&self) -> MutexGuard<ClientStateInner> {
@@ -164,9 +167,8 @@ impl ClientState {
         Ok(())
     }
 
-    pub(crate) async fn connect(&self, exit: Option<String>) -> Result<(QuicWgConn, NetworkConfig, OneExit, OneRelay), TunnelConnectError> {
-        let chose_exit = exit.is_some();
-        let (token, tunnel_config, wg_sk, exit, relay, handshaking) = self.new_tunnel(exit).await?;
+    pub(crate) async fn connect(&self, exit_selector: &ExitSelector) -> Result<(QuicWgConn, NetworkConfig, OneExit, OneRelay), TunnelConnectError> {
+        let (token, tunnel_config, wg_sk, exit, relay, handshaking) = self.new_tunnel(exit_selector).await?;
         let network_config = NetworkConfig::new(&tunnel_config)?;
         let client_ip_v4 = network_config.ipv4;
         tracing::info!(
@@ -190,18 +192,65 @@ impl ClientState {
             }
         };
         tracing::info!("tunnel connected");
-        if chose_exit {
-            Self::change_config(&mut self.lock(), |config| config.last_chosen_exit = Some(exit.id.clone()))?;
+        if *exit_selector != (ExitSelector::Any {}) {
+            Self::change_config(&mut self.lock(), |config| {
+                config.last_chosen_exit = Some(exit.id.clone());
+                config.last_chosen_exit_selector = exit_selector.clone();
+            })?;
         }
         Ok((conn, network_config, exit, relay))
     }
 
+    fn choose_exit(&self, selector: &ExitSelector, relay: &OneRelay) -> Option<String> {
+        let Some(exit_list) = self.get_exit_list() else {
+            tracing::warn!(message_id = "Iu1ahnge", "No exit list, choosing random preferred exit.");
+            return relay.preferred_exits.choose(&mut thread_rng()).map(|e| e.id.clone());
+        };
+
+        exit_list
+            .value
+            .exits
+            .iter()
+            .filter(|candidate| match selector {
+                ExitSelector::Any {} => true,
+                ExitSelector::Exit { id } => candidate.id == *id,
+                ExitSelector::Country { country_code } => candidate.country_code == *country_code,
+                ExitSelector::City { country_code, city_code } => candidate.country_code == *country_code && candidate.city_code == *city_code,
+            })
+            .map(|candidate| {
+                (
+                    relay.preferred_exits.iter().any(|p| p.id == candidate.id),
+                    rand::random::<u8>(),
+                    &candidate.id,
+                )
+            })
+            .max()
+            .map(|(_, _, id)| id.clone())
+    }
+
     async fn new_tunnel(
         &self,
-        exit: Option<String>,
+        exit_selector: &ExitSelector,
     ) -> anyhow::Result<(Uuid, ObfuscatedTunnelConfig, StaticSecret, OneExit, OneRelay, QuicWgConnHandshaking), TunnelConnectError> {
-        let (closest_relay, handshaking) = self.select_relay().await?;
-        let exit = exit.or_else(|| closest_relay.preferred_exits.choose(&mut thread_rng()).map(|e| e.id.clone()));
+        let (select_relay, update_exits) = tokio::join!(self.select_relay(), self.maybe_update_exits(Duration::from_secs(60)),);
+        let (closest_relay, handshaking) = select_relay?;
+        let () = update_exits?;
+
+        let Some(exit) = self.choose_exit(exit_selector, &closest_relay) else {
+            tracing::error!(
+                message_id = "naiThei6",
+                exit_selector =? exit_selector,
+                "No exits matching selector."
+            );
+            return Err(TunnelConnectError::NoExit);
+        };
+
+        tracing::error!(
+            message_id = "eiR8ixoh",
+            exit.id = exit,
+            exit_selector =? exit_selector,
+            "Selected exit"
+        );
 
         let (tunnel_info, sk, tunnel_id) = loop {
             if let Err(err) = self.remove_local_tunnels().await {
@@ -214,7 +263,7 @@ impl ClientState {
             tracing::info!(
                     %tunnel_id,
                     client.pubkey =? wg_pubkey,
-                    exit.id = exit.as_deref(),
+                    exit.id = exit,
                     relay.id =? &closest_relay.id,
                     relay.ip_v4 =% closest_relay.ip_v4,
                     "creating tunnel");
@@ -225,7 +274,7 @@ impl ClientState {
                 label: None,
                 wg_pubkey,
                 relay: Some(closest_relay.id.clone()),
-                exit: exit.clone(),
+                exit: Some(exit.clone()),
             };
             let error = match self.api_request(cmd.clone()).await {
                 Ok(t) => break (t, sk, tunnel_id),
@@ -383,17 +432,27 @@ impl ClientState {
 
         let Some(body) = res.into_body() else { return Ok(()) };
 
+        let version = match etag {
+            Some(b) => config::cached::Version::ETag(b),
+            None => {
+                tracing::warn!(message_id = "meequa8P", "Exit list had not ETag.");
+                config::cached::Version::artificial()
+            }
+        };
+        let cached_exits = ConfigCached::new(Arc::new(body), version);
+
         let mut inner = self.lock();
+
         Self::change_config(&mut inner, |config| {
-            let version = match etag {
-                Some(b) => config::cached::Version::ETag(b),
-                None => {
-                    tracing::warn!(message_id = "meequa8P", "Exit list had not ETag.");
-                    config::cached::Version::artificial()
-                }
-            };
-            config.cached_exits = Some(ConfigCached::new(Arc::new(body), version));
+            config.cached_exits = Some(cached_exits.clone());
         })?;
+
+        match self.exit_list_watch.send(Some(cached_exits)) {
+            Ok(()) => {}
+            Err(error) => {
+                tracing::error!(?error, message_id = "Ziesha5y", "Ignoring failed exit_list_watch.send: {}", error,);
+            }
+        }
 
         Ok(())
     }
@@ -445,5 +504,9 @@ impl ClientState {
         Self::change_config(&mut self.lock(), |config| {
             config.wireguard_key_cache.rotate_now();
         })
+    }
+
+    pub fn subscribe_exit_list(&self) -> tokio::sync::watch::Receiver<Option<ConfigCached<Arc<ExitList>>>> {
+        self.exit_list_watch.subscribe()
     }
 }

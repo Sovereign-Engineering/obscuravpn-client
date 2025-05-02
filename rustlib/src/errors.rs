@@ -59,6 +59,7 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
                 ApiError::ConfigSave(_) => Self::Other,
             },
             TunnelConnectError::NetworkConfig(_)
+            | TunnelConnectError::NoExit
             | TunnelConnectError::TunnelConnect(_)
             | TunnelConnectError::InvalidTunnelId
             | TunnelConnectError::UnexpectedRelay
@@ -82,6 +83,8 @@ pub enum TunnelConnectError {
     RelaySelection(#[from] RelaySelectionError),
     #[error("api returned invalid tunnel id")]
     InvalidTunnelId,
+    #[error("No matching exit.")]
+    NoExit,
     #[error("api returned and unexpected relay")]
     UnexpectedRelay,
     #[error("tunnel is in unexpected internal lifecycle state")]

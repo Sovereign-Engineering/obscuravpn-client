@@ -79,7 +79,12 @@ export async function setStrictLeakPrevention(enable: boolean): Promise<void> {
 }
 
 export function connect(exit: string | null = null) {
-    let jsonTunnelArgs = JSON.stringify(({ exit }));
+    let selector = exit
+      ? { exit: { id: exit } }
+      : { any: {} };
+    let jsonTunnelArgs = JSON.stringify({
+      exit: selector,
+    });
     return invoke('startTunnel', { tunnelArgs: jsonTunnelArgs });
 }
 

@@ -33,7 +33,6 @@ use super::ffi_helpers::*;
 pub struct Manager {
     background_taks_cancellation_token: CancellationToken,
     client_state: Arc<ClientState>,
-    exit_list_watch: Sender<Option<ConfigCached<Arc<ExitList>>>>,
     tunnel_state: Receiver<TunnelState>,
     target_tunnel_args: Sender<Option<TunnelArgs>>,
     status_watch: Sender<Status>,
@@ -104,7 +103,22 @@ pub enum VpnStatus {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct TunnelArgs {
-    pub exit: Option<String>,
+    pub exit: ExitSelector,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub enum ExitSelector {
+    Any {},
+    Exit { id: String },
+    Country { country_code: String },
+    City { country_code: String, city_code: String },
+}
+
+impl Default for ExitSelector {
+    fn default() -> Self {
+        ExitSelector::Any {}
+    }
 }
 
 impl VpnStatus {
@@ -141,7 +155,6 @@ impl Manager {
         let (target_tunnel_args, tunnel_state) = TunnelState::new(runtime, client_state.clone(), receive_cb, cancellation_token.clone());
         let initial_status = Status::new(Uuid::new_v4(), VpnStatus::Disconnected {}, config, client_state.base_url());
         let this = Arc::new(Self {
-            exit_list_watch: channel(client_state.get_exit_list()).0,
             target_tunnel_args,
             tunnel_state,
             client_state,
@@ -156,31 +169,7 @@ impl Manager {
     }
 
     pub async fn maybe_update_exits(&self, freshness: Duration) -> Result<(), ApiError> {
-        self.client_state.maybe_update_exits(freshness).await?;
-
-        self.exit_list_watch.send_if_modified(|prev| {
-            let Some(new) = self.client_state.get_exit_list() else {
-                tracing::error!(message_id = "eeZ1eiMa", "Exit list is still None after update.");
-                return false;
-            };
-
-            match prev {
-                Some(prev) => {
-                    if new == *prev {
-                        return false;
-                    }
-
-                    *prev = new;
-                }
-                None => {
-                    *prev = Some(new);
-                }
-            }
-
-            true
-        });
-
-        Ok(())
+        self.client_state.maybe_update_exits(freshness).await
     }
 
     pub fn subscribe(&self) -> Receiver<Status> {
@@ -188,7 +177,7 @@ impl Manager {
     }
 
     pub fn subscribe_exit_list(&self) -> Receiver<Option<ConfigCached<Arc<ExitList>>>> {
-        self.exit_list_watch.subscribe()
+        self.client_state.subscribe_exit_list()
     }
 
     pub fn set_target_state(&self, new_target_args: Option<TunnelArgs>, allow_activation: bool) -> Result<(), ()> {

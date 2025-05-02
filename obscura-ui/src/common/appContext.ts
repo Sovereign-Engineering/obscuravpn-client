@@ -1,6 +1,7 @@
 import { createContext } from 'react';
 import { AccountId } from './accountUtils';
 import { AccountInfo, Exit } from './api';
+import { ExitSelector, TunnelArgs } from 'src/bridge/commands';
 
 export enum NEVPNStatus {
     Invalid = 'invalid',
@@ -52,12 +53,18 @@ export interface VpnStatus {
       exit: Exit,
       clientPublicKey: string,
       exitPublicKey: string
+      tunnelArgs: TunnelArgs,
     },
     connecting?: {
       connectError: string,
       reconnecting: boolean
+      tunnelArgs: TunnelArgs,
     },
     disconnected?: {}
+}
+
+export function getTunnelArgs(status: VpnStatus): TunnelArgs | undefined {
+  return status.connected?.tunnelArgs ?? status.connecting?.tunnelArgs;
 }
 
 export interface PinnedLocation {
@@ -78,7 +85,7 @@ export interface AppStatus {
     vpnStatus: VpnStatus,
     accountId: AccountId,
     pinnedLocations: Array<PinnedLocation>,
-    lastChosenExit: string,
+    lastChosenExit: ExitSelector,
     inNewAccountFlow: boolean,
     apiUrl: string,
     account: AccountStatus | null,
@@ -88,7 +95,7 @@ export interface AppStatus {
 interface IAppContext {
     vpnConnected: boolean,
     toggleVpnConnection: () => Promise<void>,
-    vpnConnect: (exit?: string) => Promise<void>,
+    vpnConnect: (exit: ExitSelector) => Promise<void>,
     vpnDisconnect: () => Promise<void>,
     pollAccount: () => Promise<void>,
     accountLoading: boolean,

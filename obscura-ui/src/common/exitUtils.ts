@@ -4,10 +4,10 @@ import { randomChoice } from './utils';
 import { PinnedLocation } from '../common/appContext';
 
 /** returns a string containing the country flag emoji. */
-function getCountryFlag(countryCode: TCountryCode): string {
+export function getCountryFlag(countryCode: string): string {
   return countryCode
-      .replace(/./g, char => {
-          let codePoint = char.codePointAt(0)!
+      .replace(/[A-Za-z]/g, char => {
+          let codePoint = char.toUpperCase().codePointAt(0)!
               - "A".codePointAt(0)!
               + "🇦".codePointAt(0)!;
           return String.fromCodePoint(codePoint)
@@ -19,33 +19,17 @@ export function getExitCountryFlag(exit: Exit): string {
 }
 
 /** returns a sort comparator for Exit[] given some parameters */
-export function exitsSortComparator(
-    connectedToExitId: string | null,
-    lastChosenExitId: string | null,
-    pinnedExitsList: string[],
-): (l: Exit, r: Exit) => number {
-    const pinnedExits = new Set(pinnedExitsList);
-    return (left, right) => {
-        if (left.id === connectedToExitId) return -1;
-        if (right.id === connectedToExitId) return 1;
+export function exitsSortComparator(left: Exit, right: Exit): number {
+  const leftCountry = getExitCountry(left);
+  const rightCountry = getExitCountry(right);
 
-        if (left.id === lastChosenExitId) return -1;
-        if (right.id === lastChosenExitId) return 1;
+  const leftContinent = leftCountry.continent;
+  const rightContinent = rightCountry.continent;
 
-        const leftIsPinned = pinnedExits.has(left.id) ? 1 : 0;
-        const rightIsPinned = pinnedExits.has(right.id) ? 1 : 0;
+  const leftCountryName = leftCountry.name;
+  const rightCountryName = rightCountry.name;
 
-        const leftCountry = getExitCountry(left);
-        const rightCountry = getExitCountry(right);
-
-        const leftContinent = leftCountry.continent;
-        const rightContinent = rightCountry.continent;
-
-        const leftCountryName = leftCountry.name;
-        const rightCountryName = rightCountry.name;
-
-        return rightIsPinned - leftIsPinned || continentCmp(leftContinent, rightContinent) || leftCountryName.localeCompare(rightCountryName) || left.city_name.localeCompare(right.city_name) || left.id.localeCompare(right.id);
-    }
+  return continentCmp(leftContinent, rightContinent) || leftCountryName.localeCompare(rightCountryName) || left.city_name.localeCompare(right.city_name) || left.id.localeCompare(right.id);
 }
 
 const continentRankings = [
@@ -60,19 +44,6 @@ const continentRankings = [
 
 export function continentCmp(left: string, right: string): number {
     return continentRankings.indexOf(left) - continentRankings.indexOf(right);
-}
-
-export class CityNotFoundError extends Error {}
-
-export function getRandomExitFromCity(exits: Exit[] | null, country_code: string, city_code: string): Exit {
-  const error = new CityNotFoundError(`no exits matching country ${country_code} and city ${city_code} were found`);
-  if (exits === null) throw error;
-  const cityExits = exits.filter(loc => loc.country_code === country_code && loc.city_code === city_code);
-  try {
-    return randomChoice(cityExits);
-  } catch {
-    throw error;
-  }
 }
 
 export function exitLocation(exit: Exit): PinnedLocation {

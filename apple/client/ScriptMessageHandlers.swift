@@ -33,16 +33,11 @@ class CommandHandler: NSObject, WKScriptMessageHandlerWithReply {
 class ErrorHandler: NSObject, WKScriptMessageHandler {
     static var shared = ErrorHandler()
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        do {
-            let jsonData = try JSONSerialization.data(
-                withJSONObject: message.body,
-                options: [.fragmentsAllowed, .prettyPrinted]
-            )
-            let jsonString = String(data: jsonData, encoding: .utf8)!
-            logger.info("webview error: \(jsonString, privacy: .public)")
-        } catch {
-            logger.error("failed to json serialize webview error message")
+        guard let string = message.body as? String else {
+            logger.error("webview error was not a string: \(debugFormat(message.body), privacy: .public)")
+            return
         }
+        logger.info("error: \(string, privacy: .public)")
     }
 }
 
@@ -50,15 +45,10 @@ class LogHandler: NSObject, WKScriptMessageHandler {
     // handles console.log, console.info, console.error (log will include the level)
     static var shared = LogHandler()
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        do {
-            let jsonData = try JSONSerialization.data(
-                withJSONObject: message.body,
-                options: [.fragmentsAllowed, .prettyPrinted]
-            )
-            let jsonString = String(data: jsonData, encoding: .utf8)!
-            logger.info("webview console: \(jsonString, privacy: .public)")
-        } catch {
-            logger.error("failed to json serialize webview log message")
+        guard let string = message.body as? String else {
+            logger.error("webview log was not a string: \(debugFormat(message.body), privacy: .public)")
+            return
         }
+        logger.info("\(string, privacy: .public)")
     }
 }

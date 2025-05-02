@@ -7,7 +7,7 @@ import { normalizeError } from '../common/utils';
 async function WKWebViewInvoke(command: string, args: Object) {
     const commandJson = JSON.stringify({ [command]: args });
     if (command !== 'jsonFfiCmd') {
-      console.log(`invoked non-FFI command: ${command}`);
+      console.log("invoked non-FFI command", command);
     }
     let resultJson;
     try {
@@ -23,8 +23,7 @@ async function invoke(command: string, args: Object = {}) {
     try {
         return await WKWebViewInvoke(command, args);
     } catch (e) {
-        console.error(fmt`Command ${command}(${args}) resulted in error: ${e}`);
-        // rethrow error
+        console.error("Command failed", command, args, e);
         throw e;
     }
 }
@@ -47,7 +46,7 @@ export class CommandError extends Error {
 
 export async function jsonFfiCmd(cmd: string, arg = {}, timeoutMs: number | null = 10_000): Promise<unknown> {
     let jsonCmd = JSON.stringify(({ [cmd]: arg }));
-    console.log(`invoked FFI command: ${cmd}`);
+    console.log("invoked FFI command", cmd);
     return await invoke('jsonFfiCmd', {
         cmd: jsonCmd,
         timeoutMs,
@@ -78,14 +77,39 @@ export async function setStrictLeakPrevention(enable: boolean): Promise<void> {
     await invoke('setStrictLeakPrevention', { enable });
 }
 
-export function connect(exit: string | null = null) {
-    let selector = exit
-      ? { exit: { id: exit } }
-      : { any: {} };
-    let jsonTunnelArgs = JSON.stringify({
-      exit: selector,
+// See ../../../rustlib/src/manager.rs
+export interface TunnelArgs {
+    exit: ExitSelector,
+}
+
+export interface ExitSelectorId {
+  id: string;
+}
+
+export interface ExitSelectorCity {
+  country_code: string,
+  city_code: string,
+}
+
+export interface ExitSelectorCountry {
+  country_code: string,
+}
+
+// See ../../../rustlib/src/manager.rs
+export type ExitSelector =
+  | { any: {} }
+  | { exit: ExitSelectorId }
+  | { city: ExitSelectorCity }
+  | { country: ExitSelectorCountry }
+;
+
+export function connect(exit: ExitSelector) {
+    let args: TunnelArgs = {
+      exit,
+    };
+    return invoke('startTunnel', {
+      tunnelArgs: JSON.stringify(args),
     });
-    return invoke('startTunnel', { tunnelArgs: jsonTunnelArgs });
 }
 
 export function disconnect() {

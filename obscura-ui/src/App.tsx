@@ -92,7 +92,7 @@ export default function () {
     })
   }, []);
 
-  async function tryConnect(exit: string | null = null) {
+  async function tryConnect(exit: commands.ExitSelector) {
     if (vpnConnected) {
       setConnectionInProgress(ConnectionInProgress.ChangingLocations);
     } else {
@@ -129,7 +129,7 @@ export default function () {
     if (tryDisconnect) {
       await disconnectFromVpn();
     } else {
-      await tryConnect()
+      await tryConnect({ any: {} })
     }
   }
 

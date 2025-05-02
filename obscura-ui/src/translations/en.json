@@ -95,6 +95,7 @@
   "apiSignupLimitExceeded": "Sign up limit exceeded. Please try again in a few hours.",
   "appStatusLoading": "Loading initial app status",
   "autoConnectStartup": "Automatically connect at launch",
+  "autoConnectStartup-behavior": "If you last chose \"Quick Connect\", Obscura will \"Quick Connect\" at next launch. If you last chose a specific location, Obscura will connect to that location at next launch.",
   "busyConnection": "Connection is Busy",
   "checkForUpdates": "Check for updates",
   "checkMyConnection": "Check my Connection",

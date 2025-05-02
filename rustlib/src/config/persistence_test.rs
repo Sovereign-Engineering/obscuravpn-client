@@ -159,6 +159,7 @@ fn test_ignore_invalid_fields() {
         pinned_locations: vec![PinnedLocation { country_code: "CA".into(), city_code: "yyz".into(), pinned_at: SystemTime::UNIX_EPOCH }],
         last_chosen_exit: Some("mylastexit".into()),
         last_chosen_exit_selector: crate::manager::ExitSelector::City { city_code: "YYZ".into(), country_code: "CA".into() },
+        last_exit_selector: crate::manager::ExitSelector::City { city_code: "YYZ".into(), country_code: "CA".into() },
         wireguard_key_cache: Default::default(),
         use_wireguard_key_cache: (),
         cached_account_status: Default::default(),

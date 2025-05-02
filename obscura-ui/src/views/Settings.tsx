@@ -71,11 +71,12 @@ export default function Settings() {
     }
 
     return (
-        <Stack gap='xl' align='flex-start' ml={80} mt={40}>
+        <Stack gap='xl' align='flex-start' ml={80} mr={80} mt={40}>
             <Stack gap='lg'>
               <Title order={4}>{t('General')}</Title>
               <Switch error={loginItemError === undefined ? undefined : `${loginItemError}`} disabled={loginItemError !== undefined || loading || loginItemRegistered === undefined} checked={loginItemRegistered} onChange={event => event.currentTarget.checked ? registerAtLogin() : unregisterAtLogin()} label={t('openAtLoginRegister')} />
               <Switch checked={appStatus.autoConnect} onChange={event => commands.setAutoConnect(event.currentTarget.checked)} label={t('autoConnectStartup')} />
+              <Text size='sm' c='dimmed'>{t('autoConnectStartup-behavior')}</Text>
             </Stack>
             <Stack gap='lg' align='flex-start'>
               <Title order={4}>{t('Network')}</Title>

@@ -328,22 +328,25 @@ struct WebView: NSViewRepresentable {
 
 let js_error_capture = #"""
 window.onerror = (message, source, lineno, colno, error) => {
-    window.webkit.messageHandlers.errorBridge.postMessage({
+    window.webkit.messageHandlers.errorBridge.postMessage(JSON.stringify({
       message: message,
       source: source,
       lineno: lineno,
       colno: colno,
-    });
+    }, undefined, "\t"));
 };
 window.onunhandledrejection = (event) => {
-    console.error(`unhandled promise rejection: ${event.reason}`)
+    console.error("unhandled promise rejection", event.reason)
 }
 """#
 
 let js_log_capture = #"""
-console.log = function(...args) { window.webkit.messageHandlers.logBridge.postMessage({ level: "log", message: JSON.stringify(args) })}
-console.info = function(...args) { window.webkit.messageHandlers.logBridge.postMessage({ level: "info", message: JSON.stringify(args) })}
-console.warn = function(...args) { window.webkit.messageHandlers.logBridge.postMessage({ level: "warn", message: JSON.stringify(args) })}
-console.error = function(...args) { window.webkit.messageHandlers.logBridge.postMessage({ level: "error", message: JSON.stringify(args) })}
-console.debug = function(...args) { window.webkit.messageHandlers.logBridge.postMessage({ level: "debug", message: JSON.stringify(args) })}
+function log(type, msg, ...args) {
+    let formatted = [type, msg, ...args.map(a => JSON.stringify(a, undefined, "\t"))].join(" ");
+    window.webkit.messageHandlers.logBridge.postMessage(formatted);
+}
+console.debug = log.bind(null, "debug:");
+console.log = log.bind(null, "log:");
+console.warn = log.bind(null, "warn:");
+console.error = log.bind(null, "error:");
 """#

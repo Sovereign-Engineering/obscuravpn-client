@@ -1,7 +1,7 @@
 import { Accordion, ActionIcon, Anchor, Button, Card, Divider, Flex, Group, Loader, Space, Stack, Text, ThemeIcon, Title, useMantineTheme } from '@mantine/core';
 import { useInterval } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { continents } from 'countries-list';
+import { continents, getCountryCode } from 'countries-list';
 import { MouseEvent, useContext, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { BsPin, BsPinFill, BsShieldFillCheck, BsShieldFillExclamation } from 'react-icons/bs';
@@ -9,7 +9,7 @@ import * as commands from '../bridge/commands';
 import { Exit, getExitCountry } from '../common/api';
 import { AppContext, ConnectionInProgress, isConnecting } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
-import { CityNotFoundError, exitLocation, exitsSortComparator, getExitCountryFlag, getRandomExitFromCity } from '../common/exitUtils';
+import { exitLocation, exitsSortComparator, getExitCountryFlag } from '../common/exitUtils';
 import { KeyedSet } from '../common/KeyedSet';
 import { NotificationId } from '../common/notifIds';
 import { useAsync } from '../common/useAsync';
@@ -36,8 +36,12 @@ export default function LocationView() {
     const onExitSelect = async (exit: Exit) => {
         // connected already to the desired exit
         const connectedExit = appStatus.vpnStatus.connected?.exit;
-        if (exit.country_code === connectedExit?.country_code &&
-          exit.city_name === connectedExit.city_name) return;
+        if (
+          exit.country_code === connectedExit?.country_code
+          && exit.city_name === connectedExit.city_name
+        ) {
+            return;
+        }
         if (vpnConnected || connectionInProgress !== ConnectionInProgress.UNSET) {
             notifications.show({
                 title: t('connectingToCity', { city: exit.city_name }),
@@ -46,29 +50,13 @@ export default function LocationView() {
                 color: 'yellow.4',
                 id: NotificationId.VPN_DISCONNECT_CONNECT
             });
-            await vpnConnect(exit.id);
-        } else if (exitList) {
-            try {
-              exit = getRandomExitFromCity(exitList, exit.country_code, exit.city_code);
-            } catch (error) {
-              const e = normalizeError(error);
-              if (e instanceof CityNotFoundError) {
-                  const countryName = getExitCountry(exit).name;
-                      notifications.show({
-                          title: t('Error'),
-                          message: t('noExitsFoundMatching', { country: countryName, city: exit.city_name }),
-                          color: 'red',
-                      });
-              } else {
-                  notifications.show({
-                      title: t('Error'),
-                      message: e.message,
-                      color: 'red',
-                  });
-              }
-            }
-            await vpnConnect(exit.id);
         }
+        await vpnConnect({
+            city: {
+                city_code: exit.city_code,
+                country_code: exit.country_code,
+            },
+        });
     };
 
     const toggleExitPin = (exit: Exit) => {
@@ -97,17 +85,19 @@ export default function LocationView() {
 
     const locations = exitList ?? [];
     const pinnedLocationSet = new KeyedSet(
-      loc => JSON.stringify([loc.country_code, loc.city_code]),
+      (loc: {country_code: string, city_code: string}) => JSON.stringify([loc.country_code, loc.city_code]),
       appStatus.pinnedLocations,
     );
     const pinnedExits = locations.filter(exit => pinnedLocationSet.has(exitLocation(exit)));
 
     let lastChosenJsx = null;
-    if (appStatus.lastChosenExit !== null) {
-        const exit = locations.find((value) => value.id === appStatus.lastChosenExit);
+    if (appStatus.lastChosenExit && "city" in appStatus.lastChosenExit) {
+        let lastCity = appStatus.lastChosenExit.city;
+        const exit = locations.find(l => l.city_code == lastCity.city_code && l.country_code == lastCity.country_code);
         if (exit !== undefined) {
-            const isConnected = exit.id === appStatus.vpnStatus.connected?.exit.id;
-            const isPinned = pinnedLocationSet.has(exitLocation(exit));
+            const isConnected = appStatus.vpnStatus.connected?.exit.city_code == lastCity.city_code
+                && appStatus.vpnStatus.connected.exit.country_code == lastCity.country_code;
+            const isPinned = pinnedLocationSet.has(lastCity);
             lastChosenJsx = <>
                 <Text ta='left' w='91%' size='sm' c='green.7' ml='md' fw={600}>{t('lastChosen')}</Text>
                 <LocationCard exit={exit} togglePin={toggleExitPin}
@@ -137,7 +127,7 @@ export default function LocationView() {
     insertedCities.clear();
     const connectedExit = appStatus.vpnStatus.connected?.exit;
 
-    locations.sort(exitsSortComparator(null, null, []));
+    locations.sort(exitsSortComparator);
     for (const exit of locations) {
         const continent = getExitCountry(exit).continent;
         if (!insertedContinents.has(continent)) {
@@ -318,7 +308,22 @@ function VpnStatusCard() {
                     </Group>
                     <Text c='gray' size='sm' ml={34}>{getStatusSubtitle()}</Text>
                 </Stack>
-                <Button className={commonClasses.button} miw={190} onClick={(_: MouseEvent) => (vpnConnected || allowCancel) ? vpnDisconnect() : vpnConnect()} disabled={btnDisabled} title={btnTitle()} px={10} radius='md' {...buttonDisconnectProps}>
+                <Button
+                  className={commonClasses.button}
+                  miw={190}
+                  onClick={() => {
+                    if (vpnConnected || allowCancel) {
+                      vpnDisconnect();
+                    } else {
+                      vpnConnect({ any: {} });
+                    }
+                  }}
+                  disabled={btnDisabled}
+                  title={btnTitle()}
+                  px={10}
+                  radius='md'
+                  {...buttonDisconnectProps}
+                >
                     {getButtonContent()}
                 </Button>
             </Group>

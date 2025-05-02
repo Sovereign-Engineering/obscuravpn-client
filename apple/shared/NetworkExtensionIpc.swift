@@ -42,7 +42,7 @@ struct NeStatus: Codable, Equatable {
     var accountId: String?
     var inNewAccountFlow: Bool
     var pinnedLocations: [PinnedLocation]
-    var lastChosenExit: String?
+    var lastChosenExit: ExitSelector
     var apiUrl: String
     var account: AccountStatus?
     var autoConnect: Bool

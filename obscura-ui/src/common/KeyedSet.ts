@@ -1,15 +1,19 @@
-export class KeyedSet<V, K> {
-  #key: (v: V) => K;
+export class KeyedSet<V extends L, L = V, K = unknown> {
+  #key: (v: L) => K;
   #map = new Map<K, V>;
 
   constructor(
-    key: (v: V) => K,
+    key: (v: L) => K,
     entries?: Iterable<V>,
   ) {
     this.#key = key;
     if (entries) {
       this.extend(entries);
     }
+  }
+
+  [Symbol.iterator](): Iterator<V> {
+    return this.#map.values();
   }
 
   /// Add an item to the set.
@@ -33,7 +37,7 @@ export class KeyedSet<V, K> {
     }
   }
 
-  get(v: V): V | undefined {
+  get(v: L): V | undefined {
     return this.getKey(this.#key(v));
   }
 
@@ -41,11 +45,15 @@ export class KeyedSet<V, K> {
     return this.#map.get(k);
   }
 
-  has(v: V): boolean {
+  has(v: L): boolean {
     return this.hasKey(this.#key(v));
   }
 
   hasKey(k: K): boolean {
     return this.#map.has(k);
+  }
+
+  get size(): number {
+    return this.#map.size
   }
 }

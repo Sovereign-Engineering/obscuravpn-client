@@ -1,4 +1,4 @@
-export const enum LocalStorageKey {
+export enum LocalStorageKey {
     CustomApiUrls = "customApiUrls"
 }
 

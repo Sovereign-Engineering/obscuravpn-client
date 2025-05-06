@@ -20,7 +20,7 @@ use x25519_dalek::PublicKey;
 
 use crate::client_state::AccountStatus;
 use crate::config::cached::ConfigCached;
-use crate::manager::ExitSelector;
+use crate::exit_selection::ExitSelector;
 
 pub(super) const CONFIG_FILE: &str = "config.json";
 

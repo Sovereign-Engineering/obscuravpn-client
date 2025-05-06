@@ -2,16 +2,18 @@ use super::{
     errors::{ApiError, TunnelConnectError},
     network_config::NetworkConfig,
 };
-use crate::config::PinnedLocation;
-use crate::config::{cached::ConfigCached, ConfigSaveError};
-use crate::manager::ExitSelector;
 use crate::quicwg::QuicWgConnHandshaking;
 use crate::quicwg::{QuicWgConnectError, QuicWgWireguardHandshakeError};
 use crate::relay_selection::race_relay_handshakes;
+use crate::{config::PinnedLocation, exit_selection::ExitSelectionState};
 use crate::{
     config::{self, Config, ConfigLoadError},
     errors::RelaySelectionError,
     quicwg::QuicWgConn,
+};
+use crate::{
+    config::{cached::ConfigCached, ConfigSaveError},
+    exit_selection::ExitSelector,
 };
 use boringtun::x25519::{PublicKey, StaticSecret};
 use chrono::Utc;
@@ -167,8 +169,12 @@ impl ClientState {
         Ok(())
     }
 
-    pub(crate) async fn connect(&self, exit_selector: &ExitSelector) -> Result<(QuicWgConn, NetworkConfig, OneExit, OneRelay), TunnelConnectError> {
-        let (token, tunnel_config, wg_sk, exit, relay, handshaking) = self.new_tunnel(exit_selector).await?;
+    pub(crate) async fn connect(
+        &self,
+        exit_selector: &ExitSelector,
+        selection_state: &mut ExitSelectionState,
+    ) -> Result<(QuicWgConn, NetworkConfig, OneExit, OneRelay), TunnelConnectError> {
+        let (token, tunnel_config, wg_sk, exit, relay, handshaking) = self.new_tunnel(exit_selector, selection_state).await?;
         let network_config = NetworkConfig::new(&tunnel_config)?;
         let client_ip_v4 = network_config.ipv4;
         tracing::info!(
@@ -203,42 +209,26 @@ impl ClientState {
         Ok((conn, network_config, exit, relay))
     }
 
-    fn choose_exit(&self, selector: &ExitSelector, relay: &OneRelay) -> Option<String> {
+    fn choose_exit(&self, selector: &ExitSelector, relay: &OneRelay, selection_state: &mut ExitSelectionState) -> Option<String> {
         let Some(exit_list) = self.get_exit_list() else {
             tracing::warn!(message_id = "Iu1ahnge", "No exit list, choosing random preferred exit.");
             return relay.preferred_exits.choose(&mut thread_rng()).map(|e| e.id.clone());
         };
-
-        exit_list
-            .value
-            .exits
-            .iter()
-            .filter(|candidate| match selector {
-                ExitSelector::Any {} => true,
-                ExitSelector::Exit { id } => candidate.id == *id,
-                ExitSelector::Country { country_code } => candidate.country_code == *country_code,
-                ExitSelector::City { country_code, city_code } => candidate.country_code == *country_code && candidate.city_code == *city_code,
-            })
-            .map(|candidate| {
-                (
-                    relay.preferred_exits.iter().any(|p| p.id == candidate.id),
-                    rand::random::<u8>(),
-                    &candidate.id,
-                )
-            })
-            .max()
-            .map(|(_, _, id)| id.clone())
+        selection_state
+            .select_next_exit(selector, &exit_list.value.exits, relay)
+            .map(|e| e.id.clone())
     }
 
     async fn new_tunnel(
         &self,
         exit_selector: &ExitSelector,
+        selection_state: &mut ExitSelectionState,
     ) -> anyhow::Result<(Uuid, ObfuscatedTunnelConfig, StaticSecret, OneExit, OneRelay, QuicWgConnHandshaking), TunnelConnectError> {
         let (select_relay, update_exits) = tokio::join!(self.select_relay(), self.maybe_update_exits(Duration::from_secs(60)),);
         let (closest_relay, handshaking) = select_relay?;
         let () = update_exits?;
 
-        let Some(exit) = self.choose_exit(exit_selector, &closest_relay) else {
+        let Some(exit) = self.choose_exit(exit_selector, &closest_relay, selection_state) else {
             tracing::error!(
                 message_id = "naiThei6",
                 exit_selector =? exit_selector,

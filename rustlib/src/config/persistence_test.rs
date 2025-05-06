@@ -16,6 +16,7 @@ use crate::config::save;
 use crate::config::Config;
 use crate::config::PinnedLocation;
 use crate::config::CONFIG_FILE;
+use crate::exit_selection::ExitSelector;
 
 fn random_config() -> Config {
     Config {
@@ -148,18 +149,20 @@ fn test_ignore_invalid_fields() {
                     country_code: "ca".into(),
                     city_code: "yyz".into(),
                     city_name: "Toronto".into(),
+                    datacenter_id: 34,
                     provider_id: "foo123".into(),
                     provider_url: "https://servers.example/foo123".into(),
                     provider_name: "Cheap Server Rentals".into(),
                     provider_homepage_url: "https://example.com".into(),
+                    tier: 0,
                 }],
             }),
             super::cached::Version::artificial(),
         )),
         pinned_locations: vec![PinnedLocation { country_code: "CA".into(), city_code: "yyz".into(), pinned_at: SystemTime::UNIX_EPOCH }],
         last_chosen_exit: Some("mylastexit".into()),
-        last_chosen_exit_selector: crate::manager::ExitSelector::City { city_code: "YYZ".into(), country_code: "CA".into() },
-        last_exit_selector: crate::manager::ExitSelector::City { city_code: "YYZ".into(), country_code: "CA".into() },
+        last_chosen_exit_selector: ExitSelector::City { city_code: "YYZ".into(), country_code: "CA".into() },
+        last_exit_selector: ExitSelector::City { city_code: "YYZ".into(), country_code: "CA".into() },
         wireguard_key_cache: Default::default(),
         use_wireguard_key_cache: (),
         cached_account_status: Default::default(),

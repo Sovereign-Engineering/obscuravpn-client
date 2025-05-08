@@ -6,7 +6,6 @@ use crate::config::PinnedLocation;
 use crate::config::{cached::ConfigCached, ConfigSaveError};
 use crate::manager::ExitSelector;
 use crate::quicwg::QuicWgConnHandshaking;
-use crate::quicwg::{QuicWgConnectError, QuicWgWireguardHandshakeError};
 use crate::relay_selection::race_relay_handshakes;
 use crate::{
     config::{self, Config, ConfigLoadError},
@@ -177,20 +176,7 @@ impl ClientState {
             "finishing tunnel connection");
         let remote_pk = PublicKey::from(tunnel_config.exit_pubkey.0);
         let ping_keepalive_ip = tunnel_config.gateway_ip_v4;
-        let result = QuicWgConn::connect(handshaking, wg_sk.clone(), remote_pk, client_ip_v4, ping_keepalive_ip, token).await;
-        let conn = match result {
-            Ok(conn) => conn,
-            Err(error) => {
-                if matches!(
-                    error,
-                    QuicWgConnectError::WireguardHandshake(QuicWgWireguardHandshakeError::RespMessageTimeout)
-                ) {
-                    tracing::info!("consider rotating wireguard key if it's not too recent, because WG handshake timed out");
-                    Self::change_config(&mut self.lock(), |config| config.wireguard_key_cache.rotate_now_if_not_recent())?;
-                }
-                return Err(error.into());
-            }
-        };
+        let conn = QuicWgConn::connect(handshaking, wg_sk.clone(), remote_pk, client_ip_v4, ping_keepalive_ip, token).await?;
         tracing::info!("tunnel connected");
         let exit_id = exit.id.clone();
         Self::change_config(&mut self.lock(), move |config| {

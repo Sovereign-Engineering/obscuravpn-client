@@ -23,6 +23,7 @@ use crate::{
     client_state::AccountStatus,
     config::{cached::ConfigCached, Config, ConfigDebug, ConfigLoadError, ConfigSaveError, PinnedLocation},
     errors::ApiError,
+    exit_selection::ExitSelector,
     tunnel_state::TunnelState,
 };
 
@@ -107,21 +108,6 @@ pub enum VpnStatus {
 #[serde(rename_all = "camelCase")]
 pub struct TunnelArgs {
     pub exit: ExitSelector,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
-#[serde(rename_all = "camelCase")]
-pub enum ExitSelector {
-    Any {},
-    Exit { id: String },
-    Country { country_code: String },
-    City { country_code: String, city_code: String },
-}
-
-impl Default for ExitSelector {
-    fn default() -> Self {
-        ExitSelector::Any {}
-    }
 }
 
 impl VpnStatus {

@@ -3,6 +3,7 @@
 pub mod client_state;
 pub mod config;
 pub mod errors;
+pub mod exit_selection;
 mod ffi_helpers;
 mod manager;
 mod manager_cmd;

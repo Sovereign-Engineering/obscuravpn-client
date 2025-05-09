@@ -12,6 +12,7 @@ use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 use crate::errors::{ErrorAt, TunnelConnectError};
+use crate::exit_selection::ExitSelectionState;
 use crate::ffi_helpers::{FfiBytes, FfiBytesExt};
 use crate::manager::ManagerTrafficStats;
 use crate::network_config::NetworkConfig;
@@ -135,6 +136,7 @@ impl TunnelState {
 
         let mut last_start: Option<Instant> = None;
         let mut disconnect_reason = None;
+        let mut selection_state = ExitSelectionState::default();
 
         loop {
             if let Some(last_start) = last_start {
@@ -156,7 +158,7 @@ impl TunnelState {
 
                 // Try to connect if desired
                 if let Some(target_args) = &target_args {
-                    match poll_until_change(&mut target_args_recv, client_state.connect(&target_args.exit.clone())).await {
+                    match poll_until_change(&mut target_args_recv, client_state.connect(&target_args.exit, &mut selection_state)).await {
                         None => {
                             tracing::info!(
                                 message_id = "SmLhzVwY",
@@ -179,6 +181,7 @@ impl TunnelState {
             }
 
             tracing::info!(message_id = "axfILRQy", ?target_args, "reached target state");
+            selection_state = ExitSelectionState::default();
 
             let conn = tunnel_state.borrow().get_conn();
             match conn {

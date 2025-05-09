@@ -1406,7 +1406,7 @@ dependencies = [
 [[package]]
 name = "obscuravpn-api"
 version = "0.0.0"
-source = "git+https://github.com/Sovereign-Engineering/obscuravpn-api.git?rev=a35e2ec4ef607fc09d9a9f1f65d1014e15f18c51#a35e2ec4ef607fc09d9a9f1f65d1014e15f18c51"
+source = "git+https://github.com/Sovereign-Engineering/obscuravpn-api.git?rev=c074cff0a2068622efbf7d9c1337483dc01a3c20#c074cff0a2068622efbf7d9c1337483dc01a3c20"
 dependencies = [
  "anyhow",
  "base64 0.21.7",

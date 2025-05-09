@@ -2,6 +2,7 @@
 
 use std::{sync::Arc, time::Duration};
 
+use base64::prelude::*;
 use obscuravpn_api::{
     cmd::{ApiErrorKind, Cmd, ExitList, GetAccountInfo},
     types::AccountId,
@@ -78,12 +79,13 @@ impl From<&ApiError> for ManagerCmdErrorCode {
 
 // Keep synchronized with ../../apple/shared/NetworkExtensionIpc.swift
 #[serde_with::serde_as]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(derive_more::Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum ManagerCmd {
     ApiGetAccountInfo {},
     GetDebugInfo {},
     GetExitList {
+        #[debug("{:?}", known_version.as_ref().map(|b| BASE64_STANDARD.encode(b)))]
         #[serde_as(as = "Option<serde_with::base64::Base64>")]
         known_version: Option<Vec<u8>>,
     },

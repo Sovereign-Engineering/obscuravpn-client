@@ -1,14 +1,12 @@
 import Foundation
 import OSLog
-import Sparkle
 import WebKit
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "Webview")
 
 class CommandHandler: NSObject, WKScriptMessageHandlerWithReply {
     static var shared = CommandHandler()
-    static var updater: SPUUpdater?
-    static var updaterController: SPUStandardUpdaterController?
+
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage, replyHandler: @escaping (Any?, String?) -> Void) {
         guard let commandJson = message.body as? String else {
             replyHandler(nil, "command not a string")

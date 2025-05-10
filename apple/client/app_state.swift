@@ -10,6 +10,9 @@ class AppState: ObservableObject {
     private let configQueue: DispatchQueue = .init(label: "config queue")
     public let osStatus: WatchableValue<OsStatus>
     @Published var status: NeStatus
+    #if os(macOS)
+        public let updater: SparkleUpdater
+    #endif
 
     init(
         _ manager: NETunnelProviderManager,
@@ -18,6 +21,9 @@ class AppState: ObservableObject {
         self.manager = manager
         self.status = initialStatus
         self.osStatus = OsStatus.watchable(manager: manager)
+        #if os(macOS)
+            self.updater = SparkleUpdater(osStatus: self.osStatus)
+        #endif
 
         if initialStatus.autoConnect {
             Task {

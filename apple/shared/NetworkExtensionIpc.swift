@@ -33,7 +33,7 @@ enum ExitSelector: Codable {
     case country(country_code: String)
     case city(
         country_code: String,
-        city_code: String,
+        city_code: String
     )
 }
 

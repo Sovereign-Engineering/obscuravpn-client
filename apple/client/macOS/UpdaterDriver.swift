@@ -4,10 +4,10 @@ import Sparkle
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "UpdaterDriver")
 
 class UpdaterDriver: NSObject, SPUUserDriver {
-    var appState: AppState
+    private var osStatus: WatchableValue<OsStatus>
 
-    static func createUpdater(appState: AppState) -> SPUUpdater {
-        let updater = SPUUpdater(hostBundle: Bundle.main, applicationBundle: Bundle.main, userDriver: UpdaterDriver(appState: appState), delegate: nil)
+    static func createUpdater(osStatus: WatchableValue<OsStatus>) -> SPUUpdater {
+        let updater = SPUUpdater(hostBundle: Bundle.main, applicationBundle: Bundle.main, userDriver: UpdaterDriver(osStatus: osStatus), delegate: nil)
         do {
             try updater.start()
         } catch {
@@ -16,14 +16,14 @@ class UpdaterDriver: NSObject, SPUUserDriver {
         return updater
     }
 
-    init(appState: AppState) {
-        self.appState = appState
+    init(osStatus: WatchableValue<OsStatus>) {
+        self.osStatus = osStatus
         super.init()
     }
 
     private func updateOsStatus(updaterStatus: UpdaterStatus) {
         logger.info("New osStatus.updaterStatus \(updaterStatus, privacy: .public))")
-        _ = self.appState.osStatus.update { value in
+        _ = self.osStatus.update { value in
             value.updaterStatus = updaterStatus
             value.version = UUID()
         }

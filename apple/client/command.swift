@@ -75,17 +75,23 @@ func handleWebViewCommand(command: Command) async throws(String) -> String {
     case .getOsStatus(knownVersion: let version):
         return try await appState.getOsStatus(knownVersion: version).json()
     case .checkForUpdates:
-        if await CommandHandler.updater?.canCheckForUpdates ?? false {
-            await CommandHandler.updater!.checkForUpdates()
-        } else {
+        #if os(macOS)
+            guard appState.updater.canCheckForUpdates else {
+                throw errorCodeUpdaterCheck
+            }
+            appState.updater.checkForUpdates()
+        #else
             throw errorCodeUpdaterCheck
-        }
+        #endif
     case .installUpdate:
-        if await CommandHandler.updaterController?.updater.canCheckForUpdates ?? false {
-            await CommandHandler.updaterController!.checkForUpdates(nil)
-        } else {
+        #if os(macOS)
+            guard appState.updater.canCheckForUpdates else {
+                throw errorCodeUpdaterInstall
+            }
+            appState.updater.showUpdaterIfNeeded()
+        #else
             throw errorCodeUpdaterInstall
-        }
+        #endif
     }
     return "{}"
 }

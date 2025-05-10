@@ -77,7 +77,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         case .none:
             logger.info("startTunnel \(self.providerId, privacy: .public) called without options, using default tunnel args")
             tunnelArgs = TunnelArgs(
-                exit: .any,
+                exit: .any
             )
         }
 

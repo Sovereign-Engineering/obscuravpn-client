@@ -1,5 +1,4 @@
 import OSLog
-import Sparkle
 import SwiftUI
 import UniformTypeIdentifiers
 import WebKit
@@ -115,9 +114,9 @@ struct ContentView: View {
 
     let accountBadgeTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
-    init(appState: AppState, updaterController: SPUStandardUpdaterController) {
+    init(appState: AppState) {
         self.appState = appState
-        self.webView = WebView(appState: appState, updaterController: updaterController)
+        self.webView = WebView(appState: appState)
         let forceHide = appState.status.accountId == nil || appState.status.inNewAccountFlow
         self.loginViewShown = forceHide
         self.splitViewVisibility = forceHide ? .detailOnly : .automatic
@@ -255,7 +254,7 @@ struct WebView: NSViewRepresentable {
     let webView: WKWebView
     let webViewDelegate: WebViewController
 
-    init(appState: AppState, updaterController: SPUStandardUpdaterController) {
+    init(appState: AppState) {
         let webConfiguration = WKWebViewConfiguration()
         // webConfiguration.preferences.javaScriptEnabled = true
         let error_capture_script = WKUserScript(source: js_error_capture, injectionTime: .atDocumentStart, forMainFrameOnly: false)
@@ -279,11 +278,6 @@ struct WebView: NSViewRepresentable {
         self.webView = WKWebView(frame: .zero, configuration: webConfiguration)
         self.webViewDelegate = WebViewController()
         self.webView.navigationDelegate = self.webViewDelegate
-
-        // initialize a Sparkle updater with custom driver that can send events to web ui
-        let updater = UpdaterDriver.createUpdater(appState: appState)
-        CommandHandler.updater = updater
-        CommandHandler.updaterController = updaterController
 
         #if LOAD_DEV_SERVER
             let urlRequest = URLRequest(url: URL(string: "http://localhost:1420/")!)

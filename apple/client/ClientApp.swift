@@ -1,7 +1,6 @@
 import Network
 import NetworkExtension
 import OSLog
-import Sparkle
 import SwiftUI
 import SystemExtensions
 import UserNotifications
@@ -130,15 +129,6 @@ func fullyOpenManagerWindow() {
 
 @main
 struct ClientApp: App {
-    /**
-     Sparkle updater.
-
-     - seealso: [How to integrate the Sparkle framework into a SwiftUI app for MacOS](https://medium.com/@matteospada.m/how-to-integrate-the-sparkle-framework-into-a-swiftui-app-for-macos-98ca029f83f7)
-     - seealso: [Sparkle: Basic Setup](https://sparkle-project.org/documentation/)
-     - seealso: [Sparkle: Create an Updater in SwiftUI](https://sparkle-project.org/documentation/programmatic-setup/#create-an-updater-in-swiftui)
-     */
-    private let updaterController: SPUStandardUpdaterController
-
     init() {
         logger.debug("App init")
         // Auto-exit if app is already running
@@ -147,7 +137,6 @@ struct ClientApp: App {
             logger.info("App already running.")
             NSApp.terminate(nil)
         }
-        self.updaterController = .init(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
     }
 
     @NSApplicationDelegateAdaptor private var appDelegate: AppDelegate
@@ -158,7 +147,7 @@ struct ClientApp: App {
         Window("Obscura", id: WindowIds.RootWindowId) {
             Group {
                 if let appState = self.startupModel.appState {
-                    ContentView(appState: appState, updaterController: self.updaterController)
+                    ContentView(appState: appState)
                         .frame(minWidth: 805, minHeight: 525)
                 } else {
                     StartupView()
@@ -174,8 +163,10 @@ struct ClientApp: App {
                 }.keyboardShortcut("q")
             }
 
-            CommandGroup(after: .appInfo) {
-                CheckForUpdatesView(updater: self.updaterController.updater)
+            if let updater = startupModel.appState?.updater {
+                CommandGroup(after: .appInfo) {
+                    CheckForUpdatesView(updater: updater)
+                }
             }
         }
     }

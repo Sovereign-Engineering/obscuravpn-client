@@ -1,4 +1,5 @@
 import Foundation
+import UniformTypeIdentifiers
 
 // The unique build ID.
 //
@@ -31,29 +32,17 @@ func sourceId() -> String {
     return obscuraInfoDict()["ObscuraSourceId"] as! String
 }
 
-let useSystemExtension = true
-
-func extensionBundleID() -> String {
-    switch useSystemExtension {
-    case true: systemNetworkExtensionBundleID()
-    case false: appNetworkExtensionBundleID()
-    }
-}
-
 func extensionBundle() -> Bundle {
     let url = Bundle.main.bundleURL
         .appending(path: "Contents/Library/SystemExtensions/")
-        .appending(component: "\(extensionBundleID()).systemextension")
+        .appending(component: "\(networkExtensionBundleID()).systemextension")
 
     return Bundle(url: url)!
 }
 
-private func systemNetworkExtensionBundleID() -> String {
-    return obscuraInfoDict()["SystemNetworkExtensionBundleIdentifier"] as! String
-}
-
-private func appNetworkExtensionBundleID() -> String {
-    return obscuraInfoDict()["AppNetworkExtensionBundleIdentifier"] as! String
+// The correct bundle ID for the client app to connect to based on the build configuration
+public func networkExtensionBundleID() -> String {
+    return obscuraInfoDict()["OBSCURA_NETWORK_EXTENSION_BUNDLE_ID"] as! String
 }
 
 func appGroupID() -> String {
@@ -61,5 +50,9 @@ func appGroupID() -> String {
 }
 
 func configDir() -> String {
-    return "/Library/Application Support/obscura-vpn/system-network-extension/"
+    #if os(macOS)
+        return "/Library/Application Support/obscura-vpn/system-network-extension/"
+    #else
+        return URL.libraryDirectory.appendingPathComponent("obscura", conformingTo: UTType.folder).path(percentEncoded: false)
+    #endif
 }

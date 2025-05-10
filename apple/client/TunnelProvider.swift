@@ -74,7 +74,7 @@ class TunnelProviderInit {
             }
 
             let proto = NETunnelProviderProtocol()
-            proto.providerBundleIdentifier = extensionBundleID()
+            proto.providerBundleIdentifier = networkExtensionBundleID()
             proto.serverAddress = "obscura.net"
             proto.includeAllNetworks = manager.protocolConfiguration?.includeAllNetworks ?? false
             manager.protocolConfiguration = proto
@@ -160,6 +160,14 @@ class TunnelProviderInit {
             return .none
         }
     }
+}
+
+func neLogin(_ manager: NETunnelProviderManager,
+             accountId: String,
+             attemptTimeout: Duration? = nil,
+             maxAttempts: UInt = 10) async throws
+{
+    _ = try await runNeJsonCommand(manager, NeManagerCmd.login(accountId: accountId, validate: false).json(), attemptTimeout: attemptTimeout, maxAttempts: maxAttempts)
 }
 
 func getNeStatus(

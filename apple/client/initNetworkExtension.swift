@@ -40,7 +40,7 @@ class NetworkExtensionInit: NSObject {
             self.update(.checking)
             logger.log("Requesting system extension properties...")
             let request = OSSystemExtensionRequest.propertiesRequest(
-                forExtensionWithIdentifier: extensionBundleID(),
+                forExtensionWithIdentifier: networkExtensionBundleID(),
                 queue: .main
             )
             request.delegate = self
@@ -56,7 +56,7 @@ class NetworkExtensionInit: NSObject {
         self.activationRequested = true
         logger.log("Requesting system extension activation/replacement...")
         let request = OSSystemExtensionRequest.activationRequest(
-            forExtensionWithIdentifier: extensionBundleID(),
+            forExtensionWithIdentifier: networkExtensionBundleID(),
             queue: .main
         )
         request.delegate = self
@@ -92,7 +92,7 @@ extension NetworkExtensionInit: OSSystemExtensionRequestDelegate {
         var matchingBuildVersionAlreadyEnabled = false
         for sysExt in sysExts {
             logger.debug("found system extensions \(sysExt.bundleIdentifier) \(sysExt.bundleShortVersion) \(sysExt.bundleVersion), enabled: \(sysExt.isEnabled), awaitingUserApproval: \(sysExt.isAwaitingUserApproval)")
-            if sysExt.bundleIdentifier == extensionBundleID() && sysExt.isEnabled {
+            if sysExt.bundleIdentifier == networkExtensionBundleID() && sysExt.isEnabled {
                 matchingBundleIdAlreadyEnabled = true
                 if sysExt.bundleVersion == buildVersion {
                     matchingBuildVersionAlreadyEnabled = true

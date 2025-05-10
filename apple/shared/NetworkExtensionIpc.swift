@@ -18,6 +18,7 @@ enum NeManagerCmd: Codable {
     case getTrafficStats
     case ping
     case setTunnelArgs(args: TunnelArgs?, allowActivation: Bool = false)
+    case login(accountId: String, validate: Bool)
 }
 
 // See ../../rustlib/src/manager.rs

@@ -10,7 +10,7 @@ func getExtensionDebugInfo() async -> [OSSystemExtensionProperties] {
 
     return await withCheckedContinuation { continuation in
         let request = OSSystemExtensionRequest.propertiesRequest(
-            forExtensionWithIdentifier: extensionBundleID(),
+            forExtensionWithIdentifier: networkExtensionBundleID(),
             queue: .main
         )
         delegate = Delegate(continuation)

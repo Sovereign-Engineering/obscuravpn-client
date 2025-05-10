@@ -71,10 +71,8 @@
 	</dict>
 	<key>Obscura</key>
 	<dict>
-		<key>SystemNetworkExtensionBundleIdentifier</key>
-		<string>$(OBSCURA_SYSTEM_NETWORK_EXTENSION_PRODUCT_BUNDLE_IDENTIFIER)</string>
-		<key>AppNetworkExtensionBundleIdentifier</key>
-		<string>$(OBSCURA_APP_NETWORK_EXTENSION_PRODUCT_BUNDLE_IDENTIFIER)</string>
+		<key>OBSCURA_NETWORK_EXTENSION_BUNDLE_ID</key>
+		<string>$(OBSCURA_NETWORK_EXTENSION_BUNDLE_ID)</string>
 		<key>AppGroupIdentifier</key>
 		<string>$(OBSCURA_APP_APP_GROUP_ID)</string>
 		<key>ObscuraSourceId</key>
@@ -82,14 +80,14 @@
 		<key>ObscuraSourceVersion</key>
 		<string>$(OBSCURA_SOURCE_VERSION)</string>
 	</dict>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
 	<key>SUEnableInstallerLauncherService</key>
 	<true/>
 	<key>SUFeedURL</key>
 	<string>https://pkgs.obscura.net/macos/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>R4CNa/L1zQGVdNot8RDQOpAxJdwzBGnZnLR/6G/Zyts=</string>
-	<key>SUEnableAutomaticChecks</key>
-	<true/>
 	<key>SUScheduledCheckInterval</key>
 	<integer>21600</integer>
 </dict>

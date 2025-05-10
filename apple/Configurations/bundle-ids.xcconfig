@@ -1,6 +1,10 @@
 OBSCURA_SYSTEM_NETWORK_EXTENSION_PRODUCT_BUNDLE_IDENTIFIER = $(OBSCURA_APP_PRODUCT_BUNDLE_IDENTIFIER).system-network-extension
 OBSCURA_APP_NETWORK_EXTENSION_PRODUCT_BUNDLE_IDENTIFIER = $(OBSCURA_APP_PRODUCT_BUNDLE_IDENTIFIER).app-network-extension
 
+// Points to the identifier used for the network extension on this platform.
+OBSCURA_NETWORK_EXTENSION_BUNDLE_ID = $(OBSCURA_SYSTEM_NETWORK_EXTENSION_PRODUCT_BUNDLE_IDENTIFIER)
+OBSCURA_NETWORK_EXTENSION_BUNDLE_ID[sdk=iphoneos*] = $(OBSCURA_APP_NETWORK_EXTENSION_PRODUCT_BUNDLE_IDENTIFIER)
+
 DEVELOPMENT_TEAM = 5G943LR562
 // Per https://developer.apple.com/documentation/xcode/configuring-app-groups
 // On macOS app groups must start with team identifier IF the app is sandboxed/app store released. Technically we do not need this.

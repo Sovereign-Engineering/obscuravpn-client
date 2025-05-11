@@ -85,9 +85,14 @@
 		96C920692CD91D96002C85EA /* String.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C920682CD91D94002C85EA /* String.swift */; };
 		96C9206A2CD91D96002C85EA /* String.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C920682CD91D94002C85EA /* String.swift */; };
 		A082F8232C46BF5B002AF810 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A082F8222C46BF5B002AF810 /* Sparkle */; };
+		A9200A862DD1251C00FD035C /* WebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9200A842DD1251C00FD035C /* WebView.swift */; };
+		A9200A872DD127A200FD035C /* Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35230C272C775FF1007ECFEC /* Notifications.swift */; };
 		A9768FAD2DBB01AD00A4595F /* UpdaterDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9768FAC2DBB01AD00A4595F /* UpdaterDriver.swift */; };
 		A9768FAF2DBB01C400A4595F /* CheckForUpdatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9768FAE2DBB01C400A4595F /* CheckForUpdatesView.swift */; };
 		A9768FB42DBB01EE00A4595F /* SparkleUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9768FB32DBB01EE00A4595F /* SparkleUpdater.swift */; };
+		A9768FBE2DBB02BC00A4595F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30761C232B6EB17100E5F60D /* ContentView.swift */; };
+		A9768FC02DBB02C400A4595F /* OrderedCollections in Frameworks */ = {isa = PBXBuildFile; productRef = A9768FBF2DBB02C400A4595F /* OrderedCollections */; };
+		A9768FC22DBB02C900A4595F /* OrderedCollections in Frameworks */ = {isa = PBXBuildFile; productRef = A9768FC12DBB02C900A4595F /* OrderedCollections */; };
 		A98F1BCE2DADFF17007F04D3 /* DequeModule in Frameworks */ = {isa = PBXBuildFile; productRef = A98F1BA22DADFF17007F04D3 /* DequeModule */; };
 		A98F1BD02DADFF17007F04D3 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 30761C282B6EB17200E5F60D /* Preview Assets.xcassets */; };
 		A98F1BD12DADFF17007F04D3 /* build in Resources */ = {isa = PBXBuildFile; fileRef = 96516AC22BF928DD00576562 /* build */; };
@@ -259,7 +264,6 @@
 		962325202C88D4E8008A9B76 /* ObscuraToggle.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ObscuraToggle.swift; sourceTree = "<group>"; };
 		962325222C8A3B58008A9B76 /* MenuItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuItemView.swift; sourceTree = "<group>"; };
 		9632E4632D19C5EA00BC8E3F /* AccountStatusItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountStatusItem.swift; sourceTree = "<group>"; };
-		9636E8B82D4BE02500CFB57E /* UpdaterDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdaterDriver.swift; sourceTree = "<group>"; };
 		9649F9582DA4233F009EFF4F /* LoopingVideoPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoopingVideoPlayer.swift; sourceTree = "<group>"; };
 		9649F9722DA56142009EFF4F /* AVKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVKit.framework; path = System/Library/Frameworks/AVKit.framework; sourceTree = SDKROOT; };
 		96516AC22BF928DD00576562 /* build */ = {isa = PBXFileReference; lastKnownFileType = folder; name = build; path = "../obscura-ui/build"; sourceTree = "<group>"; };
@@ -272,6 +276,7 @@
 		A06E85A62C2ECA680087C8C8 /* bundle-ids.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "bundle-ids.xcconfig"; sourceTree = "<group>"; };
 		A06E85A92C2ECA680087C8C8 /* app.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = app.xcconfig; sourceTree = "<group>"; };
 		A06E85AA2C2ECA680087C8C8 /* buildversion.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = buildversion.xcconfig; sourceTree = "<group>"; };
+		A9200A842DD1251C00FD035C /* WebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebView.swift; sourceTree = "<group>"; };
 		A9768FAC2DBB01AD00A4595F /* UpdaterDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdaterDriver.swift; sourceTree = "<group>"; };
 		A9768FAE2DBB01C400A4595F /* CheckForUpdatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckForUpdatesView.swift; sourceTree = "<group>"; };
 		A9768FB32DBB01EE00A4595F /* SparkleUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkleUpdater.swift; sourceTree = "<group>"; };
@@ -338,6 +343,7 @@
 				9649F9732DA56142009EFF4F /* AVKit.framework in Frameworks */,
 				A082F8232C46BF5B002AF810 /* Sparkle in Frameworks */,
 				30497E782D9ED7EE008B22F9 /* DequeModule in Frameworks */,
+				A9768FC22DBB02C900A4595F /* OrderedCollections in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -365,6 +371,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A9768FC02DBB02C400A4595F /* OrderedCollections in Frameworks */,
 				A98F1BCE2DADFF17007F04D3 /* DequeModule in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -408,7 +415,6 @@
 				A99871102DBAF8080044D136 /* Style */,
 				A998710D2DBAF7FE0044D136 /* macOS */,
 				9649F9582DA4233F009EFF4F /* LoopingVideoPlayer.swift */,
-				9636E8B82D4BE02500CFB57E /* UpdaterDriver.swift */,
 				A9BCB0602DC54B68006C0133 /* UpdaterDriver+XP.swift */,
 				966967C02D440B430019AF9F /* LoginItem.swift */,
 				3096BFF72CECD4BA003D062E /* extensions */,
@@ -423,6 +429,7 @@
 				A9A166A32DAF9B60006B852F /* iOSClientApp.swift */,
 				3096E03F2BEFC6770026DE7F /* command.swift */,
 				967D0C852C41A1E500FD0767 /* Constants.swift */,
+				A9200A842DD1251C00FD035C /* WebView.swift */,
 				30761C232B6EB17100E5F60D /* ContentView.swift */,
 				A9BCB05D2DC54AC0006C0133 /* DebugBundle.swift */,
 				35A6F2512C611DD1004E1A7C /* DebugBundle+XP.swift */,
@@ -628,6 +635,7 @@
 			packageProductDependencies = (
 				A082F8222C46BF5B002AF810 /* Sparkle */,
 				30497E772D9ED7EE008B22F9 /* DequeModule */,
+				A9768FC12DBB02C900A4595F /* OrderedCollections */,
 			);
 			productName = client;
 			productReference = 30761C1E2B6EB17100E5F60D /* Obscura VPN (Debug).app */;
@@ -685,6 +693,7 @@
 			name = "Obscura VPN iOS";
 			packageProductDependencies = (
 				A98F1BA22DADFF17007F04D3 /* DequeModule */,
+				A9768FBF2DBB02C400A4595F /* OrderedCollections */,
 			);
 			productName = client;
 			productReference = A98F1BD82DADFF17007F04D3 /* Obscura VPN iOS.app */;
@@ -827,6 +836,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				3096E0222BDC1FFB0026DE7F /* ScriptMessageHandlers.swift in Sources */,
+				A9200A862DD1251C00FD035C /* WebView.swift in Sources */,
 				30EF74C12BFFE48C0095439F /* FfiCb.swift in Sources */,
 				309B467D2C4C152900A1B00F /* StringError.swift in Sources */,
 				A9768FB42DBB01EE00A4595F /* SparkleUpdater.swift in Sources */,
@@ -926,6 +936,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A9200A872DD127A200FD035C /* Notifications.swift in Sources */,
+				A9768FBE2DBB02BC00A4595F /* ContentView.swift in Sources */,
 				A99871292DBAF90B0044D136 /* Debug.swift in Sources */,
 				A99871282DBAF8FB0044D136 /* DebugBundle+XP.swift in Sources */,
 				A99871272DBAF8A60044D136 /* TunnelProvider.swift in Sources */,
@@ -1278,7 +1290,6 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
 				OBSCURA_MAGIC_NO_NIX = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -1310,7 +1321,6 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
 				OBSCURA_MAGIC_NO_NIX = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -1435,6 +1445,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A082F8212C46BF5B002AF810 /* XCRemoteSwiftPackageReference "Sparkle" */;
 			productName = Sparkle;
+		};
+		A9768FBF2DBB02C400A4595F /* OrderedCollections */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 30497E6C2D9ED476008B22F9 /* XCRemoteSwiftPackageReference "swift-collections" */;
+			productName = OrderedCollections;
+		};
+		A9768FC12DBB02C900A4595F /* OrderedCollections */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 30497E6C2D9ED476008B22F9 /* XCRemoteSwiftPackageReference "swift-collections" */;
+			productName = OrderedCollections;
 		};
 		A98F1BA22DADFF17007F04D3 /* DequeModule */ = {
 			isa = XCSwiftPackageProductDependency;

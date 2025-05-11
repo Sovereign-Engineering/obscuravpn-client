@@ -1,3 +1,4 @@
+import OrderedCollections
 import OSLog
 import SwiftUI
 import UniformTypeIdentifiers
@@ -5,36 +6,53 @@ import WebKit
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "ContentView")
 
-struct NavView: Hashable {
-    let name: String
-    let systemImageName: String
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(self.name)
+enum AppView: String, Hashable, Identifiable {
+    case account
+    case connection
+    case location
+    case settings
+    case help
+    case about
+    case developer
+
+    var id: String {
+        self.rawValue
+    }
+
+    var systemImageName: String {
+        switch self {
+        case .account:
+            "person.circle"
+        case .connection:
+            "network.badge.shield.half.filled"
+        case .location:
+            "mappin.and.ellipse"
+        case .settings:
+            "gear"
+        case .help:
+            "questionmark.circle"
+        case .about:
+            "info.circle"
+        case .developer:
+            "book.and.wrench"
+        }
+    }
+
+    var ipcValue: String {
+        self.rawValue
     }
 }
 
-let AccountView = NavView(name: "account", systemImageName: "person.circle")
+let STABLE_VIEWS: OrderedSet<AppView> = OrderedSet([.connection, .location, .account, .settings, .help, .about])
 
-let STABLE_VIEWS = [
-    NavView(name: "connection", systemImageName: "network.badge.shield.half.filled"),
-    NavView(name: "location", systemImageName: "mappin.and.ellipse"),
-    AccountView,
-    NavView(name: "settings", systemImageName: "gear"),
-    NavView(name: "help", systemImageName: "questionmark.circle"),
-    NavView(name: "about", systemImageName: "info.circle"),
-]
+let EXPERIMETNAL_VIEWS: OrderedSet<AppView> = OrderedSet()
 
-let EXPERIMETNAL_VIEWS: [NavView] = [
-]
-
-let DEBUG_VIEWS = [
-    NavView(name: "developer", systemImageName: "book.and.wrench"),
-]
+let DEBUG_VIEWS: OrderedSet<AppView> = OrderedSet([.developer])
 
 let VIEW_MODES = [
     STABLE_VIEWS,
-    STABLE_VIEWS + DEBUG_VIEWS,
-    STABLE_VIEWS + EXPERIMETNAL_VIEWS + DEBUG_VIEWS,
+    STABLE_VIEWS.union(DEBUG_VIEWS),
+    STABLE_VIEWS.union(EXPERIMETNAL_VIEWS).union(DEBUG_VIEWS),
 ]
 
 #if DEBUG
@@ -48,53 +66,66 @@ class ViewModeManager: ObservableObject {
     private var eventMonitor: Any?
 
     init() {
-        self.eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            if event.charactersIgnoringModifiers == "D" && event.modifierFlags.contains(.command) {
-                // Cmd+Shift+d
-                self.viewIndex = (self.viewIndex + 1) % VIEW_MODES.count
-                return nil
+        #if os(macOS)
+            self.eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+                if event.charactersIgnoringModifiers == "D", event.modifierFlags.contains(.command) {
+                    // Cmd+Shift+d
+                    self.viewIndex = (self.viewIndex + 1) % VIEW_MODES.count
+                    return nil
+                }
+                return event
             }
-            return event
-        }
+        #endif
     }
 
     deinit {
-        if self.eventMonitor != nil {
-            NSEvent.removeMonitor(self.eventMonitor!)
-        }
+        #if os(macOS)
+            if self.eventMonitor != nil {
+                NSEvent.removeMonitor(self.eventMonitor!)
+            }
+        #endif
     }
 
-    func getViews() -> [NavView] {
+    func getViews() -> OrderedSet<AppView> {
         return VIEW_MODES[self.viewIndex]
     }
+
+    func getIOSViews() -> OrderedSet<AppView> {
+        let iOSViews: Set<AppView> = [.connection, .location, .account, .settings, .about]
+        return self.getViews().filter { iOSViews.contains($0) }
+    }
 }
 
-func getBadgeText(_ account: AccountStatus) -> String? {
-    guard let days = account.daysUntilExpiry() else { return nil }
-    if !account.expiringSoon() {
-        return nil
+extension AccountStatus {
+    var badgeText: String? {
+        guard let days = daysUntilExpiry() else { return nil }
+        if !expiringSoon() {
+            return nil
+        }
+        if days > 3 {
+            return "expires soon"
+        }
+        if days > 1 {
+            return "exp. in \(days)d"
+        }
+        if days == 1 {
+            return "exp. in 1d"
+        }
+        return isActive() ? "exp. today" : "expired"
     }
-    if days > 3 {
-        return "expires soon"
-    }
-    if days > 1 {
-        return "exp. in \(days)d"
-    }
-    if days == 1 {
-        return "exp. in 1d"
-    }
-    return account.isActive() ? "exp. today" : "expired"
-}
 
-func getBadgeColor(_ account: AccountStatus) -> Color? {
-    guard let days = account.daysUntilExpiry() else { return nil }
-    return days <= 3 ? .red : .yellow
+    var badgeColor: Color? {
+        guard let days = daysUntilExpiry() else { return nil }
+        return days <= 3 ? .red : .yellow
+    }
 }
 
 struct ContentView: View {
     @ObservedObject var appState: AppState
     @State private var selectedView = STABLE_VIEWS.first!
-    @State private var webView: WebView
+    #if os(macOS)
+        @State private var webView: WebView
+    #endif
     // when accountBadge and badgeColor are nil, the account status is either unknown OR a badge does not need to be shown
     // if ever the account is reset to nil, these variables will maintain their last computed values
     // see https://linear.app/soveng/issue/OBS-1159/ regarding why account could be reset to nil
@@ -102,7 +133,9 @@ struct ContentView: View {
     @State private var badgeColor: Color?
     @State private var indicateUpdateAvailable: Bool = false
 
-    @EnvironmentObject private var appDelegate: AppDelegate
+    #if os(macOS)
+        @EnvironmentObject private var appDelegate: AppDelegate
+    #endif
 
     @ObservedObject private var viewMode = ViewModeManager()
 
@@ -116,83 +149,100 @@ struct ContentView: View {
 
     init(appState: AppState) {
         self.appState = appState
-        self.webView = WebView(appState: appState)
+        #if os(macOS)
+            self.webView = WebView(appState: appState)
+        #endif
         let forceHide = appState.status.accountId == nil || appState.status.inNewAccountFlow
         self.loginViewShown = forceHide
         self.splitViewVisibility = forceHide ? .detailOnly : .automatic
     }
 
     var body: some View {
-        NavigationSplitView(
-            columnVisibility: self.$splitViewVisibility,
-            sidebar: {
-                List(self.viewMode.getViews(), id: \.self, selection: self.$selectedView) { view in
-                    var label = Label(view.name.capitalized, systemImage: view.systemImageName)
-                        .listItemTint(Color("ObscuraOrange"))
-                    // hide badge if we do not know if it should be shown
-                    if view.name == "account" && self.accountBadge != nil && self.badgeColor != nil {
-                        label
-                            .badge(Text(self.accountBadge!)
-                                .monospacedDigit()
-                                .foregroundColor(self.badgeColor)
-                                .bold()
-                            )
-                            // this has to be here, otherwise the label color is system accent default
-                            .listItemTint(Color("ObscuraOrange"))
-                    } else if view.name == "about" && self.indicateUpdateAvailable {
-                        HStack {
-                            label
-                            Spacer()
-                            Circle()
-                                .fill(Color.green)
-                                .frame(width: 8, height: 8)
-                        }
-                        // this has to be here, otherwise the label color is system accent default
-                        .listItemTint(Color("ObscuraOrange"))
-                    } else {
-                        label
+        self.content
+            .onReceive(self.accountBadgeTimer, perform: { _ in
+                if let account = self.appState.status.account {
+                    self.accountBadge = account.badgeText
+                    self.badgeColor = account.badgeColor
+                }
+                self.indicateUpdateAvailable = self.appState.osStatus.get().updaterStatus.type == .available
+            })
+            .onChange(of: self.selectedView) { view in
+                // inform webUI to update navigation
+                #if os(macOS)
+                    self.webView.navigateTo(view: view)
+                #endif
+            }
+            .onChange(of: self.appState.status) { status in
+                if let account = self.appState.status.account {
+                    self.accountBadge = account.badgeText
+                    self.badgeColor = account.badgeColor
+                }
+                if status.accountId == nil || status.inNewAccountFlow {
+                    self.loginViewShown = true
+                    self.splitViewVisibility = .detailOnly
+                } else if self.loginViewShown {
+                    // If previously force closed pop it open.
+                    self.loginViewShown = false
+                    self.splitViewVisibility = .automatic
+                }
+            }
+            // once we are targeting macOS 14+, we can use .toolbar(removing: .sidebarToggle) instead
+            .toolbar(self.loginViewShown ? .hidden : .automatic)
+            .onAppear {
+                logger.log("Registering openUrlCallback with AppDelegate")
+                #if os(macOS)
+                    self.appDelegate.openUrlCallback = { url in
+                        self.handleObscuraURL(url: url)
                     }
+                #endif
+            }
+    }
+
+    @ViewBuilder func viewLabel(_ view: AppView) -> some View {
+        let label = Label(view.rawValue.capitalized, systemImage: view.systemImageName)
+            .listItemTint(Color("ObscuraOrange"))
+        if view == .account && self.accountBadge != nil && self.badgeColor != nil {
+            label.badge(Text(self.accountBadge!)
+                .monospacedDigit()
+                .foregroundColor(self.badgeColor)
+                .bold()
+            )
+        } else if view == .account && self.indicateUpdateAvailable {
+            HStack {
+                label
+                Spacer()
+                Circle()
+                    .fill(Color.green)
+                    .frame(width: 8, height: 8)
+            }
+        } else {
+            label
+        }
+    }
+
+    var content: some View {
+        #if os(macOS)
+            NavigationSplitView(columnVisibility: self.$splitViewVisibility) {
+                List(self.viewMode.getViews(), id: \.self, selection: self.$selectedView) { view in
+                    self.viewLabel(view)
                 }
                 .environment(\.sidebarRowSize, .large)
                 .navigationSplitViewColumnWidth(min: 175, ideal: 200)
-            }, detail: {
+            } detail: {
                 self.webView
-                    .navigationTitle(self.loginViewShown ? "Obscura" : self.selectedView.name.capitalized)
+                    .navigationTitle(self.loginViewShown ? "Obscura" : self.selectedView.rawValue.capitalized)
             }
-        )
-        .onReceive(self.accountBadgeTimer, perform: { _ in
-            if let account = self.appState.status.account {
-                self.accountBadge = getBadgeText(account)
-                self.badgeColor = getBadgeColor(account)
+        #else
+            TabView(selection: self.$selectedView) {
+                ForEach(self.viewMode.getIOSViews()) { view in
+                    Text("Content")
+                        .tag(view)
+                        .tabItem {
+                            self.viewLabel(view)
+                        }
+                }
             }
-            self.indicateUpdateAvailable = self.appState.osStatus.get().updaterStatus.type == .available
-        })
-        .onChange(of: self.selectedView) { view in
-            // inform webUI to update navigation
-            self.webView.navigateTo(view: view)
-        }
-        .onChange(of: self.appState.status) { status in
-            if let account = self.appState.status.account {
-                self.accountBadge = getBadgeText(account)
-                self.badgeColor = getBadgeColor(account)
-            }
-            if status.accountId == nil || status.inNewAccountFlow {
-                self.loginViewShown = true
-                self.splitViewVisibility = .detailOnly
-            } else if self.loginViewShown {
-                // If previously force closed pop it open.
-                self.loginViewShown = false
-                self.splitViewVisibility = .automatic
-            }
-        }
-        // once we are targeting macOS 14+, we can use .toolbar(removing: .sidebarToggle) instead
-        .toolbar(self.loginViewShown ? .hidden : .automatic)
-        .onAppear {
-            logger.log("Registering openUrlCallback with AppDelegate")
-            self.appDelegate.openUrlCallback = { url in
-                self.handleObscuraURL(url: url)
-            }
-        }
+        #endif
     }
 
     func handleObscuraURL(url: URL) {
@@ -204,19 +254,21 @@ struct ContentView: View {
             return
         }
 
-        switch components.path {
-        case .some("/open"):
-            fullyOpenManagerWindow()
-        case .some("/payment-succeeded"):
-            fullyOpenManagerWindow() // Open the manager window first
-            self.webView.handlePaymentSucceeded()
-        case .some("/account"):
-            fullyOpenManagerWindow()
-            self.selectedView = AccountView
-        case let unknownPath:
-            logger.error("Unknown URL path: \(unknownPath, privacy: .public)")
-            fullyOpenManagerWindow()
-        }
+        #if os(macOS)
+            switch components.path {
+            case .some("/open"):
+                fullyOpenManagerWindow()
+            case .some("/payment-succeeded"):
+                fullyOpenManagerWindow() // Open the manager window first
+                self.webView.handlePaymentSucceeded()
+            case .some("/account"):
+                fullyOpenManagerWindow()
+                self.selectedView = .account
+            case let unknownPath:
+                logger.error("Unknown URL path: \(unknownPath, privacy: .public)")
+                fullyOpenManagerWindow()
+            }
+        #endif
     }
 }
 
@@ -233,114 +285,3 @@ struct SidebarButton: View {
         #endif
     }
 }
-
-class WebViewController: NSViewController, WKNavigationDelegate {
-    func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-        // Check if the navigation action is a form submission
-        if navigationAction.navigationType == .linkActivated {
-            if let url = navigationAction.request.url {
-                NSWorkspace.shared.open(url)
-                decisionHandler(.cancel)
-            } else {
-                decisionHandler(.allow)
-            }
-        } else {
-            decisionHandler(.allow)
-        }
-    }
-}
-
-struct WebView: NSViewRepresentable {
-    let webView: WKWebView
-    let webViewDelegate: WebViewController
-
-    init(appState: AppState) {
-        let webConfiguration = WKWebViewConfiguration()
-        // webConfiguration.preferences.javaScriptEnabled = true
-        let error_capture_script = WKUserScript(source: js_error_capture, injectionTime: .atDocumentStart, forMainFrameOnly: false)
-        webConfiguration.userContentController.addUserScript(error_capture_script)
-        let log_capture_script = WKUserScript(source: js_log_capture, injectionTime: .atDocumentStart, forMainFrameOnly: false)
-        webConfiguration.userContentController.addUserScript(log_capture_script)
-
-        // add bridges (command, console.error, console.log) between JS and Swift
-        webConfiguration.userContentController.addScriptMessageHandler(CommandHandler.shared, contentWorld: .page, name: "commandBridge")
-        webConfiguration.userContentController.add(ErrorHandler.shared, name: "errorBridge")
-        webConfiguration.userContentController.add(LogHandler.shared, name: "logBridge")
-
-        // for React application
-        webConfiguration.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
-        webConfiguration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
-        // note that text selection is disabled using CSS
-        webConfiguration.preferences.isTextInteractionEnabled = true
-        #if DEBUG
-            webConfiguration.preferences.setValue(true, forKey: "developerExtrasEnabled")
-        #endif
-        self.webView = WKWebView(frame: .zero, configuration: webConfiguration)
-        self.webViewDelegate = WebViewController()
-        self.webView.navigationDelegate = self.webViewDelegate
-
-        #if LOAD_DEV_SERVER
-            let urlRequest = URLRequest(url: URL(string: "http://localhost:1420/")!)
-            self.webView.load(urlRequest)
-        #else
-            // see the Prod Client scheme
-            let url = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "build")!
-            self.webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
-        #endif
-    }
-
-    func makeNSView(context: Context) -> WKWebView {
-        return self.webView
-    }
-
-    // [required] refresh the view
-    func updateNSView(_ webView: WKWebView, context: Context) {}
-
-    func navigateTo(view: NavView) {
-        self.webView.evaluateJavaScript(WebView.generateNavEventJS(viewName: view.name))
-    }
-
-    static func generateNavEventJS(viewName: String) -> String {
-        // reuse the variable `__WK_WEBKIT_NAV_EVENT__`
-        let jsDispatchNavUpdateStr = """
-        __WEBKIT_NAV_EVENT__ = new CustomEvent("navUpdate", { detail: "\(viewName)" });
-        window.dispatchEvent(__WEBKIT_NAV_EVENT__);
-        """
-        return jsDispatchNavUpdateStr
-    }
-
-    func handlePaymentSucceeded() {
-        self.webView.evaluateJavaScript(WebView.generatePaymentSucceededEventJS())
-    }
-
-    static func generatePaymentSucceededEventJS() -> String {
-        return """
-            window.dispatchEvent(new CustomEvent("paymentSucceeded"))
-        """
-    }
-}
-
-let js_error_capture = #"""
-window.onerror = (message, source, lineno, colno, error) => {
-    window.webkit.messageHandlers.errorBridge.postMessage(JSON.stringify({
-      message: message,
-      source: source,
-      lineno: lineno,
-      colno: colno,
-    }, undefined, "\t"));
-};
-window.onunhandledrejection = (event) => {
-    console.error("unhandled promise rejection", event.reason)
-}
-"""#
-
-let js_log_capture = #"""
-function log(type, msg, ...args) {
-    let formatted = [type, msg, ...args.map(a => JSON.stringify(a, undefined, "\t"))].join(" ");
-    window.webkit.messageHandlers.logBridge.postMessage(formatted);
-}
-console.debug = log.bind(null, "debug:");
-console.log = log.bind(null, "log:");
-console.warn = log.bind(null, "warn:");
-console.error = log.bind(null, "error:");
-"""#

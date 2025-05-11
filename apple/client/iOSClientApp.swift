@@ -88,6 +88,9 @@ struct IOSClientAppDevView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             self.controls
+            if let appState = startupModel.appState {
+                ContentView(appState: appState)
+            }
             Spacer()
             self.status
         }
@@ -127,7 +130,7 @@ struct IOSClientAppDevView: View {
             Button("Enable Tunnel") {
                 Task {
                     do {
-                        try await self.startupModel.appState?.enableTunnel(TunnelArgs())
+                        try await self.startupModel.appState?.enableTunnel(TunnelArgs(exit: .any))
                     } catch {
                         print("Failed to connect \(error)")
                     }

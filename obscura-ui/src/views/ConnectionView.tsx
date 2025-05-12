@@ -522,6 +522,11 @@ function LocationSelect(): ReactNode {
                                         });
                                         if (!location) {
                                             console.error("No exit matching selected location", country_code, city_code);
+                                            notifications.show({
+                                                title: t('Error'),
+                                                message: t('InternalError'),
+                                                color: 'red',
+                                            });
                                             return;
                                         }
                                         let city = {
@@ -621,7 +626,7 @@ function CityOptions({ locations, pinnedLocationSet, lastChosenExit, onExitSelec
         if (!!hoverKey && hoveredOption === hoverKey)
             return <Text size='sm' c='gray'>{t('clickToConnect')}</Text>;
 
-        if (lastCity?.city_code == exit.city_code && lastCity?.country_code == exit.country_code)
+        if (lastCity?.city_code === exit.city_code && lastCity?.country_code === exit.country_code)
             return <ObscuraChip>{t('lastChosen')}</ObscuraChip>;
 
         if (showIconIfPinned && pinnedLocationSet.has(exitLocation(exit)))

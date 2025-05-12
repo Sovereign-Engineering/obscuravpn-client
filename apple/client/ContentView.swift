@@ -230,6 +230,7 @@ struct ContentView: View {
                 .navigationSplitViewColumnWidth(min: 175, ideal: 200)
             } detail: {
                 self.webView
+                    .frame(minWidth: minWindowSize.width, minHeight: minWindowSize.height)
                     .navigationTitle(self.loginViewShown ? "Obscura" : self.selectedView.rawValue.capitalized)
             }
         #else

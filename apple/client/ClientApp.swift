@@ -120,6 +120,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
     }
 }
 
+let minWindowSize: CGSize = .init(width: 805, height: 525)
+
 func fullyOpenManagerWindow() {
     NSApp.setActivationPolicy(.regular)
     // Focus must be done before opening the window, otherwise it's possible to not have focus
@@ -147,10 +149,11 @@ struct ClientApp: App {
         Window("Obscura", id: WindowIds.RootWindowId) {
             Group {
                 if let appState = self.startupModel.appState {
-                    ContentView(appState: appState)
+                    ContentView(appState: appState, updaterController: self.updaterController)
                         .frame(minWidth: 805, minHeight: 525)
                 } else {
                     StartupView()
+                        .frame(minWidth: minWindowSize.width, minHeight: minWindowSize.height)
                 }
             }.onAppear {
                 // this must be called under a View. If put in init it will fail

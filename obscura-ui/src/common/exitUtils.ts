@@ -1,7 +1,7 @@
 import { TCountryCode } from 'countries-list';
-import { Exit, getExitCountry } from './api';
-import { randomChoice } from './utils';
 import { PinnedLocation } from '../common/appContext';
+import { Exit, getContinent, getExitCountry } from './api';
+import { randomChoice } from './utils';
 
 /** returns a string containing the country flag emoji. */
 export function getCountryFlag(countryCode: string): string {
@@ -23,8 +23,8 @@ export function exitsSortComparator(left: Exit, right: Exit): number {
   const leftCountry = getExitCountry(left);
   const rightCountry = getExitCountry(right);
 
-  const leftContinent = leftCountry.continent;
-  const rightContinent = rightCountry.continent;
+  const leftContinent = getContinent(leftCountry);
+  const rightContinent = getContinent(rightCountry);
 
   const leftCountryName = leftCountry.name;
   const rightCountryName = rightCountry.name;

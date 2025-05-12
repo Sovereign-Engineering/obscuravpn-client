@@ -1,12 +1,12 @@
 import { Accordion, ActionIcon, Anchor, Button, Card, Divider, Flex, Group, Loader, Space, Stack, Text, ThemeIcon, Title, useMantineTheme } from '@mantine/core';
 import { useInterval } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { continents, getCountryCode } from 'countries-list';
+import { getCountryCode } from 'countries-list';
 import { MouseEvent, useContext, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { BsPin, BsPinFill, BsShieldFillCheck, BsShieldFillExclamation } from 'react-icons/bs';
 import * as commands from '../bridge/commands';
-import { Exit, getExitCountry } from '../common/api';
+import { Exit, getExitCountry, getContinent } from '../common/api';
 import { AppContext, ConnectionInProgress, isConnecting } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { exitLocation, exitsSortComparator, getExitCountryFlag } from '../common/exitUtils';
@@ -129,9 +129,9 @@ export default function LocationView() {
 
     locations.sort(exitsSortComparator);
     for (const exit of locations) {
-        const continent = getExitCountry(exit).continent;
+        const continent = getContinent(getExitCountry(exit));
         if (!insertedContinents.has(continent)) {
-            exitListRender.push(<Text key={`continent-${continent}`} ta='left' w='91%' size='sm' c='gray' ml='sm' fw={600}>{continents[continent]}</Text>);
+            exitListRender.push(<Text key={`continent-${continent}`} ta='left' w='91%' size='sm' c='gray' ml='sm' fw={600}>{t(`Continent${continent}`)}</Text>);
             insertedContinents.add(continent);
         }
         const key = JSON.stringify([exit.country_code, exit.city_name]);

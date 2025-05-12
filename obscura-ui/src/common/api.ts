@@ -1,4 +1,4 @@
-import { getCountryData, ICountryData, TCountryCode } from "countries-list";
+import { getCountryData, ICountryData, TContinentCode, TCountryCode } from "countries-list";
 import { useEffect, useReducer } from 'react';
 import { AccountId } from "./accountUtils";
 import { AccountStatus } from './appContext';
@@ -12,6 +12,11 @@ export interface Exit {
     provider_url: string,
     provider_name: string,
     provider_homepage_url: string,
+}
+
+export function getContinent(countryData: ICountryData): TContinentCode {
+  if (countryData.iso2 === 'MX') return 'SA';
+  return countryData.continent;
 }
 
 export function getCountry(country_code: string): ICountryData {

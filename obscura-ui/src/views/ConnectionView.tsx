@@ -1,19 +1,20 @@
 import { Anchor, Button, Combobox, DefaultMantineColor, Divider, Group, Image, Paper, Progress, ScrollArea, Space, Stack, StyleProp, Text, ThemeIcon, Title, useCombobox, useComputedColorScheme, useMantineTheme } from '@mantine/core';
 import { useFocusTrap, useInterval, useToggle } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { continents } from 'countries-list';
-import { Dispatch, ReactElement, ReactNode, SetStateAction, useContext, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsChevronDown, BsPinFill } from 'react-icons/bs';
 import { IoIosEyeOff } from 'react-icons/io';
 import { MdLanguage, MdLaptopMac, MdOutlineWifiOff } from 'react-icons/md';
+import { ExitSelector, ExitSelectorCity } from 'src/bridge/commands';
 import * as ObscuraAccount from '../common/accountUtils';
-import { accountIsExpired, Exit, getCountry, getExitCountry, useReRenderWhenExpired } from '../common/api';
+import { accountIsExpired, Exit, getContinent, getExitCountry, useReRenderWhenExpired } from '../common/api';
 import { AppContext, ConnectionInProgress, getTunnelArgs, isConnecting, PinnedLocation } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { exitLocation, exitsSortComparator, getCountryFlag, getExitCountryFlag } from '../common/exitUtils';
 import { KeyedSet } from '../common/KeyedSet';
-import { errMsg, normalizeError, useCookie } from '../common/utils';
+import { useExitList } from '../common/useExitList';
+import { errMsg, useCookie } from '../common/utils';
 import BoltBadgeAuto from '../components/BoltBadgeAuto';
 import ExternalLinkIcon from '../components/ExternalLinkIcon';
 import ObscuraChip from '../components/ObscuraChip';
@@ -39,9 +40,6 @@ import MascotNotConnected from '../res/mascots/not-connected-mascot.svg';
 import MascotValidating from '../res/mascots/validating-mascot.svg';
 import ObscuraIconHappy from '../res/obscura-icon-happy.svg';
 import classes from './ConnectionView.module.css';
-import { useExitList } from '../common/useExitList';
-import { ExitSelector, ExitSelectorCity } from 'src/bridge/commands';
-import { c } from 'node_modules/vite/dist/node/types.d-aGj9QkWt';
 
 // Los Angeles, CA
 const BUTTON_WIDTH = 320;
@@ -676,13 +674,13 @@ function CityOptions({ locations, pinnedLocationSet, lastChosenExit, onExitSelec
     const insertedContinents = new Set();
 
     for (const exit of orderedLocations) {
-      const continent = getExitCountry(exit).continent;
+      const continent = getContinent(getExitCountry(exit));
       if (!insertedContinents.has(continent)) {
         if (insertedContinents.size > 0) {
           result.push(<Divider key={`divider-${continent}`} my={10} />);
         }
         insertedContinents.add(continent);
-        result.push(<Text key={`continent-${continent}`} size='sm' c='gray' ml='sm' fw={400}>{continents[continent]}</Text>);
+        result.push(<Text key={`continent-${continent}`} size='sm' c='gray' ml='sm' fw={400}>{t(`Continent${continent}`)}</Text>);
       }
       const key = JSON.stringify([exit.country_code, exit.city_code]);
 

@@ -86,6 +86,12 @@ struct WebView: UXViewRepresentable {
             window.dispatchEvent(new CustomEvent("paymentSucceeded"))
         """
     }
+
+    #if os(iOS)
+        func makeCoordinator() -> Coordinator {
+            Coordinator(self)
+        }
+    #endif
 }
 
 // MARK: - AppKit
@@ -101,13 +107,35 @@ extension WebView {
 
 // MARK: - UIKit
 
-extension WebView {
-    func makeUIView(context: Context) -> WKWebView {
-        return self.webView
+#if os(iOS)
+
+    extension WebView {
+        func makeUIView(context: Context) -> WKWebView {
+            self.webView.scrollView.delegate = context.coordinator
+            return self.webView
+        }
+
+        func updateUIView(_ webView: WKWebView, context: Context) {}
     }
 
-    func updateUIView(_ webView: WKWebView, context: Context) {}
-}
+    class Coordinator: NSObject, UIScrollViewDelegate {
+        var parent: WebView
+
+        init(_ parent: WebView) {
+            self.parent = parent
+        }
+
+        func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) {
+            scrollView.pinchGestureRecognizer?.isEnabled = false
+        }
+
+        func scrollViewDidZoom(_ scrollView: UIScrollView) {
+            scrollView.minimumZoomScale = scrollView.zoomScale
+            scrollView.maximumZoomScale = scrollView.zoomScale
+        }
+    }
+
+#endif
 
 let js_error_capture = #"""
 window.onerror = (message, source, lineno, colno, error) => {

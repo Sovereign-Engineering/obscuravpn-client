@@ -210,6 +210,8 @@ struct ContentView: View {
                     .fill(Color.green)
                     .frame(width: 8, height: 8)
             }
+            // this has to be here, otherwise the label color is system accent default
+            .listItemTint(Color("ObscuraOrange"))
         } else {
             label
         }

@@ -24,7 +24,9 @@ export function useWatchable<T extends Versioned>({
   let [state, setState] = useState<UseWatchableResult<T>>({});
 
   useEffect(() => {
-    async function doLoad() {
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    void (async function doLoad() {
+      timeout = undefined;
       try {
         await load(periodS);
         setState(state => {
@@ -40,9 +42,10 @@ export function useWatchable<T extends Versioned>({
           ...state,
           error: normalizeError(error),
         }));
+      } finally {
+        timeout = setTimeout(doLoad, periodS*1000);
       }
-    }
-    let interval = setInterval(doLoad, periodS*1000);
+    })();
 
     let watching = true;
     let value: T | undefined;
@@ -66,8 +69,10 @@ export function useWatchable<T extends Versioned>({
     })();
 
     return () => {
-      clearInterval(interval);
       watching = false;
+      if (timeout) {
+        clearTimeout(timeout);
+      }
     }
   }, []);
 

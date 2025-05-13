@@ -39,11 +39,3 @@ struct RegisterLoginItemView: View {
         }
     }
 }
-
-enum StartupStatus {
-    case initial
-    case networkExtensionInit(NetworkExtensionInit, NetworkExtensionInitStatus)
-    case tunnelProviderInit(TunnelProviderInit, TunnelProviderInitStatus)
-    case askToRegisterLoginItem(ObservableValue<Bool>)
-    case ready
-}

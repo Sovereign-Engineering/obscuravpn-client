@@ -123,9 +123,8 @@ extension AccountStatus {
 struct ContentView: View {
     @ObservedObject var appState: AppState
     @State private var selectedView = STABLE_VIEWS.first!
-    #if os(macOS)
-        @State private var webView: WebView
-    #endif
+    @State private var webView: WebView
+
     // when accountBadge and badgeColor are nil, the account status is either unknown OR a badge does not need to be shown
     // if ever the account is reset to nil, these variables will maintain their last computed values
     // see https://linear.app/soveng/issue/OBS-1159/ regarding why account could be reset to nil
@@ -149,9 +148,7 @@ struct ContentView: View {
 
     init(appState: AppState) {
         self.appState = appState
-        #if os(macOS)
-            self.webView = WebView(appState: appState)
-        #endif
+        self.webView = WebView(appState: appState)
         let forceHide = appState.status.accountId == nil || appState.status.inNewAccountFlow
         self.loginViewShown = forceHide
         self.splitViewVisibility = forceHide ? .detailOnly : .automatic
@@ -168,9 +165,7 @@ struct ContentView: View {
             })
             .onChange(of: self.selectedView) { view in
                 // inform webUI to update navigation
-                #if os(macOS)
-                    self.webView.navigateTo(view: view)
-                #endif
+                self.webView.navigateTo(view: view)
             }
             .onChange(of: self.appState.status) { status in
                 if let account = self.appState.status.account {
@@ -234,13 +229,21 @@ struct ContentView: View {
                     .navigationTitle(self.loginViewShown ? "Obscura" : self.selectedView.rawValue.capitalized)
             }
         #else
-            TabView(selection: self.$selectedView) {
-                ForEach(self.viewMode.getIOSViews()) { view in
-                    Text("Content")
-                        .tag(view)
-                        .tabItem {
-                            self.viewLabel(view)
+            VStack {
+                self.webView
+                    .ignoresSafeArea()
+                if !self.loginViewShown {
+                    HStack {
+                        ForEach(self.viewMode.getIOSViews()) { view in
+                            Button {
+                                self.selectedView = view
+                            } label: {
+                                self.viewLabel(view)
+                                    .frame(maxWidth: .infinity)
+                            }
                         }
+                    }
+                    .frame(alignment: .bottom)
                 }
             }
         #endif

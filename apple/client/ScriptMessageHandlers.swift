@@ -5,7 +5,11 @@ import WebKit
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "Webview")
 
 class CommandHandler: NSObject, WKScriptMessageHandlerWithReply {
-    static var shared = CommandHandler()
+    var appState: AppState
+
+    init(appState: AppState) {
+        self.appState = appState
+    }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage, replyHandler: @escaping (Any?, String?) -> Void) {
         guard let commandJson = message.body as? String else {

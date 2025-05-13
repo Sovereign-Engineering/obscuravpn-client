@@ -1,13 +1,14 @@
-import AppKit
 import SwiftUI
 import WebKit
 
-class WebViewController: NSViewController, WKNavigationDelegate {
+class WebViewController: UXViewController, WKNavigationDelegate {
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         // Check if the navigation action is a form submission
         if navigationAction.navigationType == .linkActivated {
             if let url = navigationAction.request.url {
-                NSWorkspace.shared.open(url)
+                #if os(macOS)
+                    NSWorkspace.shared.open(url)
+                #endif
                 decisionHandler(.cancel)
             } else {
                 decisionHandler(.allow)
@@ -18,7 +19,7 @@ class WebViewController: NSViewController, WKNavigationDelegate {
     }
 }
 
-struct WebView: NSViewRepresentable {
+struct WebView: UXViewRepresentable {
     let webView: WKWebView
     let webViewDelegate: WebViewController
 
@@ -31,7 +32,7 @@ struct WebView: NSViewRepresentable {
         webConfiguration.userContentController.addUserScript(log_capture_script)
 
         // add bridges (command, console.error, console.log) between JS and Swift
-        webConfiguration.userContentController.addScriptMessageHandler(CommandHandler.shared, contentWorld: .page, name: "commandBridge")
+        webConfiguration.userContentController.addScriptMessageHandler(CommandHandler(appState: appState), contentWorld: .page, name: "commandBridge")
         webConfiguration.userContentController.add(ErrorHandler.shared, name: "errorBridge")
         webConfiguration.userContentController.add(LogHandler.shared, name: "logBridge")
 
@@ -55,14 +56,13 @@ struct WebView: NSViewRepresentable {
             let url = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "build")!
             self.webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
         #endif
-    }
 
-    func makeNSView(context: Context) -> WKWebView {
-        return self.webView
+        #if !os(macOS)
+            // Safe area ignore
+            // https://stackoverflow.com/a/47814446/3833632
+            self.webView.scrollView.contentInsetAdjustmentBehavior = .never
+        #endif
     }
-
-    // [required] refresh the view
-    func updateNSView(_ webView: WKWebView, context: Context) {}
 
     func navigateTo(view: AppView) {
         self.webView.evaluateJavaScript(WebView.generateNavEventJS(viewName: view.ipcValue))
@@ -86,6 +86,27 @@ struct WebView: NSViewRepresentable {
             window.dispatchEvent(new CustomEvent("paymentSucceeded"))
         """
     }
+}
+
+// MARK: - AppKit
+
+extension WebView {
+    func makeNSView(context: Context) -> WKWebView {
+        return self.webView
+    }
+
+    // [required] refresh the view
+    func updateNSView(_ webView: WKWebView, context: Context) {}
+}
+
+// MARK: - UIKit
+
+extension WebView {
+    func makeUIView(context: Context) -> WKWebView {
+        return self.webView
+    }
+
+    func updateUIView(_ webView: WKWebView, context: Context) {}
 }
 
 let js_error_capture = #"""

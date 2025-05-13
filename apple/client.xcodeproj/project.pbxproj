@@ -87,6 +87,13 @@
 		A082F8232C46BF5B002AF810 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A082F8222C46BF5B002AF810 /* Sparkle */; };
 		A9200A862DD1251C00FD035C /* WebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9200A842DD1251C00FD035C /* WebView.swift */; };
 		A9200A872DD127A200FD035C /* Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35230C272C775FF1007ECFEC /* Notifications.swift */; };
+		A936D4452DD1492A0031B646 /* UXViewRepresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = A936D4432DD149290031B646 /* UXViewRepresentable.swift */; };
+		A936D4462DD1492A0031B646 /* UXViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A936D4422DD149290031B646 /* UXViewController.swift */; };
+		A936D4472DD1492A0031B646 /* UXViewRepresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = A936D4432DD149290031B646 /* UXViewRepresentable.swift */; };
+		A936D4482DD1492A0031B646 /* UXViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A936D4422DD149290031B646 /* UXViewController.swift */; };
+		A936D4712DD14DC30031B646 /* WebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9200A842DD1251C00FD035C /* WebView.swift */; };
+		A936D4722DD14E040031B646 /* ScriptMessageHandlers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3096E0212BDC1FFB0026DE7F /* ScriptMessageHandlers.swift */; };
+		A936D4732DD14E470031B646 /* command.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3096E03F2BEFC6770026DE7F /* command.swift */; };
 		A936D48F2DD15AED0031B646 /* startup.swift in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 30920D742C1F71BB008690C3 /* startup.swift */; };
 		A936D4902DD15B6B0031B646 /* startup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30920D742C1F71BB008690C3 /* startup.swift */; };
 		A936D4932DD15F6A0031B646 /* StartupStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = A936D4922DD15F6A0031B646 /* StartupStatus.swift */; };
@@ -286,6 +293,8 @@
 		A06E85A92C2ECA680087C8C8 /* app.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = app.xcconfig; sourceTree = "<group>"; };
 		A06E85AA2C2ECA680087C8C8 /* buildversion.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = buildversion.xcconfig; sourceTree = "<group>"; };
 		A9200A842DD1251C00FD035C /* WebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebView.swift; sourceTree = "<group>"; };
+		A936D4422DD149290031B646 /* UXViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UXViewController.swift; sourceTree = "<group>"; };
+		A936D4432DD149290031B646 /* UXViewRepresentable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UXViewRepresentable.swift; sourceTree = "<group>"; };
 		A936D4922DD15F6A0031B646 /* StartupStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartupStatus.swift; sourceTree = "<group>"; };
 		A936D4952DD160750031B646 /* UpdateSystemExtensionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateSystemExtensionView.swift; sourceTree = "<group>"; };
 		A936D4982DD1617F0031B646 /* UXImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UXImage.swift; sourceTree = "<group>"; };
@@ -548,6 +557,8 @@
 			isa = PBXGroup;
 			children = (
 				A936D4982DD1617F0031B646 /* UXImage.swift */,
+				A936D4422DD149290031B646 /* UXViewController.swift */,
+				A936D4432DD149290031B646 /* UXViewRepresentable.swift */,
 			);
 			path = UXKit;
 			sourceTree = "<group>";
@@ -878,6 +889,8 @@
 				30C5320C2CC959AE00936E1F /* OsStatus.swift in Sources */,
 				A998710E2DBAF7FE0044D136 /* RegisterLoginItemView.swift in Sources */,
 				30497E6E2D9ED584008B22F9 /* Box.swift in Sources */,
+				A936D4452DD1492A0031B646 /* UXViewRepresentable.swift in Sources */,
+				A936D4462DD1492A0031B646 /* UXViewController.swift in Sources */,
 				9632E4642D19C5EC00BC8E3F /* AccountStatusItem.swift in Sources */,
 				30920D752C1F71BB008690C3 /* startup.swift in Sources */,
 				30920D792C2057B1008690C3 /* initNetworkExtension.swift in Sources */,
@@ -976,6 +989,9 @@
 				A94743F92DD17143002ACD85 /* iOSClientApp.swift in Sources */,
 				A936D49A2DD161B00031B646 /* UXImage.swift in Sources */,
 				A936D4902DD15B6B0031B646 /* startup.swift in Sources */,
+				A936D4732DD14E470031B646 /* command.swift in Sources */,
+				A936D4722DD14E040031B646 /* ScriptMessageHandlers.swift in Sources */,
+				A936D4712DD14DC30031B646 /* WebView.swift in Sources */,
 				A9200A872DD127A200FD035C /* Notifications.swift in Sources */,
 				A9768FBE2DBB02BC00A4595F /* ContentView.swift in Sources */,
 				A99871292DBAF90B0044D136 /* Debug.swift in Sources */,
@@ -994,6 +1010,8 @@
 				A998711D2DBAF8740044D136 /* Box.swift in Sources */,
 				A9BCB0612DC54B68006C0133 /* UpdaterDriver+XP.swift in Sources */,
 				A998711C2DBAF8700044D136 /* Swift.swift in Sources */,
+				A936D4472DD1492A0031B646 /* UXViewRepresentable.swift in Sources */,
+				A936D4482DD1492A0031B646 /* UXViewController.swift in Sources */,
 				A998711B2DBAF8680044D136 /* FfiCb.swift in Sources */,
 				A998711A2DBAF8610044D136 /* Constants.swift in Sources */,
 				A99871192DBAF85C0044D136 /* ObservableValue.swift in Sources */,
@@ -1260,7 +1278,6 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) LOAD_DEV_SERVER";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;
@@ -1284,6 +1301,7 @@
 				OBSCURA_MAGIC_NO_NIX = "";
 				PRODUCT_NAME = "$(TARGET_NAME) (Debug)";
 				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG LOAD_DEV_SERVER";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};

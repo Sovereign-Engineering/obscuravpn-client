@@ -1,10 +1,6 @@
+import { makeWatchable, useSharedWatchable } from "./useSharedWatchable";
 import { getExitList, refreshExitList } from "../bridge/commands";
 import { Exit } from "./api";
-import { useWatchable, UseWatchableResult } from "./useWatchable";
-
-interface Versioned {
-  version: unknown
-}
 
 export interface UseExitListArgs {
   periodS: number,
@@ -15,14 +11,12 @@ export interface UseExitListResult {
   error?: Error,
 }
 
+const EXIT_WATCHABLE = makeWatchable(refreshExitList, getExitList);
+
 export function useExitList({
   periodS,
 }: UseExitListArgs): UseExitListResult {
-  let r = useWatchable({
-    load: refreshExitList,
-    periodS,
-    watch: getExitList,
-  });
+  let r = useSharedWatchable(EXIT_WATCHABLE, periodS);
 
   return {
     exitList: r.value?.value.exits,

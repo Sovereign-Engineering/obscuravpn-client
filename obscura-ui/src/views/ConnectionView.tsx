@@ -515,35 +515,27 @@ function LocationSelect(): ReactNode {
                                     if (connectedExit?.country_code === country_code && connectedExit?.city_code === city_code) {
                                       return;
                                     }
-                                    try {
-                                        let location = locations.get({
-                                            country_code,
-                                            city_code,
-                                        });
-                                        if (!location) {
-                                            console.error("No exit matching selected location", country_code, city_code);
-                                            notifications.show({
-                                                title: t('Error'),
-                                                message: t('InternalError'),
-                                                color: 'red',
-                                            });
-                                            return;
-                                        }
-                                        let city = {
-                                            country_code,
-                                            city_code,
-                                        };
-                                        setSelectedCity(city);
-                                        vpnConnect({
-                                          city: city,
-                                        });
-                                    } catch (error) {
+                                    let location = locations.get({
+                                        country_code,
+                                        city_code,
+                                    });
+                                    if (!location) {
+                                        console.error("No exit matching selected location", country_code, city_code);
                                         notifications.show({
                                             title: t('Error'),
-                                            message: errMsg(error),
+                                            message: t('InternalError'),
                                             color: 'red',
                                         });
+                                        return;
                                     }
+                                    let city = {
+                                        country_code,
+                                        city_code,
+                                    };
+                                    setSelectedCity(city);
+                                    vpnConnect({
+                                      city: city,
+                                    });
                                 }} lastChosenExit={lastChosenExit} pinnedLocationSet={pinnedLocationSet} />
                             </ScrollArea.Autosize>
                         </Combobox.Options>

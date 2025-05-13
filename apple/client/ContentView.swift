@@ -202,7 +202,7 @@ struct ContentView: View {
                 .foregroundColor(self.badgeColor)
                 .bold()
             )
-        } else if view == .account && self.indicateUpdateAvailable {
+        } else if view == .about && self.indicateUpdateAvailable {
             HStack {
                 label
                 Spacer()

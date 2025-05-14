@@ -34,11 +34,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
         let launchedAsLoginItem = (event?.eventID == kAEOpenApplication && event?.paramDescriptor(forKeyword: keyAEPropData)?.enumCodeValue == keyAELaunchedAsLogInItem)
         logger.log("launched as login item: \(launchedAsLoginItem)")
         if launchedAsLoginItem {
-            // Without this, the window does show up
-            // With this, the icon never even comes on the dock
-            closeWindow(id: WindowIds.RootWindowId)
-            // Therefore, in the future, just check if the user wants the window to show up before closing
+            if #available(macOS 15.0, *) {
+                // on macOS 15 the dock icon appears (as in the black dot) by default
+                NSApp.setActivationPolicy(.accessory)
+            } else {
+                // On macOS 14 and below, a window will show up
+                // With this code, you will never even see the icon on the dock
+                closeWindow(id: WindowIds.RootWindowId)
+            }
         }
+        StatusItemManager()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -141,7 +146,6 @@ struct ClientApp: App {
 
     @NSApplicationDelegateAdaptor private var appDelegate: AppDelegate
     @ObservedObject var startupModel = StartupModel.shared
-    @StateObject private var statusManager = StatusItemManager()
 
     var body: some Scene {
         Window("Obscura", id: WindowIds.RootWindowId) {
@@ -152,9 +156,6 @@ struct ClientApp: App {
                 } else {
                     StartupView()
                 }
-            }.onAppear {
-                // this must be called under a View. If put in init it will fail
-                self.statusManager.createStatusItem()
             }
         }.commands {
             CommandGroup(replacing: CommandGroupPlacement.appTermination) {

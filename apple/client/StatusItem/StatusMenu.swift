@@ -24,6 +24,10 @@ final class StatusItemManager: ObservableObject {
     // intentionally empty to ensure that the menu item can be hightlighted
     @objc func emptyAction() {}
 
+    init() {
+        self.createStatusItem()
+    }
+
     func createStatusItem() {
         let statusItem: NSStatusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         let hostingView = NSHostingView(rootView: StatusItem(sizePassthrough: sizePassthrough, bandwidthStatusModel: bandwidthStatusModel, osStatusModel: self.osStatusModel))

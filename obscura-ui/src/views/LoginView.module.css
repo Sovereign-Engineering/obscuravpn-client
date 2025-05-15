@@ -18,3 +18,15 @@
     align-items: center;
     justify-items: center;
 }
+
+.backgroundImage {
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: top;
+}
+
+@media screen and (max-width: 767px) {
+  .backgroundImage {
+    background-size: auto;
+  }
+}

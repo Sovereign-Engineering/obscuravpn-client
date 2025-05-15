@@ -79,8 +79,10 @@ export default function Settings() {
                 loginItemError?.message !== 'errorUnsupportedOnOS' &&
                 <Switch error={loginItemError === undefined ? undefined : `${loginItemError}`} disabled={loginItemError !== undefined || loading || loginItemRegistered === undefined} checked={loginItemRegistered} onChange={event => event.currentTarget.checked ? registerAtLogin() : unregisterAtLogin()} label={t('openAtLoginRegister')} />
               }
-              <Switch checked={appStatus.autoConnect} onChange={event => commands.setAutoConnect(event.currentTarget.checked)} label={t('autoConnectStartup')} />
-              <Text size='sm' c='dimmed'>{t('autoConnectStartup-behavior')}</Text>
+              <Stack gap='xs'>
+                <Switch checked={appStatus.autoConnect} onChange={event => commands.setAutoConnect(event.currentTarget.checked)} label={t('autoConnectStartup')} />
+                <Text ml={50} size='sm' c='dimmed'>{t('autoConnectStartup-behavior')}</Text>
+              </Stack>
             </Stack>
             <Stack gap='lg' align='flex-start'>
               <Title order={4}>{t('Network')}</Title>

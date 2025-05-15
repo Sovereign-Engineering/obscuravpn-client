@@ -1,4 +1,4 @@
-import { ActionIcon, Button, CopyButton, Group, Stack, Text, useComputedColorScheme, useMantineTheme } from '@mantine/core';
+import { ActionIcon, Button, Code, CopyButton, Group, Stack, Text, useComputedColorScheme, useMantineTheme } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';

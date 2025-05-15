@@ -157,7 +157,7 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
 
   return (
     <>
-      <Modal opened={confirmAccountSecured} onClose={close} title={t('Confirmation')}>
+      <Modal opened={confirmAccountSecured} onClose={close} title={t('Confirmation')} centered>
         <Stack>
           {t('accountNumberStoredConfirmation')}
           <Anchor onClick={() => {
@@ -176,12 +176,12 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
             {styles => <Stack style={styles} justify='center' align='center'>
               <CopyButton value={ObscuraAccount.accountIdToString(generatedAccountId)}>
                 {({ copied, copy }) => (
-                  <Button color={copied ? 'teal' : undefined} onClick={copy} miw='22ch'>
+                  <Button variant={copied ? 'filled' : undefined} color={copied ? 'teal' : undefined} onClick={copy} miw='22ch'>
                     {copied ? t('Copied Account Number') : t('Copy Account Number')}
                   </Button>
                 )}
               </CopyButton>
-              <Text ta='center' fw={800}>{t('writeDownAccountNumber')}</Text>
+              <Text ta='center' fw={800} ml='xs' mr='xs'>{t('writeDownAccountNumber')}</Text>
               <Group>
                 <Button onClick={open} rightSection={<ExternalLinkIcon />}>{t('Payment')}</Button>
                 <Button disabled={!accountActive && !paymentClicked} onClick={() => commands.setInNewAccountFlow(false)}>{t('Done')}</Button>

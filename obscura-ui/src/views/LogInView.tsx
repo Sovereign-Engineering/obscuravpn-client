@@ -96,7 +96,7 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
 
   return (
     <Stack h='100vh' bg={colorScheme === 'light' ? undefined : 'dark.8'} gap={20}>
-      <BackgroundImage src={DecoOrangeTop} style={{ backgroundRepeat: 'no-repeat', backgroundSize: 'contain', backgroundPosition: 'top' }}>
+      <div style={{backgroundImage: `url("${DecoOrangeTop}")`}} className={classes.backgroundImage}>
         <Space h='28vh' />
         {
           (!!accountNumber || awaitingAccountCreation) ? <AccountGeneration loading={awaitingAccountCreation} generatedAccountId={accountNumber} accountActive={accountActive} />
@@ -106,7 +106,7 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
                 <Image src={AppIcon} w={64} />
                 <Title>{HEADER_TITLE}</Title>
               </Group>
-              <Text component='p' size='sm'>
+              <Text size='sm' ta='center' w={300}>
                 <Trans
                   i18nKey='legalNotice'
                   components={[<Anchor href={ObscuraAccount.LEGAL_WEBPAGE} />]}
@@ -123,7 +123,7 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
               <Button w={260} disabled={loginWaiting} type='submit' variant='outline'>{loginWaiting ? <Loader size='sm' /> : t('Log In')}</Button>
             </Stack >
         }
-      </BackgroundImage>
+      </div>
     </Stack >
   );
 }

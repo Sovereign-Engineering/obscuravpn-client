@@ -26,15 +26,10 @@
     "simplebar-react": "^3.3.0"
   },
   "scripts": {
-    "dev": "tauri dev",
-    "tauri": "tauri",
     "start": "vite --strictPort",
-    "rls": "dotenv-load tauri build",
     "build": "vite build",
     "preview": "vite preview",
     "serve": "vite preview",
-    "sloc": "sloc src src-tauri/src",
-    "update": "pnpm up &; cd src-tauri && cargo update && cargo clean && wait",
     "test": "mocha"
   },
   "eslintConfig": {
@@ -44,7 +39,6 @@
     ]
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^1.6.3",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^22.10.5",
     "@vitejs/plugin-react": "^4.3.4",

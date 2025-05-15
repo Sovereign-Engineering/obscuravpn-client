@@ -10,6 +10,7 @@ import { NotificationId } from '../common/notifIds';
 import { useAsync } from '../common/useAsync';
 import { errMsg, normalizeError } from '../common/utils';
 import { fmtErrorI18n } from '../translations/i18n';
+import classes from './Settings.module.css';
 
 export default function Settings() {
     const { t } = useTranslation();
@@ -71,10 +72,13 @@ export default function Settings() {
     }
 
     return (
-        <Stack gap='xl' align='flex-start' ml={80} mr={80} mt={40}>
+        <Stack gap='xl' align='flex-start' className={classes.container}>
             <Stack gap='lg'>
               <Title order={4}>{t('General')}</Title>
-              <Switch error={loginItemError === undefined ? undefined : `${loginItemError}`} disabled={loginItemError !== undefined || loading || loginItemRegistered === undefined} checked={loginItemRegistered} onChange={event => event.currentTarget.checked ? registerAtLogin() : unregisterAtLogin()} label={t('openAtLoginRegister')} />
+              {
+                loginItemError?.message !== 'errorUnsupportedOnOS' &&
+                <Switch error={loginItemError === undefined ? undefined : `${loginItemError}`} disabled={loginItemError !== undefined || loading || loginItemRegistered === undefined} checked={loginItemRegistered} onChange={event => event.currentTarget.checked ? registerAtLogin() : unregisterAtLogin()} label={t('openAtLoginRegister')} />
+              }
               <Switch checked={appStatus.autoConnect} onChange={event => commands.setAutoConnect(event.currentTarget.checked)} label={t('autoConnectStartup')} />
               <Text size='sm' c='dimmed'>{t('autoConnectStartup-behavior')}</Text>
             </Stack>

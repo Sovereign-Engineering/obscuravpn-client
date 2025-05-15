@@ -29,7 +29,7 @@ export function AccountNumberSection({ accountId }: { accountId: ObscuraAccount.
   }
 
   return (
-    <Stack align='start' w='90%' p='md' gap={0} style={{ borderRadius: theme.radius.md, boxShadow: theme.shadows.sm }} bg={colorScheme === 'light' ? 'gray.1' : 'dark.6'}>
+    <Stack align='start' w='100%' p='md' gap={0} style={{ borderRadius: theme.radius.md, boxShadow: theme.shadows.sm }} bg={colorScheme === 'light' ? 'gray.1' : 'dark.6'}>
       <Group w='100%' justify='space-between'>
         <Group mb='xs' gap={5}>
           <PersonBadgeKey fill={colorScheme === 'light' ? 'black' : 'white'} width='1em' height='1em' />

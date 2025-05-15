@@ -1,19 +1,19 @@
 import { Accordion, ActionIcon, Anchor, Button, Card, Divider, Flex, Group, Loader, Space, Stack, Text, ThemeIcon, Title, useMantineTheme } from '@mantine/core';
 import { useInterval } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { getCountryCode } from 'countries-list';
 import { MouseEvent, useContext, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { BsPin, BsPinFill, BsShieldFillCheck, BsShieldFillExclamation } from 'react-icons/bs';
 import * as commands from '../bridge/commands';
-import { Exit, getExitCountry, getContinent } from '../common/api';
+import { Exit, getContinent, getExitCountry } from '../common/api';
 import { AppContext, ConnectionInProgress, isConnecting } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { exitLocation, exitsSortComparator, getExitCountryFlag } from '../common/exitUtils';
 import { KeyedSet } from '../common/KeyedSet';
 import { NotificationId } from '../common/notifIds';
 import { useAsync } from '../common/useAsync';
-import { fmtTime, normalizeError } from '../common/utils';
+import { useExitList } from '../common/useExitList';
+import { fmtTime } from '../common/utils';
 import BoltBadgeAuto from '../components/BoltBadgeAuto';
 import ExternalLinkIcon from '../components/ExternalLinkIcon';
 import ObscuraChip from '../components/ObscuraChip';
@@ -23,7 +23,6 @@ import EyeSlash from '../res/eye.slash.fill.svg?react';
 import OrangeCheckedShield from '../res/orange-checked-shield.svg?react';
 import { fmtErrorI18n } from '../translations/i18n';
 import classes from './Location.module.css';
-import { useExitList } from '../common/useExitList';
 
 export default function LocationView() {
     const { t } = useTranslation();
@@ -99,7 +98,7 @@ export default function LocationView() {
                 && appStatus.vpnStatus.connected.exit.country_code == lastCity.country_code;
             const isPinned = pinnedLocationSet.has(lastCity);
             lastChosenJsx = <>
-                <Text ta='left' w='91%' size='sm' c='green.7' ml='md' fw={600}>{t('lastChosen')}</Text>
+                <Text ta='left' w='100%' size='sm' c='green.7' ml='md' fw={600}>{t('lastChosen')}</Text>
                 <LocationCard exit={exit} togglePin={toggleExitPin}
                     onSelect={() => onExitSelect(exit)} connected={isConnected} pinned={isPinned} />
             </>;
@@ -109,7 +108,7 @@ export default function LocationView() {
     const pinnedExitsRender = [];
     const insertedCities = new Set(); // [COUNTRY_CODE, CITY]
     if (pinnedExits.length > 0) {
-        pinnedExitsRender.push(<Text key='pinned-heading' ta='left' w='91%' size='sm' c='gray' ml='md' fw={700}>{t('Pinned')}</Text>);
+        pinnedExitsRender.push(<Text key='pinned-heading' ta='left' w='100%' size='sm' c='gray' ml='md' fw={700}>{t('Pinned')}</Text>);
         for (const exit of pinnedExits) {
             const key = JSON.stringify([exit.country_code, exit.city_name]);
             if (!insertedCities.has(key)) {
@@ -131,7 +130,7 @@ export default function LocationView() {
     for (const exit of locations) {
         const continent = getContinent(getExitCountry(exit));
         if (!insertedContinents.has(continent)) {
-            exitListRender.push(<Text key={`continent-${continent}`} ta='left' w='91%' size='sm' c='gray' ml='sm' fw={600}>{t(`Continent${continent}`)}</Text>);
+            exitListRender.push(<Text key={`continent-${continent}`} ta='left' w='100%' size='sm' c='gray' ml='sm' fw={600}>{t(`Continent${continent}`)}</Text>);
             insertedContinents.add(continent);
         }
         const key = JSON.stringify([exit.country_code, exit.city_name]);
@@ -145,7 +144,7 @@ export default function LocationView() {
     }
 
     return (
-        <Stack align='center' gap={10} p={20} mt='sm'>
+        <Stack align='center' gap={10} mt='sm' className={classes.container}>
             <VpnStatusCard />
             {locations.length === 0 ? <NoExitServers /> :
                 <>
@@ -184,7 +183,7 @@ function LocationCard({ exit, connected, onSelect, togglePin, pinned }: Location
     const cardTitle = (!connected && !disableClick) ? t('Click to connect') : undefined;
 
     return (
-        <Card shadow='xs' title={cardTitle} className={cardClasses.join(' ')} withBorder padding='xs' radius='md' w='90%' onClick={(connected || disableClick) ? undefined : onSelect}>
+        <Card shadow='xs' title={cardTitle} className={cardClasses.join(' ')} withBorder padding='xs' radius='md' w='100%' onClick={(connected || disableClick) ? undefined : onSelect}>
             <Group justify='space-between'>
                 <Group>
                     <Text size='2rem'>{getExitCountryFlag(exit)}</Text>
@@ -234,7 +233,7 @@ function NoExitServers() {
     }
 
     return (
-        <Card shadow='sm' padding='lg' radius='md' withBorder w='90%'>
+        <Card shadow='sm' padding='lg' radius='md' withBorder w='100%'>
             <Group justify='space-between' >
                 <Group align='center' gap={5}>
                     <Text size='xl' fw={700} c='red.7'>
@@ -294,7 +293,7 @@ function VpnStatusCard() {
         : (connectionInProgress === ConnectionInProgress.ChangingLocations ? 'gray' : 'red.7');
 
     return (
-        <Card shadow='sm' padding='lg' radius='md' withBorder w='90%' mb='xs'>
+        <Card shadow='sm' padding='lg' radius='md' withBorder w='100%' mb='xs'>
             <Group justify='space-between'>
                 <Stack gap={0}>
                     <Group align='center' gap={5}>

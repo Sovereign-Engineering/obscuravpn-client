@@ -252,7 +252,7 @@ private class DebugBundleBuilder {
             let ProcessName = ProcessInfo.processInfo.processName
             let ProcessorCountActive = ProcessInfo.processInfo.processorCount
             let ProcessorCountPhysical = ProcessInfo.processInfo.activeProcessorCount
-            let ProcessorName = try? Sysctl.string(for: "machdep.cpu.brand_string") ?? "Unknown"
+            let ProcessorName: String = (try? Sysctl.string(for: "machdep.cpu.brand_string")) ?? "Unknown"
             let RAMPhysicalGiB = Double(ProcessInfo.processInfo.physicalMemory) / 1024.0 / 1024.0 / 1024.0
             let SourceID = sourceId()
             let ThemralState: String
@@ -678,7 +678,7 @@ public class DebugBundleRC {
 }
 
 func _createDebuggingArchive(appState: AppState?) async throws -> String {
-    let _activity = ProcessInfo.processInfo.beginActivity(
+    let _ = ProcessInfo.processInfo.beginActivity(
         options: [
             .automaticTerminationDisabled,
             .idleSystemSleepDisabled,
@@ -688,7 +688,7 @@ func _createDebuggingArchive(appState: AppState?) async throws -> String {
         reason: "Generating Debug Bundle"
     )
 
-    var start = SuspendingClock.now
+    let start = SuspendingClock.now
 
     let builder = try DebugBundleBuilder(appState: appState)
     await builder.bundleAll()
@@ -703,7 +703,8 @@ func _createDebuggingArchive(appState: AppState?) async throws -> String {
 
 func createDebuggingArchive(appState: AppState?) async throws -> String {
     // ensure deinit occurs at the end of the method
-    let _debugBundleRc: DebugBundleRC?
+    var _debugBundleRc: DebugBundleRC?
+    defer { withExtendedLifetime(_debugBundleRc) {}}
     if let appState = appState {
         _debugBundleRc = DebugBundleRC(appState)
     }

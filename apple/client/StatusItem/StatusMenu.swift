@@ -275,7 +275,7 @@ struct StatusItem: View {
                     if self.startupModel.appState == nil {
                         throw "appState is nil"
                     }
-                    self.osStatusModel.osStatus = try await self.startupModel.appState?.getOsStatus(knownVersion: self.osStatusModel.osStatus?.version)
+                    self.osStatusModel.osStatus = await self.startupModel.appState?.getOsStatus(knownVersion: self.osStatusModel.osStatus?.version)
                 } catch {
                     logger.error("could not update osStatsus. \(error, privacy: .public)")
                     do {

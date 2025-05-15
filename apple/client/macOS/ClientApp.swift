@@ -43,7 +43,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
                 closeWindow(id: WindowIds.RootWindowId)
             }
         }
-        StatusItemManager()
+        _ = StatusItemManager()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

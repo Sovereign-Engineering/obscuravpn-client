@@ -17,11 +17,21 @@ class SparkleUpdater {
         self.sparkleUpdater = UpdaterDriver.createUpdater(osStatus: osStatus)
     }
 
+    var sessionInProgress: Bool {
+        return self.sparkleUpdater.sessionInProgress
+    }
+
     var canCheckForUpdates: Bool {
         return self.sparkleUpdater.canCheckForUpdates
     }
 
     func checkForUpdates() {
+        if self.sessionInProgress {
+            return
+        }
+        guard self.canCheckForUpdates else {
+            throw errorCodeUpdaterCheck
+        }
         self.sparkleUpdater.checkForUpdates()
     }
 

@@ -221,7 +221,7 @@
   "warningNotice_other": "- {{ notice }}",
   "willRelaunch": "GUI will close automatically. Please start the GUI manually if it does not relaunch automatically.",
   "WGConfigs": "WireGuard® Configurations",
-  "WGTrademark": "WireGuard® is a registered trademark of Jason A. Donenfeld.",
+  "WGTrademark": "WireGuard® is a registered trademark of <0>Jason A. Donenfeld.</0>",
   "Manage Configurations": "Manage Configurations",
   "writeDownAccountNumber": "Please write down your account number or store it in an encrypted vault",
   "yourDevice": "Your device"

@@ -1,21 +1,21 @@
-import { AppShell, AppShellMain, Group, Modal, Text, Title, useMantineColorScheme, useMantineTheme } from '@mantine/core';
-import { useDisclosure, useHotkeys, useThrottledValue } from '@mantine/hooks';
+import { AppShell, AppShellMain, Modal, Text, Title, useMantineColorScheme } from '@mantine/core';
+import { useHotkeys, useThrottledValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Trans, useTranslation } from 'react-i18next';
-import { Navigate, NavLink, Route, Routes, useNavigate } from 'react-router-dom';
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import SimpleBar from 'simplebar-react';
 import 'simplebar-react/dist/simplebar.min.css';
 import classes from './App.module.css';
 import * as commands from './bridge/commands';
-import { logReactError, PLATFORM, Platform, useSystemChecks } from './bridge/SystemProvider';
+import { IS_MOBILE, logReactError, PLATFORM, Platform, useSystemChecks } from './bridge/SystemProvider';
 import { AppContext, AppStatus, ConnectionInProgress, OsStatus } from './common/appContext';
 import { fmt } from './common/fmt';
 import { NotificationId } from './common/notifIds';
 import { useAsync } from './common/useAsync';
 import { useLoadable } from './common/useLoadable';
-import { IS_WK_WEB_VIEW, MIN_LOAD_MS, normalizeError, useCookie } from './common/utils';
+import { IS_WK_WEB_VIEW, MIN_LOAD_MS, normalizeError } from './common/utils';
 import { ScrollToTop } from './components/ScrollToTop';
 import { fmtVpnError } from './translations/i18n';
 import { About, Account, Connection, DeveloperView, FallbackAppRender, Help, Location, LogIn, Settings, SplashScreen } from './views';
@@ -35,11 +35,6 @@ export default function () {
   const { toggleColorScheme } = useMantineColorScheme();
   useSystemChecks();
   useHotkeys([[PLATFORM === Platform.macOS ? 'mod+J' : 'ctrl+J', toggleColorScheme]]);
-  const theme = useMantineTheme();
-  const [mobileNavOpened, { toggle: toggleMobileNav }] = useDisclosure();
-  const [desktopNavOpenedCookie, setDesktopNavOpenedCookie] = useCookie('desktop-nav-opened', 'true');
-  const desktopNavOpened = desktopNavOpenedCookie === 'true';
-  const toggleDesktopNav = () => setDesktopNavOpenedCookie(o => o === 'true' ? 'false' : 'true');
   const [scroller, setScroller] = useState<HTMLElement | null>(null);
 
   // App State
@@ -280,17 +275,6 @@ export default function () {
     }
   }, []);
 
-  function NavLinks() {
-    // TODO: useHotkeys and abstract this
-    return views.map((view, index) =>
-      <NavLink to={view.path} key={index} end={view.exact} onClick={() => toggleMobileNav()}
-        className={({ isActive }) => classes.navLink + ' ' + (isActive ? classes.navLinkActive : classes.navLinkInactive)}>
-        {/* TODO: Icons */}
-        <Group><Text>{view.name ? view.name : view.name}</Text></Group>
-      </NavLink>
-    );
-  }
-
   const {
     lastSuccessfulValue: accountInfo,
     error: accountInfoError,
@@ -311,10 +295,8 @@ export default function () {
     }
   }, [accountInfoError]);
 
-  const {
-    error: checkUpdateError,
-  } = useAsync({
-    skip: !osStatus?.internetAvailable,
+  const _ = useAsync({
+    skip: osStatus === null || (!osStatus.internetAvailable || IS_MOBILE),
     load: commands.checkForUpdates,
     returnError: true,
   });

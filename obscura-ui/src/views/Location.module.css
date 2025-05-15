@@ -4,6 +4,7 @@
 
 .locationCardNotConnected:hover:not(:has(.favoriteBtn:hover)) {
     background-color: light-dark(#f5f5f5, var(--mantine-color-dark-4));
+
     @mixin light {
         border-color: var(--mantine-color-teal-5) !important;
         border-width: 1px !important;
@@ -32,5 +33,18 @@
         border-color: light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-4));
         box-shadow: var(--mantine-shadow-md);
         border-radius: var(--mantine-radius-md);
+    }
+}
+
+.container {
+    padding: 20px 60px;
+}
+
+@media screen and (max-width: $mantine-breakpoint-sm) {
+    .container {
+        padding-top: 50px;
+        padding-bottom: 56px;
+        padding-left: 20px;
+        padding-right: 20px;
     }
 }

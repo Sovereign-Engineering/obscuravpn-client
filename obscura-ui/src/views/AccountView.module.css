@@ -1,0 +1,12 @@
+.container {
+    padding: 20px 60px;
+}
+
+@media screen and (max-width: $mantine-breakpoint-sm) {
+    .container {
+        padding-top: 50px;
+        padding-bottom: 50px;
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+}

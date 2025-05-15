@@ -13,3 +13,9 @@
         width: 325px;
     }
 }
+
+.container {
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: bottom;
+}

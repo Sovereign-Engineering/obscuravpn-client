@@ -20,6 +20,7 @@ import PaidUpBadge from '../res/paid-up.svg?react';
 import SubscriptionActiveBadge from '../res/subscription-active.svg?react';
 import SubscriptionPausedBadge from '../res/subscription-paused.svg?react';
 import { fmtErrorI18n } from '../translations/i18n';
+import classes from './AccountView.module.css';
 
 export default function Account() {
     const { t } = useTranslation();
@@ -35,10 +36,10 @@ export default function Account() {
     const accountId = appStatus.accountId;
     const colorScheme = useComputedColorScheme();
     return (
-        <Stack align='center' p={20} gap='xl' mt='sm'>
+        <Stack align='center' gap='xl' mt='sm' className={classes.container}>
             <AccountStatusCard />
             <AccountNumberSection accountId={accountId} />
-            <Stack align='start' w='90%' p='md' style={{ borderRadius: theme.radius.md, boxShadow: theme.shadows.sm }} bg={colorScheme === 'light' ? 'gray.1' : 'dark.6'}>
+            <Stack align='start' w='100%' p='md' style={{ borderRadius: theme.radius.md, boxShadow: theme.shadows.sm }} bg={colorScheme === 'light' ? 'gray.1' : 'dark.6'}>
                 <Group w='100%' justify='space-between'>
                     <Text fw={500}>{t('WGConfigs')}</Text>
                     <ButtonLink text={t('Manage Configurations')} href={ObscuraAccount.tunnelsUrl(appStatus.accountId)} />
@@ -208,7 +209,7 @@ function AccountStatusCardTemplate({
     const { appStatus } = useContext(AppContext);
     const { t } = useTranslation();
     return (
-        <Paper w='90%' p='md' radius='md' bg={colorScheme === 'light' ? 'gray.1' : 'dark.6'} shadow='sm'>
+        <Paper w='100%' p='md' radius='md' bg={colorScheme === 'light' ? 'gray.1' : 'dark.6'} shadow='sm'>
             <Group>
                 {icon}
                 <Box w={`calc(100% - ${shaveOff}px)`}>

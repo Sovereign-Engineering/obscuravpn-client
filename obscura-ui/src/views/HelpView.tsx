@@ -24,7 +24,7 @@ export default function Help() {
     const queryString = percentEncodeQuery(params);
     const mailto = `mailto:${EMAIL}?${queryString}`;
 
-    return <Stack ml={80} mt={40} m={20} align='flex-start'>
+    return <Stack pl={60} pt={40} align='flex-start'>
         <Image src={MascotThinking} w={100} />
         <Title>{t('havingTrouble')}</Title>
         <Text c='gray' component='span'><Trans i18nKey='supportMsg' values={{ email: EMAIL }} components={[<Anchor href={mailto} />]} /></Text>

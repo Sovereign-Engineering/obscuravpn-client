@@ -115,7 +115,7 @@ export default function Connection() {
     const showLocationSelect = (!appStatus.vpnStatus.connecting || isCityConnect) && (vpnConnected || accountInfo !== null && !accountHasExpired);
 
     return (
-        <Stack align='center' h='100vh' gap={0} style={{ backgroundImage: `url("${Deco()}")`, backgroundRepeat: 'no-repeat', backgroundSize: 'contain', backgroundPosition: 'bottom' }}>
+        <Stack align='center' h='100vh' gap={0} className={classes.container} style={{ backgroundImage: `url("${Deco()}")`}}>
             <Space h={40} />
             <Mascot />
             <Stack align='center' gap={showQuickConnect ? 0 : 20} mt={showQuickConnect ? 0 : 20} justify='space-around'>

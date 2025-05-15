@@ -25,7 +25,7 @@
     background-position: top;
 }
 
-@media screen and (max-width: 767px) {
+@media screen and (max-width: $mantine-breakpoint-sm) {
   .backgroundImage {
     background-size: auto;
   }

@@ -74,9 +74,6 @@ extension CommandHandler {
             case .isRegisteredAsLoginItem:
                 return try isRegisteredAsLoginItem().json()
             case .checkForUpdates:
-                guard appState.updater.canCheckForUpdates else {
-                    throw errorCodeUpdaterCheck
-                }
                 appState.updater.checkForUpdates()
             case .installUpdate:
                 guard appState.updater.canCheckForUpdates else {

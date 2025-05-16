@@ -25,7 +25,7 @@ class SparkleUpdater {
         return self.sparkleUpdater.canCheckForUpdates
     }
 
-    func checkForUpdates() {
+    func checkForUpdates() throws {
         if self.sessionInProgress {
             return
         }

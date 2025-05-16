@@ -1,7 +1,7 @@
 import { createContext } from 'react';
+import { ExitSelector, TunnelArgs } from 'src/bridge/commands';
 import { AccountId } from './accountUtils';
 import { AccountInfo, Exit } from './api';
-import { ExitSelector, TunnelArgs } from 'src/bridge/commands';
 
 export enum NEVPNStatus {
     Invalid = 'invalid',

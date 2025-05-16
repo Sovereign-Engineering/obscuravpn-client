@@ -1,16 +1,18 @@
-import { Anchor, Button, Center, Group, Image, Loader, Modal, Stack, Text, ThemeIcon, Title, useComputedColorScheme, useMantineTheme } from '@mantine/core';
+import { Anchor, Button, Center, Flex, Group, Image, Loader, Modal, Stack, Text, ThemeIcon, Title, useComputedColorScheme, useMantineTheme } from '@mantine/core';
 import { useThrottledValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { lazy, Suspense, useContext, useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { FaCheckCircle, FaExclamationTriangle } from 'react-icons/fa';
 import AppIcon from '../../../apple/client/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x@2x.png';
 import * as commands from '../bridge/commands';
+import { IS_MOBILE } from '../bridge/SystemProvider';
 import { LEGAL_WEBPAGE, OBSCURA_WEBPAGE } from '../common/accountUtils';
 import { AppContext, UpdaterStatusType } from '../common/appContext';
-import { IS_DEVELOPMENT, MIN_LOAD_MS, normalizeError } from '../common/utils';
+import { MIN_LOAD_MS, normalizeError } from '../common/utils';
 import Wordmark from '../res/obscura-wordmark.svg?react';
 import { fmtErrorI18n } from '../translations/i18n';
+import classes from './About.module.css';
 
 const Licenses = lazy(() => import('../components/Licenses'));
 
@@ -39,14 +41,14 @@ export default function About() {
 
   useEffect(() => {
     // Intentionally run only on mount (recheck once if update not already available)
-    if (updaterStatus?.type !== UpdaterStatusType.Available) {
+    if (updaterStatus?.type !== UpdaterStatusType.Available && !IS_MOBILE) {
       handleCommand(commands.checkForUpdates);
     }
   }, []);
   const updaterStatusDelayed = useThrottledValue(updaterStatus, updaterStatus.type === UpdaterStatusType.Initiated ? MIN_LOAD_MS : 0);
   const isLatest = errorCodeIsLatestVersion(updaterStatusDelayed.errorCode);
   return (
-    <Stack justify='space-between' h='100vh'>
+    <Flex gap='md' className={classes.container}>
       <Stack gap='lg' align='center' m={60}>
         <Image src={AppIcon} w={120} />
         <Wordmark fill={colorScheme === 'light' ? 'black' : theme.colors.gray[4]} width={150} height='auto' />
@@ -65,16 +67,16 @@ export default function About() {
         )}
         <Group>
           <Button component='a' href={OBSCURA_WEBPAGE} variant='outline'>{t('Website')}</Button>
-          {
+          {!IS_MOBILE && <> {
             updaterStatusDelayed?.type === UpdaterStatusType.Available ? (
               <Button onClick={() => handleCommand(commands.installUpdate)}>{t('installUpdate')}</Button>
             ) : (
               <Button onClick={() => handleCommand(commands.checkForUpdates)}>{t('checkForUpdates')}</Button>
             )
-          }
+          }</>}
         </Group>
       </Stack>
-      <Stack mb={10} align='center'>
+      <Stack mb={10} align='center' ta='center'>
         <Text c='dimmed'>{t('copyright')}</Text>
         <Modal opened={showLicenses} onClose={() => setShowLicenses(false)} size='lg' title={<Title order={3}>{t('openSourceLicenses')}</Title>}>
           <Suspense fallback={<Center><Loader type='bars' size='md' /></Center>}>
@@ -83,15 +85,15 @@ export default function About() {
             </Stack>
           </Suspense>
         </Modal>
-        <Group>
+        <Flex className={classes.ossLicensesGroup} gap='md'>
           <Anchor onClick={() => setShowLicenses(o => !o)}>
             {t('openSourceLicenses')}
           </Anchor>
           <Anchor href={LEGAL_WEBPAGE}>{t('tosAndPrivacyPolicy')}</Anchor>
-        </Group>
-        <Text c='dimmed'>{t('WGTrademark')}</Text>
+        </Flex>
+        <Text c='dimmed'>{<Trans i18nKey='WGTrademark' components={[<Text component='span' display='inline-block' />]} />}</Text>
       </Stack>
-    </Stack>
+    </Flex>
   );
 }
 

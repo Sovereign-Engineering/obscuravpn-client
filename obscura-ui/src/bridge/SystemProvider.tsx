@@ -1,35 +1,21 @@
-import { createContext, ErrorInfo, PropsWithChildren, useContext } from 'react';
+import { ErrorInfo, useEffect } from 'react';
 
-const BUNDLE_ID = 'Obscura-VPN'
+export const PLATFORM = import.meta.env.OBS_WEB_PLATFORM as Platform;
 
-interface SystemProvideContext {
-  BUNDLE_ID: string,
-  loading: boolean,
-  osType: string,
-  osPlatform: string,
-  fileSep: string,
-  logDir: undefined,
-  defaultLogFile: undefined,
+export enum Platform {
+  macOS = 'macosx',
+  iOS = 'iphoneos',
 }
 
-const SystemContext = createContext<SystemProvideContext>({} as SystemProvideContext);
+const platformDefined = Object.values(Platform).includes(PLATFORM);
 
-export const useSystemContext = () => useContext(SystemContext);
-
-export function SystemProvider({ children }: PropsWithChildren) {
-  const contextValues = {
-    BUNDLE_ID,
-    loading: false,
-    fileSep: '/',
-    osType: 'darwin',
-    osPlatform: 'Darwin',
-    logDir: undefined,
-    defaultLogFile: undefined,
-  }
-
-  return <SystemContext.Provider value={contextValues}>
-    {children}
-  </SystemContext.Provider>;
+export function useSystemChecks() {
+  useEffect(() => {
+    if (!platformDefined) {
+      const errMsg = `OBS_WEB_PLATFORM was unexpected, got "${PLATFORM}"`;
+      throw new Error(errMsg);
+    }
+  }, [platformDefined]);
 }
 
 export async function logReactError(error: Error, info: ErrorInfo) {

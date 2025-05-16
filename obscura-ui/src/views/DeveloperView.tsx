@@ -3,9 +3,8 @@ import { useInterval } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import Cookies from 'js-cookie';
 import { useContext, useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import * as commands from '../bridge/commands';
-import { Exit } from '../common/api';
+import { PLATFORM } from '../bridge/SystemProvider';
 import { AppContext } from '../common/appContext';
 import { localStorageGet, LocalStorageKey } from '../common/localStorage';
 import { IS_WK_WEB_VIEW } from '../common/utils';
@@ -13,7 +12,6 @@ import DevSendCommand from '../components/DevSendCommand';
 import DevSetApiUrl from '../components/DevSetApiUrl';
 
 export default function DeveloperViewer() {
-    const { t } = useTranslation();
     const { vpnConnected, connectionInProgress, appStatus, osStatus } = useContext(AppContext);
     const [trafficStats, setTrafficStats] = useState({});
     const cookieToDeleteRef = useRef<HTMLInputElement | null>(null);
@@ -48,6 +46,12 @@ export default function DeveloperViewer() {
                 <Accordion.Control>OsStatus</Accordion.Control>
                 <Accordion.Panel>
                     <JsonInput value={JSON.stringify(osStatus, null, 4)} contentEditable={false} rows={10} />
+                </Accordion.Panel>
+            </Accordion.Item>
+            <Accordion.Item key='systemInfo' value='systemInfo'>
+                <Accordion.Control>Build Time Info</Accordion.Control>
+                <Accordion.Panel>
+                    PLATFORM = {PLATFORM}
                 </Accordion.Panel>
             </Accordion.Item>
         </Accordion>

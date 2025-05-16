@@ -9,7 +9,7 @@ import SimpleBar from 'simplebar-react';
 import 'simplebar-react/dist/simplebar.min.css';
 import classes from './App.module.css';
 import * as commands from './bridge/commands';
-import { logReactError, useSystemContext } from './bridge/SystemProvider';
+import { logReactError, PLATFORM, Platform, useSystemChecks } from './bridge/SystemProvider';
 import { AppContext, AppStatus, ConnectionInProgress, OsStatus } from './common/appContext';
 import { fmt } from './common/fmt';
 import { NotificationId } from './common/notifIds';
@@ -30,13 +30,11 @@ interface View {
 
 export default function () {
   const { t } = useTranslation();
-  // check if using custom titlebar to adjust other components
-  const { osPlatform, loading: systemProviderLoading } = useSystemContext();
-
   // Boilerplate State
   const navigate = useNavigate();
   const { toggleColorScheme } = useMantineColorScheme();
-  useHotkeys([[osPlatform === 'darwin' ? 'mod+J' : 'ctrl+J', toggleColorScheme]]);
+  useSystemChecks();
+  useHotkeys([[PLATFORM === Platform.macOS ? 'mod+J' : 'ctrl+J', toggleColorScheme]]);
   const theme = useMantineTheme();
   const [mobileNavOpened, { toggle: toggleMobileNav }] = useDisclosure();
   const [desktopNavOpenedCookie, setDesktopNavOpenedCookie] = useCookie('desktop-nav-opened', 'true');
@@ -65,7 +63,7 @@ export default function () {
 
   const isLoggedIn = !!appStatus?.accountId;
   const showAccountCreation = appStatus?.inNewAccountFlow;
-  const loading = appStatus === null || osStatus === null || systemProviderLoading;
+  const loading = appStatus === null || osStatus === null;
 
   useEffect(() => {
     // reminder: errors are auto logged
@@ -321,7 +319,7 @@ export default function () {
     returnError: true,
   });
 
-  if (loading) return <SplashScreen text={systemProviderLoading ? t('synchronizing') : t('appStatusLoading')} />;
+  if (loading) return <SplashScreen text={t('appStatusLoading')} />;
 
   if (!isLoggedIn || showAccountCreation) return <LogIn accountNumber={appStatus.accountId} accountActive={accountInfo?.active} />;
 

@@ -10,7 +10,7 @@ PORT=1420
 
 "$SRCROOT/xcodescripts/nix-web-dev-server-stop.bash" || true
 
-WK_WEB_VIEW=1 nix develop ".#web" --print-build-logs -c just web-bundle-start &
+OBS_WEB_PLATFORM="$PLATFORM_NAME" WK_WEB_VIEW=1 nix develop ".#web" --print-build-logs -c just web-bundle-start &
 
 while jobs %% && ! nc -z localhost $PORT; do
 	sleep 0.05

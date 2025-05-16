@@ -23,7 +23,7 @@ export default defineConfig({
     open: process.env.WK_WEB_VIEW === undefined
   },
   // env variables
-  envPrefix: ['VITE_'],
+  envPrefix: ['VITE_', 'OBS_WEB_'],
 
   build: {
     target: ['es2021', 'safari14'],
@@ -35,7 +35,7 @@ export default defineConfig({
 
   resolve: {
     alias: {
-      "$licenses.json": process.env.LICENSE_JSON,
-    },
+      "$licenses.json": process.env.LICENSE_JSON!
+    }
   },
 })

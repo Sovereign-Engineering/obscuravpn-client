@@ -202,6 +202,8 @@ struct ContentView: View {
                 .foregroundColor(self.badgeColor)
                 .bold()
             )
+            // this has to be here, otherwise the label color is system accent default
+            .listItemTint(Color("ObscuraOrange"))
         } else if view == .about && self.indicateUpdateAvailable {
             HStack {
                 label

@@ -197,7 +197,13 @@ impl ClientState {
         Ok(())
     }
 
-    pub(crate) async fn connect(
+    pub fn set_force_tcp_tls_relay_transport(&self, enable: bool) -> Result<(), ConfigSaveError> {
+        let mut inner = self.lock();
+        Self::change_config(&mut inner, move |config| config.force_tcp_tls_relay_transport = enable)?;
+        Ok(())
+    }
+
+    pub async fn connect(
         &self,
         exit_selector: &ExitSelector,
         selection_state: &mut ExitSelectionState,
@@ -252,7 +258,7 @@ impl ClientState {
             return Err(TunnelConnectError::NoExit);
         };
 
-        tracing::error!(
+        tracing::info!(
             message_id = "eiR8ixoh",
             exit.id = exit,
             exit_selector =? exit_selector,
@@ -349,8 +355,8 @@ impl ClientState {
             sni = sni,
             "Racing relays",
         );
-
-        let racing_handshakes = race_relay_handshakes(relays, sni)?;
+        let use_tcp_tls = self.get_config().force_tcp_tls_relay_transport;
+        let racing_handshakes = race_relay_handshakes(relays, sni, use_tcp_tls)?;
         let mut relays_connected_successfully = BTreeSet::new();
         let mut best_candidate = None;
 

@@ -225,7 +225,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
                         self.reasserting = true
                     }
                 }
-            case .connected(_, _, let networkConfig, _, _):
+            case .connected(_, _, let networkConfig, _, _, _):
                 if isActiveGuard.value {
                     do {
                         try await self.ensureNetworkConfig(newNetworkConfig: networkConfig)

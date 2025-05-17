@@ -23,6 +23,7 @@ use crate::{
     config::{cached::ConfigCached, Config, ConfigDebug, ConfigLoadError, ConfigSaveError, PinnedLocation},
     errors::ApiError,
     exit_selection::ExitSelector,
+    quicwg::TransportKind,
     tunnel_state::TunnelState,
 };
 
@@ -54,6 +55,7 @@ pub struct Status {
     pub api_url: String,
     pub account: Option<AccountStatus>,
     pub auto_connect: bool,
+    pub force_tcp_tls_relay_transport: bool,
 }
 
 impl Status {
@@ -66,6 +68,7 @@ impl Status {
             last_exit_selector,
             cached_account_status,
             auto_connect,
+            force_tcp_tls_relay_transport,
             ..
         } = config;
         Self {
@@ -79,6 +82,7 @@ impl Status {
             api_url,
             account: cached_account_status,
             auto_connect,
+            force_tcp_tls_relay_transport,
         }
     }
 }
@@ -99,6 +103,7 @@ pub enum VpnStatus {
         network_config: NetworkConfig,
         client_public_key: WgPubkey,
         exit_public_key: WgPubkey,
+        transport: TransportKind,
     },
     Disconnected {},
 }
@@ -125,6 +130,7 @@ impl VpnStatus {
                 network_config: network_config.clone(),
                 client_public_key: WgPubkey(conn.client_public_key().to_bytes()),
                 exit_public_key: WgPubkey(conn.exit_public_key().to_bytes()),
+                transport: conn.transport(),
             },
         }
     }
@@ -168,6 +174,7 @@ impl Manager {
         self.client_state.subscribe_exit_list()
     }
 
+    #[allow(clippy::result_unit_err)]
     pub fn set_target_state(&self, new_target_args: Option<TunnelArgs>, allow_activation: bool) -> Result<(), ()> {
         let mut ret = Ok(());
         let ret_ref = &mut ret;
@@ -352,6 +359,13 @@ impl Manager {
 
     pub fn set_auto_connect(&self, enable: bool) -> Result<(), ConfigSaveError> {
         self.client_state.set_auto_connect(enable)?;
+        self.update_status_if_changed(None);
+        Ok(())
+    }
+
+    pub fn toggle_force_tcp_tls_relay_transport(&self) -> Result<(), ConfigSaveError> {
+        let current = self.client_state.get_config().force_tcp_tls_relay_transport;
+        self.client_state.set_force_tcp_tls_relay_transport(!current)?;
         self.update_status_if_changed(None);
         Ok(())
     }

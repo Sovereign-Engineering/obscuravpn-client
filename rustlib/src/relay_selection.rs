@@ -11,6 +11,7 @@ use tokio::task::JoinSet;
 pub fn race_relay_handshakes(
     relays: Vec<OneRelay>,
     sni: String,
+    use_tcp_tls: bool,
 ) -> Result<Receiver<(OneRelay, u16, Duration, QuicWgConnHandshaking)>, RelaySelectionError> {
     let sni = Arc::new(sni);
     let mut tasks = JoinSet::new();
@@ -26,7 +27,10 @@ pub fn race_relay_handshakes(
             let sni = sni.clone();
             tasks.spawn(async move {
                 let result: Result<(QuicWgConnHandshaking, Duration), QuicWgConnectError> = async {
-                    let mut handshaking = QuicWgConnHandshaking::start(relay.id.clone(), &quic_endpoint, relay_addr, relay_cert, &sni).await?;
+                    let mut handshaking = match use_tcp_tls {
+                        true => QuicWgConnHandshaking::start_tcp_tls(relay.id.clone(), relay_addr, relay_cert, &sni).await,
+                        false => QuicWgConnHandshaking::start_quic(relay.id.clone(), &quic_endpoint, relay_addr, relay_cert, &sni).await,
+                    }?;
                     let rtt = handshaking.measure_rtt().await?;
                     Ok((handshaking, rtt))
                 }

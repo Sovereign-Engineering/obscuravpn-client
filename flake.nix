@@ -68,6 +68,20 @@
 
           rustfmt = craneLib.cargoFmt rustArgs;
 
+          typescript = pkgs.stdenv.mkDerivation {
+            name = "typescript";
+
+            nativeBuildInputs = [ pkgs.nodePackages.typescript ];
+
+            src = ./obscura-ui;
+
+            buildPhase = ''
+              ln -s ${nodeModules}/_napalm-install/node_modules .
+              tsc --noEmit
+              touch "$out"
+            '';
+          };
+
           nixfmt = pkgs.runCommand "nixfmt" { nativeBuildInputs = [ pkgs.nixfmt-classic ]; } ''
             nixfmt --width=120 --check ${self}/*.nix
             touch "$out"
@@ -146,4 +160,3 @@
         };
       });
 }
-

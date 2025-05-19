@@ -1,5 +1,6 @@
 #![allow(clippy::large_enum_variant, clippy::too_many_arguments)]
 
+mod backoff;
 pub mod client_state;
 pub mod config;
 pub mod errors;
@@ -14,6 +15,9 @@ pub mod relay_selection;
 mod serde_safe;
 pub mod tunnel_state;
 pub mod virt;
+
+#[cfg(test)]
+mod backoff_test;
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 pub mod apple;

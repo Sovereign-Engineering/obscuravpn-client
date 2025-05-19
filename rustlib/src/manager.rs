@@ -14,12 +14,12 @@ use serde::{Deserialize, Serialize};
 use tokio::{
     runtime::{Handle, Runtime},
     sync::watch::{channel, Receiver, Sender},
-    time::sleep,
 };
 use tokio_util::sync::{CancellationToken, DropGuard};
 use uuid::Uuid;
 
 use crate::{
+    backoff::Backoff,
     client_state::AccountStatus,
     config::{cached::ConfigCached, Config, ConfigDebug, ConfigLoadError, ConfigSaveError, PinnedLocation},
     errors::ApiError,
@@ -322,7 +322,8 @@ impl Manager {
                 };
                 last_status_version = Some(status.version);
             }
-            for backoff_wait in 0..10 {
+            let mut backoff = Backoff::BACKGROUND.take(10);
+            while backoff.wait().await {
                 let Some(this) = this.upgrade() else {
                     break 'outer;
                 };
@@ -330,8 +331,6 @@ impl Manager {
                     continue;
                 };
                 tracing::warn!(?error, "failed attempt to register cached wireguard key");
-                drop(this);
-                sleep(Duration::from_secs(backoff_wait)).await;
             }
         }
         tracing::info!(message_id = "RG0S8UvK", "wireguard_key_registraction_task stops");

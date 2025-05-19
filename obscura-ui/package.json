@@ -30,7 +30,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "serve": "vite preview",
-    "test": "mocha"
+    "test": "mocha",
+    "typecheck": "tsc --noEmit"
   },
   "eslintConfig": {
     "extends": [

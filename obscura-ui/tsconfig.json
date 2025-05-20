@@ -18,6 +18,7 @@
       "vite/client",
       "vite-plugin-svgr/client",
       "@types/node"
-    ]
+    ],
+    "skipLibCheck": true
   }
 }

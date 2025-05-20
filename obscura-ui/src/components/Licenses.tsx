@@ -2,6 +2,7 @@ import { Accordion, Anchor, Code, List, Stack, Title } from '@mantine/core';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 // import resolved by vite. See vite.config.js
+// @ts-expect-error
 import licensesJson from '$licenses.json';
 
 const licenses = licensesJson as Licenses;

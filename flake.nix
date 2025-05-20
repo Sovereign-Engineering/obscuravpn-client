@@ -4,17 +4,15 @@
     flake-utils.url = "github:numtide/flake-utils";
     nixpkgs.url = "nixpkgs/nixos-unstable";
     rust-overlay.url = "github:oxalica/rust-overlay";
-    swiftformat.url = "github:Sovereign-Engineering/SwiftFormat-nix";
   };
 
-  outputs = { crane, flake-utils, nixpkgs, rust-overlay, self, swiftformat, }:
+  outputs = { crane, flake-utils, nixpkgs, rust-overlay, self, }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         overlays = [ (import ./nix/overlays) (import rust-overlay) ];
         pkgs = import nixpkgs { inherit overlays system; };
         lib = pkgs.lib;
         rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./rustlib/rust-toolchain.toml;
-        swiftfmt = swiftformat.packages.${system}.default;
 
         craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
 
@@ -71,6 +69,11 @@
 
           rustfmt = craneLib.cargoFmt rustArgs;
 
+          swiftformat = pkgs.runCommand "swiftformat" { nativeBuildInputs = [ pkgs.swiftformat ]; } ''
+            swiftformat --lint ${swiftFiles}
+            touch "$out"
+          '';
+
           typescript = nodeDerivation {
             name = "typescript";
 
@@ -90,12 +93,6 @@
           # TODO: Fails due to unused code on non-darwin.
           clippy =
             craneLib.cargoClippy (rustArgs // { cargoClippyExtraArgs = "--all-features --all-targets -- -Dwarnings"; });
-
-          # TODO: Fails to build on non-darwin.
-          swiftformat = pkgs.runCommand "swiftfmt" { nativeBuildInputs = [ swiftfmt ]; } ''
-            swiftformat --lint ${swiftFiles}
-            touch "$out"
-          '';
         });
 
         devShells = {
@@ -107,8 +104,8 @@
               pkgs.nixfmt-classic
               pkgs.nodejs_20
               pkgs.shellcheck
+              pkgs.swiftformat
               rustToolchain.passthru.availableComponents.rustfmt # Just rustfmt, nothing else
-              swiftfmt
             ] ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.create-dmg ];
 
             shellHook = ''

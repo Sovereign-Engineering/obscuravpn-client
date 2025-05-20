@@ -20,8 +20,6 @@
           src = ./rustlib;
 
           strictDeps = true;
-
-          buildInputs = pkgs.lib.optionals pkgs.stdenv.isDarwin [ pkgs.darwin.apple_sdk.frameworks.Security ];
         };
 
         rustArgs = rustDepsArgs // { cargoArtifacts = craneLib.buildDepsOnly rustDepsArgs; };

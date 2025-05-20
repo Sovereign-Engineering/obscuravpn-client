@@ -4,7 +4,7 @@
     flake-utils.url = "github:numtide/flake-utils";
     napalm.inputs.nixpkgs.follows = "nixpkgs";
     napalm.url = "github:nix-community/napalm";
-    nixpkgs.url = "nixpkgs/nixos-24.05";
+    nixpkgs.url = "nixpkgs/nixos-unstable";
     rust-overlay.url = "github:oxalica/rust-overlay";
     swiftformat.url = "github:Sovereign-Engineering/SwiftFormat-nix";
   };

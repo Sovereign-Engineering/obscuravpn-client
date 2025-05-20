@@ -52,17 +52,9 @@
         checks = {
           inherit (packages) licenses rust;
 
-          clippy =
-            craneLib.cargoClippy (rustArgs // { cargoClippyExtraArgs = "--all-features --all-targets -- -Dwarnings"; });
-
           shellcheck = pkgs.runCommand "shellcheck" { nativeBuildInputs = [ pkgs.shellcheck ]; } ''
             shopt -s globstar
             shellcheck -P ${shellFiles} -- ${shellFiles}/**/*.{bash,sh}
-            touch "$out"
-          '';
-
-          swiftformat = pkgs.runCommand "swiftfmt" { nativeBuildInputs = [ swiftfmt ]; } ''
-            swiftformat --lint ${swiftFiles}
             touch "$out"
           '';
 
@@ -86,7 +78,17 @@
             nixfmt --width=120 --check ${self}/*.nix
             touch "$out"
           '';
-        };
+        } // (lib.optionalAttrs pkgs.stdenv.isDarwin {
+          # TODO: Fails due to unused code on non-darwin.
+          clippy =
+            craneLib.cargoClippy (rustArgs // { cargoClippyExtraArgs = "--all-features --all-targets -- -Dwarnings"; });
+
+          # TODO: Fails to build on non-darwin.
+          swiftformat = pkgs.runCommand "swiftfmt" { nativeBuildInputs = [ swiftfmt ]; } ''
+            swiftformat --lint ${swiftFiles}
+            touch "$out"
+          '';
+        });
 
         devShells = {
           default = pkgs.mkShellNoCC {

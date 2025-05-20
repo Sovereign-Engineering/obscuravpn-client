@@ -9,7 +9,7 @@
   outputs = { crane, flake-utils, nixpkgs, rust-overlay, self, }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        overlays = [ (import ./nix/overlays) (import rust-overlay) ];
+        overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs { inherit overlays system; };
         lib = pkgs.lib;
         rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./rustlib/rust-toolchain.toml;

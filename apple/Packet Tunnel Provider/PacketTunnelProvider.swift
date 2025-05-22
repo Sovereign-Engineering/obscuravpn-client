@@ -59,7 +59,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     }
 
     override func startTunnel(options: [String: NSObject]?) async throws {
-        logger.log("startTunnel entry \(self.providerId, privacy: .public)")
+        logger.log("startTunnel entry \(self.providerId, privacy: .public), includeAllNetworks: \(self.protocolConfiguration.includeAllNetworks, privacy: .public)")
 
         if options?.keys.contains("dontStartTunnel") == .some(true) {
             logger.critical("startTunnel \(self.providerId, privacy: .public) throws due to \"dontStartTunnel\" key in options")

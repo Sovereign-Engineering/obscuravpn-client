@@ -2,21 +2,17 @@
   inputs = {
     crane.url = "github:ipetkov/crane";
     flake-utils.url = "github:numtide/flake-utils";
-    napalm.inputs.nixpkgs.follows = "nixpkgs";
-    napalm.url = "github:nix-community/napalm";
-    nixpkgs.url = "nixpkgs/nixos-24.05";
+    nixpkgs.url = "nixpkgs/nixos-unstable";
     rust-overlay.url = "github:oxalica/rust-overlay";
-    swiftformat.url = "github:Sovereign-Engineering/SwiftFormat-nix";
   };
 
-  outputs = { crane, flake-utils, napalm, nixpkgs, rust-overlay, self, swiftformat }:
+  outputs = { crane, flake-utils, nixpkgs, rust-overlay, self, }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        overlays = [ (import ./nix/overlays) (import rust-overlay) napalm.overlays.default ];
+        overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs { inherit overlays system; };
         lib = pkgs.lib;
         rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./rustlib/rust-toolchain.toml;
-        swiftfmt = swiftformat.packages.${system}.default;
 
         craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
 
@@ -24,8 +20,6 @@
           src = ./rustlib;
 
           strictDeps = true;
-
-          buildInputs = pkgs.lib.optionals pkgs.stdenv.isDarwin [ pkgs.darwin.apple_sdk.frameworks.Security ];
         };
 
         rustArgs = rustDepsArgs // { cargoArtifacts = craneLib.buildDepsOnly rustDepsArgs; };
@@ -37,10 +31,23 @@
           OBSCURA_CLIENT_RUSTLIB_CBINDGEN_OUTPUT_HEADER_PATH = "${placeholder "dev"}/include/libobscuravpn_client.h";
         };
 
-        nodeModules = pkgs.napalm.buildPackage (lib.fileset.toSource {
-          root = ./obscura-ui;
-          fileset = lib.fileset.unions [ ./obscura-ui/package.json ./obscura-ui/package-lock.json ];
-        }) { };
+        nodeModules = pkgs.importNpmLock.buildNodeModules {
+          npmRoot = ./obscura-ui;
+          nodejs = pkgs.nodejs;
+        };
+
+        nodeDerivation = { name, nativeBuildInputs ? [ ], preBuildPhases ? [ ], ... }@args:
+          pkgs.stdenv.mkDerivation (args // {
+            name = "obscuravpn-client-${name}";
+
+            nativeBuildInputs = nativeBuildInputs ++ [ pkgs.nodejs ];
+
+            preBuildPhases = [ "preBuildNodeDerivation" ] ++ preBuildPhases;
+            preBuildNodeDerivation = ''
+              ln -s ${nodeModules}/node_modules .
+              export PATH="${nodeModules}/node_modules/.bin/:$PATH"
+            '';
+          });
 
         shellFiles = lib.sources.sourceFilesBySuffices ./. [ ".bash" ".sh" ".shellcheckrc" ];
 
@@ -52,31 +59,25 @@
         checks = {
           inherit (packages) licenses rust;
 
-          clippy =
-            craneLib.cargoClippy (rustArgs // { cargoClippyExtraArgs = "--all-features --all-targets -- -Dwarnings"; });
-
           shellcheck = pkgs.runCommand "shellcheck" { nativeBuildInputs = [ pkgs.shellcheck ]; } ''
             shopt -s globstar
             shellcheck -P ${shellFiles} -- ${shellFiles}/**/*.{bash,sh}
             touch "$out"
           '';
 
-          swiftformat = pkgs.runCommand "swiftfmt" { nativeBuildInputs = [ swiftfmt ]; } ''
+          rustfmt = craneLib.cargoFmt rustArgs;
+
+          swiftformat = pkgs.runCommand "swiftformat" { nativeBuildInputs = [ pkgs.swiftformat ]; } ''
             swiftformat --lint ${swiftFiles}
             touch "$out"
           '';
 
-          rustfmt = craneLib.cargoFmt rustArgs;
-
-          typescript = pkgs.stdenv.mkDerivation {
+          typescript = nodeDerivation {
             name = "typescript";
-
-            nativeBuildInputs = [ pkgs.nodePackages.typescript ];
 
             src = ./obscura-ui;
 
             buildPhase = ''
-              ln -s ${nodeModules}/_napalm-install/node_modules .
               tsc --noEmit
               touch "$out"
             '';
@@ -86,7 +87,11 @@
             nixfmt --width=120 --check ${self}/*.nix
             touch "$out"
           '';
-        };
+        } // (lib.optionalAttrs pkgs.stdenv.isDarwin {
+          # TODO: Fails due to unused code on non-darwin.
+          clippy =
+            craneLib.cargoClippy (rustArgs // { cargoClippyExtraArgs = "--all-features --all-targets -- -Dwarnings"; });
+        });
 
         devShells = {
           default = pkgs.mkShellNoCC {
@@ -97,8 +102,8 @@
               pkgs.nixfmt-classic
               pkgs.nodejs_20
               pkgs.shellcheck
+              pkgs.swiftformat
               rustToolchain.passthru.availableComponents.rustfmt # Just rustfmt, nothing else
-              swiftfmt
             ] ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.create-dmg ];
 
             shellHook = ''
@@ -125,10 +130,10 @@
             node ${contrib/licenses.mjs} >"$out"
           '';
 
-          licenses-node = pkgs.stdenv.mkDerivation {
+          licenses-node = nodeDerivation {
             name = "licenses-node.json";
 
-            nativeBuildInputs = [ pkgs.nodejs pkgs.pnpm ];
+            nativeBuildInputs = [ pkgs.pnpm ];
 
             src = (lib.fileset.toSource {
               root = ./obscura-ui;
@@ -136,8 +141,8 @@
             });
 
             buildPhase = ''
-              ${nodeModules}/_napalm-install/node_modules/.bin/license-checker \
-                --start ${nodeModules}/_napalm-install \
+              license-checker \
+                --start ${nodeModules} \
                 --onlyAllow '0BSD;Apache-2.0;BSD-2-Clause;BSD-3-Clause;CC0-1.0;CC-BY-3.0;CC-BY-4.0;ISC;MIT;OFL-1.1;Python-2.0' \
                 --excludePrivatePackages \
                 --unknown \

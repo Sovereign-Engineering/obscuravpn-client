@@ -4,7 +4,10 @@ import SwiftUI
 import UniformTypeIdentifiers
 import WebKit
 
-private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "ContentView")
+private let logger = Logger(
+    subsystem: Bundle.main.bundleIdentifier!,
+    category: "ContentView"
+)
 
 enum AppView: String, Hashable, Identifiable {
     case account
@@ -41,9 +44,20 @@ enum AppView: String, Hashable, Identifiable {
     var ipcValue: String {
         self.rawValue
     }
+
+    var needsScroll: Bool {
+        switch self {
+        case .account, .connection, .help, .about:
+            false
+        case .settings, .location, .developer:
+            true
+        }
+    }
 }
 
-let STABLE_VIEWS: OrderedSet<AppView> = OrderedSet([.connection, .location, .account, .settings, .help, .about])
+let STABLE_VIEWS: OrderedSet<AppView> = OrderedSet([
+    .connection, .location, .account, .settings, .help, .about,
+])
 
 let EXPERIMETNAL_VIEWS: OrderedSet<AppView> = OrderedSet()
 
@@ -67,8 +81,12 @@ class ViewModeManager: ObservableObject {
 
     init() {
         #if os(macOS)
-            self.eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-                if event.charactersIgnoringModifiers == "D", event.modifierFlags.contains(.command) {
+            self.eventMonitor = NSEvent.addLocalMonitorForEvents(
+                matching: .keyDown
+            ) { event in
+                if event.charactersIgnoringModifiers == "D",
+                   event.modifierFlags.contains(.command)
+                {
                     // Cmd+Shift+d
                     self.viewIndex = (self.viewIndex + 1) % VIEW_MODES.count
                     return nil
@@ -91,7 +109,9 @@ class ViewModeManager: ObservableObject {
     }
 
     func getIOSViews() -> OrderedSet<AppView> {
-        let iOSViews: Set<AppView> = [.connection, .location, .account, .settings, .about]
+        let iOSViews: Set<AppView> = [
+            .connection, .location, .account, .settings, .about,
+        ]
         return self.getViews().filter { iOSViews.contains($0) }
     }
 }
@@ -144,25 +164,32 @@ struct ContentView: View {
     // set alongside above, want to hide the sidebar when navigation is not allowed
     @State private var splitViewVisibility: NavigationSplitViewVisibility
 
-    let accountBadgeTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
+    let accountBadgeTimer = Timer.publish(every: 5, on: .main, in: .common)
+        .autoconnect()
 
     init(appState: AppState) {
         self.appState = appState
         self.webView = WebView(appState: appState)
-        let forceHide = appState.status.accountId == nil || appState.status.inNewAccountFlow
+        let forceHide =
+            appState.status.accountId == nil || appState.status.inNewAccountFlow
         self.loginViewShown = forceHide
         self.splitViewVisibility = forceHide ? .detailOnly : .automatic
     }
 
     var body: some View {
         self.content
-            .onReceive(self.accountBadgeTimer, perform: { _ in
-                if let account = self.appState.status.account {
-                    self.accountBadge = account.badgeText
-                    self.badgeColor = account.badgeColor
+            .onReceive(
+                self.accountBadgeTimer,
+                perform: { _ in
+                    if let account = self.appState.status.account {
+                        self.accountBadge = account.badgeText
+                        self.badgeColor = account.badgeColor
+                    }
+                    self.indicateUpdateAvailable =
+                        self.appState.osStatus.get().updaterStatus.type
+                            == .available
                 }
-                self.indicateUpdateAvailable = self.appState.osStatus.get().updaterStatus.type == .available
-            })
+            )
             .onChange(of: self.selectedView) { view in
                 // inform webUI to update navigation
                 self.webView.navigateTo(view: view)
@@ -194,13 +221,19 @@ struct ContentView: View {
     }
 
     @ViewBuilder func viewLabel(_ view: AppView) -> some View {
-        let label = Label(view.rawValue.capitalized, systemImage: view.systemImageName)
-            .listItemTint(Color("ObscuraOrange"))
-        if view == .account && self.accountBadge != nil && self.badgeColor != nil {
-            label.badge(Text(self.accountBadge!)
-                .monospacedDigit()
-                .foregroundColor(self.badgeColor)
-                .bold()
+        let label = Label(
+            view.rawValue.capitalized,
+            systemImage: view.systemImageName
+        )
+        .listItemTint(Color("ObscuraOrange"))
+        if view == .account && self.accountBadge != nil
+            && self.badgeColor != nil
+        {
+            label.badge(
+                Text(self.accountBadge!)
+                    .monospacedDigit()
+                    .foregroundColor(self.badgeColor)
+                    .bold()
             )
             // this has to be here, otherwise the label color is system accent default
             .listItemTint(Color("ObscuraOrange"))
@@ -222,14 +255,21 @@ struct ContentView: View {
     var content: some View {
         #if os(macOS)
             NavigationSplitView(columnVisibility: self.$splitViewVisibility) {
-                List(self.viewMode.getViews(), id: \.self, selection: self.$selectedView) { view in
+                List(
+                    self.viewMode.getViews(),
+                    id: \.self,
+                    selection: self.$selectedView
+                ) { view in
                     self.viewLabel(view)
                 }
                 .environment(\.sidebarRowSize, .large)
                 .navigationSplitViewColumnWidth(min: 175, ideal: 200)
             } detail: {
                 self.webView
-                    .navigationTitle(self.loginViewShown ? "Obscura" : self.selectedView.rawValue.capitalized)
+                    .navigationTitle(
+                        self.loginViewShown
+                            ? "Obscura" : self.selectedView.rawValue.capitalized
+                    )
             }
         #else
             VStack {
@@ -256,7 +296,12 @@ struct ContentView: View {
         logger.info("Handling URL: \(url, privacy: .public)")
 
         // From: https://developer.apple.com/documentation/xcode/defining-a-custom-url-scheme-for-your-app#Handle-incoming-URLs
-        guard let components = NSURLComponents(url: url, resolvingAgainstBaseURL: true) else {
+        guard
+            let components = NSURLComponents(
+                url: url,
+                resolvingAgainstBaseURL: true
+            )
+        else {
             logger.error("Failed to parse URL into components")
             return
         }
@@ -272,7 +317,9 @@ struct ContentView: View {
                 fullyOpenManagerWindow()
                 self.selectedView = .account
             case let unknownPath:
-                logger.error("Unknown URL path: \(unknownPath, privacy: .public)")
+                logger.error(
+                    "Unknown URL path: \(unknownPath, privacy: .public)"
+                )
                 fullyOpenManagerWindow()
             }
         #endif
@@ -281,14 +328,20 @@ struct ContentView: View {
 
 struct SidebarButton: View {
     var body: some View {
-        Button(action: self.toggleSidebar, label: {
-            Image(systemName: "sidebar.leading")
-        })
+        Button(
+            action: self.toggleSidebar,
+            label: {
+                Image(systemName: "sidebar.leading")
+            }
+        )
     }
 
     private func toggleSidebar() {
         #if os(macOS)
-            NSApp.keyWindow?.firstResponder?.tryToPerform(#selector(NSSplitViewController.toggleSidebar(_:)), with: nil)
+            NSApp.keyWindow?.firstResponder?.tryToPerform(
+                #selector(NSSplitViewController.toggleSidebar(_:)),
+                with: nil
+            )
         #endif
     }
 }

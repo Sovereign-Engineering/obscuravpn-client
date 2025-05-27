@@ -26,6 +26,7 @@ pub enum ConnectErrorCode {
     NoSlotsLeft,
     AccountExpired,
     ApiRateLimitExceeded,
+    ApiUnreachable,
     ApiError,
     NoLongerSupported,
     Other,
@@ -54,7 +55,8 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
                         | WgKeyRotationRequired {}
                         | Unknown(_) => Self::ApiError,
                     },
-                    ClientError::ProtocolError(_) | ClientError::Other(_) => Self::Other,
+                    ClientError::RequestExecError(_) => Self::ApiUnreachable,
+                    ClientError::ProtocolError(_) | ClientError::InvalidHeaderValue | ClientError::Other(_) => Self::Other,
                 },
                 ApiError::ConfigSave(_) => Self::Other,
             },

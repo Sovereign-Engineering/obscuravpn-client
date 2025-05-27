@@ -33,6 +33,7 @@ use crate::{config::PinnedLocation, manager::TunnelArgs};
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum ManagerCmdErrorCode {
+    ApiUnreachable,
     ApiError,
     ApiNoLongerSupported,
     ApiRateLimitExceeded,
@@ -70,7 +71,8 @@ impl From<&ApiError> for ManagerCmdErrorCode {
                     | ApiErrorKind::WgKeyRotationRequired {}
                     | ApiErrorKind::Unknown(_) => Self::ApiError,
                 },
-                ClientError::ProtocolError(_) | ClientError::Other(_) => Self::ApiError,
+                ClientError::RequestExecError(_) => Self::ApiUnreachable,
+                ClientError::ProtocolError(_) | ClientError::InvalidHeaderValue | ClientError::Other(_) => Self::ApiError,
             },
             ApiError::ConfigSave(err) => err.into(),
         }

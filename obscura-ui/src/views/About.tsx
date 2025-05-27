@@ -48,33 +48,35 @@ export default function About() {
   const updaterStatusDelayed = useThrottledValue(updaterStatus, updaterStatus.type === UpdaterStatusType.Initiated ? MIN_LOAD_MS : 0);
   const isLatest = errorCodeIsLatestVersion(updaterStatusDelayed.errorCode);
   return (
-    <Flex gap='md' className={classes.container}>
-      <Stack gap='lg' align='center' m={60}>
-        <Image src={AppIcon} w={120} />
-        <Wordmark fill={colorScheme === 'light' ? 'black' : theme.colors.gray[4]} width={150} height='auto' />
-        <Group gap={0}>
-          {isLatest && <ThemeIcon variant='transparent' c='green.8'><FaCheckCircle /></ThemeIcon>}
-          {updaterStatusDelayed.type === UpdaterStatusType.Available && <ThemeIcon variant='transparent' c='yellow'><FaExclamationTriangle /></ThemeIcon>}
-          {updaterStatusDelayed.type === UpdaterStatusType.Initiated && <Loader size='xs' mr='xs' />}
-          <Text>
-            {osStatus.srcVersion}
-            {isLatest && <> ({t('latestVersion')})</>}
-            {updaterStatusDelayed.type === UpdaterStatusType.Available && <> ({t('updateAvailable', { version: updaterStatusDelayed.appcast!.version })})</>}
-          </Text>
-        </Group>
-        {(updaterStatusDelayed.type === UpdaterStatusType.NotFound || updaterStatusDelayed.type == UpdaterStatusType.Error) && (
-          <UpdaterError errorCode={updaterStatusDelayed.errorCode} error={updaterStatusDelayed.error!} />
-        )}
-        <Group>
-          <Button component='a' href={OBSCURA_WEBPAGE} variant='outline'>{t('Website')}</Button>
-          {!IS_MOBILE && <> {
-            updaterStatusDelayed?.type === UpdaterStatusType.Available ? (
-              <Button onClick={() => handleCommand(commands.installUpdate)}>{t('installUpdate')}</Button>
-            ) : (
-              <Button onClick={() => handleCommand(commands.checkForUpdates)}>{t('checkForUpdates')}</Button>
-            )
-          }</>}
-        </Group>
+    <Flex gap='md' direction='column' justify='flex-end' h='100vh'>
+      <Stack align='center' style={{ flexGrow: '1' }} justify='space-around'>
+        <Stack align='center'>
+          <Image src={AppIcon} w={120} />
+          <Wordmark fill={colorScheme === 'light' ? 'black' : theme.colors.gray[4]} width={150} height='auto' />
+          <Group gap={0}>
+            {isLatest && <ThemeIcon variant='transparent' c='green.8'><FaCheckCircle /></ThemeIcon>}
+            {updaterStatusDelayed.type === UpdaterStatusType.Available && <ThemeIcon variant='transparent' c='yellow'><FaExclamationTriangle /></ThemeIcon>}
+            {updaterStatusDelayed.type === UpdaterStatusType.Initiated && <Loader size='xs' mr='xs' />}
+            <Text>
+              {osStatus.srcVersion}
+              {isLatest && <> ({t('latestVersion')})</>}
+              {updaterStatusDelayed.type === UpdaterStatusType.Available && <> ({t('updateAvailable', { version: updaterStatusDelayed.appcast!.version })})</>}
+            </Text>
+          </Group>
+          {(updaterStatusDelayed.type === UpdaterStatusType.NotFound || updaterStatusDelayed.type == UpdaterStatusType.Error) && (
+            <UpdaterError errorCode={updaterStatusDelayed.errorCode} error={updaterStatusDelayed.error!} />
+          )}
+          <Group>
+            <Button component='a' href={OBSCURA_WEBPAGE} variant='outline'>{t('Website')}</Button>
+            {!IS_MOBILE && <> {
+              updaterStatusDelayed?.type === UpdaterStatusType.Available ? (
+                <Button onClick={() => handleCommand(commands.installUpdate)}>{t('installUpdate')}</Button>
+              ) : (
+                <Button onClick={() => handleCommand(commands.checkForUpdates)}>{t('checkForUpdates')}</Button>
+              )
+            }</>}
+          </Group>
+        </Stack>
       </Stack>
       <Stack mb={10} align='center' ta='center'>
         <Text c='dimmed'>{t('copyright')}</Text>

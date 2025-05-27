@@ -152,7 +152,7 @@ struct ClientApp: App {
             Group {
                 if let appState = self.startupModel.appState {
                     ContentView(appState: appState)
-                        .frame(minWidth: 805, minHeight: 525)
+                        .frame(minWidth: 600, minHeight: 525)
                 } else {
                     StartupView()
                 }

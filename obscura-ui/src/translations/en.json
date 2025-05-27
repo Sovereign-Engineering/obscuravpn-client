@@ -192,7 +192,7 @@
   "settings.Version": "Version: {{ VERSION }}",
   "show account number": "show account number",
   "socials": "Socials",
-  "strictLeakPreventionLabel": "Enable Strict Leak Prevention (also disables LAN access)",
+  "strictLeakPreventionLabel": "[Unstable] Enable Strict Leak Prevention (also disables LAN access)",
   "strictLeakPreventionTooltip": "You must disconnect Obscura VPN before disabling this option",
   "supportMsg": "Reach out to <0>{{ email }}</0>",
   "synchronizing": "Synchronizing",

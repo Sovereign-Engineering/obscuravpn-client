@@ -154,6 +154,9 @@ struct ContentView: View {
 
     #if os(macOS)
         @EnvironmentObject private var appDelegate: AppDelegate
+    #else
+        @State private var tab: AppView = .connection
+        @State private var tabBarHeight: CGFloat = 0
     #endif
 
     @ObservedObject private var viewMode = ViewModeManager()
@@ -272,23 +275,33 @@ struct ContentView: View {
                     )
             }
         #else
-            VStack {
-                self.webView
-                    .ignoresSafeArea()
+            ZStack {
                 if !self.loginViewShown {
-                    HStack {
+                    TabView(selection: self.$tab) {
                         ForEach(self.viewMode.getIOSViews()) { view in
-                            Button {
-                                self.selectedView = view
-                            } label: {
-                                self.viewLabel(view)
-                                    .frame(maxWidth: .infinity)
-                            }
+                            Color.clear
+                                .background(TabBarAccessor { tabBar in
+                                    self.tabBarHeight = tabBar.bounds.height
+                                })
+                                .tag(view)
+                                .tabItem {
+                                    self.viewLabel(view)
+                                }
                         }
                     }
-                    .frame(alignment: .bottom)
+                    .tabViewStyle(.sidebarAdaptable)
                 }
+
+                self.webView
+                    // This will need to be changed for iPad
+                    .ignoresSafeArea(edges: [.top, .leading, .trailing])
+                    .padding(.bottom, self.tabBarHeight)
             }
+            .ignoresSafeArea()
+            .onChange(of: self.tab) { oldValue, newValue in
+                self.webView.navigateTo(view: newValue)
+            }
+            .tint(Color("ObscuraOrange"))
         #endif
     }
 

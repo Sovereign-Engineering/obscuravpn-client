@@ -69,7 +69,7 @@ struct WebView: UXViewRepresentable {
             WebView.generateNavEventJS(viewName: view.ipcValue)
         )
         #if !os(macOS)
-        self.webView.scrollView.bounces = view.needsScroll
+            self.webView.scrollView.bounces = view.needsScroll
         #endif
     }
 

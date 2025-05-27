@@ -1,7 +1,7 @@
 import { Anchor, Box, Center, Group, Loader, Paper, Stack, Text, ThemeIcon, useComputedColorScheme, useMantineTheme } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import React, { useContext, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { BsQuestionSquareFill } from 'react-icons/bs';
 import { FaRotateRight } from 'react-icons/fa6';
 import { MdOutlineWifiOff } from 'react-icons/md';
@@ -164,7 +164,7 @@ function AccountPaidUp({ accountInfo }: AccountStatusProps) {
         <AccountStatusCardTemplate
             icon={<PaidUpBadge />}
             heading={t('account-PaidUp')}
-            subtitle={<Text size='sm' c='dimmed'>{t('account-ExpiresOn', tOptions)}</Text>}
+            subtitle={<Text size='sm' c='dimmed'><Trans i18nKey='account-ExpiresOn' values={tOptions} components={[<Text component='span' display='inline-block' />]} /></Text>}
         />
     );
 }

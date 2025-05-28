@@ -40,9 +40,9 @@
     padding: 20px 60px;
 }
 
-@media screen and (max-width: $mantine-breakpoint-sm) {
+@media screen and (max-width: $mantine-breakpoint-xs) {
     .container {
-        padding-top: 50px;
+        padding-top: calc(20px + env(safe-area-inset-top));
         padding-bottom: 56px;
         padding-left: 20px;
         padding-right: 20px;

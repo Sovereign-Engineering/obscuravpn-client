@@ -19,3 +19,9 @@
     background-size: contain;
     background-position: bottom;
 }
+
+@media screen and (max-width: $mantine-breakpoint-xs) {
+    .container {
+        padding-top: env(safe-area-inset-top);
+    }
+}

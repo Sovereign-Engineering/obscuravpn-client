@@ -1,15 +1,8 @@
 .container {
     flex-direction: column;
-    justify-content: space-between;
-    height: 100vh;
 }
 
-@media screen and (max-width: $mantine-breakpoint-sm) {
-    .container {
-        padding-top: 40px;
-        justify-content: flex-end;
-    }
-
+@media screen and (max-width: $mantine-breakpoint-xs) {
     .ossLicensesGroup {
         flex-direction: column;
         text-align: center;

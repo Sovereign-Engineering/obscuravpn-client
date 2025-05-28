@@ -33,14 +33,14 @@ use crate::{config::PinnedLocation, manager::TunnelArgs};
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum ManagerCmdErrorCode {
-    ApiUnreachable,
     ApiError,
     ApiNoLongerSupported,
     ApiRateLimitExceeded,
     ApiSignupLimitExceeded,
+    ApiUnreachable,
     ConfigSaveError,
-    TunnelInactive,
     Other,
+    TunnelInactive,
 }
 
 impl From<&ConfigSaveError> for ManagerCmdErrorCode {
@@ -54,16 +54,15 @@ impl From<&ApiError> for ManagerCmdErrorCode {
     fn from(err: &ApiError) -> Self {
         tracing::info!("deriving json cmd error code for {}", &err);
         match err {
-            ApiError::NoAccountId => Self::ApiError,
             ApiError::ApiClient(err) => match err {
                 ClientError::ApiError(err) => match err.body.error {
                     ApiErrorKind::NoLongerSupported {} => Self::ApiNoLongerSupported,
                     ApiErrorKind::RateLimitExceeded {} => Self::ApiRateLimitExceeded,
                     ApiErrorKind::SignupLimitExceeded {} => Self::ApiSignupLimitExceeded,
-                    ApiErrorKind::InternalError {}
-                    | ApiErrorKind::AccountExpired {}
+                    ApiErrorKind::AccountExpired {}
                     | ApiErrorKind::AlreadyExists {}
                     | ApiErrorKind::BadRequest {}
+                    | ApiErrorKind::InternalError {}
                     | ApiErrorKind::MissingOrInvalidAuthToken {}
                     | ApiErrorKind::NoApiRoute {}
                     | ApiErrorKind::NoMatchingExit {}
@@ -72,9 +71,10 @@ impl From<&ApiError> for ManagerCmdErrorCode {
                     | ApiErrorKind::Unknown(_) => Self::ApiError,
                 },
                 ClientError::RequestExecError(_) => Self::ApiUnreachable,
-                ClientError::ProtocolError(_) | ClientError::InvalidHeaderValue | ClientError::Other(_) => Self::ApiError,
+                ClientError::InvalidHeaderValue | ClientError::Other(_) | ClientError::ProtocolError(_) => Self::ApiError,
             },
             ApiError::ConfigSave(err) => err.into(),
+            ApiError::NoAccountId => Self::ApiError,
         }
     }
 }
@@ -101,6 +101,11 @@ pub enum ManagerCmd {
     },
     Logout {},
     Ping {},
+    RefreshExitList {
+        #[serde_as(as = "serde_with::DurationMilliSeconds")]
+        freshness: Duration,
+    },
+    RotateWgKey {},
     SetApiUrl {
         url: Option<String>,
     },
@@ -117,11 +122,6 @@ pub enum ManagerCmd {
         args: Option<TunnelArgs>,
         allow_activation: bool,
     },
-    RefreshExitList {
-        #[serde_as(as = "serde_with::DurationMilliSeconds")]
-        freshness: Duration,
-    },
-    RotateWgKey {},
 }
 
 #[derive(Debug, Serialize)]
@@ -158,6 +158,8 @@ where
 impl ManagerCmd {
     pub(super) async fn run(self, manager: &Manager) -> Result<ManagerCmdOk, ManagerCmdErrorCode> {
         match self {
+            Self::ApiGetAccountInfo {} => map_result(manager.get_account_info().await),
+            Self::GetDebugInfo {} => Ok(ManagerCmdOk::GetDebugInfo(manager.get_debug_info())),
             Self::GetExitList { known_version } => {
                 let mut recv = manager.subscribe_exit_list();
                 let res = recv
@@ -175,11 +177,6 @@ impl ManagerCmd {
                     value: res.value.clone(),
                 }))
             }
-            Self::GetTrafficStats {} => Ok(ManagerCmdOk::GetTrafficStats(manager.traffic_stats())),
-            Self::SetPinnedExits { exits } => map_result(manager.set_pinned_exits(exits)),
-            Self::Login { account_id, validate } => map_result(manager.login(account_id, validate).await),
-            Self::Logout {} => map_result(manager.logout()),
-            Self::ApiGetAccountInfo {} => map_result(manager.get_account_info().await),
             Self::GetStatus { known_version } => manager
                 .subscribe()
                 .wait_for(|s| Some(s.version) != known_version)
@@ -189,17 +186,20 @@ impl ManagerCmd {
                     tracing::error!("status subscription channel closed");
                     ManagerCmdErrorCode::Other
                 }),
+            Self::GetTrafficStats {} => Ok(ManagerCmdOk::GetTrafficStats(manager.traffic_stats())),
+            Self::Login { account_id, validate } => map_result(manager.login(account_id, validate).await),
+            Self::Logout {} => map_result(manager.logout()),
             Self::Ping {} => Ok(ManagerCmdOk::Empty),
-            Self::SetInNewAccountFlow { value } => map_result(manager.set_in_new_account_flow(value)),
+            Self::RefreshExitList { freshness } => map_result(manager.maybe_update_exits(freshness).await),
+            Self::RotateWgKey {} => map_result(manager.rotate_wg_key()),
+            Self::SetAutoConnect { enable } => map_result(manager.set_auto_connect(enable)),
             Self::SetApiUrl { url } => map_result(manager.set_api_url(url)),
+            Self::SetInNewAccountFlow { value } => map_result(manager.set_in_new_account_flow(value)),
+            Self::SetPinnedExits { exits } => map_result(manager.set_pinned_exits(exits)),
             Self::SetTunnelArgs { args, allow_activation } => manager
                 .set_target_state(args, allow_activation)
                 .map(Into::into)
                 .map_err(|()| ManagerCmdErrorCode::TunnelInactive),
-            Self::RefreshExitList { freshness } => map_result(manager.maybe_update_exits(freshness).await),
-            Self::SetAutoConnect { enable } => map_result(manager.set_auto_connect(enable)),
-            Self::RotateWgKey {} => map_result(manager.rotate_wg_key()),
-            Self::GetDebugInfo {} => Ok(ManagerCmdOk::GetDebugInfo(manager.get_debug_info())),
         }
     }
 }

@@ -25,3 +25,13 @@
         padding-top: env(safe-area-inset-top);
     }
 }
+
+.locationDividerCaption {
+    width: 28rem;
+}
+
+@media screen and (max-width: $mantine-breakpoint-xs) {
+    .locationDividerCaption {
+        width: 320px;
+    }
+}

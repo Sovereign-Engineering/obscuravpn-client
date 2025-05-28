@@ -51,10 +51,10 @@ export default function LocationView() {
             });
         }
         await vpnConnect({
-            city: {
-                city_code: exit.city_code,
-                country_code: exit.country_code,
-            },
+          city: {
+            city_code: exit.city_code,
+            country_code: exit.country_code,
+          }
         });
     };
 

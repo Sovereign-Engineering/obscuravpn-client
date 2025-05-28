@@ -9,12 +9,12 @@ import { MdLanguage, MdLaptopMac, MdOutlineWifiOff } from 'react-icons/md';
 import { ExitSelector, ExitSelectorCity } from 'src/bridge/commands';
 import * as ObscuraAccount from '../common/accountUtils';
 import { accountIsExpired, Exit, getContinent, getExitCountry, useReRenderWhenExpired } from '../common/api';
-import { AppContext, ConnectionInProgress, getTunnelArgs, isConnecting, PinnedLocation } from '../common/appContext';
+import { AppContext, ConnectionInProgress, getCityFromStatus, isConnecting, NEVPNStatus, PinnedLocation, useIsConnecting, useIsTransitioning } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { exitLocation, exitsSortComparator, getCountryFlag, getExitCountryFlag } from '../common/exitUtils';
 import { KeyedSet } from '../common/KeyedSet';
 import { useExitList } from '../common/useExitList';
-import { errMsg, useCookie } from '../common/utils';
+import { useCookie } from '../common/utils';
 import BoltBadgeAuto from '../components/BoltBadgeAuto';
 import ExternalLinkIcon from '../components/ExternalLinkIcon';
 import ObscuraChip from '../components/ObscuraChip';
@@ -45,12 +45,11 @@ import classes from './ConnectionView.module.css';
 const BUTTON_WIDTH = 320;
 
 export default function Connection() {
-    const theme = useMantineTheme();
     const colorScheme = useComputedColorScheme();
     const { t } = useTranslation();
-    const { vpnConnected, connectionInProgress, osStatus, vpnConnect, vpnDisconnect, appStatus,  } = useContext(AppContext);
-    const { internetAvailable } = osStatus;
-    const connectionTransition = connectionInProgress !== ConnectionInProgress.UNSET;
+    const { vpnConnected, initiatingExitSelector, connectionInProgress, osStatus, appStatus, isOffline } = useContext(AppContext);
+    const connectionTransition = useIsTransitioning();
+
     const { account } = appStatus;
     const { exitList } = useExitList({
         periodS: 3600,
@@ -59,14 +58,30 @@ export default function Connection() {
 
     useReRenderWhenExpired(account);
 
-    const tunnelArgs = getTunnelArgs(appStatus.vpnStatus);
+    const targetCity = getCityFromStatus(appStatus.vpnStatus);
+    const specificInitiation = !(initiatingExitSelector === undefined || 'any' in initiatingExitSelector);
+    const isCityConnect = (targetCity !== undefined || specificInitiation);
     const accountHasExpired = accountInfo !== null && accountIsExpired(accountInfo);
+
+    /* If quick connect is used, don't show the combobox while connecting to avoid confusion.
+      This is because we don't want the user to think they are connecting to the last chosen location.
+      It's possible in the future that we can propagate which location is being connected to while connecting.
+      Additionally, we don't want to show the dropdown when not connected AND a connection pre-requisite is missing.
+      If we're already connected and the account expires, we still want to show the disconnect.
+      Only when we're no longer connected should the pre-requisite take precedence.
+    */
+    const showLocationSelect = (isCityConnect || osStatus.osVpnStatus !== NEVPNStatus.Connecting) && (vpnConnected || accountInfo !== null && !accountHasExpired);
+    /* The primary button is hidden in the following scenarios:
+      1) connected
+      2) not connecting via quick connect (i.e. connecting to a user-selected location)
+      3) disconnecting
+    */
+    const primaryButtonShown = !(vpnConnected || (isCityConnect && osStatus.osVpnStatus !== NEVPNStatus.Disconnected) || osStatus.osVpnStatus === NEVPNStatus.Disconnecting);
 
     const getTitle = () => {
         if (accountHasExpired) return t('account-Expired');
         if (connectionTransition) {
-            let targetCity = tunnelArgs?.exit && "city" in tunnelArgs.exit ? tunnelArgs.exit.city : undefined;
-            let sampleExit = targetCity && exitList?.find(e => e.city_code == targetCity.city_code && e.country_code == targetCity.country_code);
+            const sampleExit = targetCity && exitList?.find(e => e.city_code == targetCity.city_code && e.country_code == targetCity.country_code);
 
             switch (connectionInProgress) {
                 case ConnectionInProgress.Connecting:
@@ -79,7 +94,7 @@ export default function Connection() {
             }
         }
         if (vpnConnected) return t('connectedToObscura');
-        if (!internetAvailable) return t('disconnected');
+        if (isOffline) return t('disconnected');
         if (accountInfo === null) return t('validatingAccount')
         return t('notConnected');
     }
@@ -88,53 +103,22 @@ export default function Connection() {
         if (vpnConnected && !connectionTransition) return t('enjoyObscura');
         if (accountHasExpired) return t('continueUsingObscura');
         if (connectionTransition) return t('pleaseWaitAMoment');
-        if (!internetAvailable) return t('connectToInternet');
+        if (isOffline) return t('connectToInternet');
         if (accountInfo === null) return '';
         return t('connectToEnjoy');
     }
-
-    const getButtonContent = () => {
-        if (connectionTransition) return t(connectionInProgress) + '...'
-        return <Group gap={5}><BoltBadgeAuto />{t('QuickConnect')}</Group>;
-    }
-
-    // qc: Quick Connect
-    const qcBtnAction = (_: MouseEvent) => vpnConnected ? vpnDisconnect() : vpnConnect({ any: {} });
-    const qcBtnDisabled = !internetAvailable || connectionTransition;
-    const primaryBtnDisconnectProps = (vpnConnected && connectionInProgress !== ConnectionInProgress.Reconnecting) ? theme.other.buttonDisconnectProps : {};
-
-    const isCityConnect = tunnelArgs && "city" in tunnelArgs.exit;
-    const showQuickConnect = !vpnConnected && !isCityConnect && accountInfo !== null && !appStatus.vpnStatus.connecting;
-    /* If quick connect is used, don't show the combobox while connecting to avoid confusion.
-       This is because we don't want the user to think they are connecting to the last chosen location.
-       It's possible in the future that we can propagate which location is being connected to while connecting.
-       Additionally, we don't want to show the dropdown when not connected AND a connection pre-requisite is missing.
-       If we're already connected and the account expires, we still want to show the disconnect.
-       Only when we're no longer connected should the pre-requisite take precedence.
-    */
-    const showLocationSelect = (!appStatus.vpnStatus.connecting || isCityConnect) && (vpnConnected || accountInfo !== null && !accountHasExpired);
 
     return (
         <Stack align='center' h='100vh' gap={0} className={classes.container} style={{ backgroundImage: `url("${Deco()}")`}}>
             <Space h={40} />
             <Mascot />
-            <Stack align='center' gap={showQuickConnect ? 0 : 20} mt={showQuickConnect ? 0 : 20} justify='space-around'>
+            <Stack align='center' gap={primaryButtonShown ? 0 : 20} mt={primaryButtonShown ? 0 : 20} justify='space-around'>
                 <Title order={2} fw={600}>{getTitle()}</Title>
                 <Title order={4} mt={5} h='xl' c={colorScheme === 'light' ? 'dark.3' : 'dark.2'} fw={350}>{Subtitle()}</Title>
             </Stack>
             <Space h='xs' />
-            {
-              !vpnConnected && accountInfo !== null && accountHasExpired ?
-                <Button component='a' href={ObscuraAccount.APP_ACCOUNT_TAB}>{t('ManageAccount')}</Button>
-              : showQuickConnect &&
-                <Button size='md' className={commonClasses.button} onClick={qcBtnAction} w={BUTTON_WIDTH} disabled={qcBtnDisabled} {...primaryBtnDisconnectProps}>{getButtonContent()}</Button>
-            }
-            {/* quick connect cancel button */}
-            {isConnecting(connectionInProgress) && <>
-                <Space h='lg' />
-                <Button w={BUTTON_WIDTH} {...theme.other.buttonDisconnectProps} mt={5} onClick={vpnDisconnect}>{t('Cancel Connecting')}</Button>
-            </>}
-            <Space />
+            <PrimaryConnectButton />
+            <Space h='xs' />
             {showLocationSelect && <LocationSelect />}
             {
                 vpnConnected && connectionInProgress === ConnectionInProgress.UNSET && <>
@@ -149,13 +133,53 @@ export default function Connection() {
     );
 }
 
+/**
+ * One of: Quick Connect, Manage Account, Cancel Connecting, Disconnecting (disabled)
+ */
+function PrimaryConnectButton() {
+  const { t } = useTranslation();
+  const theme = useMantineTheme();
+  const { vpnConnected, connectionInProgress, initiatingExitSelector, osStatus, vpnConnect, vpnDisconnect, appStatus } = useContext(AppContext);
+  const { internetAvailable } = osStatus;
+  const { account } = appStatus;
+  const connectionTransition = connectionInProgress !== ConnectionInProgress.UNSET;
+  const inConnectingState = useIsConnecting();
+
+  const accountInfo = account?.account_info ?? null;
+  const accountHasExpired = accountInfo !== null && accountIsExpired(accountInfo);
+
+  const targetCity = getCityFromStatus(appStatus.vpnStatus);
+  const specificInitiation = !(initiatingExitSelector === undefined || 'any' in initiatingExitSelector);
+  const connectingToCity = (targetCity !== undefined || specificInitiation) && (osStatus.osVpnStatus !== NEVPNStatus.Disconnected || appStatus.vpnStatus.connecting !== undefined);
+
+  const showQuickConnect = !vpnConnected && !connectingToCity && accountInfo !== null && !appStatus.vpnStatus.connecting && osStatus.osVpnStatus !== NEVPNStatus.Disconnecting;
+  const qcBtnAction = (_: MouseEvent) => vpnConnected ? vpnDisconnect() : vpnConnect({ any: {} });
+  const qcBtnDisabled = !internetAvailable || connectionTransition;
+  const primaryBtnDisconnectProps = (vpnConnected && connectionInProgress !== ConnectionInProgress.Reconnecting) ? theme.other.buttonDisconnectProps : {};
+
+  if (!vpnConnected && accountInfo !== null && accountHasExpired) {
+    return <Button component='a' href={ObscuraAccount.APP_ACCOUNT_TAB}>{t('ManageAccount')}</Button>;
+  }
+  if (inConnectingState && !connectingToCity) {
+    return <>
+      <Space h='lg' />
+      <Button w={BUTTON_WIDTH} {...theme.other.buttonDisconnectProps} mt={5} onClick={vpnDisconnect}>{t('Cancel Connecting')}</Button>
+    </>
+  }
+  if (showQuickConnect) {
+    const buttonContent = connectionTransition ? t(connectionInProgress) + '...' : <Group gap={5}><BoltBadgeAuto />{t('QuickConnect')}</Group>;
+    return <Button size='md' className={commonClasses.button} onClick={qcBtnAction} w={BUTTON_WIDTH} disabled={qcBtnDisabled} {...primaryBtnDisconnectProps}>{buttonContent}</Button>
+  }
+}
+
 function ConnectionProgressBar() {
     const { t } = useTranslation();
     const colorScheme = useComputedColorScheme();
     const {
         vpnConnected,
         connectionInProgress,
-        osStatus
+        osStatus,
+        isOffline
     } = useContext(AppContext);
     const { internetAvailable } = osStatus;
 
@@ -163,7 +187,6 @@ function ConnectionProgressBar() {
     const progressBg = colorScheme === 'light' ? 'dark.4' : 'dark.3';
 
     const connectingProgressBars = usePulsingProgress({ activated: isConnecting(connectionInProgress), bars: 2, inactiveColor: progressBg, w: 50 });
-    const isOffline = !internetAvailable && !vpnConnected && !isConnecting(connectionInProgress);
     return (
         <Paper shadow='xl' withBorder w='80%' maw={600} bg={bg} p='md' pt={5} pb='xs' mb='lg' radius='lg'>
             <Group mih={50} className={classes.connectionProgressBarGroup} align='center'>
@@ -283,16 +306,15 @@ function Deco() {
     const {
         vpnConnected,
         connectionInProgress,
+        isOffline,
         osStatus
     } = useContext(AppContext);
-    const { internetAvailable } = osStatus;
     const colorScheme = useComputedColorScheme();
     const [connectingIndex, toggleConnectingDeco] = useToggle([0, 1, 2, 2]);
 
-    // Setup interval for animation when connecting
     const { start, stop } = useInterval(() => {
       toggleConnectingDeco();
-    }, 1000);
+    }, osStatus.osVpnStatus === NEVPNStatus.Disconnecting ? 750 : 500);
 
     useEffect(() => {
         if (connectionInProgress !== ConnectionInProgress.UNSET) {
@@ -306,12 +328,11 @@ function Deco() {
         return () => stop();
     }, [connectionInProgress, start, stop]);
 
-    const isOffline = !internetAvailable && !vpnConnected && !isConnecting(connectionInProgress);
     if (isOffline) return colorScheme === 'light' ? DecoOfflineLight : DecoOfflineDark;
 
     if (connectionInProgress !== ConnectionInProgress.UNSET) {
-        // want to allow reverse animations
-        const adjustedIdx = connectionInProgress === ConnectionInProgress.Disconnecting ? DEC_LAST_IDX - connectingIndex : connectingIndex;
+        // reverse the animation when disconnecting
+        const adjustedIdx = osStatus.osVpnStatus === NEVPNStatus.Disconnecting ? DEC_LAST_IDX - connectingIndex : connectingIndex;
         const connectionDeco = DECO_CONNECTING_ARRAY[colorScheme][adjustedIdx];
         if (connectionDeco === undefined) {
             console.error(`adjustedIdx/connectingIndex (${adjustedIdx} or ${connectingIndex}) longer than DECO_CONNECTING_ARRAY`);
@@ -341,11 +362,10 @@ function Mascot() {
     const {
         vpnConnected,
         connectionInProgress,
-        osStatus,
-        appStatus
+        appStatus,
+        isOffline
     } = useContext(AppContext);
     const accountInfo = appStatus.account?.account_info ?? null;
-    const { internetAvailable } = osStatus;
     // tuned to show ... for 3 extra cycles
     const [connectingIndex, toggleConnectingDeco] = useToggle([0, 1, 2, 3, 3, 3, 3]);
     // want to show celebratory mascot the first time the user uses the app
@@ -361,10 +381,9 @@ function Mascot() {
         }
     }, [vpnConnected]);
 
-    // tuned to 140ms
     const { start, stop } = useInterval(() => {
         toggleConnectingDeco();
-    }, 130);
+    }, 120);
 
     useEffect(() => {
         if (connectionInProgress !== ConnectionInProgress.UNSET) {
@@ -373,12 +392,11 @@ function Mascot() {
             if (connectingIndex !== 0) {
               toggleConnectingDeco(0);
             }
+            console.log('stopped');
             stop();
         }
         return () => stop();
-    }, [connectionInProgress, start, stop]);
-
-    const isOffline = !internetAvailable && !vpnConnected && !isConnecting(connectionInProgress);
+    }, [connectionInProgress]);
 
     const getMascot = () => {
         if (isOffline) return MascotDead;
@@ -411,7 +429,7 @@ function LocationSelect(): ReactNode {
       );
     }, [exitList]);
 
-    const { appStatus, vpnConnect, vpnConnected, connectionInProgress, osStatus } = useContext(AppContext);
+    const { appStatus, vpnConnect, vpnConnected, connectionInProgress, osStatus, isOffline } = useContext(AppContext);
     const { internetAvailable } = osStatus;
     const { lastChosenExit, pinnedLocations } = appStatus;
     const connectedExit = appStatus.vpnStatus.connected?.exit;
@@ -498,7 +516,7 @@ function LocationSelect(): ReactNode {
                             >
                                 {
                                   selectedCity === null
-                                  ? <Text>{internetAvailable ? t('selectLocation') : t('noInternet')}</Text>
+                                  ? <Text>{isOffline ? t('selectLocation') : t('noInternet')}</Text>
                                   : <Group gap='xs'>
                                     <Text size='lg'>{getCountryFlag(selectedCity.country_code)} {selectedExampleExit?.city_name}</Text>
                                   </Group>
@@ -534,7 +552,7 @@ function LocationSelect(): ReactNode {
                                     };
                                     setSelectedCity(city);
                                     vpnConnect({
-                                      city: city,
+                                      city,
                                     });
                                 }} lastChosenExit={lastChosenExit} pinnedLocationSet={pinnedLocationSet} />
                             </ScrollArea.Autosize>
@@ -551,14 +569,12 @@ function LocationConnectTopCaption() {
     const { t } = useTranslation();
     const { vpnConnected, connectionInProgress } = useContext(AppContext);
     if (vpnConnected && connectionInProgress === ConnectionInProgress.UNSET)
-        return <Text c='green.8' fw={550}>{t('connectedTo')}</Text>;
+        return <Divider className={classes.locationDividerCaption} my={0} label={<Text c='green.8' fw={550}>{t('connectedTo')}</Text>} labelPosition='center' />;
 
     if (connectionInProgress === ConnectionInProgress.UNSET && !vpnConnected)
-        return <Text c='gray'>{t('or connect to')}</Text>;
+        return <Divider className={classes.locationDividerCaption} my={0} label={<Text c='gray'>{t('or connect to')}</Text>} labelPosition='center' />;
 
-    if (isConnecting(connectionInProgress))
-        return <Text c='gray'>{t('Connecting')}...</Text>;
-    return <Space h='lg' />;
+    return <Space h='1.5rem' />;
 }
 
 interface LocationConnectRightButtonProps {
@@ -569,11 +585,15 @@ interface LocationConnectRightButtonProps {
 function LocationConnectRightButton({ dropdownOpened, selectedCity }: LocationConnectRightButtonProps) {
     const { t } = useTranslation();
     const theme = useMantineTheme();
-    const { vpnConnect, vpnDisconnect, vpnConnected, connectionInProgress, osStatus } = useContext(AppContext);
-    const { internetAvailable } = osStatus;
+    const { vpnConnect, vpnDisconnect, vpnConnected, connectionInProgress, osStatus, isOffline } = useContext(AppContext);
 
     const buttonText = connectionInProgress === ConnectionInProgress.Connecting ? 'Cancel' : ((isConnecting(connectionInProgress) || vpnConnected) ? 'Disconnect' : 'Connect');
-    const btnDisabled = (dropdownOpened && buttonText === 'Connect') || selectedCity === null || !internetAvailable || (connectionInProgress === ConnectionInProgress.Disconnecting || connectionInProgress === ConnectionInProgress.ChangingLocations);
+    const btnDisabled = selectedCity === null
+      || (dropdownOpened && buttonText === 'Connect')
+      || isOffline
+      || osStatus.osVpnStatus === NEVPNStatus.Disconnecting
+      // to keep the resulting state predictable for the user, disallow cancel when changing locations
+      || connectionInProgress === ConnectionInProgress.ChangingLocations;
     // don't want to use color and background props when disabled since they override the disabled styles
     const disconnectVariantProps = !btnDisabled && (isConnecting(connectionInProgress) || vpnConnected) ? theme.other.buttonDisconnectProps : {};
     return (

@@ -1,5 +1,5 @@
-import { createContext } from 'react';
-import { ExitSelector, TunnelArgs } from 'src/bridge/commands';
+import { createContext, useContext } from 'react';
+import { ExitSelector, ExitSelectorCity, TunnelArgs } from 'src/bridge/commands';
 import { AccountId } from './accountUtils';
 import { AccountInfo, Exit } from './api';
 
@@ -63,6 +63,11 @@ export interface VpnStatus {
     disconnected?: {}
 }
 
+export function getCityFromStatus(status: VpnStatus): ExitSelectorCity | undefined {
+  const tunnelArgs = getTunnelArgs(status);
+  return tunnelArgs?.exit && "city" in tunnelArgs.exit ? tunnelArgs.exit.city : undefined;
+}
+
 export function getTunnelArgs(status: VpnStatus): TunnelArgs | undefined {
   return status.connected?.tunnelArgs ?? status.connecting?.tunnelArgs;
 }
@@ -94,13 +99,16 @@ export interface AppStatus {
 
 interface IAppContext {
     vpnConnected: boolean,
-    toggleVpnConnection: () => Promise<void>,
+    // the exitSelector used to initiate the connection
+    initiatingExitSelector?: ExitSelector,
     vpnConnect: (exit: ExitSelector) => Promise<void>,
     vpnDisconnect: () => Promise<void>,
     pollAccount: () => Promise<void>,
     accountLoading: boolean,
     appStatus: AppStatus,
     osStatus: OsStatus,
+    // e.g. useful for UI
+    isOffline: boolean,
     accountInfo: AccountInfo | null,
     connectionInProgress: ConnectionInProgress
 }
@@ -116,6 +124,26 @@ export enum ConnectionInProgress {
     UNSET = 'UNSET'
 }
 
+/**
+ * State derived isConnecting hook
+ */
+export function useIsConnecting() {
+  const { connectionInProgress, osStatus, appStatus } = useContext(AppContext);
+  return osStatus.osVpnStatus === NEVPNStatus.Connecting
+    || osStatus.osVpnStatus === NEVPNStatus.Reasserting
+    || connectionInProgress === ConnectionInProgress.ChangingLocations
+    || appStatus.vpnStatus.connecting !== undefined;
+}
+
+export function useIsTransitioning() {
+  const { connectionInProgress, osStatus, appStatus } = useContext(AppContext);
+  return osStatus.osVpnStatus === NEVPNStatus.Connecting
+    || osStatus.osVpnStatus === NEVPNStatus.Reasserting
+    || osStatus.osVpnStatus === NEVPNStatus.Disconnecting
+    || connectionInProgress === ConnectionInProgress.ChangingLocations
+    || appStatus.vpnStatus.connecting !== undefined;
+}
+
 export function isConnecting(connectionInProgress: ConnectionInProgress) {
     switch (connectionInProgress) {
         case ConnectionInProgress.Connecting:
@@ -124,4 +152,11 @@ export function isConnecting(connectionInProgress: ConnectionInProgress) {
             return true;
     }
     return false;
+}
+
+/**
+ * No Reconnecting or Disconnecting
+ */
+export function isConnectingClean(connectionInProgress: ConnectionInProgress, osVpnStatus: NEVPNStatus) {
+  return connectionInProgress === ConnectionInProgress.ChangingLocations || osVpnStatus === NEVPNStatus.Connecting;
 }

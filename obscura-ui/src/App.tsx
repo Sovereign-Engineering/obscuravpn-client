@@ -132,7 +132,7 @@ export default function () {
       notifications.hide(NotificationId.VPN_ERROR);
       notifications.show({
         id: NotificationId.VPN_ERROR,
-        withCloseButton: false,
+        withCloseButton: true,
         color: 'red',
         title: t('Error'),
         message: fmtVpnError(t, errorEnum),

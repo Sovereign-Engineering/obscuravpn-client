@@ -110,20 +110,16 @@ pub unsafe extern "C" fn json_ffi_cmd(context: usize, json_cmd: FfiBytes, cb: ex
             "finished json ffi cmd",
         );
 
-        let json_result = result.and_then(|ok| match serde_json::to_string(&ok) {
-            Ok(json_ok) => Ok(json_ok),
-            Err(err) => {
+        let json_result = result.and_then(|ok| {
+            serde_json::to_string(&ok).map_err(|err| {
                 tracing::error!(?err, "could not serialize successful json cmd result: {err}");
-                Err(ManagerCmdErrorCode::Other)
-            }
+                ManagerCmdErrorCode::Other
+            })
         });
 
         match json_result {
             Ok(ok) => cb(context, ok.ffi_str(), "".ffi_str()),
-            Err(err) => {
-                let err: &'static str = err.into();
-                cb(context, "".ffi_str(), err.ffi_str())
-            }
+            Err(err) => cb(context, "".ffi_str(), <&'static str>::from(err).ffi_str()),
         }
     });
 }

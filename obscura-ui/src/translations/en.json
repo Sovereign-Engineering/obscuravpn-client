@@ -101,6 +101,7 @@
   "apiError": "API request failed. Please make sure you are connected to the internet and no other VPN or firewall is running.",
   "apiRateLimitExceeded": "API rate-limit exceeded. Please try again later.",
   "apiSignupLimitExceeded": "Sign up limit exceeded. Please try again in a few hours.",
+  "apiUnreachable": "Unable to connect to the Obscura API. You may be offline or something is interfering with your connection.",
   "appStatusLoading": "Loading initial app status",
   "autoConnectStartup": "Automatically connect at launch",
   "autoConnectStartup-behavior": "If you last chose \"Quick Connect\", Obscura will \"Quick Connect\" at next launch. If you last chose a specific location, Obscura will connect to that location at next launch.",

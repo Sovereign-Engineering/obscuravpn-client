@@ -22,12 +22,13 @@ use crate::network_config::NetworkConfigError;
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum ConnectErrorCode {
-    InvalidAccountId,
-    NoSlotsLeft,
     AccountExpired,
-    ApiRateLimitExceeded,
     ApiError,
+    ApiRateLimitExceeded,
+    ApiUnreachable,
+    InvalidAccountId,
     NoLongerSupported,
+    NoSlotsLeft,
     Other,
 }
 
@@ -54,7 +55,8 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
                         | WgKeyRotationRequired {}
                         | Unknown(_) => Self::ApiError,
                     },
-                    ClientError::ProtocolError(_) | ClientError::Other(_) => Self::Other,
+                    ClientError::RequestExecError(_) => Self::ApiUnreachable,
+                    ClientError::InvalidHeaderValue | ClientError::Other(_) | ClientError::ProtocolError(_) => Self::Other,
                 },
                 ApiError::ConfigSave(_) => Self::Other,
             },
@@ -75,34 +77,34 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
 pub enum TunnelConnectError {
     #[error("tunnel creation: {0}")]
     ApiError(#[from] ApiError),
-    #[error("could not construct network config: {0}")]
-    NetworkConfig(#[from] NetworkConfigError),
-    #[error("tunnel connect: {0}")]
-    TunnelConnect(#[from] QuicWgConnectError),
-    #[error("relay selection failed: {0}")]
-    RelaySelection(#[from] RelaySelectionError),
-    #[error("api returned invalid tunnel id")]
-    InvalidTunnelId,
-    #[error("No matching exit.")]
-    NoExit,
-    #[error("api returned and unexpected relay")]
-    UnexpectedRelay,
-    #[error("tunnel is in unexpected internal lifecycle state")]
-    UnexpectedInternalTunnelLifecycleState,
-    #[error("api returned unexpected tunnel kind")]
-    UnexpectedTunnelKind,
     #[error("failed to save config file")]
     ConfigSave(#[from] ConfigSaveError),
+    #[error("api returned invalid tunnel id")]
+    InvalidTunnelId,
+    #[error("could not construct network config: {0}")]
+    NetworkConfig(#[from] NetworkConfigError),
+    #[error("No matching exit.")]
+    NoExit,
+    #[error("relay selection failed: {0}")]
+    RelaySelection(#[from] RelaySelectionError),
+    #[error("tunnel connect: {0}")]
+    TunnelConnect(#[from] QuicWgConnectError),
+    #[error("tunnel is in unexpected internal lifecycle state")]
+    UnexpectedInternalTunnelLifecycleState,
+    #[error("api returned unexpected relay")]
+    UnexpectedRelay,
+    #[error("api returned unexpected tunnel kind")]
+    UnexpectedTunnelKind,
 }
 
 #[derive(Debug, Error)]
 pub enum ApiError {
-    #[error("no account id")]
-    NoAccountId,
     #[error(transparent)]
     ApiClient(#[from] ClientError),
     #[error(transparent)]
     ConfigSave(#[from] ConfigSaveError),
+    #[error("no account id")]
+    NoAccountId,
 }
 
 impl ApiError {
@@ -116,12 +118,12 @@ impl ApiError {
 
 #[derive(Debug, Error)]
 pub enum RelaySelectionError {
-    #[error("udp socket setup: {0}")]
-    UdpSetup(io::Error),
-    #[error("quic setup: {0}")]
-    QuicSetup(anyhow::Error),
     #[error("all relay connections failed")]
     NoSuccess,
+    #[error("quic setup: {0}")]
+    QuicSetup(anyhow::Error),
+    #[error("udp socket setup: {0}")]
+    UdpSetup(io::Error),
 }
 
 #[derive(Debug, Error)]

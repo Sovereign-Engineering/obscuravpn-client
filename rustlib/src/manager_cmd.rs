@@ -5,7 +5,7 @@ use std::{sync::Arc, time::Duration};
 use base64::prelude::*;
 use obscuravpn_api::{
     cmd::{ApiErrorKind, Cmd, ExitList, GetAccountInfo},
-    types::AccountId,
+    types::{AccountId, AccountInfo},
     ClientError,
 };
 use serde::{Deserialize, Serialize};
@@ -37,9 +37,10 @@ pub enum ManagerCmdErrorCode {
     ApiNoLongerSupported,
     ApiRateLimitExceeded,
     ApiSignupLimitExceeded,
+    ApiUnreachable,
     ConfigSaveError,
-    TunnelInactive,
     Other,
+    TunnelInactive,
 }
 
 impl From<&ConfigSaveError> for ManagerCmdErrorCode {
@@ -53,16 +54,15 @@ impl From<&ApiError> for ManagerCmdErrorCode {
     fn from(err: &ApiError) -> Self {
         tracing::info!("deriving json cmd error code for {}", &err);
         match err {
-            ApiError::NoAccountId => Self::ApiError,
             ApiError::ApiClient(err) => match err {
                 ClientError::ApiError(err) => match err.body.error {
                     ApiErrorKind::NoLongerSupported {} => Self::ApiNoLongerSupported,
                     ApiErrorKind::RateLimitExceeded {} => Self::ApiRateLimitExceeded,
                     ApiErrorKind::SignupLimitExceeded {} => Self::ApiSignupLimitExceeded,
-                    ApiErrorKind::InternalError {}
-                    | ApiErrorKind::AccountExpired {}
+                    ApiErrorKind::AccountExpired {}
                     | ApiErrorKind::AlreadyExists {}
                     | ApiErrorKind::BadRequest {}
+                    | ApiErrorKind::InternalError {}
                     | ApiErrorKind::MissingOrInvalidAuthToken {}
                     | ApiErrorKind::NoApiRoute {}
                     | ApiErrorKind::NoMatchingExit {}
@@ -70,9 +70,11 @@ impl From<&ApiError> for ManagerCmdErrorCode {
                     | ApiErrorKind::WgKeyRotationRequired {}
                     | ApiErrorKind::Unknown(_) => Self::ApiError,
                 },
-                ClientError::ProtocolError(_) | ClientError::Other(_) => Self::ApiError,
+                ClientError::RequestExecError(_) => Self::ApiUnreachable,
+                ClientError::InvalidHeaderValue | ClientError::Other(_) | ClientError::ProtocolError(_) => Self::ApiError,
             },
             ApiError::ConfigSave(err) => err.into(),
+            ApiError::NoAccountId => Self::ApiError,
         }
     }
 }
@@ -99,6 +101,11 @@ pub enum ManagerCmd {
     },
     Logout {},
     Ping {},
+    RefreshExitList {
+        #[serde_as(as = "serde_with::DurationMilliSeconds")]
+        freshness: Duration,
+    },
+    RotateWgKey {},
     SetApiUrl {
         url: Option<String>,
     },
@@ -115,11 +122,6 @@ pub enum ManagerCmd {
         args: Option<TunnelArgs>,
         allow_activation: bool,
     },
-    RefreshExitList {
-        #[serde_as(as = "serde_with::DurationMilliSeconds")]
-        freshness: Duration,
-    },
-    RotateWgKey {},
 }
 
 #[derive(Debug, Serialize)]
@@ -133,10 +135,32 @@ pub enum ManagerCmdOk {
     GetTrafficStats(ManagerTrafficStats),
 }
 
+impl From<AccountInfo> for ManagerCmdOk {
+    fn from(info: AccountInfo) -> Self {
+        Self::ApiGetAccountInfo(info)
+    }
+}
+
+impl From<()> for ManagerCmdOk {
+    fn from((): ()) -> Self {
+        Self::Empty
+    }
+}
+
+fn map_result<T, E>(result: Result<T, E>) -> Result<ManagerCmdOk, ManagerCmdErrorCode>
+where
+    T: Into<ManagerCmdOk>,
+    for<'r> &'r E: Into<ManagerCmdErrorCode>,
+{
+    result.map(Into::into).map_err(|err| (&err).into())
+}
+
 impl ManagerCmd {
     pub(super) async fn run(self, manager: &Manager) -> Result<ManagerCmdOk, ManagerCmdErrorCode> {
         match self {
-            ManagerCmd::GetExitList { known_version } => {
+            Self::ApiGetAccountInfo {} => map_result(manager.get_account_info().await),
+            Self::GetDebugInfo {} => Ok(ManagerCmdOk::GetDebugInfo(manager.get_debug_info())),
+            Self::GetExitList { known_version } => {
                 let mut recv = manager.subscribe_exit_list();
                 let res = recv
                     .wait_for(|exits| exits.as_ref().is_some_and(|e| Some(e.version()) != known_version.as_deref()))
@@ -153,56 +177,29 @@ impl ManagerCmd {
                     value: res.value.clone(),
                 }))
             }
-            ManagerCmd::GetTrafficStats {} => Ok(ManagerCmdOk::GetTrafficStats(manager.traffic_stats())),
-            ManagerCmd::SetPinnedExits { exits } => match manager.set_pinned_exits(exits) {
-                Ok(()) => Ok(ManagerCmdOk::Empty),
-                Err(err) => Err((&err).into()),
-            },
-            ManagerCmd::Login { account_id, validate } => match manager.login(account_id, validate).await {
-                Ok(()) => Ok(ManagerCmdOk::Empty),
-                Err(err) => Err((&err).into()),
-            },
-            ManagerCmd::Logout {} => match manager.logout() {
-                Ok(()) => Ok(ManagerCmdOk::Empty),
-                Err(err) => Err((&err).into()),
-            },
-            ManagerCmd::ApiGetAccountInfo {} => match manager.get_account_info().await {
-                Ok(account_info) => Ok(ManagerCmdOk::ApiGetAccountInfo(account_info)),
-                Err(error) => Err((&error).into()),
-            },
-            ManagerCmd::GetStatus { known_version } => match manager.subscribe().wait_for(|s| Some(s.version) != known_version).await {
-                Ok(status) => Ok(ManagerCmdOk::GetStatus(status.clone())),
-                Err(_err) => {
+            Self::GetStatus { known_version } => manager
+                .subscribe()
+                .wait_for(|s| Some(s.version) != known_version)
+                .await
+                .map(|status| ManagerCmdOk::GetStatus(status.clone()))
+                .map_err(|_err| {
                     tracing::error!("status subscription channel closed");
-                    Err(ManagerCmdErrorCode::Other)
-                }
-            },
-            ManagerCmd::Ping {} => Ok(ManagerCmdOk::Empty),
-            ManagerCmd::SetInNewAccountFlow { value } => match manager.set_in_new_account_flow(value) {
-                Ok(()) => Ok(ManagerCmdOk::Empty),
-                Err(err) => Err((&err).into()),
-            },
-            ManagerCmd::SetApiUrl { url } => match manager.set_api_url(url) {
-                Ok(()) => Ok(ManagerCmdOk::Empty),
-                Err(err) => Err((&err).into()),
-            },
-            ManagerCmd::SetTunnelArgs { args, allow_activation } => match manager.set_target_state(args, allow_activation) {
-                Ok(()) => Ok(ManagerCmdOk::Empty),
-                Err(()) => Err(ManagerCmdErrorCode::TunnelInactive),
-            },
-            ManagerCmd::RefreshExitList { freshness } => match manager.maybe_update_exits(freshness).await {
-                Ok(()) => Ok(ManagerCmdOk::Empty),
-                Err(err) => Err((&err).into()),
-            },
-            ManagerCmd::SetAutoConnect { enable } => match manager.set_auto_connect(enable) {
-                Ok(()) => Ok(ManagerCmdOk::Empty),
-                Err(err) => Err((&err).into()),
-            },
-            ManagerCmd::RotateWgKey {} => match manager.rotate_wg_key() {
-                Ok(()) => Ok(ManagerCmdOk::Empty),
-                Err(err) => Err((&err).into()),
-            },
-            ManagerCmd::GetDebugInfo {} => Ok(ManagerCmdOk::GetDebugInfo(manager.get_debug_info())),
+                    ManagerCmdErrorCode::Other
+                }),
+            Self::GetTrafficStats {} => Ok(ManagerCmdOk::GetTrafficStats(manager.traffic_stats())),
+            Self::Login { account_id, validate } => map_result(manager.login(account_id, validate).await),
+            Self::Logout {} => map_result(manager.logout()),
+            Self::Ping {} => Ok(ManagerCmdOk::Empty),
+            Self::RefreshExitList { freshness } => map_result(manager.maybe_update_exits(freshness).await),
+            Self::RotateWgKey {} => map_result(manager.rotate_wg_key()),
+            Self::SetAutoConnect { enable } => map_result(manager.set_auto_connect(enable)),
+            Self::SetApiUrl { url } => map_result(manager.set_api_url(url)),
+            Self::SetInNewAccountFlow { value } => map_result(manager.set_in_new_account_flow(value)),
+            Self::SetPinnedExits { exits } => map_result(manager.set_pinned_exits(exits)),
+            Self::SetTunnelArgs { args, allow_activation } => manager
+                .set_target_state(args, allow_activation)
+                .map(Into::into)
+                .map_err(|()| ManagerCmdErrorCode::TunnelInactive),
         }
     }
 }

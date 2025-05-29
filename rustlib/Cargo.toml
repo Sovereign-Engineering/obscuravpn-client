@@ -56,7 +56,7 @@ rev = "ff3b5555b5b1c4f85ae23d8d4aaf00bea2cd2bf0"
 
 [dependencies.obscuravpn-api]
 git = "https://github.com/Sovereign-Engineering/obscuravpn-api.git"
-rev = "66c8ea7726efc0ac7cf919c09096fe0990422405"
+rev = "ef7ea2eb8e75dcfb3405996a215ac3b4eadda3cb"
 
 [target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
 oslog = "0.2.0"

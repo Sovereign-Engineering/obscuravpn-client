@@ -137,6 +137,7 @@ fn load_no_permission() {
 #[test]
 fn test_ignore_invalid_fields() {
     let example_config = Config {
+        api_host_alternate: Some("relay.example".into()),
         api_url: Some("myapi".into()),
         account_id: Some(AccountId::from_string_unchecked("myaccount".into())),
         old_account_ids: vec![AccountId::from_string_unchecked("oldaccount".into())],
@@ -164,6 +165,7 @@ fn test_ignore_invalid_fields() {
         last_chosen_exit: Some("mylastexit".into()),
         last_chosen_exit_selector: ExitSelector::City { city_code: CityCode { country_code: CountryCode("ca".into()), city_code: "yyz".into() } },
         last_exit_selector: ExitSelector::City { city_code: CityCode { country_code: CountryCode("ca".into()), city_code: "yyz".into() } },
+        sni_relay: Some("relay.obscura.net".into()),
         wireguard_key_cache: Default::default(),
         use_wireguard_key_cache: (),
         cached_account_status: Default::default(),

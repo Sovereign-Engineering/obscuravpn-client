@@ -7,7 +7,7 @@ import * as commands from '../bridge/commands';
 import { PLATFORM } from '../bridge/SystemProvider';
 import { AppContext } from '../common/appContext';
 import { localStorageGet, LocalStorageKey } from '../common/localStorage';
-import { IS_WK_WEB_VIEW } from '../common/utils';
+import { errMsg, IS_WK_WEB_VIEW } from '../common/utils';
 import DevSendCommand from '../components/DevSendCommand';
 import DevSetApiUrl from '../components/DevSetApiUrl';
 
@@ -15,6 +15,8 @@ export default function DeveloperViewer() {
     const { vpnConnected, connectionInProgress, appStatus, osStatus } = useContext(AppContext);
     const [trafficStats, setTrafficStats] = useState({});
     const cookieToDeleteRef = useRef<HTMLInputElement | null>(null);
+    const apiHostAlternate = useRef<HTMLInputElement | null>(null);
+    const sniRelayRef = useRef<HTMLInputElement | null>(null);
 
     const trafficStatsInterval = useInterval(async () => {
         setTrafficStats(await commands.getTrafficStats());
@@ -60,6 +62,53 @@ export default function DeveloperViewer() {
         <Text>connection in progress: <b>{connectionInProgress ?? 'No'}</b></Text>
         {IS_WK_WEB_VIEW && <><Button title='Preferences such as whether the user has been onboarded or if the app has tried to register as a login item' onClick={() => commands.developerResetUserDefaults().then(() => notifications.show({ title: 'Successfully Removed UserDefault Keys', color: 'green', message: '' }))}>Reset app UserDefaults</Button></>}
         <DevSetApiUrl />
+        <Title order={4}>Debug Configuration</Title>
+        <Group>
+            <TextInput ref={apiHostAlternate} placeholder='api.example.com' style={{ flex: 1 }} />
+            <Button
+              onClick={async () => {
+                try {
+                  await commands.setApiHostAlternate(apiHostAlternate.current?.value || null);
+                  notifications.show({
+                    title: 'Alternate API Host Updated',
+                    color: 'green',
+                    message: "",
+                  });
+                } catch (e) {
+                  notifications.show({
+                    title: 'Failed to set Alternate API Host',
+                    color: 'red',
+                    message: errMsg(e),
+                  });
+                }
+              }}
+            >
+              Set Alternate API Host
+            </Button>
+        </Group>
+        <Group>
+            <TextInput ref={sniRelayRef} placeholder='relay.example.com' style={{ flex: 1 }} />
+            <Button
+              onClick={async () => {
+                try {
+                  await commands.setSniRelay(sniRelayRef.current?.value || null);
+                  notifications.show({
+                    title: 'Relay SNI Updated',
+                    color: 'green',
+                    message: "",
+                  });
+                } catch (e) {
+                  notifications.show({
+                    title: 'Failed to set Relay SNI',
+                    color: 'red',
+                    message: errMsg(e),
+                  });
+                }
+              }}
+            >
+              Set Relay SNI
+            </Button>
+        </Group>
         <Title order={4}>Traffic Stats</Title>
         <Text>Since this is cumulative, to get the average bandwidth speed, you must do a slope calculation between the time of two captures (recommended gap of 500ms to 1000ms). See code in the <code>apple/client/StatusItem</code> directory for reference</Text>
         <JsonInput value={JSON.stringify(trafficStats, null, 4)} contentEditable={false} rows={6} />

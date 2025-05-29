@@ -1,6 +1,6 @@
 import { Code, Stack, Title } from '@mantine/core';
 import { useContext, useState } from 'react';
-import { jsonFfiCmd } from "../bridge/commands";
+import { jsonFfiCmd, setApiUrl } from "../bridge/commands";
 import { AppContext } from '../common/appContext';
 import { getCustomApiUrls, setCustomApiUrls } from '../common/localStorage';
 import { Choice, SelectCreatable } from './SelectCreatable';
@@ -34,7 +34,7 @@ export default function DevSetApiUrl() {
           setCustomApiUrls([url, ...customApiUrls]);
           setApiUrlOptions([{ value: url, text: url }, ...apiUrlOptions]);
         }
-        await jsonFfiCmd("setApiUrl", { url });
+        await setApiUrl(url);
       } catch (e) {
         setOutput(`${e}`);
       }

@@ -27,7 +27,6 @@ use uuid::Uuid;
 const QUIC_MAX_IDLE_MS: u32 = 5000;
 const WG_FIRST_HANDSHAKE_RESENDS: usize = 25; // 2.5s per handshake.
 const WG_FIRST_HANDSHAKE_TIMEOUT: Duration = Duration::from_millis(100);
-pub(crate) const RELAY_SNI: &str = "relay.obscura.net";
 const WG_MAX_IDLE_MS: u32 = QUIC_MAX_IDLE_MS;
 const WG_TICK_MS: u32 = 1000;
 
@@ -416,11 +415,12 @@ impl QuicWgConnHandshaking {
         quic_endpoint: &quinn::Endpoint,
         relay_addr: SocketAddr,
         relay_cert: CertificateDer<'static>,
+        relay_sni: &str,
     ) -> Result<Self, QuicWgConnectError> {
         tracing::info!("starting quic wg relay handshake with {} port {}", &relay_id, relay_addr.port());
         let quic_config = Self::quic_config(relay_cert).map_err(QuicWgConnectError::CryptoConfig)?;
         let connecting = quic_endpoint
-            .connect_with(quic_config.clone(), relay_addr, RELAY_SNI)
+            .connect_with(quic_config.clone(), relay_addr, relay_sni)
             .map_err(QuicWgConnectError::QuicConfig)?;
         let connection = connecting.await.map_err(QuicWgConnectError::QuicConnect)?;
         let (send, recv) = connection.open_bi().await.map_err(QuicWgRelayHandshakeError::ControlStreamInitError)?;

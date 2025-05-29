@@ -1406,7 +1406,7 @@ dependencies = [
 [[package]]
 name = "obscuravpn-api"
 version = "0.0.0"
-source = "git+https://github.com/Sovereign-Engineering/obscuravpn-api.git?rev=66c8ea7726efc0ac7cf919c09096fe0990422405#66c8ea7726efc0ac7cf919c09096fe0990422405"
+source = "git+https://github.com/Sovereign-Engineering/obscuravpn-api.git?rev=ef7ea2eb8e75dcfb3405996a215ac3b4eadda3cb#ef7ea2eb8e75dcfb3405996a215ac3b4eadda3cb"
 dependencies = [
  "anyhow",
  "base64 0.21.7",
@@ -1416,6 +1416,7 @@ dependencies = [
  "itertools",
  "rand",
  "reqwest",
+ "rustls 0.22.4",
  "semver",
  "serde",
  "serde_json",
@@ -1426,6 +1427,7 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
+ "webpki-roots",
 ]
 
 [[package]]

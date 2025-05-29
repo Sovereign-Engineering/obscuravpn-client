@@ -35,6 +35,9 @@ use std::{
 use tokio::spawn;
 use uuid::Uuid;
 
+const DEFAULT_API_BACKUP: &str = "crimsonlance.net";
+const DEFAULT_RELAY_SNI: &str = "example.com";
+
 pub struct ClientState {
     exit_list_watch: tokio::sync::watch::Sender<Option<ConfigCached<Arc<ExitList>>>>,
     exit_update_lock: tokio::sync::Mutex<()>,
@@ -147,6 +150,32 @@ impl ClientState {
             config.pinned_locations = pinned_locations;
         })?;
         Ok(())
+    }
+
+    pub fn set_api_host_alternate(&self, value: Option<String>) -> Result<(), ConfigSaveError> {
+        let mut inner = self.lock();
+        Self::change_config(&mut inner, move |config| {
+            tracing::info!(
+                message_id = "jee1ieWa",
+                api_host_alternate_new = value,
+                api_host_alternate_old = config.api_host_alternate,
+                "Changing API alternate host.",
+            );
+            config.api_host_alternate = value;
+        })
+    }
+
+    pub fn set_sni_relay(&self, value: Option<String>) -> Result<(), ConfigSaveError> {
+        let mut inner = self.lock();
+        Self::change_config(&mut inner, move |config| {
+            tracing::info!(
+                message_id = "jee1ieWa",
+                sni_relay_new = value,
+                sni_relay_old = config.sni_relay,
+                "Changing Relay SNI.",
+            );
+            config.sni_relay = value;
+        })
     }
 
     pub fn set_in_new_account_flow(&self, value: bool) -> Result<(), ConfigSaveError> {
@@ -312,9 +341,16 @@ impl ClientState {
 
     pub async fn select_relay(&self) -> Result<(OneRelay, QuicWgConnHandshaking), TunnelConnectError> {
         let relays = self.api_request(ListRelays {}).await?;
-        tracing::info!("relay candidates: {:?}", relays);
+        let sni = self.lock().config.sni_relay.clone().unwrap_or_else(|| DEFAULT_RELAY_SNI.into());
 
-        let racing_handshakes = race_relay_handshakes(relays)?;
+        tracing::info!(
+            message_id = "eech6Ier",
+            relays =? relays,
+            sni = sni,
+            "Racing relays",
+        );
+
+        let racing_handshakes = race_relay_handshakes(relays, sni)?;
         let mut relays_connected_successfully = BTreeSet::new();
         let mut best_candidate = None;
 
@@ -342,6 +378,23 @@ impl ClientState {
         Ok((relay, handshaking))
     }
 
+    pub fn make_api_client(&self, account_id: AccountId) -> Result<Client, ApiError> {
+        let mut inner = self.lock();
+        self.make_api_client_inner(&mut inner, account_id)
+    }
+
+    fn make_api_client_inner(&self, inner: &mut ClientStateInner, account_id: AccountId) -> Result<Client, ApiError> {
+        let base_url = inner.base_url();
+        Client::new(
+            base_url,
+            vec![inner.config.api_host_alternate.clone().unwrap_or_else(|| DEFAULT_API_BACKUP.into())],
+            account_id,
+            &self.user_agent,
+        )
+        .map_err(ClientError::from)
+        .map_err(ApiError::from)
+    }
+
     fn api_client(&self) -> Result<Arc<Client>, ApiError> {
         let mut inner = self.lock();
 
@@ -352,8 +405,7 @@ impl ClientState {
         if let Some(api_client) = inner.cached_api_client.clone() {
             Ok(api_client)
         } else {
-            let base_url = inner.base_url();
-            let api_client = Arc::new(Client::new(base_url, account_id, &self.user_agent).map_err(ClientError::from)?);
+            let api_client = Arc::new(self.make_api_client_inner(&mut inner, account_id)?);
             if let Some(auth_token) = inner.config.cached_auth_token.clone() {
                 api_client.set_auth_token(Some(auth_token.into()));
             }

@@ -8,7 +8,6 @@ use std::{
 use obscuravpn_api::{
     cmd::{Cmd, ExitList, GetAccountInfo},
     types::{AccountId, AccountInfo, OneExit, OneRelay, WgPubkey},
-    Client, ClientError,
 };
 use serde::{Deserialize, Serialize};
 use tokio::{
@@ -217,8 +216,7 @@ impl Manager {
 
     pub async fn login(&self, account_id: AccountId, validate: bool) -> Result<(), ApiError> {
         let auth_token = if validate {
-            let api_client =
-                Client::new(self.client_state.base_url(), account_id.clone(), self.client_state.user_agent()).map_err(ClientError::from)?;
+            let api_client = self.client_state.make_api_client(account_id.clone())?;
             Some(api_client.acquire_auth_token().await?)
         } else {
             None
@@ -240,10 +238,18 @@ impl Manager {
         ret
     }
 
+    pub fn set_sni_relay(&self, value: Option<String>) -> Result<(), ConfigSaveError> {
+        self.client_state.set_sni_relay(value)
+    }
+
     pub fn set_in_new_account_flow(&self, value: bool) -> Result<(), ConfigSaveError> {
         let ret = self.client_state.set_in_new_account_flow(value);
         self.update_status_if_changed(None);
         ret
+    }
+
+    pub fn set_api_host_alternate(&self, value: Option<String>) -> Result<(), ConfigSaveError> {
+        self.client_state.set_api_host_alternate(value)
     }
 
     pub fn set_api_url(&self, value: Option<String>) -> Result<(), ConfigSaveError> {

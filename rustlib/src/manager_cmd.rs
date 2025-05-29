@@ -106,6 +106,9 @@ pub enum ManagerCmd {
         freshness: Duration,
     },
     RotateWgKey {},
+    SetApiHostAlternate {
+        host: Option<String>,
+    },
     SetApiUrl {
         url: Option<String>,
     },
@@ -117,6 +120,9 @@ pub enum ManagerCmd {
     },
     SetPinnedExits {
         exits: Vec<PinnedLocation>,
+    },
+    SetSniRelay {
+        host: Option<String>,
     },
     SetTunnelArgs {
         args: Option<TunnelArgs>,
@@ -193,9 +199,11 @@ impl ManagerCmd {
             Self::RefreshExitList { freshness } => map_result(manager.maybe_update_exits(freshness).await),
             Self::RotateWgKey {} => map_result(manager.rotate_wg_key()),
             Self::SetAutoConnect { enable } => map_result(manager.set_auto_connect(enable)),
+            Self::SetApiHostAlternate { host } => map_result(manager.set_api_host_alternate(host)),
             Self::SetApiUrl { url } => map_result(manager.set_api_url(url)),
             Self::SetInNewAccountFlow { value } => map_result(manager.set_in_new_account_flow(value)),
             Self::SetPinnedExits { exits } => map_result(manager.set_pinned_exits(exits)),
+            Self::SetSniRelay { host } => map_result(manager.set_sni_relay(host)),
             Self::SetTunnelArgs { args, allow_activation } => manager
                 .set_target_state(args, allow_activation)
                 .map(Into::into)

@@ -73,6 +73,18 @@ export function logout() {
     return jsonFfiCmd('logout');
 }
 
+export async function setApiUrl(url: string | null): Promise<void> {
+    await jsonFfiCmd("setApiUrl", { url });
+}
+
+export async function setApiHostAlternate(host: string | null): Promise<void> {
+    await jsonFfiCmd('setApiHostAlternate', { host });
+}
+
+export async function setSniRelay(host: string | null): Promise<void> {
+    await jsonFfiCmd('setSniRelay', { host });
+}
+
 export async function setStrictLeakPrevention(enable: boolean): Promise<void> {
     await invoke('setStrictLeakPrevention', { enable });
 }

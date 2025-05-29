@@ -189,6 +189,8 @@ pub fn save(config_dir: &Path, config: &Config) -> Result<(), ConfigSaveError> {
 #[serde(default)]
 pub struct Config {
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
+    pub api_host_alternate: Option<String>,
+    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub api_url: Option<String>,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub account_id: Option<AccountId>,
@@ -218,6 +220,8 @@ pub struct Config {
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub last_exit_selector: ExitSelector,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
+    pub sni_relay: Option<String>,
+    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub wireguard_key_cache: WireGuardKeyCache,
     #[serde(skip)]
     pub use_wireguard_key_cache: (), // Removed
@@ -238,6 +242,7 @@ impl Config {
 // Redact sensitive fields by default
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ConfigDebug {
+    pub api_host_alternate: Option<String>,
     pub api_url: Option<String>,
     pub cached_exits: Option<ConfigCached<Arc<ExitList>>>,
     pub local_tunnels_ids: Vec<String>,
@@ -246,6 +251,7 @@ pub struct ConfigDebug {
     pub last_chosen_exit: Option<String>,
     pub last_chosen_exit_selector: ExitSelector,
     pub last_exit_selector: ExitSelector,
+    pub sni_relay: Option<String>,
     pub use_wireguard_key_cache: (),
     pub has_account_id: bool,
     pub has_cached_auth_token: bool,
@@ -255,6 +261,7 @@ pub struct ConfigDebug {
 impl From<Config> for ConfigDebug {
     fn from(config: Config) -> Self {
         let Config {
+            api_host_alternate,
             api_url,
             account_id,
             old_account_ids: _,
@@ -267,6 +274,7 @@ impl From<Config> for ConfigDebug {
             last_chosen_exit,
             last_chosen_exit_selector,
             last_exit_selector,
+            sni_relay,
             wireguard_key_cache: _,
             use_wireguard_key_cache,
             cached_account_status: _,
@@ -281,6 +289,8 @@ impl From<Config> for ConfigDebug {
             last_chosen_exit,
             last_chosen_exit_selector,
             last_exit_selector,
+            api_host_alternate,
+            sni_relay,
             use_wireguard_key_cache,
             has_account_id: account_id.is_some(),
             has_cached_auth_token: cached_auth_token.is_some(),

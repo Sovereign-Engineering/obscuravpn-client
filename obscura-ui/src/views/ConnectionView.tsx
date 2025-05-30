@@ -1,4 +1,4 @@
-import { Anchor, Button, Combobox, DefaultMantineColor, Divider, Group, Image, Paper, Progress, ScrollArea, Space, Stack, StyleProp, Text, ThemeIcon, Title, useCombobox, useComputedColorScheme, useMantineTheme } from '@mantine/core';
+import { Anchor, Button, Combobox, DefaultMantineColor, Divider, Flex, Group, Image, Paper, Progress, ScrollArea, Space, Stack, StyleProp, Text, ThemeIcon, Title, useCombobox, useComputedColorScheme, useMantineTheme } from '@mantine/core';
 import { useFocusTrap, useInterval, useToggle } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { ReactNode, useContext, useEffect, useMemo, useState } from 'react';
@@ -121,10 +121,10 @@ export default function Connection() {
             <Space h='xs' />
             {showLocationSelect && <LocationSelect />}
             {
-                vpnConnected && connectionInProgress === ConnectionInProgress.UNSET && <>
+                vpnConnected && connectionInProgress === ConnectionInProgress.UNSET && <div className={classes.checkMyConnection}>
                     <Space />
                     <Text c={colorScheme === 'light' ? 'gray.6' : 'gray.5'}><Anchor c='inherit' href={ObscuraAccount.CHECK_STATUS_WEBPAGE} underline='always'>{t('checkMyConnection')}</Anchor> <ExternalLinkIcon size={12} style={{ marginBottom: -1 }} /></Text>
-                </>
+                </div>
             }
             <div style={{ flexGrow: 1 }} />
             <ConnectionProgressBar />
@@ -188,7 +188,7 @@ function ConnectionProgressBar() {
 
     const connectingProgressBars = usePulsingProgress({ activated: isConnecting(connectionInProgress), bars: 2, inactiveColor: progressBg, w: 50 });
     return (
-        <Paper shadow='xl' withBorder w='80%' maw={600} bg={bg} p='md' pt={5} pb='xs' mb='lg' radius='lg'>
+        <Paper shadow='xl' withBorder className={classes.connectionProgressBarContainer} maw={600} bg={bg} p='md' pt={5} pb='xs' mb='lg' radius='lg'>
             <Group mih={50} className={classes.connectionProgressBarGroup} align='center'>
                 <Stack gap='0' align='center'>
                     <ThemeIcon variant='transparent' c='white'>
@@ -484,7 +484,7 @@ function LocationSelect(): ReactNode {
         <>
             <LocationConnectTopCaption />
             <Space />
-            <Group gap='xs'>
+            <Flex gap='xs' direction={{base: 'column', xs: 'row'}}>
                 <Combobox
                     store={combobox}
                     position='bottom-start'
@@ -560,7 +560,7 @@ function LocationSelect(): ReactNode {
                     </Combobox.Dropdown>
                 </Combobox>
                 <LocationConnectRightButton dropdownOpened={combobox.dropdownOpened} selectedCity={selectedCity} />
-            </Group>
+            </Flex>
         </>
     );
 }

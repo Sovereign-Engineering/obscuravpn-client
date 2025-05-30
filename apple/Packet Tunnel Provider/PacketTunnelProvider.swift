@@ -208,6 +208,12 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
     func processStatusUpdate(_ status: NeStatus) async {
         logger.log("processing status update \(status.version, privacy: .public)")
+        _ = self.isConnected.update {
+            $0 = switch status.vpnStatus {
+            case .connected: true
+            default: false
+            }
+        }
         await self.isActive.withLock { isActiveGuard in
             switch status.vpnStatus {
             case .disconnected:

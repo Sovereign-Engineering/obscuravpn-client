@@ -10,6 +10,7 @@ import { localStorageGet, LocalStorageKey } from '../common/localStorage';
 import { errMsg, IS_WK_WEB_VIEW } from '../common/utils';
 import DevSendCommand from '../components/DevSendCommand';
 import DevSetApiUrl from '../components/DevSetApiUrl';
+import { jsonFfiCmd } from "../bridge/commands";
 
 export default function DeveloperViewer() {
     const { vpnConnected, connectionInProgress, appStatus, osStatus } = useContext(AppContext);
@@ -129,5 +130,6 @@ export default function DeveloperViewer() {
           <Button onClick={() => setLocalStorageValue(localStorageGet(localStorageKey as LocalStorageKey))}>Get</Button>
         </Group>
         <JsonInput value={localStorageValue ?? 'null'} contentEditable={false} />
+        <Button onClick={ () => jsonFfiCmd("toggleForceTcpTlsRelayTransport", {})}>toggle TCP TLS transport mode</Button>
     </Stack>;
 }

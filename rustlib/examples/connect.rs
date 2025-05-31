@@ -1,8 +1,9 @@
 use clap::Parser;
-use obscuravpn_api::cmd::ListRelays;
 use obscuravpn_api::types::AccountId;
 use obscuravpn_client::client_state::ClientState;
-use obscuravpn_client::relay_selection::race_relay_handshakes;
+use obscuravpn_client::exit_selection::{ExitSelectionState, ExitSelector};
+use std::time::Duration;
+use tokio::time::sleep;
 
 #[derive(Parser, Debug, PartialEq)]
 #[command(author, version, about, long_about = None)]
@@ -12,6 +13,8 @@ struct Args {
     base_url: Option<String>,
     #[clap(long)]
     account_no: Option<String>,
+    #[clap(long)]
+    force_tcp_tls: bool,
 }
 
 #[tokio::main]
@@ -22,16 +25,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let client_state = ClientState::new(".".into(), "list-relays".into())?;
     client_state.set_api_url(args.base_url)?;
+    client_state.set_force_tcp_tls_relay_transport(args.force_tcp_tls)?;
     if let Some(account_no) = args.account_no {
         let account_id = AccountId::from_string_unchecked(account_no);
         client_state.set_account_id(Some(account_id), None)?;
     }
-    let relays = client_state.api_request(ListRelays {}).await?;
 
-    let connection_stream = race_relay_handshakes(relays, "relay.example".into(), true)?;
-    while let Ok((relay, port, rtt, handshaking)) = connection_stream.recv_async().await {
-        println!("{}:{:03} rtt={:03}ms", relay.id, port, rtt.as_millis());
-        handshaking.abandon().await;
+    let mut exit_selection_state = ExitSelectionState::default();
+    let conn = loop {
+        match client_state.connect(&ExitSelector::Any {}, &mut exit_selection_state).await {
+            Ok((conn, ..)) => break conn,
+            Err(error) => tracing::error!("connection attempt failed: {error}"),
+        }
+        sleep(Duration::from_secs(1)).await;
+    };
+
+    tracing::info!("connected");
+    loop {
+        let packet = conn.receive().await?;
+        tracing::info!("received packet with {} bytes", packet.len());
     }
-    Ok(())
 }

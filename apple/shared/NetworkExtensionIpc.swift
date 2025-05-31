@@ -62,7 +62,7 @@ struct PinnedLocation: Codable, Equatable {
 
 enum NeVpnStatus: Codable {
     case connecting(tunnelArgs: TunnelArgs, connectError: String?, reconnecting: Bool)
-    case connected(tunnelArgs: TunnelArgs, exit: ExitInfo, networkConfig: NetworkConfig, exitPublicKey: String, clientPublicKey: String)
+    case connected(tunnelArgs: TunnelArgs, exit: ExitInfo, networkConfig: NetworkConfig, exitPublicKey: String, clientPublicKey: String, transport: TransportKind)
     case disconnected
 }
 
@@ -70,6 +70,11 @@ struct ExitInfo: Codable {
     var id: String
     var country_code: String
     var city_name: String
+}
+
+enum TransportKind: String, Codable, Equatable {
+    case quic
+    case tcpTls
 }
 
 // Keep synchronized with rustlib/src/apple/network_config.rs

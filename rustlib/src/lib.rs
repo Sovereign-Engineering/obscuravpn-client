@@ -6,13 +6,14 @@ pub mod config;
 pub mod errors;
 pub mod exit_selection;
 mod ffi_helpers;
-mod manager;
-mod manager_cmd;
+pub mod manager;
+pub mod manager_cmd;
 pub mod net;
 pub mod network_config;
 pub mod quicwg;
 pub mod relay_selection;
 mod serde_safe;
+mod tokio;
 pub mod tunnel_state;
 pub mod virt;
 

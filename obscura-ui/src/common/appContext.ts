@@ -48,11 +48,17 @@ export interface OsStatus {
     }
 }
 
+export enum TransportKind {
+    Quic = 'quic',
+    TcpTls = 'tcpTls',
+}
+
 export interface VpnStatus {
     connected?: {
       exit: Exit,
       clientPublicKey: string,
-      exitPublicKey: string
+      exitPublicKey: string,
+      transport: TransportKind,
       tunnelArgs: TunnelArgs,
     },
     connecting?: {
@@ -90,6 +96,7 @@ export interface AppStatus {
     apiUrl: string,
     account: AccountStatus | null,
     autoConnect: boolean,
+    forceTcpTlsRelayTransport: boolean,
 }
 
 interface IAppContext {

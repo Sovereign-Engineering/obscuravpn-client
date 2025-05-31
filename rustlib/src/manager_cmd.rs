@@ -128,6 +128,7 @@ pub enum ManagerCmd {
         args: Option<TunnelArgs>,
         allow_activation: bool,
     },
+    ToggleForceTcpTlsRelayTransport {},
 }
 
 #[derive(Debug, Serialize)]
@@ -208,6 +209,7 @@ impl ManagerCmd {
                 .set_target_state(args, allow_activation)
                 .map(Into::into)
                 .map_err(|()| ManagerCmdErrorCode::TunnelInactive),
+            Self::ToggleForceTcpTlsRelayTransport {} => map_result(manager.toggle_force_tcp_tls_relay_transport()),
         }
     }
 }

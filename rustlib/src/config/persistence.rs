@@ -227,6 +227,8 @@ pub struct Config {
     pub use_wireguard_key_cache: (), // Removed
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub cached_account_status: Option<AccountStatus>,
+    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
+    pub force_tcp_tls_relay_transport: bool,
 }
 
 impl Config {
@@ -256,6 +258,7 @@ pub struct ConfigDebug {
     pub has_account_id: bool,
     pub has_cached_auth_token: bool,
     pub auto_connect: bool,
+    pub force_tcp_tls_relay_transport: bool,
 }
 
 impl From<Config> for ConfigDebug {
@@ -279,6 +282,7 @@ impl From<Config> for ConfigDebug {
             use_wireguard_key_cache,
             cached_account_status: _,
             auto_connect,
+            force_tcp_tls_relay_transport,
         } = config;
         Self {
             api_url,
@@ -295,6 +299,7 @@ impl From<Config> for ConfigDebug {
             has_account_id: account_id.is_some(),
             has_cached_auth_token: cached_auth_token.is_some(),
             auto_connect,
+            force_tcp_tls_relay_transport,
         }
     }
 }

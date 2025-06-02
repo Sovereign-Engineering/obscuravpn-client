@@ -1,3 +1,14 @@
+.container {
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: bottom;
+}
+
+.connectionProgressBarContainer {
+    width: 80%;
+    min-width: fit-content;
+}
+
 .connectionProgressBarGroup {
     justify-content: center !important;
 
@@ -14,14 +25,28 @@
     }
 }
 
-.container {
-    background-repeat: no-repeat;
-    background-size: contain;
-    background-position: bottom;
+.locationDividerCaption {
+    width: 28rem;
 }
 
 @media screen and (max-width: $mantine-breakpoint-xs) {
     .container {
         padding-top: env(safe-area-inset-top);
+    }
+
+    .connectionProgressBarContainer {
+        width: 85%;
+    }
+
+    .connectionProgressBarGroup {
+        gap: 0 !important;
+    }
+
+    .locationDividerCaption {
+        width: 320px;
+    }
+
+    .checkMyConnection {
+        display: none;
     }
 }

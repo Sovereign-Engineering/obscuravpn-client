@@ -10,7 +10,7 @@ import 'simplebar-react/dist/simplebar.min.css';
 import classes from './App.module.css';
 import * as commands from './bridge/commands';
 import { IS_MOBILE, logReactError, PLATFORM, Platform, useSystemChecks } from './bridge/SystemProvider';
-import { AppContext, AppStatus, ConnectionInProgress, NEVPNStatus, OsStatus } from './common/appContext';
+import { AppContext, AppStatus, ConnectionInProgress, isConnectingClean, NEVPNStatus, OsStatus } from './common/appContext';
 import { fmt } from './common/fmt';
 import { NotificationId } from './common/notifIds';
 import { useAsync } from './common/useAsync';
@@ -39,6 +39,8 @@ export default function () {
 
   // App State
   const [vpnConnected, setVpnConnected] = useState(false);
+  // keep track of how the connection was initiated to show correct transitioning UI
+  const [initiatingExitSelector, setExitSelector] = useState<commands.ExitSelector>();
   const [connectionInProgress, setConnectionInProgress] = useState<ConnectionInProgress>(ConnectionInProgress.UNSET);
   const [warningNotices, setWarningNotices] = useState<string[]>([]);
   const [importantNotices, setImportantNotices] = useState<string[]>([]);
@@ -86,6 +88,7 @@ export default function () {
   }, []);
 
   async function tryConnect(exit: commands.ExitSelector) {
+    setExitSelector(exit);
     if (vpnConnected) {
       setConnectionInProgress(ConnectionInProgress.ChangingLocations);
     } else {
@@ -113,17 +116,6 @@ export default function () {
     setConnectionInProgress(ConnectionInProgress.Disconnecting);
     setVpnConnected(false);
     await commands.disconnect();
-  }
-
-  async function toggleVpnConnection() {
-    // this function no longer set the connection state
-    // due to the backend command being async and not synchronous with status
-    const tryDisconnect = vpnConnected || connectionInProgress === ConnectionInProgress.Connecting || connectionInProgress === ConnectionInProgress.Reconnecting;
-    if (tryDisconnect) {
-      await disconnectFromVpn();
-    } else {
-      await tryConnect({ any: {} })
-    }
   }
 
   function notifyVpnError(errorEnum: string) {
@@ -173,13 +165,6 @@ export default function () {
         console.log(fmt`vpnStatus = ${vpnStatus}`);
         notifyVpnError(connectError);
       }
-    } else if (vpnStatus.disconnected !== undefined) {
-      console.log('got disconnected')
-      setConnectionInProgress(value => {
-        if (value === ConnectionInProgress.ChangingLocations) return value;
-        return ConnectionInProgress.UNSET;
-      });
-      setVpnConnected(false);
     }
   }
 
@@ -234,15 +219,15 @@ export default function () {
         setConnectionInProgress(ConnectionInProgress.Disconnecting);
       } else if (osVpnStatus === NEVPNStatus.Disconnected) {
         setConnectionInProgress(ConnectionInProgress.UNSET);
+        setVpnConnected(false);
+        setExitSelector(undefined);
       }
     }
   }, [osStatus]);
 
   function resetState() {
-    // Useful for runtime rendering exceptions
-    if (vpnConnected) toggleVpnConnection();
     if (window.location.pathname === '/connection') {
-      window.location.pathname = '/logs';
+      window.location.pathname = '/help';
     } else {
       window.location.pathname = '/';
     }
@@ -313,11 +298,12 @@ export default function () {
     connectionInProgress,
     osStatus,
     pollAccount,
+    isOffline: !osStatus.internetAvailable && !vpnConnected && !isConnectingClean(connectionInProgress, osStatus.osVpnStatus),
     accountLoading: accountLoadingDelayed,
-    toggleVpnConnection,
     vpnConnect: tryConnect,
     vpnConnected,
     vpnDisconnect: disconnectFromVpn,
+    initiatingExitSelector,
   }
 
   // <> is an alias for <React.Fragment>

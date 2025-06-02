@@ -47,9 +47,9 @@ enum AppView: String, Hashable, Identifiable {
 
     var needsScroll: Bool {
         switch self {
-        case .account, .connection, .help, .about:
+        case .connection, .help, .about:
             false
-        case .settings, .location, .developer:
+        case .account, .settings, .location, .developer:
             true
         }
     }

@@ -14,3 +14,15 @@
         color: var(--mantine-color-white)
     }
 }
+
+@media screen and (max-width: $mantine-breakpoint-xs) {
+    .desktopOnly {
+        display: none;
+    }
+}
+
+@media screen and (min-width: $mantine-breakpoint-xs) {
+    .mobileOnly {
+        display: none !important;
+    }
+}

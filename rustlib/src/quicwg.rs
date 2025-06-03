@@ -847,19 +847,29 @@ async fn send_message<T: AsyncWrite + Unpin>(transport: &mut T, code: MessageCod
     transport.flush().await
 }
 
+async fn recv_skip<T: AsyncRead + Unpin>(transport: &mut T, mut n: usize) -> Result<(), io::Error> {
+    let mut buffer = vec![0u8; u16::MAX.into()];
+    while n >= buffer.len() {
+        transport.read_exact(&mut buffer).await?;
+        n -= buffer.len();
+    }
+    if n > 0 {
+        transport.read_exact(&mut buffer[0..n]).await?;
+    }
+    Ok(())
+}
+
 async fn recv_message<T: AsyncRead + Unpin>(transport: &mut T) -> Result<(MessageCode, MessageContext, Vec<u8>), io::Error> {
     loop {
         let header = MessageHeader::from(recv_fixed::<8, _>(transport).await?);
-        let mut payload = vec![0u8; header.payload_length_usize()];
+        let len = header.payload_length_usize();
+        if len < 4 || len > u16::MAX as usize + 4 {
+            tracing::warn!(message_id = "1gPHoHdA", len, "ignoring relay message with payload too small or large");
+            recv_skip(transport, len).await?;
+        }
+        let mut payload = vec![0u8; len];
         transport.read_exact(&mut payload).await?;
-        let Some((code, arg)) = payload.split_at_checked(4) else {
-            // Forward compatibility with future relay protocol changes
-            tracing::warn!(
-                message_id = "1gPHoHdA",
-                "ignoring relay message with payload too small for op or response code"
-            );
-            continue;
-        };
+        let (code, arg) = payload.split_at_checked(4).unwrap();
         let code = code.try_into().unwrap_or([u8::MAX; 4]);
         let Some(code) = MessageCode::from_bytes(code, header.context_id, true) else {
             // Forward compatibility with future relay protocol changes

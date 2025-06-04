@@ -9,7 +9,7 @@ import SimpleBar from 'simplebar-react';
 import 'simplebar-react/dist/simplebar.min.css';
 import classes from './App.module.css';
 import * as commands from './bridge/commands';
-import { IS_MOBILE, logReactError, PLATFORM, Platform, useSystemChecks } from './bridge/SystemProvider';
+import { IS_HANDHELD_DEVICE, logReactError, PLATFORM, Platform, useSystemChecks } from './bridge/SystemProvider';
 import { AppContext, AppStatus, ConnectionInProgress, isConnectingClean, NEVPNStatus, OsStatus } from './common/appContext';
 import { fmt } from './common/fmt';
 import { NotificationId } from './common/notifIds';
@@ -283,7 +283,7 @@ export default function () {
   }, [accountInfoError]);
 
   const _ = useAsync({
-    skip: osStatus === null || (!osStatus.internetAvailable || IS_MOBILE),
+    skip: osStatus === null || (!osStatus.internetAvailable || IS_HANDHELD_DEVICE),
     load: commands.checkForUpdates,
     returnError: true,
   });

@@ -6,7 +6,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { FaCheckCircle, FaExclamationTriangle } from 'react-icons/fa';
 import AppIcon from '../../../apple/client/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x@2x.png';
 import * as commands from '../bridge/commands';
-import { IS_MOBILE } from '../bridge/SystemProvider';
+import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
 import { LEGAL_WEBPAGE, OBSCURA_WEBPAGE } from '../common/accountUtils';
 import { AppContext, UpdaterStatusType } from '../common/appContext';
 import { MIN_LOAD_MS, normalizeError } from '../common/utils';
@@ -41,7 +41,7 @@ export default function About() {
 
   useEffect(() => {
     // Intentionally run only on mount (recheck once if update not already available)
-    if (updaterStatus?.type !== UpdaterStatusType.Available && !IS_MOBILE) {
+    if (updaterStatus?.type !== UpdaterStatusType.Available && !IS_HANDHELD_DEVICE) {
       handleCommand(commands.checkForUpdates);
     }
   }, []);
@@ -68,7 +68,7 @@ export default function About() {
           )}
           <Group>
             <Button component='a' href={OBSCURA_WEBPAGE} variant='outline'>{t('Website')}</Button>
-            {!IS_MOBILE && <> {
+            {!IS_HANDHELD_DEVICE && <> {
               updaterStatusDelayed?.type === UpdaterStatusType.Available ? (
                 <Button onClick={() => handleCommand(commands.installUpdate)}>{t('installUpdate')}</Button>
               ) : (

@@ -8,7 +8,7 @@ interface ButtonLinkProps {
 
 export function ButtonLink({ text, href }: ButtonLinkProps) {
   return (
-    <Button w={{ base: '100%', xs: 'auto' }} component='a' href={href} size='sm'>
+    <Button w={{ base: '100%', xs: 'auto' }} component='a' href={href}>
       <span>{text} <ExternalLinkIcon size={11} /></span>
     </Button>
   );

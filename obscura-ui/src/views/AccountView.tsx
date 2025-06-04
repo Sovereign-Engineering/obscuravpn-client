@@ -7,6 +7,7 @@ import { FaRotateRight } from 'react-icons/fa6';
 import { IoLogOutOutline } from 'react-icons/io5';
 import { MdOutlineWifiOff } from 'react-icons/md';
 import * as commands from '../bridge/commands';
+import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
 import * as ObscuraAccount from '../common/accountUtils';
 import { AccountInfo, accountIsExpired, getActiveSubscription, isRenewing, paidUntil, paidUntilDays, useReRenderWhenExpired } from '../common/api';
 import { AppContext } from '../common/appContext';
@@ -263,7 +264,7 @@ function RefreshButton() {
             color: 'red',
           });
         }
-      }} fw={550} c={theme.primaryColor}>{(accountLoading) ? <Center w={100}><Loader size='sm' /></Center> : <><FaRotateRight size={13} /> {t('Refresh')}</>}</Anchor>
+      }} fw={550} c={theme.primaryColor} size={IS_HANDHELD_DEVICE ? 'md' : undefined}>{(accountLoading) ? <Center w={100}><Loader size='sm' /></Center> : <><FaRotateRight size={13} /> {t('Refresh')}</>}</Anchor>
     </Group>
   );
 }

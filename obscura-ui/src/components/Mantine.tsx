@@ -7,10 +7,11 @@ import '@mantine/notifications/styles.css';
 // import '@mantine/dates/styles.css';
 // import '@mantine/dropzone/styles.css';
 // import '@mantine/code-highlight/styles.css';
-import { Accordion, ColorSchemeScript, MantineProvider, createTheme } from '@mantine/core';
+import { ColorSchemeScript, MantineProvider, createTheme } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
 import { Notifications } from '@mantine/notifications';
 import { PropsWithChildren } from 'react';
+import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
 
 export default function Mantine({ children }: PropsWithChildren) {
     // override theme for Mantine (default props and styles)
@@ -32,6 +33,7 @@ export default function Mantine({ children }: PropsWithChildren) {
                 defaultProps: {
                     radius: 'md',
                     variant: 'gradient',
+                    size: IS_HANDHELD_DEVICE ? 'md' : undefined,
                 },
             },
             Modal: {

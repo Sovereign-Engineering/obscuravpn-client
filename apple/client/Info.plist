@@ -69,6 +69,8 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>Obscura</key>
 	<dict>
 		<key>OBSCURA_NETWORK_EXTENSION_BUNDLE_ID</key>

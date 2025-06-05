@@ -1358,9 +1358,10 @@
 				DEVELOPMENT_ASSET_PATHS = "\"client/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = client/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Obscura;
+				INFOPLIST_KEY_CFBundleDisplayName = "Obscura VPN";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1392,9 +1393,10 @@
 				DEVELOPMENT_TEAM = 5G943LR562;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = client/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Obscura;
+				INFOPLIST_KEY_CFBundleDisplayName = "Obscura VPN";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

@@ -17,7 +17,7 @@ panic = "abort"
 panic = "abort"
 
 [dependencies]
-anyhow = { version = "1.0.75", features = ["backtrace"] }
+anyhow = { version = "1.0.98", features = ["backtrace"] }
 async-trait = "0.1.77"
 base64 = "0.21.7"
 bytes = "1"
@@ -28,7 +28,7 @@ etherparse = "0.17.0"
 flume = { version = "0.11.1", features = ["async"] }
 futures = "0.3.29"
 include_dir = "0.7.3"
-ipnetwork = "0.16.0"
+ipnetwork = { version =  "0.21.1", features = ["serde"] }
 lazy_static = "1.4.0"
 quinn = "0.11.6"
 rand = "0.8.5"
@@ -42,7 +42,7 @@ strum = { version = "0.26.2", features = ["derive"] }
 tempfile = "3.10.1"
 thiserror = "1.0.56"
 tokio = { version = "1.44", features = ["full"] }
-tokio-rustls = "0.26.2"
+tokio-rustls = { version="0.26.2", default-features = false, features = ["logging", "tls12"] }
 tokio-util = "0.7.13"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter", "fmt"] }
@@ -57,7 +57,7 @@ rev = "ff3b5555b5b1c4f85ae23d8d4aaf00bea2cd2bf0"
 
 [dependencies.obscuravpn-api]
 git = "https://github.com/Sovereign-Engineering/obscuravpn-api.git"
-rev = "fa035eaab574a9029f84930f0f3d994ae5b654c7"
+rev = "946acd111410c039cd16807233853b0b9979688e"
 
 [target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
 oslog = "0.2.0"

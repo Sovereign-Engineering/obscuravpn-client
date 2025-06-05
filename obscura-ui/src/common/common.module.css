@@ -26,3 +26,7 @@
         display: none !important;
     }
 }
+
+.bottomSheet {
+    border-radius: var(--mantine-radius-lg) var(--mantine-radius-lg) 0 0 !important;
+}

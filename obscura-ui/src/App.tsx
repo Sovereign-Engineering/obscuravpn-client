@@ -15,7 +15,7 @@ import { fmt } from './common/fmt';
 import { NotificationId } from './common/notifIds';
 import { useAsync } from './common/useAsync';
 import { useLoadable } from './common/useLoadable';
-import { IS_WK_WEB_VIEW, MIN_LOAD_MS, normalizeError } from './common/utils';
+import { MIN_LOAD_MS, normalizeError } from './common/utils';
 import { ScrollToTop } from './components/ScrollToTop';
 import { fmtVpnError } from './translations/i18n';
 import { About, Account, Connection, DeveloperView, FallbackAppRender, Help, Location, LogIn, Settings, SplashScreen } from './views';
@@ -235,17 +235,15 @@ export default function () {
 
   // native driven navigation
   useEffect(() => {
-    if (IS_WK_WEB_VIEW) {
-      const onNavUpdate = (e: Event) => {
-        if (e instanceof CustomEvent) {
-          navigate(`/${e.detail}`);
-        } else {
-          console.error('expected custom event for navigation purposes, got generic Event');
-        }
-      };
-      window.addEventListener('navUpdate', onNavUpdate);
-      return () => window.removeEventListener('navUpdate', onNavUpdate);
-    }
+    const onNavUpdate = (e: Event) => {
+      if (e instanceof CustomEvent) {
+        navigate(`/${e.detail}`);
+      } else {
+        console.error('expected custom event for navigation purposes, got generic Event');
+      }
+    };
+    window.addEventListener('navUpdate', onNavUpdate);
+    return () => window.removeEventListener('navUpdate', onNavUpdate);
   }, []);
 
   const onPaymentSucceeded = () => {
@@ -256,10 +254,8 @@ export default function () {
 
   // deep link payment succeeded
   useEffect(() => {
-    if (IS_WK_WEB_VIEW) {
-      window.addEventListener('paymentSucceeded', onPaymentSucceeded);
-      return () => window.removeEventListener('paymentSucceeded', onPaymentSucceeded);
-    }
+    window.addEventListener('paymentSucceeded', onPaymentSucceeded);
+    return () => window.removeEventListener('paymentSucceeded', onPaymentSucceeded);
   }, []);
 
   const {

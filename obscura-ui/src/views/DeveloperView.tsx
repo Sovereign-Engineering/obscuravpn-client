@@ -4,13 +4,13 @@ import { notifications } from '@mantine/notifications';
 import Cookies from 'js-cookie';
 import { useContext, useEffect, useRef, useState } from 'react';
 import * as commands from '../bridge/commands';
+import { jsonFfiCmd } from "../bridge/commands";
 import { PLATFORM } from '../bridge/SystemProvider';
 import { AppContext } from '../common/appContext';
 import { localStorageGet, LocalStorageKey } from '../common/localStorage';
-import { errMsg, IS_WK_WEB_VIEW } from '../common/utils';
+import { errMsg } from '../common/utils';
 import DevSendCommand from '../components/DevSendCommand';
 import DevSetApiUrl from '../components/DevSetApiUrl';
-import { jsonFfiCmd } from "../bridge/commands";
 
 export default function DeveloperViewer() {
     const { vpnConnected, connectionInProgress, appStatus, osStatus } = useContext(AppContext);
@@ -61,7 +61,7 @@ export default function DeveloperViewer() {
         <Title order={4}>React variables</Title>
         <Text>vpn is connected: <b>{vpnConnected ? 'Yes' : 'No'}</b></Text>
         <Text>connection in progress: <b>{connectionInProgress ?? 'No'}</b></Text>
-        {IS_WK_WEB_VIEW && <><Button title='Preferences such as whether the user has been onboarded or if the app has tried to register as a login item' onClick={() => commands.developerResetUserDefaults().then(() => notifications.show({ title: 'Successfully Removed UserDefault Keys', color: 'green', message: '' }))}>Reset app UserDefaults</Button></>}
+        <Button title='Preferences such as whether the user has been onboarded or if the app has tried to register as a login item' onClick={() => commands.developerResetUserDefaults().then(() => notifications.show({ title: 'Successfully Removed UserDefault Keys', color: 'green', message: '' }))}>Reset app UserDefaults</Button>
         <DevSetApiUrl />
         <Title order={4}>Debug Configuration</Title>
         <Group>

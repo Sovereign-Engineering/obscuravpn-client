@@ -7,7 +7,7 @@ export enum Platform {
   iOS = 'iphoneos',
 }
 
-export const IS_MOBILE = PLATFORM === Platform.iOS;
+export const IS_HANDHELD_DEVICE = PLATFORM === Platform.iOS;
 const platformDefined = Object.values(Platform).includes(PLATFORM);
 
 export function useSystemChecks() {

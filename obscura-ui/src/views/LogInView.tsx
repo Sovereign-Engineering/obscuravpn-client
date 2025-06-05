@@ -1,16 +1,18 @@
-import { Anchor, BackgroundImage, Button, Card, CopyButton, Group, Image, Loader, Modal, Space, Stack, Text, TextInput, Title, Transition, useComputedColorScheme } from '@mantine/core';
+import { Anchor, Button, Card, Code, CopyButton, Drawer, Group, Image, Loader, Modal, Space, Stack, Text, TextInput, Title, Transition, useComputedColorScheme } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { motion, MotionValue, useSpring, useTransform } from 'framer-motion';
-import { ChangeEvent, FormEvent, ForwardedRef, forwardRef, ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { ChangeEvent, FormEvent, ForwardedRef, forwardRef, PropsWithChildren, ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import ExternalLinkIcon from '../components/ExternalLinkIcon';
 
 import AppIcon from '../../../apple/client/Assets.xcassets/AppIcon.appiconset/icon_128x128.png';
 import * as commands from '../bridge/commands';
+import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
 import * as ObscuraAccount from '../common/accountUtils';
 import { HEADER_TITLE, multiRef, normalizeError } from '../common/utils';
 import DecoOrangeTop from '../res/deco/deco-orange-top.svg';
+import DecoOrangeBottom from '../res/deco/deco-signup-mobile.svg';
 import { fmtErrorI18n, TranslationKey } from '../translations/i18n';
 import classes from './LoginView.module.css';
 
@@ -96,12 +98,12 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
 
   return (
     <Stack h='100vh' bg={colorScheme === 'light' ? undefined : 'dark.8'} gap={20}>
-      <div style={{backgroundImage: `url("${DecoOrangeTop}")`}} className={classes.backgroundImage}>
+      <div style={{ height: '100%', backgroundImage: `url("${IS_HANDHELD_DEVICE ? DecoOrangeBottom : DecoOrangeTop}")`, backgroundPosition: IS_HANDHELD_DEVICE ? 'bottom' : 'top' }} className={classes.backgroundImage}>
         <Space h='28vh' />
         {
           (!!accountNumber || awaitingAccountCreation) ? <AccountGeneration loading={awaitingAccountCreation} generatedAccountId={accountNumber} accountActive={accountActive} />
             :
-            <Stack gap={20} component='form' onSubmit={handleSubmit} align='center'>
+            <Stack h='72vh' gap={20} component='form' onSubmit={handleSubmit} align='center'>
               <Group>
                 <Image src={AppIcon} w={64} />
                 <Title>{HEADER_TITLE}</Title>
@@ -141,7 +143,8 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
   const { t } = useTranslation();
   const [value, setValue] = useState(ObscuraAccount.generateAccountNumber());
   const [confirmAccountSecured, { open, close }] = useDisclosure(false);
-  const [paymentClicked, userClickOnPayment] = useState(false);
+  const [paymentPressed, userPressOnPayment] = useState(false);
+  const [copyPressed, userPressOnCopy] = useState(false);
   const timeoutRef = useRef<number>();
 
   const rollAccountValue = (tries: number) => {
@@ -155,40 +158,63 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
     return () => clearTimeout(timeoutRef.current);
   }, [loading]);
 
+  const showDoneButton = accountActive || paymentPressed;
+
+  const cancelSignUp = async () => {
+    try {
+      await commands.logout();
+      await commands.setInNewAccountFlow(false);
+    } catch (e) {
+      const error = normalizeError(e);
+      notifications.show({ title: t('logOutFailed'), message: <Text>{t('pleaseReportError')}<br /><Code>{error.message}</Code></Text> });
+    }
+  }
+
   return (
     <>
-      <Modal opened={confirmAccountSecured} onClose={close} title={t('Confirmation')} centered>
-        <Stack>
-          {t('accountNumberStoredConfirmation')}
+      <ConfirmationDialog opened={confirmAccountSecured} onClose={close}>
+        <Stack p={IS_HANDHELD_DEVICE ? 'xl' : undefined} ta={IS_HANDHELD_DEVICE ? 'center' : undefined}>
+          <Text>{t('accountNumberStoredConfirmation')}</Text>
           <Anchor onClick={() => {
-            userClickOnPayment(true);
+            userPressOnPayment(true);
             close();
           }} target='_blank' href={ObscuraAccount.payUrl(generatedAccountId)}>
             <Button>{t('Continue to payment')}</Button>
           </Anchor>
         </Stack>
-      </Modal>
+      </ConfirmationDialog>
       <Stack maw={400} mx='auto' justify='center' align='center'>
         <Image src={AppIcon} w={64} />
         <AccountId accountId={value} />
-        {
-          <Transition mounted={value === generatedAccountId} transition='fade-up' duration={600}>
-            {styles => <Stack style={styles} justify='center' align='center'>
-              <CopyButton value={ObscuraAccount.accountIdToString(generatedAccountId)}>
-                {({ copied, copy }) => (
-                  <Button variant={copied ? 'filled' : undefined} color={copied ? 'teal' : undefined} onClick={copy} miw='22ch'>
-                    {copied ? t('Copied Account Number') : t('Copy Account Number')}
-                  </Button>
-                )}
-              </CopyButton>
-              <Text ta='center' fw={800} ml='xs' mr='xs'>{t('writeDownAccountNumber')}</Text>
-              <Group>
-                <Button onClick={open} rightSection={<ExternalLinkIcon />}>{t('Payment')}</Button>
-                <Button disabled={!accountActive && !paymentClicked} onClick={() => commands.setInNewAccountFlow(false)}>{t('Done')}</Button>
-              </Group>
-            </Stack>}
-          </Transition>
-        }
+        <Transition mounted={value === generatedAccountId} transition='fade-up' duration={600}>
+          {styles => <Stack style={styles} justify='center' align='center'>
+            <CopyButton value={ObscuraAccount.accountIdToString(generatedAccountId)}>
+              {({ copied, copy }) => (
+                <Button variant={copied ? 'filled' : undefined} color={copied ? 'teal' : undefined} miw={IS_HANDHELD_DEVICE ? 300 : '22ch'}
+                  onClick={() => {
+                    userPressOnCopy(true);
+                    copy();
+                  }}>
+                  {copied ? t('Copied Account Number') : t('Copy Account Number')}
+                </Button>
+              )}
+            </CopyButton>
+            <Text ta='center' fw={800} ml='xs' mr='xs'>{t('writeDownAccountNumber')}</Text>
+            <Group grow={IS_HANDHELD_DEVICE} w={IS_HANDHELD_DEVICE ? 300 : undefined}>
+              <Button disabled={!copyPressed} variant={IS_HANDHELD_DEVICE ? 'outline' : undefined} onClick={open} rightSection={<ExternalLinkIcon />}>{t('Payment')}</Button>
+              {
+                (!IS_HANDHELD_DEVICE || showDoneButton) &&
+                <Button disabled={!showDoneButton} onClick={() => commands.setInNewAccountFlow(false)}>{t('Done')}</Button>
+              }
+            </Group>
+            {
+              !paymentPressed &&
+              <Button fw='bold' size='sm' variant='subtle' onClick={cancelSignUp} c='red'>
+                {t('cancelSignUp')}
+              </Button>
+            }
+          </Stack>}
+        </Transition>
       </Stack>
     </>
   );
@@ -300,3 +326,22 @@ const AccountNumberInput = forwardRef(function AccountNumberInput(props: {}, ref
 
   return <TextInput ref={multiRef(internalRef, ref)} value={value} onChange={onChange} error={error} required w={260} label={t('Obscura Account Number')} placeholder='XXXX - XXXX - XXXX - XXXX - XXXX' />
 });
+
+interface ConfirmationDialogProps extends PropsWithChildren {
+  opened: boolean,
+  onClose: () => void,
+}
+
+
+function ConfirmationDialog({ opened, onClose, children }: ConfirmationDialogProps) {
+  const { t } = useTranslation();
+  return (
+    IS_HANDHELD_DEVICE ?
+      <Drawer size='xs' radius='md' position='bottom' opened={opened} onClose={onClose} title={t('Confirmation')}>
+        {children}
+      </Drawer> :
+      <Modal opened={opened} onClose={onClose} title={t('Confirmation')} centered>
+        {children}
+      </Modal>
+  );
+}

@@ -270,7 +270,7 @@ export default function () {
   } = useLoadable({
     skip: !osStatus?.internetAvailable || !isLoggedIn,
     load: commands.getAccount,
-    periodMs: showAccountCreation ? 3600 * 1000 : 12 * 3600 * 1000,
+    periodMs: showAccountCreation ? 60 * 1000 : 12 * 3600 * 1000,
     returnError: true,
   });
   const accountLoadingDelayed = useThrottledValue(accountLoading, accountLoading ? MIN_LOAD_MS : 0);

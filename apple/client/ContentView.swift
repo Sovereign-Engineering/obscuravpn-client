@@ -143,7 +143,7 @@ extension AccountStatus {
 struct ContentView: View {
     @ObservedObject var appState: AppState
     @State private var selectedView = STABLE_VIEWS.first!
-    @State private var webView: WebView
+    let webView: WebView
 
     // when accountBadge and badgeColor are nil, the account status is either unknown OR a badge does not need to be shown
     // if ever the account is reset to nil, these variables will maintain their last computed values
@@ -268,38 +268,35 @@ struct ContentView: View {
                 .environment(\.sidebarRowSize, .large)
                 .navigationSplitViewColumnWidth(min: 175, ideal: 200)
             } detail: {
-                self.webView
+                ObscuraWebViewSwiftUIWrapper(
+                    webView: self.webView)
                     .navigationTitle(
                         self.loginViewShown
                             ? "Obscura" : self.selectedView.rawValue.capitalized
                     )
             }
         #else
-            ZStack {
-                if !self.loginViewShown {
+            Group {
+                if self.loginViewShown {
+                    ObscuraWebViewSwiftUIWrapper(
+                        webView: self.webView)
+                        .ignoresSafeArea()
+                } else {
                     TabView(selection: self.$tab) {
                         ForEach(self.viewMode.getIOSViews()) { view in
-                            Color.clear
-                                .background(TabBarAccessor { tabBar in
-                                    self.tabBarHeight = tabBar.bounds.height
-                                })
-                                .tag(view)
-                                .tabItem {
-                                    self.viewLabel(view)
-                                }
+                            ObscuraWebViewSwiftUIWrapper(
+                                webView: self.webView,
+                                currentTab: self.tab,
+                                myTab: view
+                            )
+                            .ignoresSafeArea(edges: [.top, .leading, .trailing])
+                            .tag(view)
+                            .tabItem {
+                                self.viewLabel(view)
+                            }
                         }
                     }
                     .tabViewStyle(.sidebarAdaptable)
-                }
-
-                if self.loginViewShown {
-                    self.webView
-                        .ignoresSafeArea()
-                } else {
-                    self.webView
-                        // This will need to be changed for iPad
-                        .ignoresSafeArea(edges: [.top, .leading, .trailing])
-                        .padding(.bottom, self.tabBarHeight)
                 }
             }
             .ignoresSafeArea()

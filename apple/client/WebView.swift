@@ -19,10 +19,7 @@ class WebViewController: UXViewController, WKNavigationDelegate {
     }
 }
 
-struct WebView: UXViewRepresentable {
-    let webView: WKWebView
-    let webViewDelegate: WebViewController
-
+class WebView: WKWebView, WKNavigationDelegate {
     init(appState: AppState) {
         let webConfiguration = WKWebViewConfiguration()
         // webConfiguration.preferences.javaScriptEnabled = true
@@ -44,32 +41,37 @@ struct WebView: UXViewRepresentable {
         #if DEBUG
             webConfiguration.preferences.setValue(true, forKey: "developerExtrasEnabled")
         #endif
-        self.webView = WKWebView(frame: .zero, configuration: webConfiguration)
-        self.webViewDelegate = WebViewController()
-        self.webView.navigationDelegate = self.webViewDelegate
+        super.init(frame: .zero, configuration: webConfiguration)
+        self.navigationDelegate = self
 
         #if LOAD_DEV_SERVER
             let urlRequest = URLRequest(url: URL(string: "http://localhost:1420/")!)
-            self.webView.load(urlRequest)
+            self.load(urlRequest)
         #else
             // see the Prod Client scheme
             let url = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "build")!
-            self.webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+            self.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
         #endif
 
         #if !os(macOS)
             // Safe area ignore
             // https://stackoverflow.com/a/47814446/3833632
-            self.webView.scrollView.contentInsetAdjustmentBehavior = .never
+            self.scrollView.delegate = self
+            self.scrollView.contentInsetAdjustmentBehavior = .never
         #endif
     }
 
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
     func navigateTo(view: AppView) {
-        self.webView.evaluateJavaScript(
+        self.evaluateJavaScript(
             WebView.generateNavEventJS(viewName: view.ipcValue)
         )
         #if !os(macOS)
-            self.webView.scrollView.bounces = view.needsScroll
+            self.scrollView.bounces = view.needsScroll
         #endif
     }
 
@@ -83,7 +85,7 @@ struct WebView: UXViewRepresentable {
     }
 
     func handlePaymentSucceeded() {
-        self.webView.evaluateJavaScript(WebView.generatePaymentSucceededEventJS())
+        self.evaluateJavaScript(WebView.generatePaymentSucceededEventJS())
     }
 
     static func generatePaymentSucceededEventJS() -> String {
@@ -91,45 +93,10 @@ struct WebView: UXViewRepresentable {
             window.dispatchEvent(new CustomEvent("paymentSucceeded"))
         """
     }
-
-    #if os(iOS)
-        func makeCoordinator() -> Coordinator {
-            Coordinator(self)
-        }
-    #endif
 }
 
-// MARK: - AppKit
-
-extension WebView {
-    func makeNSView(context: Context) -> WKWebView {
-        return self.webView
-    }
-
-    // [required] refresh the view
-    func updateNSView(_ webView: WKWebView, context: Context) {}
-}
-
-// MARK: - UIKit
-
-#if os(iOS)
-
-    extension WebView {
-        func makeUIView(context: Context) -> WKWebView {
-            self.webView.scrollView.delegate = context.coordinator
-            return self.webView
-        }
-
-        func updateUIView(_ webView: WKWebView, context: Context) {}
-    }
-
-    class Coordinator: NSObject, UIScrollViewDelegate {
-        var parent: WebView
-
-        init(_ parent: WebView) {
-            self.parent = parent
-        }
-
+#if !os(macOS)
+    extension WebView: UIScrollViewDelegate {
         func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) {
             scrollView.pinchGestureRecognizer?.isEnabled = false
         }
@@ -139,8 +106,27 @@ extension WebView {
             scrollView.maximumZoomScale = scrollView.zoomScale
         }
     }
-
 #endif
+
+// MARK: - WKNavigationDelegate
+
+extension WebView {
+    func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        // Check if the navigation action is a form submission
+        if navigationAction.navigationType == .linkActivated {
+            if let url = navigationAction.request.url {
+                #if os(macOS)
+                    NSWorkspace.shared.open(url)
+                #endif
+                decisionHandler(.cancel)
+            } else {
+                decisionHandler(.allow)
+            }
+        } else {
+            decisionHandler(.allow)
+        }
+    }
+}
 
 let js_error_capture = #"""
 window.onerror = (message, source, lineno, colno, error) => {

@@ -64,9 +64,9 @@ export function AccountNumberSection({ accountId, logOut }: { accountId: Obscura
           )}
         </CopyButton>
         <Button variant='light' title={showAccountNumber ? t('hide account number') : t('show account number')} onClick={() => setShowAccountNumber(!showAccountNumber)}>
-          <Group gap='xs'>
-            {<EyeIcon fill={primaryColorResolved} width='1em' height='1em' />}
-            {showAccountNumber ? t('Hide') : t('Reveal')}
+          <Group gap='xs' justify='center'>
+            <EyeIcon fill={primaryColorResolved} width='1em' height='1em' />
+            <Text miw='5ch'>{showAccountNumber ? t('Hide') : t('Reveal')}</Text>
           </Group>
         </Button>
       </Group>

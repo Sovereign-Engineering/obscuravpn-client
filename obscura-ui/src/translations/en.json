@@ -109,6 +109,7 @@
   "autoConnectStartup": "Automatically connect at launch",
   "autoConnectStartup-behavior": "If you last chose \"Quick Connect\", Obscura will \"Quick Connect\" at next launch. If you last chose a specific location, Obscura will connect to that location at next launch.",
   "busyConnection": "Connection is Busy",
+  "cancelSignUp": "I have an Account ID already",
   "checkForUpdates": "Check for updates",
   "checkMyConnection": "Check my Connection",
   "clickToConnect": "Click to connect",

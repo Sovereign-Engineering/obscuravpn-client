@@ -1,4 +1,4 @@
-import { Anchor, Button, Card, CopyButton, Drawer, Group, Image, Loader, Modal, Space, Stack, Text, TextInput, Title, Transition, useComputedColorScheme } from '@mantine/core';
+import { Anchor, Button, Card, Code, CopyButton, Drawer, Group, Image, Loader, Modal, Space, Stack, Text, TextInput, Title, Transition, useComputedColorScheme } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { motion, MotionValue, useSpring, useTransform } from 'framer-motion';
@@ -160,6 +160,16 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
 
   const showDoneButton = accountActive || paymentPressed;
 
+  const cancelSignUp = async () => {
+    try {
+      await commands.logout();
+      await commands.setInNewAccountFlow(false);
+    } catch (e) {
+      const error = normalizeError(e);
+      notifications.show({ title: t('logOutFailed'), message: <Text>{t('pleaseReportError')}<br /><Code>{error.message}</Code></Text> });
+    }
+  }
+
   return (
     <>
       <ConfirmationDialog opened={confirmAccountSecured} onClose={close}>
@@ -176,31 +186,35 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
       <Stack maw={400} mx='auto' justify='center' align='center'>
         <Image src={AppIcon} w={64} />
         <AccountId accountId={value} />
-        {
-          <Transition mounted={value === generatedAccountId} transition='fade-up' duration={600}>
-            {styles => <Stack style={styles} justify='center' align='center'>
-              <CopyButton value={ObscuraAccount.accountIdToString(generatedAccountId)}>
-                {({ copied, copy }) => (
-                  <Button variant={copied ? 'filled' : undefined} color={copied ? 'teal' : undefined} miw={IS_HANDHELD_DEVICE ? 300 : '22ch'}
-                    onClick={() => {
-                      userPressOnCopy(true);
-                      copy();
-                    }}>
-                    {copied ? t('Copied Account Number') : t('Copy Account Number')}
-                  </Button>
-                )}
-              </CopyButton>
-              <Text ta='center' fw={800} ml='xs' mr='xs'>{t('writeDownAccountNumber')}</Text>
-              <Group grow={IS_HANDHELD_DEVICE} w={IS_HANDHELD_DEVICE ? 300 : undefined}>
-                <Button disabled={!copyPressed} variant={IS_HANDHELD_DEVICE ? 'outline' : undefined} onClick={open} rightSection={<ExternalLinkIcon />}>{t('Payment')}</Button>
-                {
-                  (!IS_HANDHELD_DEVICE || showDoneButton) &&
-                  <Button disabled={!showDoneButton} onClick={() => commands.setInNewAccountFlow(false)}>{t('Done')}</Button>
-                }
-              </Group>
-            </Stack>}
-          </Transition>
-        }
+        <Transition mounted={value === generatedAccountId} transition='fade-up' duration={600}>
+          {styles => <Stack style={styles} justify='center' align='center'>
+            <CopyButton value={ObscuraAccount.accountIdToString(generatedAccountId)}>
+              {({ copied, copy }) => (
+                <Button variant={copied ? 'filled' : undefined} color={copied ? 'teal' : undefined} miw={IS_HANDHELD_DEVICE ? 300 : '22ch'}
+                  onClick={() => {
+                    userPressOnCopy(true);
+                    copy();
+                  }}>
+                  {copied ? t('Copied Account Number') : t('Copy Account Number')}
+                </Button>
+              )}
+            </CopyButton>
+            <Text ta='center' fw={800} ml='xs' mr='xs'>{t('writeDownAccountNumber')}</Text>
+            <Group grow={IS_HANDHELD_DEVICE} w={IS_HANDHELD_DEVICE ? 300 : undefined}>
+              <Button disabled={!copyPressed} variant={IS_HANDHELD_DEVICE ? 'outline' : undefined} onClick={open} rightSection={<ExternalLinkIcon />}>{t('Payment')}</Button>
+              {
+                (!IS_HANDHELD_DEVICE || showDoneButton) &&
+                <Button disabled={!showDoneButton} onClick={() => commands.setInNewAccountFlow(false)}>{t('Done')}</Button>
+              }
+            </Group>
+            {
+              !paymentPressed &&
+              <Button fw='bold' size='sm' variant='subtle' onClick={cancelSignUp} c='red'>
+                {t('cancelSignUp')}
+              </Button>
+            }
+          </Stack>}
+        </Transition>
       </Stack>
     </>
   );

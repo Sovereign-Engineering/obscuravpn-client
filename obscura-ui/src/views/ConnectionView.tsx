@@ -516,7 +516,7 @@ function LocationSelect(): ReactNode {
                             >
                                 {
                                   selectedCity === null
-                                  ? <Text>{isOffline ? t('selectLocation') : t('noInternet')}</Text>
+                                  ? <Text>{isOffline ? t('noInternet') : t('selectLocation')}</Text>
                                   : <Group gap='xs'>
                                     <Text size='lg'>{getCountryFlag(selectedCity.country_code)} {selectedExampleExit?.city_name}</Text>
                                   </Group>

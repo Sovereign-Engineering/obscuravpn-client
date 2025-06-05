@@ -2,8 +2,8 @@ import AVKit
 import SwiftUI
 
 struct LoopingVideoPlayer: View {
-    private var player: AVQueuePlayer
-    private var playerLooper: AVPlayerLooper
+    @State private var player: AVQueuePlayer
+    @State private var playerLooper: AVPlayerLooper
     private var width: CGFloat
     private var height: CGFloat
 
@@ -15,11 +15,13 @@ struct LoopingVideoPlayer: View {
         }
         let item = AVPlayerItem(asset: asset)
 
-        self.player = AVQueuePlayer(playerItem: item)
-        self.player.isMuted = true
-        self.playerLooper = AVPlayerLooper(player: self.player, templateItem: item)
+        let player = AVQueuePlayer(playerItem: item)
+        self.player = player
+        self.playerLooper = AVPlayerLooper(player: player, templateItem: item)
         self.width = width
         self.height = height
+
+        self.player.isMuted = true
     }
 
     var body: some View {

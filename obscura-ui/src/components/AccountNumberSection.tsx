@@ -1,14 +1,12 @@
-import { ActionIcon, Button, Code, CopyButton, Group, Stack, Text, useComputedColorScheme, useMantineTheme } from '@mantine/core';
-import { notifications } from '@mantine/notifications';
+import { ActionIcon, Button, CopyButton, Group, Stack, Text, useComputedColorScheme, useMantineTheme } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsClipboardFill } from 'react-icons/bs';
 import { FaCopy } from 'react-icons/fa6';
 import { IoLogOutOutline } from 'react-icons/io5';
-import * as commands from '../bridge/commands';
 import * as ObscuraAccount from '../common/accountUtils';
 import commonClasses from '../common/common.module.css';
-import { normalizeError, usePrimaryColorResolved } from '../common/utils';
+import { usePrimaryColorResolved } from '../common/utils';
 import Eye from '../res/eye.fill.svg?react';
 import EyeSlash from '../res/eye.slash.fill.svg?react';
 import PersonBadgeKey from '../res/person.badge.key.svg?react';
@@ -30,7 +28,7 @@ export function AccountNumberSection({ accountId, logOut }: { accountId: Obscura
           <div className={commonClasses.desktopOnly}>
             <ActionIcon variant='subtle' title={showAccountNumber ? t('hide account number') : t('show account number')} onClick={() => setShowAccountNumber(!showAccountNumber)}>
               {<EyeIcon fill={primaryColorResolved} width='1em' height='1em' />}
-          </ActionIcon>
+            </ActionIcon>
             <CopyButton value={ObscuraAccount.accountIdToString(accountId)}>
               {({ copied, copy }) => (
                 <ActionIcon c={copied ? 'green' : undefined} variant='subtle' title={t('copy account number')} onClick={copy}>
@@ -66,10 +64,9 @@ export function AccountNumberSection({ accountId, logOut }: { accountId: Obscura
           )}
         </CopyButton>
         <Button variant='light' title={showAccountNumber ? t('hide account number') : t('show account number')} onClick={() => setShowAccountNumber(!showAccountNumber)}>
-          {/* TODO ICONss */}
           <Group gap='xs'>
             {<EyeIcon fill={primaryColorResolved} width='1em' height='1em' />}
-            {t('Reveal')}
+            {showAccountNumber ? t('Hide') : t('Reveal')}
           </Group>
         </Button>
       </Group>

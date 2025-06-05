@@ -292,10 +292,15 @@ struct ContentView: View {
                     .tabViewStyle(.sidebarAdaptable)
                 }
 
-                self.webView
-                    // This will need to be changed for iPad
-                    .ignoresSafeArea(edges: [.top, .leading, .trailing])
-                    .padding(.bottom, self.tabBarHeight)
+                if self.loginViewShown {
+                    self.webView
+                        .ignoresSafeArea()
+                } else {
+                    self.webView
+                        // This will need to be changed for iPad
+                        .ignoresSafeArea(edges: [.top, .leading, .trailing])
+                        .padding(.bottom, self.tabBarHeight)
+                }
             }
             .ignoresSafeArea()
             .onChange(of: self.tab) { oldValue, newValue in

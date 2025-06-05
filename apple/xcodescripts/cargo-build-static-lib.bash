@@ -7,7 +7,7 @@ set -euo pipefail
 export PATH="$HOME/.cargo/bin:$PATH:/usr/local/bin:/opt/homebrew/bin"
 ## don't use ios/watchos linker for build scripts and proc macros
 ## This If statement is due to an oddity where defining these creates issues on Archive see OBS-1521
-if [ "${CONFIGURATION}" != "Release" ]; then
+if [ "${CONFIGURATION}" != "Release" ] || [ "${PLATFORM_NAME}" != "macosx" ]; then
 	CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER=$(xcrun --find ld)
 	export CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER
 	CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER=$(xcrun --find ld)

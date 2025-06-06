@@ -162,8 +162,8 @@ export function isConnecting(connectionInProgress: ConnectionInProgress) {
 }
 
 /**
- * No Reconnecting or Disconnecting
+ * No Reconnecting
  */
-export function isConnectingClean(connectionInProgress: ConnectionInProgress, osVpnStatus: NEVPNStatus) {
-  return connectionInProgress === ConnectionInProgress.ChangingLocations || osVpnStatus === NEVPNStatus.Connecting;
+export function isConnectingStatus(connectionInProgress: ConnectionInProgress, osVpnStatus: NEVPNStatus) {
+  return connectionInProgress === ConnectionInProgress.ChangingLocations || osVpnStatus === NEVPNStatus.Connecting || osVpnStatus === NEVPNStatus.Disconnecting;
 }

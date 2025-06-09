@@ -32,6 +32,10 @@ class AppState: ObservableObject {
                     _ = await self.osStatus.waitUntil { $0.internetAvailable }
                     // Wait a little to increase the chance that the OS NE session manager realizes internet is available, otherwise the NE will fail to start connecting and restart, which can cost much more time.
                     try! await Task.sleep(seconds: 0.2)
+                    if self.manager.protocolConfiguration?.includeAllNetworks == .some(true) {
+                        // Wait even longer if includeAllNetworks is enabled. Otherwise the NE state tends to traverse connected->disconnected->connecting quickly without calling any of the appropriate callbacks and then gets stuck until stopped manually. This is very common on macos 14 and rare on macos 15.
+                        try! await Task.sleep(seconds: 2)
+                    }
 
                     if self.osStatus.get().internetAvailable == false {
                         Self.logger.info("Internet became unavailability before auto-connect was triggered. Retrying.")

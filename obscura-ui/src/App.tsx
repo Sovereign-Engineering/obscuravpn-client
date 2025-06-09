@@ -10,7 +10,7 @@ import 'simplebar-react/dist/simplebar.min.css';
 import classes from './App.module.css';
 import * as commands from './bridge/commands';
 import { IS_HANDHELD_DEVICE, logReactError, PLATFORM, Platform, useSystemChecks } from './bridge/SystemProvider';
-import { AppContext, AppStatus, ConnectionInProgress, isConnectingClean, NEVPNStatus, OsStatus } from './common/appContext';
+import { AppContext, AppStatus, ConnectionInProgress, isConnectingStatus, NEVPNStatus, OsStatus } from './common/appContext';
 import { fmt } from './common/fmt';
 import { NotificationId } from './common/notifIds';
 import { useAsync } from './common/useAsync';
@@ -294,7 +294,7 @@ export default function () {
     connectionInProgress,
     osStatus,
     pollAccount,
-    isOffline: !osStatus.internetAvailable && !vpnConnected && !isConnectingClean(connectionInProgress, osStatus.osVpnStatus),
+    isOffline: !osStatus.internetAvailable && !vpnConnected && !isConnectingStatus(connectionInProgress, osStatus.osVpnStatus),
     accountLoading: accountLoadingDelayed,
     vpnConnect: tryConnect,
     vpnConnected,

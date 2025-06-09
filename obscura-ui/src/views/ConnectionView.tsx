@@ -40,6 +40,7 @@ import MascotNotConnected from '../res/mascots/not-connected-mascot.svg';
 import MascotValidating from '../res/mascots/validating-mascot.svg';
 import ObscuraIconHappy from '../res/obscura-icon-happy.svg';
 import classes from './ConnectionView.module.css';
+import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
 
 // Los Angeles, CA
 const BUTTON_WIDTH = 320;
@@ -160,7 +161,7 @@ function PrimaryConnectButton() {
   if (!vpnConnected && accountInfo !== null && accountHasExpired) {
     return <Button component='a' href={ObscuraAccount.APP_ACCOUNT_TAB}>{t('ManageAccount')}</Button>;
   }
-  if (inConnectingState && !connectingToCity) {
+  if (inConnectingState && !connectingToCity && osStatus.osVpnStatus !== NEVPNStatus.Disconnecting) {
     return <>
       <Space h='lg' />
       <Button w={BUTTON_WIDTH} {...theme.other.buttonDisconnectProps} mt={5} onClick={vpnDisconnect}>{t('Cancel Connecting')}</Button>
@@ -178,17 +179,16 @@ function ConnectionProgressBar() {
     const {
         vpnConnected,
         connectionInProgress,
-        osStatus,
         isOffline
     } = useContext(AppContext);
-    const { internetAvailable } = osStatus;
 
     const bg = colorScheme === 'light' ? 'dark.9' : 'dark.6';
     const progressBg = colorScheme === 'light' ? 'dark.4' : 'dark.3';
+    const progressWidth = IS_HANDHELD_DEVICE ? 40 : 50;
 
-    const connectingProgressBars = usePulsingProgress({ activated: isConnecting(connectionInProgress), bars: 2, inactiveColor: progressBg, w: 50 });
+    const connectingProgressBars = usePulsingProgress({ activated: isConnecting(connectionInProgress), bars: 2, inactiveColor: progressBg, w: progressWidth });
     return (
-        <Paper shadow='xl' withBorder className={classes.connectionProgressBarContainer} maw={600} bg={bg} p='md' pt={5} pb='xs' mb='lg' radius='lg'>
+        <Paper shadow='xl' withBorder className={classes.connectionProgressBarContainer} maw={600} bg={bg} p={{base: 'xs', xs: 'md'}} pt={5} pb='xs' radius='lg'>
             <Group mih={50} className={classes.connectionProgressBarGroup} align='center'>
                 <Stack gap='0' align='center'>
                     <ThemeIcon variant='transparent' c='white'>
@@ -210,8 +210,8 @@ function ConnectionProgressBar() {
                     </>
                 }
                 {
-                    internetAvailable && (connectionInProgress === ConnectionInProgress.Disconnecting || (!vpnConnected && connectionInProgress === ConnectionInProgress.UNSET)) &&
-                    <Stack gap='xs' align='center' justify='flex-end' h={50}>
+                    !isOffline && (connectionInProgress === ConnectionInProgress.Disconnecting || (!vpnConnected && connectionInProgress === ConnectionInProgress.UNSET)) &&
+                    <Stack gap='xs' align='center' justify='flex-end' h={50} className={classes.trafficVulnerable}>
                         <Progress className={classes.trafficVulnerableProgressBar} value={100} color='red.6' h={2} bg={progressBg} />
                         <Text size='xs' c='red.6'>
                             {t('trafficVulnerable')}
@@ -234,7 +234,7 @@ function ConnectionProgressBar() {
                         </ThemeIcon>
                         <Text size='xs' c={(vpnConnected && connectionInProgress !== ConnectionInProgress.ChangingLocations) ? 'white' : 'dimmed'}>Blind Relay</Text>
                     </Stack>
-                    <Progress w={50} value={(vpnConnected && connectionInProgress !== ConnectionInProgress.ChangingLocations) ? 100 : 0} h={2} bg={progressBg} />
+                    <Progress w={progressWidth} value={(vpnConnected && connectionInProgress !== ConnectionInProgress.ChangingLocations) ? 100 : 0} h={2} bg={progressBg} />
                 </>}
                 <Stack gap='0' align='center'>
                     <ThemeIcon variant='transparent' c={isOffline ? 'red.6' : (connectionInProgress === ConnectionInProgress.UNSET ? 'white' : 'dimmed')}>
@@ -369,6 +369,7 @@ function Mascot() {
     // tuned to show ... for 3 extra cycles
     const [connectingIndex, toggleConnectingDeco] = useToggle([0, 1, 2, 3, 3, 3, 3]);
     // want to show celebratory mascot the first time the user uses the app
+    const isTransitioning = useIsTransitioning();
     const [connectedBefore, setConnectedBefore] = useCookie('connected-before', ConnectedBefore.NEVER);
 
     useEffect(() => {
@@ -399,8 +400,7 @@ function Mascot() {
     }, [connectionInProgress]);
 
     const getMascot = () => {
-        if (isOffline) return MascotDead;
-        if (connectionInProgress !== ConnectionInProgress.UNSET) {
+        if (isTransitioning) {
             const mascotConnecting = MASCOT_CONNECTING[connectingIndex];
             if (mascotConnecting === undefined) {
                 console.error(`unexpected mascot connectingIndex value ${connectingIndex}`);
@@ -408,6 +408,7 @@ function Mascot() {
             }
             return mascotConnecting;
         }
+        if (isOffline) return MascotDead;
         if (vpnConnected) return connectedBefore === ConnectedBefore.FIRST_CONNECT ? MascotConnectedFirstTime : MascotConnected;
         if (accountInfo === null) return MascotValidating;
         if (accountIsExpired(accountInfo)) return MascotDead;

@@ -53,10 +53,6 @@
     .locationDividerCaption {
         width: 320px;
     }
-
-    .checkMyConnection {
-        display: none;
-    }
 }
 
 @media screen and (max-height: $mantine-breakpoint-xs) {

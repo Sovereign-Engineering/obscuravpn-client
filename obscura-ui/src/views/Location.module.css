@@ -1,5 +1,6 @@
 .locationCardConnected, .locationCardNotConnected {
     cursor: pointer;
+    border: 1px solid transparent;
 }
 
 @media (hover: hover) {
@@ -22,7 +23,7 @@
     border-width: 2px !important;
 }
 
-.locationCardConnected, .locationCardDisabled {
+.locationCardConnected, .locationCardDisabled, .connectingAnimation {
     cursor: not-allowed;
 }
 
@@ -57,5 +58,29 @@
 @media screen and (min-width: $mantine-breakpoint-xs) {
     .currentSession {
         flex-direction: column;
+    }
+}
+
+.connectingAnimationDark {
+    background: linear-gradient(90deg, rgba(181, 75, 0, 0.75), #00000000, rgba(181, 75, 0, 0.75));
+}
+
+.connectingAnimationLight {
+    background: linear-gradient(90deg, rgba(246, 152, 85, 0.487), #FFFFFFFF, rgba(246, 152, 85, 0.487));
+}
+
+.connectingAnimation {
+    border: 2px solid transparent !important;
+    border-radius: var(--mantine-radius-md) !important;
+    background-size: 200% 50%;
+    animation: wave 2s linear infinite;
+}
+
+@keyframes wave {
+    0% {
+        background-position: 200% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
     }
 }

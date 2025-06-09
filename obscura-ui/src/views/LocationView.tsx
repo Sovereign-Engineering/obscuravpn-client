@@ -1,4 +1,4 @@
-import { Accordion, ActionIcon, Anchor, Button, Card, Divider, Drawer, Flex, Group, Loader, Space, Stack, Text, ThemeIcon, Title, useComputedColorScheme, useMantineTheme } from '@mantine/core';
+import { Accordion, ActionIcon, Anchor, Button, Card, Divider, Drawer, Flex, Grid, Group, Loader, Space, Stack, Text, ThemeIcon, Title, useComputedColorScheme, useMantineTheme } from '@mantine/core';
 import { useInterval } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { t } from 'i18next';
@@ -8,9 +8,9 @@ import { BsPin, BsPinFill, BsShieldFillCheck, BsShieldFillExclamation } from 're
 import * as commands from '../bridge/commands';
 import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
 import { Exit, getContinent, getExitCountry } from '../common/api';
-import { AppContext, ConnectionInProgress, NEVPNStatus } from '../common/appContext';
+import { AppContext, ConnectionInProgress, getCityFromArgs, getCityFromStatus, NEVPNStatus } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
-import { exitLocation, exitsSortComparator, getExitCountryFlag } from '../common/exitUtils';
+import { exitCityEquals, exitLocation, exitsSortComparator, getExitCountryFlag } from '../common/exitUtils';
 import { KeyedSet } from '../common/KeyedSet';
 import { NotificationId } from '../common/notifIds';
 import { useAsync } from '../common/useAsync';
@@ -170,7 +170,8 @@ interface LocationCarProps {
 
 function LocationCard({ exit, connected, onSelect, togglePin, pinned }: LocationCarProps) {
     const { t } = useTranslation();
-    const { osStatus, isOffline } = useContext(AppContext);
+    const { osStatus, isOffline, appStatus, initiatingExitSelector } = useContext(AppContext);
+    const colorScheme = useComputedColorScheme();
 
     const onPinClick = (e: MouseEvent) => {
         e.stopPropagation();
@@ -180,7 +181,11 @@ function LocationCard({ exit, connected, onSelect, togglePin, pinned }: Location
     const disableClick = osStatus.osVpnStatus === NEVPNStatus.Disconnecting || isOffline;
     const cardClasses = [];
     if (connected) cardClasses.push(classes.locationCardConnected);
-    if (disableClick) cardClasses.push(classes.locationCardDisabled);
+    else if (!connected && osStatus.osVpnStatus !== NEVPNStatus.Disconnecting && (exitCityEquals(getCityFromStatus(appStatus.vpnStatus), exit) || exitCityEquals(getCityFromArgs(initiatingExitSelector), exit))) {
+      cardClasses.push(classes.connectingAnimation);
+      cardClasses.push(colorScheme === 'light' ? classes.connectingAnimationLight : classes.connectingAnimationDark);
+    }
+    else if (disableClick) cardClasses.push(classes.locationCardDisabled);
     else if (!connected) cardClasses.push(classes.locationCardNotConnected);
     const cardTitle = (!connected && !disableClick) ? t('Click to connect') : undefined;
 
@@ -253,7 +258,7 @@ function NoExitServers() {
 function VpnStatusCard() {
     const theme = useMantineTheme();
     const { t } = useTranslation();
-    const { appStatus, vpnConnected, isOffline, connectionInProgress, vpnDisconnect, vpnConnect } = useContext(AppContext);
+    const { appStatus, vpnConnected, isOffline, osStatus, connectionInProgress, vpnDisconnect, vpnConnect } = useContext(AppContext);
 
     const getStatusTitle = () => {
         if (connectionInProgress !== ConnectionInProgress.UNSET) return t(connectionInProgress) + '...';
@@ -295,44 +300,50 @@ function VpnStatusCard() {
 
     return (
         <Card shadow='sm' padding='lg' radius='md' withBorder w='100%' mb='xs'>
-            <Group justify='space-between'>
-                <Stack gap={0}>
-                    <Group align='center' gap={5}>
-                        <ThemeIcon color={statusColor} variant='transparent'>
-                            {connectionInProgress === ConnectionInProgress.ChangingLocations
-                            ? <Loader size='xs' color='gray.5' /> : (vpnConnected && connectionInProgress === ConnectionInProgress.UNSET)
-                            ? <BsShieldFillCheck size={25} />
-                            : <BsShieldFillExclamation size={25} />}
-                        </ThemeIcon>
-                    <Title order={4} fw={600} c={statusColor}>{getStatusTitle()}</Title>
-                    </Group>
-                    <Text c='gray' size='sm' ml={34}>{getStatusSubtitle()}</Text>
-                </Stack>
-                <Button
-                  className={commonClasses.button}
-                  miw={{base: '100%', xs: 190}}
-                  onClick={() => {
-                    if (vpnConnected || allowCancel) {
-                      vpnDisconnect();
-                    } else {
-                      vpnConnect({ any: {} });
-                    }
-                  }}
-                  disabled={btnDisabled}
-                  title={btnTitle()}
-                  px={10}
-                  radius='md'
-                  {...buttonDisconnectProps}
-                >
+            <Grid justify='space-between' grow>
+                <Grid.Col span='content'>
+                  <Stack gap={0}>
+                      <Group align='center' gap={5}>
+                          <ThemeIcon color={statusColor} variant='transparent'>
+                              {connectionInProgress === ConnectionInProgress.ChangingLocations
+                              ? <Loader size='xs' color='gray.5' /> : (vpnConnected && connectionInProgress === ConnectionInProgress.UNSET)
+                              ? <BsShieldFillCheck size={25} />
+                              : <BsShieldFillExclamation size={25} />}
+                          </ThemeIcon>
+                      <Title order={4} fw={600} c={statusColor}>{getStatusTitle()}</Title>
+                      </Group>
+                      <Text c='gray' size='sm' ml={34}>{getStatusSubtitle()}</Text>
+                  </Stack>
+                </Grid.Col>
+                <Grid.Col span='auto'>
+                  <Button
+                    fullWidth
+                    className={commonClasses.button}
+                    miw={190}
+                    onClick={() => {
+                      if (vpnConnected || allowCancel) {
+                        vpnDisconnect();
+                      } else {
+                        vpnConnect({ any: {} });
+                      }
+                    }}
+                    disabled={btnDisabled}
+                    title={btnTitle()}
+                    px={10}
+                    radius='md'
+                    {...buttonDisconnectProps}
+                  >
                     {getButtonContent()}
-                </Button>
-            </Group>
-            {appStatus.vpnStatus.connected !== undefined && connectionInProgress !== ConnectionInProgress.Disconnecting &&
+                  </Button>
+                </Grid.Col>
+            </Grid>
+            {osStatus.osVpnStatus !== NEVPNStatus.Disconnected && osStatus.osVpnStatus !== NEVPNStatus.Disconnecting &&
               <>
                 <Divider my='md' />
                 <Stack justify='space-between' w='100%'>
                   <CurrentSession />
-                  <ExitInfo exitPubKey={appStatus.vpnStatus.connected.exitPublicKey} connectedExit={appStatus.vpnStatus.connected.exit} />
+                  {appStatus.vpnStatus.connected === undefined ? <Group justify='center' p='sm'><Loader size='sm' /> {t('exitInfoLoading')}</Group>
+                    : <ExitInfo exitPubKey={appStatus.vpnStatus.connected.exitPublicKey} connectedExit={appStatus.vpnStatus.connected.exit} />}
                 </Stack>
               </>
             }
@@ -343,12 +354,13 @@ function VpnStatusCard() {
 function CurrentSession() {
   const { t } = useTranslation();
   const { value: trafficStats, refresh: pollTrafficStats } = useAsync({ deps: [], load: commands.getTrafficStats });
+  const { osStatus } = useContext(AppContext);
   useInterval(pollTrafficStats, 1000, { autoInvoke: true });
   if (trafficStats === undefined) return;
   return (
     <Flex gap={5} className={classes.currentSession}>
       <Text c='gray' size='sm'>{t('currentSession')}:</Text>
-      <Text size='sm'>{fmtTime(trafficStats.connectedMs)}</Text>
+      <Text size='sm'>{fmtTime(osStatus.osVpnStatus === NEVPNStatus.Connected ? trafficStats.connectedMs : 0)}</Text>
     </Flex>
   );
 }

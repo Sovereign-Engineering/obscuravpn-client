@@ -1,12 +1,14 @@
-import { Accordion, ActionIcon, Anchor, Button, Card, Divider, Flex, Group, Loader, Space, Stack, Text, ThemeIcon, Title, useMantineTheme } from '@mantine/core';
+import { Accordion, ActionIcon, Anchor, Button, Card, Divider, Drawer, Flex, Group, Loader, Space, Stack, Text, ThemeIcon, Title, useComputedColorScheme, useMantineTheme } from '@mantine/core';
 import { useInterval } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
+import { t } from 'i18next';
 import { MouseEvent, useContext, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { BsPin, BsPinFill, BsShieldFillCheck, BsShieldFillExclamation } from 'react-icons/bs';
 import * as commands from '../bridge/commands';
+import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
 import { Exit, getContinent, getExitCountry } from '../common/api';
-import { AppContext, ConnectionInProgress, isConnecting } from '../common/appContext';
+import { AppContext, ConnectionInProgress } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { exitLocation, exitsSortComparator, getExitCountryFlag } from '../common/exitUtils';
 import { KeyedSet } from '../common/KeyedSet';
@@ -17,6 +19,7 @@ import { fmtTime } from '../common/utils';
 import BoltBadgeAuto from '../components/BoltBadgeAuto';
 import ExternalLinkIcon from '../components/ExternalLinkIcon';
 import ObscuraChip from '../components/ObscuraChip';
+import { SecondaryButton } from '../components/SecondaryButton';
 import CheckMarkCircleFill from '../res/checkmark.circle.fill.svg?react';
 import Eye from '../res/eye.fill.svg?react';
 import EyeSlash from '../res/eye.slash.fill.svg?react';
@@ -166,9 +169,7 @@ interface LocationCarProps {
 
 function LocationCard({ exit, connected, onSelect, togglePin, pinned }: LocationCarProps) {
     const { t } = useTranslation();
-    const { connectionInProgress, osStatus, vpnConnected } = useContext(AppContext);
-    const { internetAvailable } = osStatus;
-    const isOffline = !internetAvailable && !vpnConnected && !isConnecting(connectionInProgress);
+    const { connectionInProgress, isOffline } = useContext(AppContext);
 
     const onPinClick = (e: MouseEvent) => {
         e.stopPropagation();
@@ -251,13 +252,11 @@ function NoExitServers() {
 function VpnStatusCard() {
     const theme = useMantineTheme();
     const { t } = useTranslation();
-    const { appStatus, vpnConnected, connectionInProgress, vpnDisconnect, vpnConnect, osStatus } = useContext(AppContext);
-    const { internetAvailable } = osStatus;
-    const isOffline = !internetAvailable && !vpnConnected && !isConnecting(connectionInProgress);
+    const { appStatus, vpnConnected, isOffline, connectionInProgress, vpnDisconnect, vpnConnect } = useContext(AppContext);
 
     const getStatusTitle = () => {
-        if (isOffline) return t('Offline');
         if (connectionInProgress !== ConnectionInProgress.UNSET) return t(connectionInProgress) + '...';
+        if (isOffline) return t('Offline');
         const selectedLocation = appStatus.vpnStatus.connected?.exit.city_name;
         // vpnConnected <-> vpnStatus.connected.exit defined
         if (selectedLocation !== undefined) return t('connectedToLocation', { location: selectedLocation });
@@ -265,11 +264,12 @@ function VpnStatusCard() {
     };
 
     const getStatusSubtitle = () => {
-        if (isOffline) return t('connectToInternet');
         if (connectionInProgress === ConnectionInProgress.ChangingLocations) {
           return t('trafficSuspended');
         }
-        return (vpnConnected && connectionInProgress === ConnectionInProgress.UNSET) ? t('trafficProtected') : t('trafficVulnerable');
+        if (vpnConnected) return t('trafficProtected');
+        if (connectionInProgress !== ConnectionInProgress.UNSET) return t('trafficVulnerable');
+        return isOffline ? t('connectToInternet') : t('trafficVulnerable');
     };
 
     const allowCancel = connectionInProgress === ConnectionInProgress.Connecting || connectionInProgress === ConnectionInProgress.Reconnecting;
@@ -309,7 +309,7 @@ function VpnStatusCard() {
                 </Stack>
                 <Button
                   className={commonClasses.button}
-                  miw={190}
+                  miw={{base: '100%', xs: 190}}
                   onClick={() => {
                     if (vpnConnected || allowCancel) {
                       vpnDisconnect();
@@ -331,7 +331,7 @@ function VpnStatusCard() {
                 <Divider my='md' />
                 <Stack justify='space-between' w='100%'>
                   <CurrentSession />
-                  <ExitInfoCollapse exitPubKey={appStatus.vpnStatus.connected.exitPublicKey} connectedExit={appStatus.vpnStatus.connected.exit} />
+                  <ExitInfo exitPubKey={appStatus.vpnStatus.connected.exitPublicKey} connectedExit={appStatus.vpnStatus.connected.exit} />
                 </Stack>
               </>
             }
@@ -345,36 +345,54 @@ function CurrentSession() {
   useInterval(pollTrafficStats, 1000, { autoInvoke: true });
   if (trafficStats === undefined) return;
   return (
-    <Stack gap={5}>
-      <Text c='gray' size='sm'>{t('currentSession')}</Text>
-      <Group>
-        <Text size='sm'>{fmtTime(trafficStats.connectedMs)}</Text>
-      </Group>
-    </Stack>
+    <Flex gap={5} className={classes.currentSession}>
+      <Text c='gray' size='sm'>{t('currentSession')}:</Text>
+      <Text size='sm'>{fmtTime(trafficStats.connectedMs)}</Text>
+    </Flex>
   );
 }
 
-function ExitInfoCollapse({ exitPubKey, connectedExit }: { exitPubKey: string, connectedExit: Exit}) {
-  const theme = useMantineTheme();
-  const { t } = useTranslation();
-  const [showExitInfo, setShowExitInfo] = useState(false);
-
+function ExitInfo({ exitPubKey, connectedExit }: { exitPubKey: string, connectedExit: Exit }) {
   const exitProviderId = connectedExit.provider_id;
   const exitProviderURL = connectedExit.provider_url;
   const provider = connectedExit.provider_name;
   const providerUrl = connectedExit.provider_homepage_url;
 
+  const exitInfoProps = {
+    exitPubKey,
+    connectedExit,
+    exitProviderId,
+    exitProviderURL,
+    provider,
+    providerUrl,
+  };
+  return IS_HANDHELD_DEVICE ? <ExitInfoDrawer {...exitInfoProps} /> : <ExitInfoCollapse {...exitInfoProps} />;
+}
+
+interface ExitInfoProps {
+  exitProviderId: string,
+  connectedExit: Exit,
+  exitPubKey: string,
+  provider: string,
+  providerUrl: string,
+  exitProviderURL: string,
+}
+
+function ExitInfoCollapse({ exitProviderId, exitPubKey, connectedExit, provider, providerUrl, exitProviderURL }: ExitInfoProps) {
+  const theme = useMantineTheme();
+  const { t } = useTranslation();
+  const [showExitInfo, setShowExitInfo] = useState(false);
   return (
-    <Accordion classNames={{item: classes.item}} variant='contained' value={showExitInfo ? '0' : null} onChange={() => setShowExitInfo(!showExitInfo)} chevron={null} disableChevronRotation>
+    <Accordion classNames={{ item: classes.item }} variant='contained' value={showExitInfo ? '0' : null} onChange={() => setShowExitInfo(!showExitInfo)} chevron={null} disableChevronRotation>
       <Accordion.Item key='0' value='0'>
         <Accordion.Control icon={<OrangeCheckedShield height='1em' width='1em' />}>
           <Group justify='space-between'>
             <Text size='sm' c='gray'><Trans i18nKey='securedBy' values={{ provider }} components={[<Anchor onClick={e => e.stopPropagation()} c='orange' href={providerUrl} />]} /></Text>
-            <Group style={{alignItems: 'center'}} gap={5}>
+            <Group style={{ alignItems: 'center' }} gap={5}>
               {showExitInfo ?
                 <EyeSlash fill={theme.other.dimmed} width='1em' height='1em' /> :
                 <Eye fill={theme.other.dimmed} width='1em' height='1em' />}
-              <Text size='xs' c='dimmed'>{t(showExitInfo ? 'serverInfoHide' : 'serverInfoReveal')}</Text>
+              <Text size='xs' c='dimmed' className={classes.serverInfoText}>{t(showExitInfo ? 'serverInfoHide' : 'serverInfoReveal')}</Text>
             </Group>
           </Group>
         </Accordion.Control>
@@ -393,11 +411,62 @@ function ExitInfoCollapse({ exitPubKey, connectedExit }: { exitPubKey: string, c
               <Group gap={3}>
                 <Text ff='monospace' size='sm'>{exitPubKey}</Text>
               </Group>
-              <Text size='xs' c='green.7' fw={500}><Trans i18nKey='exitPubKeyTooltip' values={{ exitProviderId, exitProviderURL }} components={[<CheckMarkCircleFill height={11} width={11} fill={theme.colors.green[7]} style={{ marginBottom: -1 }} />, <Anchor underline='always' href={exitProviderURL} />, <ThemeIcon variant='transparent' size={12}><ExternalLinkIcon style={{ height: '100%' }} /></ThemeIcon>]} /></Text>
+              <MatchesPublicKey exitProviderId={exitProviderId} exitProviderURL={exitProviderURL} />
             </Stack>
           </Stack>
         </Accordion.Panel>
       </Accordion.Item>
     </Accordion>
+  );
+}
+
+function ExitInfoDrawer({ exitProviderId, exitPubKey, connectedExit, provider, providerUrl, exitProviderURL }: ExitInfoProps) {
+  const { t } = useTranslation();
+  const colorScheme = useComputedColorScheme();
+  const [showExitInfo, setShowExitInfo] = useState(false);
+  return <>
+    <SecondaryButton onClick={() => setShowExitInfo(true)}>{t('viewServerInfo')}</SecondaryButton>
+    <Drawer classNames={{ content: commonClasses.bottomSheet }} title={t('networkInformation')} size='sm' position='bottom' opened={showExitInfo} onClose={() => setShowExitInfo(false)} withCloseButton={false}>
+      <Stack justify='space-between' h={300}>
+        <Stack gap='md'>
+          <Group justify='space-between'>
+            <Text c='dimmed'>{t('VPN')}</Text>
+            <Anchor href={providerUrl}>{provider}</Anchor>
+          </Group>
+          <Stack gap={0}>
+            <Group justify='space-between'>
+              <Text c='dimmed'>{t('Node')}</Text>
+              <Text>{exitProviderId}</Text>
+            </Group>
+            <Text size='sm' ta='right' c={colorScheme === 'light' ? 'gray.7' : 'gray'}>{connectedExit.city_name}, {getExitCountry(connectedExit).name}</Text>
+          </Stack>
+          <Stack gap={5}>
+            <Group justify='space-between' gap={5}>
+              <Text c='dimmed'>{t('publicKey')}</Text>
+              <Text ff='monospace' style={{ wordBreak: 'break-all' }}>{exitPubKey}</Text>
+            </Group>
+            <MatchesPublicKey exitProviderId={exitProviderId} exitProviderURL={exitProviderURL} />
+          </Stack>
+        </Stack>
+        <SecondaryButton onClick={() => setShowExitInfo(false)}>{t('Dismiss')}</SecondaryButton>
+      </Stack>
+    </Drawer>
+  </>;
+}
+
+interface MatchesPublicKeyProp {
+  exitProviderId: string,
+  exitProviderURL: string,
+}
+
+function MatchesPublicKey({ exitProviderId, exitProviderURL }: MatchesPublicKeyProp) {
+  const theme = useMantineTheme();
+  return (
+    <Text ta={IS_HANDHELD_DEVICE ? 'center' : undefined} size={IS_HANDHELD_DEVICE ? 'xs' : 'sm'} c='green.7' fw={500}>
+      <CheckMarkCircleFill height={11} width={11} fill={theme.colors.green[7]} style={{ marginBottom: -1 }} />{' '}
+      {t('exitPubKeyTooltip')}{' '}
+      <span style={{ display: 'inline-block' }}><Anchor underline='always' href={exitProviderURL}>{exitProviderId}</Anchor>{' '}
+        <ThemeIcon variant='transparent' size={12}><ExternalLinkIcon style={{ height: '100%' }} /></ThemeIcon></span>
+    </Text>
   );
 }

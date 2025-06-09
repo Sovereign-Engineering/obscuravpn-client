@@ -10,6 +10,7 @@ import AppIcon from '../../../apple/client/Assets.xcassets/AppIcon.appiconset/ic
 import * as commands from '../bridge/commands';
 import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
 import * as ObscuraAccount from '../common/accountUtils';
+import commonClasses from '../common/common.module.css';
 import { HEADER_TITLE, multiRef, normalizeError } from '../common/utils';
 import DecoOrangeTop from '../res/deco/deco-orange-top.svg';
 import DecoOrangeBottom from '../res/deco/deco-signup-mobile.svg';
@@ -337,7 +338,7 @@ function ConfirmationDialog({ opened, onClose, children }: ConfirmationDialogPro
   const { t } = useTranslation();
   return (
     IS_HANDHELD_DEVICE ?
-      <Drawer size='xs' radius='md' position='bottom' opened={opened} onClose={onClose} title={t('Confirmation')}>
+      <Drawer classNames={{ content: commonClasses.bottomSheet }} size='xs' position='bottom' opened={opened} onClose={onClose} title={t('Confirmation')}>
         {children}
       </Drawer> :
       <Modal opened={opened} onClose={onClose} title={t('Confirmation')} centered>

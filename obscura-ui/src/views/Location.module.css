@@ -2,12 +2,14 @@
     cursor: pointer;
 }
 
-.locationCardNotConnected:hover:not(:has(.favoriteBtn:hover)) {
-    background-color: light-dark(#f5f5f5, var(--mantine-color-dark-4));
+@media (hover: hover) {
+    .locationCardNotConnected:hover:not(:has(.favoriteBtn:hover)) {
+        background-color: light-dark(#f5f5f5, var(--mantine-color-dark-4));
 
-    @mixin light {
-        border-color: var(--mantine-color-teal-5) !important;
-        border-width: 1px !important;
+        @mixin light {
+            border-color: var(--mantine-color-teal-5) !important;
+            border-width: 1px !important;
+        }
     }
 }
 
@@ -27,7 +29,6 @@
 
 .item {
     &[data-active] {
-        /* transform: scale(1.03); */
         z-index: 1;
         background-color: var(--mantine-color-body);
         border-color: light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-4));
@@ -46,5 +47,15 @@
         padding-bottom: 56px;
         padding-left: 20px;
         padding-right: 20px;
+    }
+
+    .serverInfoText {
+        display: none !important;
+    }
+}
+
+@media screen and (min-width: $mantine-breakpoint-xs) {
+    .currentSession {
+        flex-direction: column;
     }
 }

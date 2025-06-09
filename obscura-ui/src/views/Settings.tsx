@@ -79,7 +79,7 @@ export default function Settings() {
                 loginItemError?.message !== 'errorUnsupportedOnOS' &&
                 <Switch error={loginItemError === undefined ? undefined : `${loginItemError}`} disabled={loginItemError !== undefined || loading || loginItemRegistered === undefined} checked={loginItemRegistered} onChange={event => event.currentTarget.checked ? registerAtLogin() : unregisterAtLogin()} label={t('openAtLoginRegister')} />
               }
-              <Stack gap='xs'>
+              <Stack gap={2}>
                 <Switch checked={appStatus.autoConnect} onChange={event => commands.setAutoConnect(event.currentTarget.checked)} label={t('autoConnectStartup')} />
                 <Text ml={50} size='sm' c='dimmed'>{t('autoConnectStartup-behavior')}</Text>
               </Stack>
@@ -139,7 +139,7 @@ function StrictLeakPreventionSwitch() {
   const disabled = strictLeakPrevention && vpnConnected;
 
   return (
-    <Group gap={0}>
+    <Stack gap={2}>
       <Switch
         error={error}
         checked={strictLeakPrevention}
@@ -147,6 +147,7 @@ function StrictLeakPreventionSwitch() {
         disabled={disabled || loading}
         label={t('strictLeakPreventionLabel')}
       />
+      <Text ml={50} size='sm' c='dimmed'>{t('strictLeakPreventionWarning')}</Text>
       {disabled && (
         <Tooltip label={t('strictLeakPreventionTooltip')} withArrow>
           <ThemeIcon variant='transparent' color='gray'>
@@ -154,6 +155,6 @@ function StrictLeakPreventionSwitch() {
           </ThemeIcon>
         </Tooltip>
       )}
-    </Group>
+    </Stack>
   );
 }

@@ -142,8 +142,7 @@ extension AccountStatus {
 
 struct ContentView: View {
     @ObservedObject var appState: AppState
-    @State private var selectedView = STABLE_VIEWS.first!
-    let webView: WebView
+    @ObservedObject var webviewsController: WebviewsController
 
     // when accountBadge and badgeColor are nil, the account status is either unknown OR a badge does not need to be shown
     // if ever the account is reset to nil, these variables will maintain their last computed values
@@ -155,7 +154,6 @@ struct ContentView: View {
     #if os(macOS)
         @EnvironmentObject private var appDelegate: AppDelegate
     #else
-        @State private var tab: AppView = .connection
         @State private var tabBarHeight: CGFloat = 0
     #endif
 
@@ -172,7 +170,7 @@ struct ContentView: View {
 
     init(appState: AppState) {
         self.appState = appState
-        self.webView = WebView(appState: appState)
+        self.webviewsController = appState.webviewsController
         let forceHide =
             appState.status.accountId == nil || appState.status.inNewAccountFlow
         self.loginViewShown = forceHide
@@ -193,9 +191,9 @@ struct ContentView: View {
                             == .available
                 }
             )
-            .onChange(of: self.selectedView) { view in
+            .onChange(of: self.webviewsController.tab) { view in
                 // inform webUI to update navigation
-                self.webView.navigateTo(view: view)
+                self.webviewsController.obscuraWebView?.navigateTo(view: view)
             }
             .onChange(of: self.appState.status) { status in
                 if let account = self.appState.status.account {
@@ -214,10 +212,11 @@ struct ContentView: View {
             // once we are targeting macOS 14+, we can use .toolbar(removing: .sidebarToggle) instead
             .toolbar(self.loginViewShown ? .hidden : .automatic)
             .onAppear {
+                self.appState.webviewsController.tab = STABLE_VIEWS.first!
                 logger.log("Registering openUrlCallback with AppDelegate")
                 #if os(macOS)
                     self.appDelegate.openUrlCallback = { url in
-                        self.handleObscuraURL(url: url)
+                        self.webviewsController.handleObscuraURL(url: url)
                     }
                 #endif
             }
@@ -255,89 +254,68 @@ struct ContentView: View {
         }
     }
 
-    var content: some View {
-        #if os(macOS)
-            NavigationSplitView(columnVisibility: self.$splitViewVisibility) {
-                List(
-                    self.viewMode.getViews(),
-                    id: \.self,
-                    selection: self.$selectedView
-                ) { view in
-                    self.viewLabel(view)
+    @ViewBuilder var content: some View {
+        if let obscuraWebView = webviewsController.obscuraWebView {
+            #if os(macOS)
+                NavigationSplitView(columnVisibility: self.$splitViewVisibility) {
+                    List(
+                        self.viewMode.getViews(),
+                        id: \.self,
+                        selection: self.$webviewsController.tab
+                    ) { view in
+                        self.viewLabel(view)
+                    }
+                    .environment(\.sidebarRowSize, .large)
+                    .navigationSplitViewColumnWidth(min: 175, ideal: 200)
+                } detail: {
+                    ObscuraUIWebViewSwiftUIWrapper(
+                        webView: obscuraWebView)
+                        .navigationTitle(
+                            self.loginViewShown
+                                ? "Obscura" : self.webviewsController.tab.rawValue.capitalized
+                        )
                 }
-                .environment(\.sidebarRowSize, .large)
-                .navigationSplitViewColumnWidth(min: 175, ideal: 200)
-            } detail: {
-                ObscuraWebViewSwiftUIWrapper(
-                    webView: self.webView)
-                    .navigationTitle(
-                        self.loginViewShown
-                            ? "Obscura" : self.selectedView.rawValue.capitalized
-                    )
-            }
-        #else
-            Group {
-                if self.loginViewShown {
-                    ObscuraWebViewSwiftUIWrapper(
-                        webView: self.webView)
-                        .ignoresSafeArea()
-                } else {
-                    TabView(selection: self.$tab) {
-                        ForEach(self.viewMode.getIOSViews()) { view in
-                            ObscuraWebViewSwiftUIWrapper(
-                                webView: self.webView,
-                                currentTab: self.tab,
-                                myTab: view
-                            )
-                            .ignoresSafeArea(edges: [.top, .leading, .trailing])
-                            .tag(view)
-                            .tabItem {
-                                self.viewLabel(view)
+            #else
+                ZStack {
+                    if self.loginViewShown {
+                        ObscuraUIWebViewSwiftUIWrapper(
+                            webView: obscuraWebView)
+                            .ignoresSafeArea()
+                    } else {
+                        TabView(selection: self.$webviewsController.tab) {
+                            ForEach(self.viewMode.getIOSViews()) { view in
+                                ObscuraUIWebViewSwiftUIWrapper(
+                                    webView: obscuraWebView,
+                                    currentTab: self.webviewsController.tab,
+                                    myTab: view
+                                )
+                                .ignoresSafeArea(edges: [.top, .leading, .trailing])
+                                .tag(view)
+                                .tabItem {
+                                    self.viewLabel(view)
+                                }
                             }
                         }
+                        .tabViewStyle(.sidebarAdaptable)
                     }
-                    .tabViewStyle(.sidebarAdaptable)
                 }
-            }
-            .ignoresSafeArea()
-            .onChange(of: self.tab) { oldValue, newValue in
-                self.webView.navigateTo(view: newValue)
-            }
-            .tint(Color("ObscuraOrange"))
-        #endif
-    }
-
-    func handleObscuraURL(url: URL) {
-        logger.info("Handling URL: \(url, privacy: .public)")
-
-        // From: https://developer.apple.com/documentation/xcode/defining-a-custom-url-scheme-for-your-app#Handle-incoming-URLs
-        guard
-            let components = NSURLComponents(
-                url: url,
-                resolvingAgainstBaseURL: true
-            )
-        else {
-            logger.error("Failed to parse URL into components")
-            return
+                .ignoresSafeArea()
+                .tint(Color("ObscuraOrange"))
+                .sheet(
+                    isPresented: self.$webviewsController.showModalWebview)
+                {
+                    self.webviewsController.externalWebView
+                        .ignoresSafeArea()
+                        .presentationDetents([.large])
+                        .presentationDragIndicator(.visible)
+                }
+                .onOpenURL { incomingURL in
+                    self.webviewsController.handleObscuraURL(url: incomingURL)
+                }
+            #endif
+        } else {
+            EmptyView()
         }
-
-        #if os(macOS)
-            switch components.path {
-            case .some("/open"):
-                fullyOpenManagerWindow()
-            case .some("/payment-succeeded"):
-                fullyOpenManagerWindow() // Open the manager window first
-                self.webView.handlePaymentSucceeded()
-            case .some("/account"):
-                fullyOpenManagerWindow()
-                self.selectedView = .account
-            case let unknownPath:
-                logger.error(
-                    "Unknown URL path: \(unknownPath, privacy: .public)"
-                )
-                fullyOpenManagerWindow()
-            }
-        #endif
     }
 }
 

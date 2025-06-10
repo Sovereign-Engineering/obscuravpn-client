@@ -15,12 +15,12 @@ import WebKit
  !!! This hack is currently not necessary on macOS where NavigationSplitView is used which allows you to share a view between multiple tabs.
  */
 
-struct ObscuraWebViewSwiftUIWrapper: UXViewRepresentable {
-    let webView: WebView
+struct ObscuraUIWebViewSwiftUIWrapper: UXViewRepresentable {
+    let webView: ObscuraUIWebView
     var currentTab: AppView?
     let myTab: AppView?
 
-    init(webView: WebView, currentTab: AppView? = nil, myTab: AppView? = nil) {
+    init(webView: ObscuraUIWebView, currentTab: AppView? = nil, myTab: AppView? = nil) {
         self.webView = webView
         self.currentTab = currentTab
         self.myTab = myTab
@@ -30,7 +30,7 @@ struct ObscuraWebViewSwiftUIWrapper: UXViewRepresentable {
 // MARK: - AppKit
 
 // Hack not needed on macOS as NavigationSplitView allows each tab to share the same SwiftUI view
-extension ObscuraWebViewSwiftUIWrapper {
+extension ObscuraUIWebViewSwiftUIWrapper {
     func makeNSView(context: Context) -> WKWebView {
         return self.webView
     }
@@ -43,7 +43,7 @@ extension ObscuraWebViewSwiftUIWrapper {
 
 #if os(iOS)
 
-    extension ObscuraWebViewSwiftUIWrapper {
+    extension ObscuraUIWebViewSwiftUIWrapper {
         private weak static var owner: UIView?
 
         func makeUIView(context: Context) -> UIView {
@@ -53,10 +53,10 @@ extension ObscuraWebViewSwiftUIWrapper {
         // Called when SwiftUI state changes such as the binding
         func updateUIView(_ hostedView: UIView, context: Context) {
             let currentlyMyTab = self.currentTab == self.myTab
-            let isDuplicateCall = ObscuraWebViewSwiftUIWrapper.owner == hostedView
+            let isDuplicateCall = ObscuraUIWebViewSwiftUIWrapper.owner == hostedView
             if currentlyMyTab, !isDuplicateCall {
                 self.removeWebview(
-                    from: ObscuraWebViewSwiftUIWrapper.owner,
+                    from: ObscuraUIWebViewSwiftUIWrapper.owner,
                     reassign: hostedView
                 )
             }
@@ -82,7 +82,7 @@ extension ObscuraWebViewSwiftUIWrapper {
                     .constraint(equalTo: self.webView.bottomAnchor),
             ])
 
-            ObscuraWebViewSwiftUIWrapper.owner = to
+            ObscuraUIWebViewSwiftUIWrapper.owner = to
         }
     }
 

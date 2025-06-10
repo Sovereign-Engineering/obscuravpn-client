@@ -85,15 +85,15 @@
 		96C920692CD91D96002C85EA /* String.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C920682CD91D94002C85EA /* String.swift */; };
 		96C9206A2CD91D96002C85EA /* String.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C920682CD91D94002C85EA /* String.swift */; };
 		A082F8232C46BF5B002AF810 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A082F8222C46BF5B002AF810 /* Sparkle */; };
-		A9029C192DEEDCBC00AAD761 /* ObscuraWebViewSwiftUIWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9029C182DEEDCBC00AAD761 /* ObscuraWebViewSwiftUIWrapper.swift */; };
-		A9029C1A2DEEDCBC00AAD761 /* ObscuraWebViewSwiftUIWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9029C182DEEDCBC00AAD761 /* ObscuraWebViewSwiftUIWrapper.swift */; };
-		A9200A862DD1251C00FD035C /* WebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9200A842DD1251C00FD035C /* WebView.swift */; };
+		A9029C192DEEDCBC00AAD761 /* ObscuraUIWebViewSwiftUIWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9029C182DEEDCBC00AAD761 /* ObscuraUIWebViewSwiftUIWrapper.swift */; };
+		A9029C1A2DEEDCBC00AAD761 /* ObscuraUIWebViewSwiftUIWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9029C182DEEDCBC00AAD761 /* ObscuraUIWebViewSwiftUIWrapper.swift */; };
+		A9200A862DD1251C00FD035C /* ObscuraUIWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9200A842DD1251C00FD035C /* ObscuraUIWebView.swift */; };
 		A9200A872DD127A200FD035C /* Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35230C272C775FF1007ECFEC /* Notifications.swift */; };
 		A936D4452DD1492A0031B646 /* UXViewRepresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = A936D4432DD149290031B646 /* UXViewRepresentable.swift */; };
 		A936D4462DD1492A0031B646 /* UXViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A936D4422DD149290031B646 /* UXViewController.swift */; };
 		A936D4472DD1492A0031B646 /* UXViewRepresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = A936D4432DD149290031B646 /* UXViewRepresentable.swift */; };
 		A936D4482DD1492A0031B646 /* UXViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A936D4422DD149290031B646 /* UXViewController.swift */; };
-		A936D4712DD14DC30031B646 /* WebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9200A842DD1251C00FD035C /* WebView.swift */; };
+		A936D4712DD14DC30031B646 /* ObscuraUIWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9200A842DD1251C00FD035C /* ObscuraUIWebView.swift */; };
 		A936D4722DD14E040031B646 /* ScriptMessageHandlers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3096E0212BDC1FFB0026DE7F /* ScriptMessageHandlers.swift */; };
 		A936D4732DD14E470031B646 /* command.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3096E03F2BEFC6770026DE7F /* command.swift */; };
 		A936D48F2DD15AED0031B646 /* startup.swift in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 30920D742C1F71BB008690C3 /* startup.swift */; };
@@ -111,6 +111,10 @@
 		A9768FBE2DBB02BC00A4595F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30761C232B6EB17100E5F60D /* ContentView.swift */; };
 		A9768FC02DBB02C400A4595F /* OrderedCollections in Frameworks */ = {isa = PBXBuildFile; productRef = A9768FBF2DBB02C400A4595F /* OrderedCollections */; };
 		A9768FC22DBB02C900A4595F /* OrderedCollections in Frameworks */ = {isa = PBXBuildFile; productRef = A9768FC12DBB02C900A4595F /* OrderedCollections */; };
+		A983D7E02DF25435007306C5 /* WebviewsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A983D7DF2DF25435007306C5 /* WebviewsController.swift */; };
+		A983D7E12DF25435007306C5 /* WebviewsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A983D7DF2DF25435007306C5 /* WebviewsController.swift */; };
+		A983D7E32DF261BB007306C5 /* ExternalWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A983D7E22DF261BB007306C5 /* ExternalWebView.swift */; };
+		A983D7E42DF261BB007306C5 /* ExternalWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A983D7E22DF261BB007306C5 /* ExternalWebView.swift */; };
 		A98F1BCE2DADFF17007F04D3 /* DequeModule in Frameworks */ = {isa = PBXBuildFile; productRef = A98F1BA22DADFF17007F04D3 /* DequeModule */; };
 		A98F1BD02DADFF17007F04D3 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 30761C282B6EB17200E5F60D /* Preview Assets.xcassets */; };
 		A98F1BD12DADFF17007F04D3 /* build in Resources */ = {isa = PBXBuildFile; fileRef = 96516AC22BF928DD00576562 /* build */; };
@@ -294,8 +298,8 @@
 		A06E85A62C2ECA680087C8C8 /* bundle-ids.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "bundle-ids.xcconfig"; sourceTree = "<group>"; };
 		A06E85A92C2ECA680087C8C8 /* app.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = app.xcconfig; sourceTree = "<group>"; };
 		A06E85AA2C2ECA680087C8C8 /* buildversion.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = buildversion.xcconfig; sourceTree = "<group>"; };
-		A9029C182DEEDCBC00AAD761 /* ObscuraWebViewSwiftUIWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObscuraWebViewSwiftUIWrapper.swift; sourceTree = "<group>"; };
-		A9200A842DD1251C00FD035C /* WebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebView.swift; sourceTree = "<group>"; };
+		A9029C182DEEDCBC00AAD761 /* ObscuraUIWebViewSwiftUIWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObscuraUIWebViewSwiftUIWrapper.swift; sourceTree = "<group>"; };
+		A9200A842DD1251C00FD035C /* ObscuraUIWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObscuraUIWebView.swift; sourceTree = "<group>"; };
 		A936D4422DD149290031B646 /* UXViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UXViewController.swift; sourceTree = "<group>"; };
 		A936D4432DD149290031B646 /* UXViewRepresentable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UXViewRepresentable.swift; sourceTree = "<group>"; };
 		A936D4922DD15F6A0031B646 /* StartupStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartupStatus.swift; sourceTree = "<group>"; };
@@ -306,6 +310,8 @@
 		A9768FAC2DBB01AD00A4595F /* UpdaterDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdaterDriver.swift; sourceTree = "<group>"; };
 		A9768FAE2DBB01C400A4595F /* CheckForUpdatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckForUpdatesView.swift; sourceTree = "<group>"; };
 		A9768FB32DBB01EE00A4595F /* SparkleUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkleUpdater.swift; sourceTree = "<group>"; };
+		A983D7DF2DF25435007306C5 /* WebviewsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebviewsController.swift; sourceTree = "<group>"; };
+		A983D7E22DF261BB007306C5 /* ExternalWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalWebView.swift; sourceTree = "<group>"; };
 		A98F1BD82DADFF17007F04D3 /* Obscura VPN iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Obscura VPN iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A998710C2DBAF7FE0044D136 /* RegisterLoginItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterLoginItemView.swift; sourceTree = "<group>"; };
 		A998710F2DBAF8080044D136 /* NoFadeButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoFadeButtonStyle.swift; sourceTree = "<group>"; };
@@ -437,6 +443,7 @@
 		30761C202B6EB17100E5F60D /* client */ = {
 			isa = PBXGroup;
 			children = (
+				A983D8002DF276DF007306C5 /* Webviews */,
 				A9843F5B2DD7DBF600988B2D /* SwiftUI Hacks */,
 				A94743F62DD170E8002ACD85 /* iOS */,
 				A936D4972DD161630031B646 /* UXKit */,
@@ -456,8 +463,6 @@
 				3096E0452BF0F5860026DE7F /* app_state.swift */,
 				3096E03F2BEFC6770026DE7F /* command.swift */,
 				967D0C852C41A1E500FD0767 /* Constants.swift */,
-				A9200A842DD1251C00FD035C /* WebView.swift */,
-				A9029C182DEEDCBC00AAD761 /* ObscuraWebViewSwiftUIWrapper.swift */,
 				30761C232B6EB17100E5F60D /* ContentView.swift */,
 				A9BCB05D2DC54AC0006C0133 /* DebugBundle.swift */,
 				35A6F2512C611DD1004E1A7C /* DebugBundle+XP.swift */,
@@ -574,6 +579,17 @@
 				A94743F72DD170F5002ACD85 /* iOSClientApp.swift */,
 			);
 			path = iOS;
+			sourceTree = "<group>";
+		};
+		A983D8002DF276DF007306C5 /* Webviews */ = {
+			isa = PBXGroup;
+			children = (
+				A983D7DF2DF25435007306C5 /* WebviewsController.swift */,
+				A9029C182DEEDCBC00AAD761 /* ObscuraUIWebViewSwiftUIWrapper.swift */,
+				A9200A842DD1251C00FD035C /* ObscuraUIWebView.swift */,
+				A983D7E22DF261BB007306C5 /* ExternalWebView.swift */,
+			);
+			path = Webviews;
 			sourceTree = "<group>";
 		};
 		A9843F5B2DD7DBF600988B2D /* SwiftUI Hacks */ = {
@@ -892,7 +908,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				3096E0222BDC1FFB0026DE7F /* ScriptMessageHandlers.swift in Sources */,
-				A9200A862DD1251C00FD035C /* WebView.swift in Sources */,
+				A983D7E02DF25435007306C5 /* WebviewsController.swift in Sources */,
+				A9200A862DD1251C00FD035C /* ObscuraUIWebView.swift in Sources */,
 				30EF74C12BFFE48C0095439F /* FfiCb.swift in Sources */,
 				309B467D2C4C152900A1B00F /* StringError.swift in Sources */,
 				A9768FB42DBB01EE00A4595F /* SparkleUpdater.swift in Sources */,
@@ -922,6 +939,7 @@
 				35A6F2542C6121C2004E1A7C /* time.swift in Sources */,
 				A936D4932DD15F6A0031B646 /* StartupStatus.swift in Sources */,
 				A9BCB0622DC54B68006C0133 /* UpdaterDriver+XP.swift in Sources */,
+				A983D7E32DF261BB007306C5 /* ExternalWebView.swift in Sources */,
 				300452782C49BC90000B78F7 /* Json.swift in Sources */,
 				968B02B92CFF5B7B0053D0EF /* Account.swift in Sources */,
 				35A6F2522C611DD1004E1A7C /* DebugBundle+XP.swift in Sources */,
@@ -941,7 +959,7 @@
 				3096BFF92CECD50F003D062E /* NEVPNStatus.swift in Sources */,
 				A936D4992DD1617F0031B646 /* UXImage.swift in Sources */,
 				309BA9132C45DFC8000A7428 /* Sleep.swift in Sources */,
-				A9029C192DEEDCBC00AAD761 /* ObscuraWebViewSwiftUIWrapper.swift in Sources */,
+				A9029C192DEEDCBC00AAD761 /* ObscuraUIWebViewSwiftUIWrapper.swift in Sources */,
 				A936D49C2DD162AB0031B646 /* InstallSystemExtensionView.swift in Sources */,
 				962325212C88D4E8008A9B76 /* ObscuraToggle.swift in Sources */,
 			);
@@ -1004,7 +1022,7 @@
 				A936D4902DD15B6B0031B646 /* startup.swift in Sources */,
 				A936D4732DD14E470031B646 /* command.swift in Sources */,
 				A936D4722DD14E040031B646 /* ScriptMessageHandlers.swift in Sources */,
-				A936D4712DD14DC30031B646 /* WebView.swift in Sources */,
+				A936D4712DD14DC30031B646 /* ObscuraUIWebView.swift in Sources */,
 				A9200A872DD127A200FD035C /* Notifications.swift in Sources */,
 				A9768FBE2DBB02BC00A4595F /* ContentView.swift in Sources */,
 				A99871292DBAF90B0044D136 /* Debug.swift in Sources */,
@@ -1017,7 +1035,9 @@
 				A99871222DBAF8890044D136 /* OSLogEntryEncodable.swift in Sources */,
 				A99871212DBAF8850044D136 /* Json.swift in Sources */,
 				A99871202DBAF8810044D136 /* StringError.swift in Sources */,
+				A983D7E12DF25435007306C5 /* WebviewsController.swift in Sources */,
 				A998711F2DBAF87D0044D136 /* Sleep.swift in Sources */,
+				A983D7E42DF261BB007306C5 /* ExternalWebView.swift in Sources */,
 				A936D4942DD15F6A0031B646 /* StartupStatus.swift in Sources */,
 				A998711E2DBAF8790044D136 /* Concurrency.swift in Sources */,
 				A998711D2DBAF8740044D136 /* Box.swift in Sources */,
@@ -1028,7 +1048,7 @@
 				A998711B2DBAF8680044D136 /* FfiCb.swift in Sources */,
 				A998711A2DBAF8610044D136 /* Constants.swift in Sources */,
 				A99871192DBAF85C0044D136 /* ObservableValue.swift in Sources */,
-				A9029C1A2DEEDCBC00AAD761 /* ObscuraWebViewSwiftUIWrapper.swift in Sources */,
+				A9029C1A2DEEDCBC00AAD761 /* ObscuraUIWebViewSwiftUIWrapper.swift in Sources */,
 				A99871182DBAF8590044D136 /* WatchableValue.swift in Sources */,
 				A99871162DBAF8510044D136 /* OsStatus.swift in Sources */,
 				A99871152DBAF84D0044D136 /* app_state.swift in Sources */,

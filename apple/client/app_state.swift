@@ -13,6 +13,7 @@ class AppState: ObservableObject {
     #if os(macOS)
         public let updater: SparkleUpdater
     #endif
+    @Published public var webviewsController: WebviewsController
 
     init(
         _ manager: NETunnelProviderManager,
@@ -24,6 +25,9 @@ class AppState: ObservableObject {
         #if os(macOS)
             self.updater = SparkleUpdater(osStatus: self.osStatus)
         #endif
+
+        self.webviewsController = WebviewsController()
+        self.webviewsController.initializeWebviews(appState: self)
 
         if initialStatus.autoConnect {
             Task {

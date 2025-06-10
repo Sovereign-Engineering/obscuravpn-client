@@ -1,25 +1,7 @@
 import SwiftUI
 import WebKit
 
-class WebViewController: UXViewController, WKNavigationDelegate {
-    func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-        // Check if the navigation action is a form submission
-        if navigationAction.navigationType == .linkActivated {
-            if let url = navigationAction.request.url {
-                #if os(macOS)
-                    NSWorkspace.shared.open(url)
-                #endif
-                decisionHandler(.cancel)
-            } else {
-                decisionHandler(.allow)
-            }
-        } else {
-            decisionHandler(.allow)
-        }
-    }
-}
-
-class WebView: WKWebView, WKNavigationDelegate {
+class ObscuraUIWebView: WKWebView {
     init(appState: AppState) {
         let webConfiguration = WKWebViewConfiguration()
         // webConfiguration.preferences.javaScriptEnabled = true
@@ -42,7 +24,7 @@ class WebView: WKWebView, WKNavigationDelegate {
             webConfiguration.preferences.setValue(true, forKey: "developerExtrasEnabled")
         #endif
         super.init(frame: .zero, configuration: webConfiguration)
-        self.navigationDelegate = self
+        self.navigationDelegate = appState.webviewsController
 
         #if LOAD_DEV_SERVER
             let urlRequest = URLRequest(url: URL(string: "http://localhost:1420/")!)
@@ -68,7 +50,7 @@ class WebView: WKWebView, WKNavigationDelegate {
 
     func navigateTo(view: AppView) {
         self.evaluateJavaScript(
-            WebView.generateNavEventJS(viewName: view.ipcValue)
+            ObscuraUIWebView.generateNavEventJS(viewName: view.ipcValue)
         )
         #if !os(macOS)
             self.scrollView.bounces = view.needsScroll
@@ -85,7 +67,7 @@ class WebView: WKWebView, WKNavigationDelegate {
     }
 
     func handlePaymentSucceeded() {
-        self.evaluateJavaScript(WebView.generatePaymentSucceededEventJS())
+        self.evaluateJavaScript(ObscuraUIWebView.generatePaymentSucceededEventJS())
     }
 
     static func generatePaymentSucceededEventJS() -> String {
@@ -96,7 +78,7 @@ class WebView: WKWebView, WKNavigationDelegate {
 }
 
 #if !os(macOS)
-    extension WebView: UIScrollViewDelegate {
+    extension ObscuraUIWebView: UIScrollViewDelegate {
         func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) {
             scrollView.pinchGestureRecognizer?.isEnabled = false
         }
@@ -107,26 +89,6 @@ class WebView: WKWebView, WKNavigationDelegate {
         }
     }
 #endif
-
-// MARK: - WKNavigationDelegate
-
-extension WebView {
-    func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-        // Check if the navigation action is a form submission
-        if navigationAction.navigationType == .linkActivated {
-            if let url = navigationAction.request.url {
-                #if os(macOS)
-                    NSWorkspace.shared.open(url)
-                #endif
-                decisionHandler(.cancel)
-            } else {
-                decisionHandler(.allow)
-            }
-        } else {
-            decisionHandler(.allow)
-        }
-    }
-}
 
 let js_error_capture = #"""
 window.onerror = (message, source, lineno, colno, error) => {

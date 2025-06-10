@@ -8,7 +8,7 @@ import { BsPin, BsPinFill, BsShieldFillCheck, BsShieldFillExclamation } from 're
 import * as commands from '../bridge/commands';
 import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
 import { Exit, getContinent, getExitCountry } from '../common/api';
-import { AppContext, ConnectionInProgress } from '../common/appContext';
+import { AppContext, ConnectionInProgress, NEVPNStatus } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { exitLocation, exitsSortComparator, getExitCountryFlag } from '../common/exitUtils';
 import { KeyedSet } from '../common/KeyedSet';
@@ -45,6 +45,7 @@ export default function LocationView() {
             return;
         }
         if (vpnConnected || connectionInProgress !== ConnectionInProgress.UNSET) {
+            notifications.hide(NotificationId.VPN_DISCONNECT_CONNECT);
             notifications.show({
                 title: t('connectingToCity', { city: exit.city_name }),
                 message: '',
@@ -169,14 +170,14 @@ interface LocationCarProps {
 
 function LocationCard({ exit, connected, onSelect, togglePin, pinned }: LocationCarProps) {
     const { t } = useTranslation();
-    const { connectionInProgress, isOffline } = useContext(AppContext);
+    const { osStatus, isOffline } = useContext(AppContext);
 
     const onPinClick = (e: MouseEvent) => {
         e.stopPropagation();
         togglePin(exit);
     };
 
-    const disableClick = connectionInProgress !== ConnectionInProgress.UNSET || isOffline;
+    const disableClick = osStatus.osVpnStatus === NEVPNStatus.Disconnecting || isOffline;
     const cardClasses = [];
     if (connected) cardClasses.push(classes.locationCardConnected);
     if (disableClick) cardClasses.push(classes.locationCardDisabled);

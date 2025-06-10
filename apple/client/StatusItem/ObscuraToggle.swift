@@ -6,11 +6,11 @@ import UserNotifications
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "ObscuraToggle")
 
 enum ToggleLabels: String {
-    case connected = "Connected"
-    case connecting = "Connecting..."
-    case reconnecting = "Reconnecting..."
-    case disconnecting = "Disconnecting..."
-    case notConnected = "Not Connected"
+    case connected
+    case connecting
+    case reconnecting
+    case disconnecting
+    case notConnected
 }
 
 struct ObscuraToggle: View {
@@ -27,6 +27,31 @@ struct ObscuraToggle: View {
 
     func getVpnStatus() -> NeStatus? {
         return self.startupModel.appState?.status
+    }
+
+    func getCityName() -> String? {
+        switch self.getVpnStatus()?.vpnStatus {
+        case .connected(_, let exit, _, _, _, _):
+            return exit.city_name
+        default:
+            return nil
+        }
+    }
+
+    func getToggleText() -> String {
+        switch self.toggleLabel {
+        case .connected:
+            let cityName = self.getCityName()
+            if cityName == nil {
+                return "Connected"
+            }
+            return "Connected to \(cityName!)"
+        case .connecting: return "Connecting..."
+        case .reconnecting: return "Reconnecting..."
+        case .disconnecting: return "Disconnecting..."
+        // adding tabs prevents text overflow on the first status menu connect
+        case .notConnected: return "Not Connected\t\t\t"
+        }
     }
 
     func toggleClick() {
@@ -74,9 +99,7 @@ struct ObscuraToggle: View {
             VStack(alignment: .leading) {
                 Text("Obscura VPN")
                     .font(.headline.weight(.regular))
-                // we can't rely on @ObservedObject / @Published because it just doesn't update during connecting
-                // nor we can't use onChange(...) to detet changes
-                Text(self.toggleLabel.rawValue)
+                Text(self.getToggleText())
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }

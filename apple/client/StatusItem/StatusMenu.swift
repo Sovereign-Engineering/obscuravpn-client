@@ -21,7 +21,7 @@ final class StatusItemManager: ObservableObject {
     private var bandwidthStatusModel = BandwidthStatusModel()
     private var osStatusModel = OsStatusModel()
 
-    // intentionally empty to ensure that the menu item can be hightlighted
+    // intentionally empty to ensure that the menu item can be highlighted
     @objc func emptyAction() {}
 
     init() {
@@ -31,7 +31,7 @@ final class StatusItemManager: ObservableObject {
     func createStatusItem() {
         let statusItem: NSStatusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         let hostingView = NSHostingView(rootView: StatusItem(sizePassthrough: sizePassthrough, bandwidthStatusModel: bandwidthStatusModel, osStatusModel: self.osStatusModel))
-        hostingView.frame = NSRect(x: 0, y: 0, width: 80, height: 24)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 100, height: 24)
         statusItem.button?.frame = hostingView.frame
         statusItem.button?.addSubview(hostingView)
 

@@ -23,7 +23,12 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         }
 
         let configDir = configDir()
-        let userAgent = "obscura.net/macos/" + sourceVersion()
+        #if os(macOS)
+            let userAgentPlatform = "macos"
+        #else
+            let userAgentPlatform = "ios"
+        #endif
+        let userAgent = "obscura.net/" + userAgentPlatform + "/" + sourceVersion()
         logger.log("config dir \(configDir, privacy: .public)")
         logger.log("user agent \(userAgent, privacy: .public)")
         ffiInitialize(configDir: configDir, userAgent: userAgent, receiveCallback)

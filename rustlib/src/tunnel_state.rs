@@ -150,6 +150,14 @@ impl TunnelState {
             if !tunnel_state.borrow().is_target_state(&target_args) || disconnect_reason.is_some() {
                 tracing::info!(message_id = "KT91bgvI", ?disconnect_reason, "not in target state or tunnel broke");
 
+                if target_args.is_none() {
+                    // State changed to disconnected, which means we will disconnect, but are in another state.
+                    // This is the right time for key rotations without unnecessarily rotating keys of permanently unused devices.
+                    if let Err(error) = client_state.rotate_wireguard_key_if_required() {
+                        tracing::info!(message_id = "MsHuAlwT", ?error, "key rotation failed");
+                    }
+                }
+
                 // Drop tunnel if args changed and change to connecting or disconnected as desired
                 tunnel_state.send_modify(|tunnel_state| match &target_args {
                     None => tunnel_state.set_disconnected(),

@@ -1,4 +1,4 @@
-import { Anchor, Button, Combobox, DefaultMantineColor, Divider, Flex, Group, Image, Paper, Progress, ScrollArea, Space, Stack, StyleProp, Text, ThemeIcon, Title, useCombobox, useComputedColorScheme, useMantineTheme } from '@mantine/core';
+import { Anchor, Button, Combobox, DefaultMantineColor, Divider, Flex, Group, Image, Paper, Progress, ProgressRootProps, ScrollArea, Space, Stack, StyleProp, Text, ThemeIcon, Title, useCombobox, useComputedColorScheme, useMantineTheme } from '@mantine/core';
 import { useFocusTrap, useInterval, useToggle } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { ReactNode, useContext, useEffect, useMemo, useState } from 'react';
@@ -40,7 +40,6 @@ import MascotNotConnected from '../res/mascots/not-connected-mascot.svg';
 import MascotValidating from '../res/mascots/validating-mascot.svg';
 import ObscuraIconHappy from '../res/obscura-icon-happy.svg';
 import classes from './ConnectionView.module.css';
-import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
 
 // Los Angeles, CA
 const BUTTON_WIDTH = 320;
@@ -184,7 +183,7 @@ function ConnectionProgressBar() {
 
     const bg = colorScheme === 'light' ? 'dark.9' : 'dark.6';
     const progressBg = colorScheme === 'light' ? 'dark.4' : 'dark.3';
-    const progressWidth = IS_HANDHELD_DEVICE ? 40 : 50;
+    const progressWidth = { base: 40, xs: 50 };
 
     const connectingProgressBars = usePulsingProgress({ activated: isConnecting(connectionInProgress), bars: 2, inactiveColor: progressBg, w: progressWidth });
     return (
@@ -247,11 +246,10 @@ function ConnectionProgressBar() {
     );
 }
 
-interface PulsingProgressProps {
+interface PulsingProgressProps extends ProgressRootProps {
   activated: boolean,
   bars: number,
   inactiveColor: StyleProp<DefaultMantineColor>,
-  w: number
 }
 
 function usePulsingProgress({ activated, bars = 2, inactiveColor, w }: PulsingProgressProps) {

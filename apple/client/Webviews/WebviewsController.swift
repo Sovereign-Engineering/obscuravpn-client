@@ -46,6 +46,11 @@ class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
 
     #if !os(macOS)
         private func handleWebsiteLinkiOS(url: URL) {
+            if url.absoluteString.contains("obscuravpn") {
+                self.handleObscuraURL(url: url)
+                return
+            }
+
             // Check that it is a staging.obscura.net or obscura.net url
             guard
                 let components = NSURLComponents(

@@ -23,11 +23,11 @@ struct StartupView: View {
                 case .networkExtensionInit(_, .waitingForReboot):
                     Text("Reboot Required")
                 case .networkExtensionInit(let neInit, .blockingBeforePermissionPopup):
-                    InstallSystemExtensionView(startupModel: self.model, subtext: "Please allow Obscura VPN's network extension to be installed in system settings to extend the networking features of your mac.", neInit: neInit)
+                    InstallSystemExtensionView(startupModel: self.model, subtext: "Please allow Obscura VPN's network extension to be installed in System Settings to extend the networking features of your Mac.", neInit: neInit)
                 case .networkExtensionInit(let neInit, .blockingBeforeTunnelDisconnect):
                     UpdateSystemExtensionView(startupModel: self.model, subtext: "An updated version of Obscura VPN's network extension is required.", neInit: neInit)
                 case .networkExtensionInit(_, .waitingForUserApproval):
-                    InstallSystemExtensionView(startupModel: self.model, subtext: "Please allow Obscura VPN's network extension to be installed in system settings to extend the networking features of your mac.")
+                    InstallSystemExtensionView(startupModel: self.model, subtext: "Please allow Obscura VPN's network extension to be installed in System Settings to extend the networking features of your Mac.")
                 case .networkExtensionInit(_, .failed(let error)):
                     InstallSystemExtensionView(startupModel: self.model, subtext: "Could not start the network extension. \(error). Please restart your Mac or contact support for help.")
             #endif
@@ -138,7 +138,7 @@ struct VpnFailedView: View {
                 .padding()
             Text("Problem initializing Tunnel Provider")
                 .font(.headline)
-            Text("Please try restarting your Mac or contact support for help.")
+            Text("Please try restarting your device or contact support for help.")
         }
     }
 }

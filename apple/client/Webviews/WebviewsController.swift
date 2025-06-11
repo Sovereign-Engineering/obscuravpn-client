@@ -16,6 +16,8 @@ class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
 
     @Published var tab: AppView = .connection
 
+    let useExernalBrowserForPayments = true
+
     func initializeWebviews(appState: AppState) {
         self.obscuraWebView = ObscuraUIWebView(appState: appState)
         self.externalWebView = ExternalWebView(appState: appState)
@@ -28,29 +30,55 @@ class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
                 #if os(macOS)
                     NSWorkspace.shared.open(url)
                 #else
-                    Task { @MainActor in
-                        // Clear webview
-                        self.externalWebView?.webView.load(URLRequest(url: URL(string: "about:blank")!))
-
-                        // Load the requested page
-                        self.externalWebView?.webView.load(URLRequest(url: url))
-
-                        self.showModalWebview = true
-                    }
+                    self.handleWebsiteLinkiOS(url: url)
                 #endif
                 decisionHandler(.cancel)
             } else {
                 decisionHandler(.allow)
             }
         } else {
-            if let url = navigationAction.request.url {
-                if url.absoluteString.contains("obscuravpn") {
-                    self.handleObscuraURL(url: url)
-                }
+            if let url = navigationAction.request.url, url.absoluteString.contains("obscuravpn") {
+                self.handleObscuraURL(url: url)
             }
             decisionHandler(.allow)
         }
     }
+
+    #if !os(macOS)
+        private func handleWebsiteLinkiOS(url: URL) {
+            // Check that it is a staging.obscura.net or obscura.net url
+            guard
+                let components = NSURLComponents(
+                    url: url,
+                    resolvingAgainstBaseURL: true
+                ), let path = components.path, components.host?.contains("obscura") ?? false
+            else {
+                logger.error("Failed to parse URL into components")
+                return
+            }
+
+            if (path.contains("pay") && self.useExernalBrowserForPayments) ||
+                // "Check connection link"
+                path.contains("check") ||
+                // "Website" button
+                path == "/"
+            {
+                UIApplication.shared.open(url)
+                return
+            }
+
+            // Open modal browser
+            Task { @MainActor in
+                // Clear webview
+                self.externalWebView?.webView.load(URLRequest(url: URL(string: "about:blank")!))
+
+                // Load the requested page
+                self.externalWebView?.webView.load(URLRequest(url: url))
+
+                self.showModalWebview = true
+            }
+        }
+    #endif
 
     func handleObscuraURL(url: URL) {
         logger.info("Handling URL: \(url, privacy: .public)")

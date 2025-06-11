@@ -71,7 +71,11 @@ export interface VpnStatus {
 
 export function getCityFromStatus(status: VpnStatus): ExitSelectorCity | undefined {
   const tunnelArgs = getTunnelArgs(status);
-  return tunnelArgs?.exit && "city" in tunnelArgs.exit ? tunnelArgs.exit.city : undefined;
+  return getCityFromArgs(tunnelArgs?.exit);
+}
+
+export function getCityFromArgs(exitSelector: ExitSelector | undefined): ExitSelectorCity | undefined {
+  return exitSelector !== undefined && "city" in exitSelector ? exitSelector.city : undefined;
 }
 
 export function getTunnelArgs(status: VpnStatus): TunnelArgs | undefined {

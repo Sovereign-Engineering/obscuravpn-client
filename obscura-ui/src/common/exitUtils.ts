@@ -1,7 +1,6 @@
-import { TCountryCode } from 'countries-list';
+import { ExitSelectorCity } from '../bridge/commands';
 import { PinnedLocation } from '../common/appContext';
 import { Exit, getContinent, getExitCountry } from './api';
-import { randomChoice } from './utils';
 
 /** returns a string containing the country flag emoji. */
 export function getCountryFlag(countryCode: string): string {
@@ -53,4 +52,9 @@ export function exitLocation(exit: Exit): PinnedLocation {
     country_code,
     pinned_at: 0,
   };
+}
+
+export function exitCityEquals(left?: ExitSelectorCity, right?: ExitSelectorCity): boolean {
+  if (left === undefined || right === undefined) return false;
+  return left.city_code === right.city_code && left.city_code === right.city_code;
 }

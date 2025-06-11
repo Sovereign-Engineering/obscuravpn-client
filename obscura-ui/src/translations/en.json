@@ -144,6 +144,7 @@
   "enjoyObscura": "Enjoy the free and open internet!",
   "errorFetchingOsStatus": "Error Fetching OsStatus",
   "errorFetchingStatus": "Error Fetching Status",
+  "exitInfoLoading": "Exit info loading",
   "exitPubKeyTooltip": "Matches published key for",
   "exitServerFetchResolution": "Make sure you are connected to the internet then try again.",
   "failedToFetchExitServers": "Failed to fetch exit servers",

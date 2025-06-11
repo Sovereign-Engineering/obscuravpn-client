@@ -268,7 +268,7 @@ struct ContentView: View {
                     .environment(\.sidebarRowSize, .large)
                     .navigationSplitViewColumnWidth(min: 175, ideal: 200)
                 } detail: {
-                    ObscuraUIWebViewSwiftUIWrapper(
+                    ObscuraUIMacOSWrapper(
                         webView: obscuraWebView)
                         .navigationTitle(
                             self.loginViewShown
@@ -276,29 +276,13 @@ struct ContentView: View {
                         )
                 }
             #else
-                ZStack {
-                    if self.loginViewShown {
-                        ObscuraUIWebViewSwiftUIWrapper(
-                            webView: obscuraWebView)
-                            .ignoresSafeArea()
-                    } else {
-                        TabView(selection: self.$webviewsController.tab) {
-                            ForEach(self.viewMode.getIOSViews()) { view in
-                                ObscuraUIWebViewSwiftUIWrapper(
-                                    webView: obscuraWebView,
-                                    currentTab: self.webviewsController.tab,
-                                    myTab: view
-                                )
-                                .ignoresSafeArea(edges: [.top, .leading, .trailing])
-                                .tag(view)
-                                .tabItem {
-                                    self.viewLabel(view)
-                                }
-                            }
-                        }
-                        .tabViewStyle(.sidebarAdaptable)
-                    }
-                }
+                ObscuraUIIOSViewAndTabsWrapper(
+                    webView: obscuraWebView,
+                    webviewsController: self.webviewsController,
+                    tabs: self.viewMode.getIOSViews(),
+                    showTabBar: !self.loginViewShown
+                )
+                .ignoresSafeArea()
                 .ignoresSafeArea()
                 .tint(Color("ObscuraOrange"))
                 .sheet(

@@ -85,8 +85,7 @@
 		96C920692CD91D96002C85EA /* String.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C920682CD91D94002C85EA /* String.swift */; };
 		96C9206A2CD91D96002C85EA /* String.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C920682CD91D94002C85EA /* String.swift */; };
 		A082F8232C46BF5B002AF810 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A082F8222C46BF5B002AF810 /* Sparkle */; };
-		A9029C192DEEDCBC00AAD761 /* ObscuraUIWebViewSwiftUIWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9029C182DEEDCBC00AAD761 /* ObscuraUIWebViewSwiftUIWrapper.swift */; };
-		A9029C1A2DEEDCBC00AAD761 /* ObscuraUIWebViewSwiftUIWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9029C182DEEDCBC00AAD761 /* ObscuraUIWebViewSwiftUIWrapper.swift */; };
+		A9029C192DEEDCBC00AAD761 /* ObscuraUIMacOSWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9029C182DEEDCBC00AAD761 /* ObscuraUIMacOSWrapper.swift */; };
 		A9200A862DD1251C00FD035C /* ObscuraUIWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9200A842DD1251C00FD035C /* ObscuraUIWebView.swift */; };
 		A9200A872DD127A200FD035C /* Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35230C272C775FF1007ECFEC /* Notifications.swift */; };
 		A936D4452DD1492A0031B646 /* UXViewRepresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = A936D4432DD149290031B646 /* UXViewRepresentable.swift */; };
@@ -105,6 +104,7 @@
 		A936D49A2DD161B00031B646 /* UXImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A936D4982DD1617F0031B646 /* UXImage.swift */; };
 		A936D49C2DD162AB0031B646 /* InstallSystemExtensionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A936D49B2DD162AB0031B646 /* InstallSystemExtensionView.swift */; };
 		A94743F92DD17143002ACD85 /* iOSClientApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94743F72DD170F5002ACD85 /* iOSClientApp.swift */; };
+		A95A91332DF9910C005CB52A /* ObscuraUIIOSWrapperAndTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = A95A91322DF9910C005CB52A /* ObscuraUIIOSWrapperAndTabs.swift */; };
 		A9768FAD2DBB01AD00A4595F /* UpdaterDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9768FAC2DBB01AD00A4595F /* UpdaterDriver.swift */; };
 		A9768FAF2DBB01C400A4595F /* CheckForUpdatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9768FAE2DBB01C400A4595F /* CheckForUpdatesView.swift */; };
 		A9768FB42DBB01EE00A4595F /* SparkleUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9768FB32DBB01EE00A4595F /* SparkleUpdater.swift */; };
@@ -298,7 +298,7 @@
 		A06E85A62C2ECA680087C8C8 /* bundle-ids.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "bundle-ids.xcconfig"; sourceTree = "<group>"; };
 		A06E85A92C2ECA680087C8C8 /* app.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = app.xcconfig; sourceTree = "<group>"; };
 		A06E85AA2C2ECA680087C8C8 /* buildversion.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = buildversion.xcconfig; sourceTree = "<group>"; };
-		A9029C182DEEDCBC00AAD761 /* ObscuraUIWebViewSwiftUIWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObscuraUIWebViewSwiftUIWrapper.swift; sourceTree = "<group>"; };
+		A9029C182DEEDCBC00AAD761 /* ObscuraUIMacOSWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObscuraUIMacOSWrapper.swift; sourceTree = "<group>"; };
 		A9200A842DD1251C00FD035C /* ObscuraUIWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObscuraUIWebView.swift; sourceTree = "<group>"; };
 		A936D4422DD149290031B646 /* UXViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UXViewController.swift; sourceTree = "<group>"; };
 		A936D4432DD149290031B646 /* UXViewRepresentable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UXViewRepresentable.swift; sourceTree = "<group>"; };
@@ -307,6 +307,7 @@
 		A936D4982DD1617F0031B646 /* UXImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UXImage.swift; sourceTree = "<group>"; };
 		A936D49B2DD162AB0031B646 /* InstallSystemExtensionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallSystemExtensionView.swift; sourceTree = "<group>"; };
 		A94743F72DD170F5002ACD85 /* iOSClientApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSClientApp.swift; sourceTree = "<group>"; };
+		A95A91322DF9910C005CB52A /* ObscuraUIIOSWrapperAndTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObscuraUIIOSWrapperAndTabs.swift; sourceTree = "<group>"; };
 		A9768FAC2DBB01AD00A4595F /* UpdaterDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdaterDriver.swift; sourceTree = "<group>"; };
 		A9768FAE2DBB01C400A4595F /* CheckForUpdatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckForUpdatesView.swift; sourceTree = "<group>"; };
 		A9768FB32DBB01EE00A4595F /* SparkleUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkleUpdater.swift; sourceTree = "<group>"; };
@@ -585,7 +586,8 @@
 			isa = PBXGroup;
 			children = (
 				A983D7DF2DF25435007306C5 /* WebviewsController.swift */,
-				A9029C182DEEDCBC00AAD761 /* ObscuraUIWebViewSwiftUIWrapper.swift */,
+				A9029C182DEEDCBC00AAD761 /* ObscuraUIMacOSWrapper.swift */,
+				A95A91322DF9910C005CB52A /* ObscuraUIIOSWrapperAndTabs.swift */,
 				A9200A842DD1251C00FD035C /* ObscuraUIWebView.swift */,
 				A983D7E22DF261BB007306C5 /* ExternalWebView.swift */,
 			);
@@ -959,7 +961,7 @@
 				3096BFF92CECD50F003D062E /* NEVPNStatus.swift in Sources */,
 				A936D4992DD1617F0031B646 /* UXImage.swift in Sources */,
 				309BA9132C45DFC8000A7428 /* Sleep.swift in Sources */,
-				A9029C192DEEDCBC00AAD761 /* ObscuraUIWebViewSwiftUIWrapper.swift in Sources */,
+				A9029C192DEEDCBC00AAD761 /* ObscuraUIMacOSWrapper.swift in Sources */,
 				A936D49C2DD162AB0031B646 /* InstallSystemExtensionView.swift in Sources */,
 				962325212C88D4E8008A9B76 /* ObscuraToggle.swift in Sources */,
 			);
@@ -1039,6 +1041,7 @@
 				A998711F2DBAF87D0044D136 /* Sleep.swift in Sources */,
 				A983D7E42DF261BB007306C5 /* ExternalWebView.swift in Sources */,
 				A936D4942DD15F6A0031B646 /* StartupStatus.swift in Sources */,
+				A95A91332DF9910C005CB52A /* ObscuraUIIOSWrapperAndTabs.swift in Sources */,
 				A998711E2DBAF8790044D136 /* Concurrency.swift in Sources */,
 				A998711D2DBAF8740044D136 /* Box.swift in Sources */,
 				A9BCB0612DC54B68006C0133 /* UpdaterDriver+XP.swift in Sources */,
@@ -1048,7 +1051,6 @@
 				A998711B2DBAF8680044D136 /* FfiCb.swift in Sources */,
 				A998711A2DBAF8610044D136 /* Constants.swift in Sources */,
 				A99871192DBAF85C0044D136 /* ObservableValue.swift in Sources */,
-				A9029C1A2DEEDCBC00AAD761 /* ObscuraUIWebViewSwiftUIWrapper.swift in Sources */,
 				A99871182DBAF8590044D136 /* WatchableValue.swift in Sources */,
 				A99871162DBAF8510044D136 /* OsStatus.swift in Sources */,
 				A99871152DBAF84D0044D136 /* app_state.swift in Sources */,

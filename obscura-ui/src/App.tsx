@@ -309,11 +309,11 @@ export default function () {
       title={<Title order={5} style={{ color: 'orangered', letterSpacing: 1.5, textDecoration: 'bold' }}>{t('IMPORTANT NOTICE', { count: importantNotices.length })}</Title>}>
       {importantNotices.map(notice => <Text style={{ marginBottom: 10 }}><Trans i18nKey='importantNotice' values={{ notice, count: importantNotices.length }} /></Text>)}
     </Modal>
-    <AppShell padding='md'
+    <AppShell
       header={{ height: 0 }}
       navbar={undefined}
       className={classes.appShell}>
-      <AppShellMain p={0}>
+      <AppShellMain>
         <SimpleBar scrollableNodeProps={{ ref: setScroller }} autoHide={false} className={classes.simpleBar}>
           <AppContext.Provider value={appContext}>
             <ErrorBoundary FallbackComponent={FallbackAppRender} onReset={_details => resetState()} onError={logReactError}>

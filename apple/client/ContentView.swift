@@ -274,6 +274,7 @@ struct ContentView: View {
                             self.loginViewShown
                                 ? "Obscura" : self.webviewsController.tab.rawValue.capitalized
                         )
+                        .frame(minWidth: 390)
                 }
             #else
                 ObscuraUIIOSViewAndTabsWrapper(

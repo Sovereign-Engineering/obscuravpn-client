@@ -6,7 +6,7 @@
 @media screen and (max-width: $mantine-breakpoint-xs) {
     .container {
         padding-top: calc(20px + env(safe-area-inset-top));
-        padding-bottom: 50px;
+        padding-bottom: 0px;
         padding-left: 20px;
         padding-right: 20px;
         gap: var(--mantine-spacing-md) !important;

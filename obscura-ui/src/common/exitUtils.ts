@@ -56,5 +56,5 @@ export function exitLocation(exit: Exit): PinnedLocation {
 
 export function exitCityEquals(left?: ExitSelectorCity, right?: ExitSelectorCity): boolean {
   if (left === undefined || right === undefined) return false;
-  return left.city_code === right.city_code && left.city_code === right.city_code;
+  return left.country_code === right.country_code && left.city_code === right.city_code;
 }

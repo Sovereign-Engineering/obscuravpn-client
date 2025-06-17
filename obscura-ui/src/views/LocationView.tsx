@@ -86,6 +86,7 @@ export default function LocationView() {
       }
     };
 
+    const connectedExit = appStatus.vpnStatus.connected?.exit;
     const locations = exitList ?? [];
     const pinnedLocationSet = new KeyedSet(
       (loc: {country_code: string, city_code: string}) => JSON.stringify([loc.country_code, loc.city_code]),
@@ -98,8 +99,7 @@ export default function LocationView() {
         let lastCity = appStatus.lastChosenExit.city;
         const exit = locations.find(l => l.city_code == lastCity.city_code && l.country_code == lastCity.country_code);
         if (exit !== undefined) {
-            const isConnected = appStatus.vpnStatus.connected?.exit.city_code == lastCity.city_code
-                && appStatus.vpnStatus.connected.exit.country_code == lastCity.country_code;
+            const isConnected = exitCityEquals(lastCity, connectedExit);
             const isPinned = pinnedLocationSet.has(lastCity);
             lastChosenJsx = <>
                 <Text ta='left' w='100%' size='sm' c='green.7' ml='md' fw={600}>{t('lastChosen')}</Text>
@@ -117,7 +117,7 @@ export default function LocationView() {
             const key = JSON.stringify([exit.country_code, exit.city_name]);
             if (!insertedCities.has(key)) {
               insertedCities.add(key);
-              const isConnected = exit.id === appStatus.vpnStatus.connected?.exit.id;
+              const isConnected = exitCityEquals(exit, connectedExit);
               const isPinned = pinnedLocationSet.has(exitLocation(exit));
               pinnedExitsRender.push(<LocationCard key={key} exit={exit} togglePin={toggleExitPin}
                   onSelect={() => onExitSelect(exit)} connected={isConnected} pinned={isPinned} />);
@@ -128,7 +128,6 @@ export default function LocationView() {
     const exitListRender = [];
     const insertedContinents = new Set();
     insertedCities.clear();
-    const connectedExit = appStatus.vpnStatus.connected?.exit;
 
     locations.sort(exitsSortComparator);
     for (const exit of locations) {
@@ -140,7 +139,7 @@ export default function LocationView() {
         const key = JSON.stringify([exit.country_code, exit.city_name]);
         if (!insertedCities.has(key)) {
           insertedCities.add(key);
-          const isConnected = exit.country_code === connectedExit?.country_code && exit.city_name == connectedExit?.city_name;
+          const isConnected = exitCityEquals(exit, connectedExit);
           const isPinned = pinnedLocationSet.has(exitLocation(exit));
           exitListRender.push(<LocationCard key={key} exit={exit} togglePin={toggleExitPin}
               onSelect={() => onExitSelect(exit)} connected={isConnected} pinned={isPinned} />);

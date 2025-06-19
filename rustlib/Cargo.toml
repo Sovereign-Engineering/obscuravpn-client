@@ -30,7 +30,7 @@ futures = "0.3.29"
 include_dir = "0.7.3"
 ipnetwork = { version =  "0.21.1", features = ["serde"] }
 lazy_static = "1.4.0"
-quinn = "0.11.6"
+quinn = "0.11.8"
 rand = "0.8.5"
 ring = "0.17.14"
 serde = { version = "1.0.197", features = ["derive", "rc"] }

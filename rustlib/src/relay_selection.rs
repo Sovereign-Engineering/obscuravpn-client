@@ -18,7 +18,11 @@ pub fn race_relay_handshakes(
     let udp = new_udp(None).map_err(RelaySelectionError::UdpSetup)?;
     let quic_endpoint = new_quic(udp).map_err(RelaySelectionError::QuicSetup)?;
 
-    for relay in relays {
+    // Maximum number of relays to probe. This limit should be high enough that a non-malicious API server won't exceed it.
+    // This prevents memory exhaustion issues in case a malicious API server sends a large number of relays.
+    const MAX_RELAYS: usize = 100;
+
+    for relay in relays.iter().take(MAX_RELAYS) {
         for &port in &relay.ports {
             let quic_endpoint = quic_endpoint.clone();
             let relay_addr = (relay.ip_v4, port).into();

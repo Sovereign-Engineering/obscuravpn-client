@@ -1432,12 +1432,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "523dc4f511e55ab87b694dc30d0f820d60906ef06413f93d4d7a1385599cc149"
 
 [[package]]
-name = "mime"
-version = "0.3.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09388074a6b5df8a139a"
-
-[[package]]
 name = "minimal-lexical"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1556,7 +1550,7 @@ dependencies = [
 [[package]]
 name = "obscuravpn-api"
 version = "0.0.0"
-source = "git+https://github.com/Sovereign-Engineering/obscuravpn-api.git?rev=bbc6697b654b21ae6c60babc086387ee444a0d3d#bbc6697b654b21ae6c60babc086387ee444a0d3d"
+source = "git+https://github.com/Sovereign-Engineering/obscuravpn-api.git?rev=7f988acd98f10fa7b32ee9a43fcaeacd6b1a8e27#7f988acd98f10fa7b32ee9a43fcaeacd6b1a8e27"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -1575,6 +1569,7 @@ dependencies = [
  "strum 0.27.1",
  "thiserror 2.0.12",
  "tokio",
+ "tokio-stream",
  "tracing",
  "url",
  "uuid",
@@ -1967,24 +1962,22 @@ checksum = "adad44e29e4c806119491a7f06f03de4d1af22c3a680dd47f1e6e179439d1f56"
 
 [[package]]
 name = "reqwest"
-version = "0.12.19"
+version = "0.12.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2f8e5513d63f2e5b386eb5106dc67eaf3f84e95258e210489136b8b92ad6119"
+checksum = "eabf4c97d9130e2bf606614eb937e86edac8292eaa6f422f995d7e8de1eb1813"
 dependencies = [
  "base64 0.22.1",
  "bytes",
  "futures-core",
+ "futures-util",
  "http",
  "http-body",
  "http-body-util",
  "hyper",
  "hyper-rustls",
  "hyper-util",
- "ipnet",
  "js-sys",
  "log",
- "mime",
- "once_cell",
  "percent-encoding",
  "pin-project-lite",
  "quinn",
@@ -1996,12 +1989,14 @@ dependencies = [
  "sync_wrapper",
  "tokio",
  "tokio-rustls",
+ "tokio-util",
  "tower",
  "tower-http",
  "tower-service",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "wasm-streams",
  "web-sys",
  "webpki-roots",
 ]
@@ -2654,6 +2649,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-stream"
+version = "0.1.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eca58d7bba4a75707817a2c44174253f9236b2d5fbd055602e9d5c07c139a047"
+dependencies = [
+ "futures-core",
+ "pin-project-lite",
+ "tokio",
+]
+
+[[package]]
 name = "tokio-util"
 version = "0.7.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3048,6 +3054,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a05d73b933a847d6cccdda8f838a22ff101ad9bf93e33684f39c1f5f0eece3d"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "wasm-streams"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4e072d4e72f700fb3443d8fe94a39315df013eef1104903cdb0a2abd322bbecd"
+dependencies = [
+ "futures-util",
+ "js-sys",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

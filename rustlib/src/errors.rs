@@ -56,7 +56,9 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
                         | Unknown(_) => Self::ApiError,
                     },
                     ClientError::RequestExecError(_) => Self::ApiUnreachable,
-                    ClientError::InvalidHeaderValue | ClientError::Other(_) | ClientError::ProtocolError(_) => Self::Other,
+                    ClientError::ResponseTooLarge | ClientError::InvalidHeaderValue | ClientError::Other(_) | ClientError::ProtocolError(_) => {
+                        Self::Other
+                    }
                 },
                 ApiError::ConfigSave(_) => Self::Other,
             },

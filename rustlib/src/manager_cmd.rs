@@ -71,7 +71,9 @@ impl From<&ApiError> for ManagerCmdErrorCode {
                     | ApiErrorKind::Unknown(_) => Self::ApiError,
                 },
                 ClientError::RequestExecError(_) => Self::ApiUnreachable,
-                ClientError::InvalidHeaderValue | ClientError::Other(_) | ClientError::ProtocolError(_) => Self::ApiError,
+                ClientError::ResponseTooLarge | ClientError::InvalidHeaderValue | ClientError::Other(_) | ClientError::ProtocolError(_) => {
+                    Self::ApiError
+                }
             },
             ApiError::ConfigSave(err) => err.into(),
             ApiError::NoAccountId => Self::ApiError,

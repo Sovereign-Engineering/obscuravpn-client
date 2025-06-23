@@ -525,8 +525,8 @@ function LocationSelect(): ReactNode {
                     </Combobox.Target>
 
                     <Combobox.Dropdown>
-                        <Combobox.Options>
-                            <ScrollArea.Autosize type='always' mah={200} hidden={false} pt={10}>
+                        <Combobox.Options pt={10}>
+                            <ScrollArea.Autosize mah={250} type='always'>
                                 <CityOptions locations={locations} onExitSelect={(country_code: string, city_code: string) => {
                                     combobox.closeDropdown();
                                     if (connectedExit?.country_code === country_code && connectedExit?.city_code === city_code) {

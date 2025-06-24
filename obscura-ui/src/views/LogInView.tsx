@@ -325,7 +325,7 @@ const AccountNumberInput = forwardRef(function AccountNumberInput(props: {}, ref
     setError(newValue.length === 0 ? null : validateAccountNumber(e.currentTarget.value));
   }
 
-  return <TextInput ref={multiRef(internalRef, ref)} value={value} onChange={onChange} error={error} required w={260} label={t('Obscura Account Number')} placeholder='XXXX - XXXX - XXXX - XXXX - XXXX' />
+  return <TextInput inputMode='numeric' ref={multiRef(internalRef, ref)} value={value} onChange={onChange} error={error} required w={260} label={t('Obscura Account Number')} placeholder='XXXX - XXXX - XXXX - XXXX - XXXX' />
 });
 
 interface ConfirmationDialogProps extends PropsWithChildren {

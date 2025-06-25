@@ -245,9 +245,16 @@ impl ClientState {
         exit_selector: &ExitSelector,
         selection_state: &mut ExitSelectionState,
     ) -> anyhow::Result<(Uuid, ObfuscatedTunnelConfig, StaticSecret, OneExit, OneRelay, QuicWgConnHandshaking), TunnelConnectError> {
+        // Ideally we would avoid return a failure immediately if the relay selection fails and continue the exit update in the background but we currently have no ability to execute tasks in the background for this type. The downside of a slight delay in the failure case is suboptimal but minor.
+
         let (select_relay, update_exits) = tokio::join!(self.select_relay(), self.maybe_update_exits(Duration::from_secs(60)),);
+        match update_exits {
+            Ok(()) => {}
+            Err(error) => {
+                tracing::warn!(message_id = "oH5aigha", ?error, "Ignoring failure to update exit list: {}", error,);
+            }
+        };
         let (closest_relay, handshaking) = select_relay?;
-        let () = update_exits?;
 
         let Some(exit) = self.choose_exit(exit_selector, &closest_relay, selection_state) else {
             tracing::error!(

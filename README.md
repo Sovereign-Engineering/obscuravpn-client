@@ -17,8 +17,8 @@ The network extension manages the virtual device and maintains the tunnel using 
 
 ## Setup
 
-1. [Install `rustup`](https://rustup.rs/).
 1. [Setup Nix](#nix-setup)
+1. Install dependencies: `nix-env -iA nixpkgs.{cmake,rustup}`
 1. Open the main Xcode project
     ```bash
     nix develop --print-build-logs --command just xcode-open

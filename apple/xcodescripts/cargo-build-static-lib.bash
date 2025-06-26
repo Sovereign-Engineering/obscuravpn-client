@@ -4,7 +4,8 @@
 # See original cargo-xcode build script here https://gitlab.com/kornelski/cargo-xcode/-/blob/v1.10.0/src/xcodebuild.sh?ref_type=tags
 
 set -euo pipefail
-export PATH="$HOME/.cargo/bin:$PATH:/usr/local/bin:/opt/homebrew/bin"
+export PATH="$HOME/.nix-profile/bin/:$PATH:/usr/local/bin:$HOME/.cargo/bin:/opt/homebrew/bin"
+
 ## don't use ios/watchos linker for build scripts and proc macros
 ## This If statement is due to an oddity where defining these creates issues on Archive see OBS-1521
 if [ "${CONFIGURATION}" != "Release" ] || [ "${PLATFORM_NAME}" != "macosx" ]; then

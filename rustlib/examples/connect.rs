@@ -23,7 +23,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let args = Args::parse();
 
-    let client_state = ClientState::new(".".into(), "list-relays".into())?;
+    let client_state = ClientState::new(".".into(), None, "list-relays".into(), None)?;
     client_state.set_api_url(args.base_url)?;
     client_state.set_force_tcp_tls_relay_transport(args.force_tcp_tls)?;
     if let Some(account_no) = args.account_no {

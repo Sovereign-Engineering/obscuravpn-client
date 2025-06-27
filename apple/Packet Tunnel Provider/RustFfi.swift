@@ -7,9 +7,12 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
 
 func ffiInitialize(configDir: String, userAgent: String, _ receiveCallback: (@convention(c) (FfiBytes) -> Void)!) {
     libobscuravpn_client.initialize_macos_system_logging()
+    let wgSecretKey = keychainGetWgSecretKey() ?? Data()
     configDir.withFfiStr { ffiConfigDir in
         userAgent.withFfiStr { ffiUserAgent in
-            libobscuravpn_client.initialize(ffiConfigDir, ffiUserAgent, receiveCallback)
+            wgSecretKey.withFfiBytes { ffiWgSecretKey in
+                libobscuravpn_client.initialize(ffiConfigDir, ffiUserAgent, ffiWgSecretKey, receiveCallback, keychainSetWgSecretKeyCallback)
+            }
         }
     }
 }
@@ -27,6 +30,16 @@ func ffiJsonManagerCmd(_ jsonCmd: Data) async -> NeManagerCmdResult {
             libobscuravpn_client.json_ffi_cmd(context, $0) { FfiCb.call($0, ($1, $2)) }
         }
     }
+}
+
+private func keychainSetWgSecretKeyCallback(key: FfiBytes) -> Bool {
+    logger.log("keychainSetWgSecretKeyCallback entry")
+    let ret = keychainSetWgSecretKey(key.data())
+    if !ret {
+        logger.log("keychainSetWgSecretKey returned false")
+    }
+    logger.log("keychainSetWgSecretKeyCallback exit")
+    return ret
 }
 
 extension String {

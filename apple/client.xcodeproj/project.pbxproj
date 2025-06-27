@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		17B910022E0DB3E50073AAD7 /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17B910012E0DB3E00073AAD7 /* Keychain.swift */; };
+		17B910032E0DB3E50073AAD7 /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17B910012E0DB3E00073AAD7 /* Keychain.swift */; };
 		300452782C49BC90000B78F7 /* Json.swift in Sources */ = {isa = PBXBuildFile; fileRef = 300452772C49BC90000B78F7 /* Json.swift */; };
 		300452792C49BC90000B78F7 /* Json.swift in Sources */ = {isa = PBXBuildFile; fileRef = 300452772C49BC90000B78F7 /* Json.swift */; };
 		30497E662D9EC09E008B22F9 /* ConcurrencyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30497E652D9EC09E008B22F9 /* ConcurrencyTests.swift */; };
@@ -238,6 +240,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		17B910012E0DB3E00073AAD7 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 		300452772C49BC90000B78F7 /* Json.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Json.swift; sourceTree = "<group>"; };
 		30497E5E2D9EC038008B22F9 /* Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		30497E652D9EC09E008B22F9 /* ConcurrencyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcurrencyTests.swift; sourceTree = "<group>"; };
@@ -605,6 +608,7 @@
 			isa = PBXGroup;
 			children = (
 				309BA90B2C446125000A7428 /* NetworkSettings.swift */,
+				17B910012E0DB3E00073AAD7 /* Keychain.swift */,
 				309BA9072C44394E000A7428 /* RustFfi.swift */,
 				3098C1912B921489008877AA /* PacketTunnelProvider.swift */,
 				3098C1932B921489008877AA /* main.swift */,
@@ -976,6 +980,7 @@
 				A9963C612DB8400900D10893 /* Concurrency.swift in Sources */,
 				A9963C602DB8400300D10893 /* WatchableValue.swift in Sources */,
 				A9963C5F2DB83FFD00D10893 /* NetworkExtensionIpc.swift in Sources */,
+				17B910032E0DB3E50073AAD7 /* Keychain.swift in Sources */,
 				A9963C5E2DB83FF700D10893 /* RustFfi.swift in Sources */,
 				A9963C5D2DB83FF300D10893 /* StringError.swift in Sources */,
 				A9963C5C2DB83FD600D10893 /* Swift.swift in Sources */,
@@ -1002,6 +1007,7 @@
 				30920DAE2C3DC174008690C3 /* InfoDict.swift in Sources */,
 				35219C3C2C6BD57F00E63BB8 /* Debug.swift in Sources */,
 				3098C1942B921489008877AA /* main.swift in Sources */,
+				17B910022E0DB3E50073AAD7 /* Keychain.swift in Sources */,
 				35230C172C764B97007ECFEC /* Concurrency.swift in Sources */,
 				309BFE3F2D9C169500366431 /* WatchableValue.swift in Sources */,
 				309B467E2C4C152900A1B00F /* StringError.swift in Sources */,

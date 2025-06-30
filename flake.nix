@@ -20,6 +20,7 @@
           src = ./rustlib;
 
           strictDeps = true;
+          nativeBuildInputs = [ pkgs.cmake ];
         };
 
         rustArgs = rustDepsArgs // { cargoArtifacts = craneLib.buildDepsOnly rustDepsArgs; };

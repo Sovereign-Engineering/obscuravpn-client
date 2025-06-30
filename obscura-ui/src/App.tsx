@@ -284,7 +284,7 @@ export default function () {
     returnError: true,
   });
 
-  if (loading) return <SplashScreen text={t('appStatusLoading')} />;
+  if (loading) return <SplashScreen text={t('appStatusLoading')} osStatus={osStatus} />;
 
   if (!isLoggedIn || showAccountCreation) return <LogIn accountNumber={appStatus.accountId} accountActive={accountInfo?.active} />;
 

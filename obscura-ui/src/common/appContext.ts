@@ -45,7 +45,11 @@ export interface OsStatus {
         inProgress?: boolean,
         latestPath?: string,
         inProgressCounter: number,
-    }
+    },
+    logCapture?: {
+        inProgress: boolean,
+        logsAvailable: boolean
+    },
 }
 
 export enum TransportKind {

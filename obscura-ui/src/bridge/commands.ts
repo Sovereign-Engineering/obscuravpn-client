@@ -1,8 +1,11 @@
+import { TFunction } from 'i18next';
 import { AccountId } from '../common/accountUtils';
 import { AccountInfo, Exit } from '../common/api';
 import { AppStatus, NEVPNStatus, OsStatus, PinnedLocation } from '../common/appContext';
 import { fmt } from '../common/fmt';
 import { normalizeError } from '../common/utils';
+import { fmtErrorI18n } from '../translations/i18n';
+import { notifications } from '@mantine/notifications';
 
 async function WKWebViewInvoke(command: string, args: Object) {
     const commandJson = JSON.stringify({ [command]: args });
@@ -252,4 +255,30 @@ export function rotateWgKey() {
 
 export function setAutoConnect(enable: boolean) {
   return jsonFfiCmd('setAutoConnect', { enable });
+}
+
+export async function captureLogs(): Promise<void> {
+  await invoke('captureLogs');
+}
+
+// trigger native share dialog
+export async function shareLogs(): Promise<void> {
+  await invoke('shareLogs');
+}
+
+export function useHandleCommand(t: TFunction) {
+  return async (command: () => Promise<void> | void) => {
+    try {
+      await command();
+    } catch (e) {
+      const error = normalizeError(e);
+      const message = error instanceof CommandError
+        ? fmtErrorI18n(t, error) : error.message;
+      notifications.show({
+        color: 'red',
+        title: t('Error'),
+        message
+      });
+    }
+  };
 }

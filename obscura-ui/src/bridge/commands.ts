@@ -229,7 +229,7 @@ export async function getExitList(version?: string): Promise<CachedValue<ExitLis
 
 export async function refreshExitList(freshnessS: number): Promise<void> {
   await jsonFfiCmd('refreshExitList', {
-    freshness: freshnessS,
+    freshness: freshnessS * 1000,
   });
 }
 

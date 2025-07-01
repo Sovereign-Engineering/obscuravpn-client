@@ -47,6 +47,10 @@ fn global_manager() -> Arc<Manager> {
 pub unsafe extern "C" fn initialize(config_dir: FfiStr, user_agent: FfiStr, receive_cb: extern "C" fn(FfiBytes)) {
     let mut first_init = false;
     GLOBAL.get_or_init(|| {
+        rustls::crypto::aws_lc_rs::default_provider()
+            .install_default()
+            .expect("Failed to install aws-lc crypto provider");
+
         let config_dir = config_dir.to_string().into();
         let user_agent = user_agent.to_string();
         match Manager::new(config_dir, user_agent, &RUNTIME, receive_cb) {

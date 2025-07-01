@@ -18,8 +18,8 @@ panic = "abort"
 
 [dependencies]
 anyhow = { version = "1.0.98", features = ["backtrace"] }
-aws-lc-rs = { version = "*", features = ["bindgen"] } # We don't use directly, but need to enable this feature.
 async-trait = "0.1.77"
+aws-lc-rs = { version = "*", features = ["bindgen"] } # We don't use directly, but need to enable this feature.
 base64 = "0.21.7"
 bytes = "1"
 chrono = "0.4.37"
@@ -34,6 +34,7 @@ lazy_static = "1.4.0"
 quinn = "0.11.8"
 rand = "0.8.5"
 ring = "0.17.14"
+rustls = "0.23.28"
 serde = { version = "1.0.197", features = ["derive", "rc"] }
 serde_json = "1.0.114"
 serde_with = { version = "3.12", features = ["base64"] }

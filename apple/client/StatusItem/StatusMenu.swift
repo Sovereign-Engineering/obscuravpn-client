@@ -11,21 +11,57 @@ private let createDebuggingArchiveStr = "Create Debugging Archive"
 final class StatusItemManager: ObservableObject {
     private var hostingView: NSHostingView<StatusItem>?
     private var statusItem: NSStatusItem?
+
     private var debuggingMenuItem: NSMenuItem?
     private var viewLatestDebugItem: NSMenuItem?
-    private var accountMenuItemSeperator: NSMenuItem?
+    private var accountMenuItemSeparator: NSMenuItem?
     private var accountMenuItem: NSMenuItem?
+    private var locationSubmenu: NSMenu?
 
     private var sizePassthrough = PassthroughSubject<CGSize, Never>()
-    private var sizeCancellable: AnyCancellable?
     private var bandwidthStatusModel = BandwidthStatusModel()
     private var osStatusModel = OsStatusModel()
+    private var cityNames: [CityExit: String] = [:]
+
+    private var exitListRefreshTimer: Timer?
+    private var locationItemsLock = NSLock()
+
+    // ensures sink() closures remain in memory
+    private var cancellables = Set<AnyCancellable>()
 
     // intentionally empty to ensure that the menu item can be highlighted
     @objc func emptyAction() {}
 
     init() {
+        self.exitListRefreshTimer = self.startExitListRefreshTimer()
+        self.exitListWatcher()
         self.createStatusItem()
+
+        Task { [weak self] in
+            while true {
+                if let appState = StartupModel.shared.appState {
+                    if let self = self {
+                        appState.$status.sink { [weak self] newStatus in
+                            self?.triggerSetLocationMenuItems()
+                        }.store(in: &self.cancellables)
+                    }
+                    return
+                } else if self == nil {
+                    return
+                } else {
+                    do {
+                        try await Task.sleep(seconds: 1)
+                    } catch {
+                        logger.error("appState.status watching Task cancelled \(error, privacy: .public)")
+                        return
+                    }
+                }
+            }
+        }
+    }
+
+    deinit {
+        self.exitListRefreshTimer?.invalidate()
     }
 
     func createStatusItem() {
@@ -44,6 +80,37 @@ final class StatusItemManager: ObservableObject {
         toggleMenuItem.target = self
         menu.addItem(toggleMenuItem)
 
+        let locationSubmenuMenuItem = NSMenuItem()
+        locationSubmenuMenuItem.title = "Connect via..."
+        locationSubmenuMenuItem.image = NSImage(named: "custom.globe.badge.gearshape.fill")
+
+        let locationSubmenu = NSMenu()
+        locationSubmenuMenuItem.submenu = locationSubmenu
+        self.locationSubmenu = locationSubmenu
+        menu.addItem(locationSubmenuMenuItem)
+
+        let quickConnectMenuItem = NSMenuItem(
+            title: "Quick Connect",
+            action: #selector(self.connectAction),
+            keyEquivalent: ""
+        )
+        quickConnectMenuItem.target = self
+        quickConnectMenuItem.representedObject = ExitSelector.any
+        quickConnectMenuItem.indentationLevel = 1
+        locationSubmenu.addItem(quickConnectMenuItem)
+
+        let loadingLocationsItem = NSMenuItem(
+            title: "Loading Locations...",
+            action: nil,
+            keyEquivalent: ""
+        )
+        loadingLocationsItem.indentationLevel = 1
+        locationSubmenu.addItem(loadingLocationsItem)
+
+        self.addMoreLocationsItem()
+
+        menu.addItem(NSMenuItem.separator())
+
         let showWindowMenuItem = NSMenuItem(title: "Open Obscura Manager...", action: #selector(self.showWindow), keyEquivalent: "")
         showWindowMenuItem.target = self
         let image = NSImage(named: NSImage.applicationIconName)!
@@ -51,8 +118,8 @@ final class StatusItemManager: ObservableObject {
         showWindowMenuItem.image = image
         menu.addItem(showWindowMenuItem)
 
-        self.accountMenuItemSeperator = NSMenuItem.separator()
-        menu.addItem(self.accountMenuItemSeperator!)
+        self.accountMenuItemSeparator = NSMenuItem.separator()
+        menu.addItem(self.accountMenuItemSeparator!)
 
         self.accountMenuItem = NSMenuItem(title: "", action: #selector(self.emptyAction), keyEquivalent: "")
         self.accountMenuItem!.isHidden = true
@@ -82,7 +149,7 @@ final class StatusItemManager: ObservableObject {
                 } else {
                     self.accountMenuItem!.isHidden = true
                 }
-                self.accountMenuItemSeperator!.isHidden = self.accountMenuItem!.isHidden
+                self.accountMenuItemSeparator!.isHidden = self.accountMenuItem!.isHidden
                 do {
                     try await Task.sleep(seconds: 5)
                 } catch {
@@ -92,13 +159,7 @@ final class StatusItemManager: ObservableObject {
         }
 
         menu.addItem(NSMenuItem.separator())
-        if #available(macOS 14.0, *) {
-            menu.addItem(NSMenuItem.sectionHeader(title: "Bandwidth Status"))
-        } else {
-            // fallback on earlier versions
-            let bandwidthStatusTitleItem = NSMenuItem(title: "Bandwidth Status", action: nil, keyEquivalent: "")
-            menu.addItem(bandwidthStatusTitleItem)
-        }
+        menu.addItem(self.createSectionHeaderMenuItem(title: "Bandwidth Status"))
         let bandwidthStatusItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
         bandwidthStatusItem.view = MenuItemView(BandwidthStatus(bandwidthStatusModel: self.bandwidthStatusModel))
         menu.addItem(bandwidthStatusItem)
@@ -125,11 +186,11 @@ final class StatusItemManager: ObservableObject {
         self.statusItem = statusItem
         self.hostingView = hostingView
 
-        self.sizeCancellable = self.sizePassthrough.sink { [weak self] size in
+        self.sizePassthrough.sink { [weak self] size in
             let frame = NSRect(origin: .zero, size: .init(width: size.width, height: 24))
             self?.hostingView?.frame = frame
             self?.statusItem?.button?.frame = frame
-        }
+        }.store(in: &self.cancellables)
 
         Task { @MainActor in
             while true {
@@ -159,8 +220,28 @@ final class StatusItemManager: ObservableObject {
         }
     }
 
+    @objc func connectAction(_ sender: NSMenuItem) {
+        // app crashes if this function is async
+        guard let exitSelector = sender.representedObject as? ExitSelector else {
+            logger.error("connectAction called with incorrect sender.representedObject")
+            return
+        }
+        Task {
+            do {
+                guard let appState = StartupModel.shared.appState else { return }
+                try await appState.enableTunnel(TunnelArgs(exit: exitSelector))
+            } catch {
+                logger.error("Failed to connect from status location submenu: \(error, privacy: .public)")
+            }
+        }
+    }
+
     @objc func showWindow() {
         fullyOpenManagerWindow()
+    }
+
+    @objc func openMoreLocations() {
+        NSWorkspace.shared.open(URLs.AppLocationPage)
     }
 
     @objc func disconnectAndQuit() {
@@ -198,6 +279,179 @@ final class StatusItemManager: ObservableObject {
                 )
             }
         }
+    }
+
+    private func createSectionHeaderMenuItem(title: String) -> NSMenuItem {
+        if #available(macOS 14.0, *) {
+            return NSMenuItem.sectionHeader(title: title)
+        } else {
+            return NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        }
+    }
+
+    private func getCityDisplayName(countryCode: String, cityCode: String) -> String {
+        if let foundCityName = self.cityNames[CityExit(city_code: cityCode, country_code: countryCode)] {
+            return foundCityName
+        }
+        return cityCode
+    }
+
+    private func refreshExitListIfNeeded() {
+        Task {
+            if let appState = StartupModel.shared.appState {
+                do {
+                    _ = try await refreshExitList(appState.manager, freshness: 3600)
+                } catch {
+                    logger.error("Failed to refresh exit list in status menu: \(error, privacy: .public)")
+                }
+            }
+        }
+    }
+
+    private func startExitListRefreshTimer() -> Timer {
+        self.refreshExitListIfNeeded()
+        let refreshTimer = Timer.scheduledTimer(withTimeInterval: 3660, repeats: true, block: { [weak self] _ in
+            self?.refreshExitListIfNeeded()
+        })
+        refreshTimer.tolerance = 60
+        RunLoop.main.add(refreshTimer, forMode: .common)
+        return refreshTimer
+    }
+
+    private func exitListWatcher() {
+        Task { [weak self] in
+            var exitListKnownVersion: String?
+            while true {
+                var takeBreak = true
+                if let appState = StartupModel.shared.appState {
+                    do {
+                        let cachedValue = try await getExitList(appState.manager, knownVersion: exitListKnownVersion)
+                        guard let self = self else { return }
+                        exitListKnownVersion = cachedValue.version
+                        var newCityNames: [CityExit: String] = [:]
+                        for exit in cachedValue.value.exits {
+                            newCityNames[CityExit(city_code: exit.city_code, country_code: exit.country_code)] = exit.city_name
+                        }
+                        self.cityNames = newCityNames
+                        self.triggerSetLocationMenuItems()
+                        takeBreak = false
+                    } catch {
+                        logger.error("Failed to get exit list: \(error, privacy: .public)")
+                        takeBreak = true
+                    }
+                }
+                if takeBreak {
+                    do {
+                        try await Task.sleep(seconds: 1)
+                    } catch {
+                        logger.error("exitListWatcher Task cancelled \(error, privacy: .public)")
+                        return // Another task will be started.
+                    }
+                }
+            }
+        }
+    }
+
+    private func triggerSetLocationMenuItems() {
+        DispatchQueue.main.asyncAfter(deadline: .now()) {
+            self.locationItemsLock.withLock {
+                guard let locationSubmenu = self.locationSubmenu else { return }
+
+                // Remove all items except the Quick Connect item (which is always first)
+                locationSubmenu.items.removeLast(max(locationSubmenu.numberOfItems - 1, 0))
+
+                if let appState = StartupModel.shared.appState {
+                    let pinnedLocations = appState.status.pinnedLocations
+                    let lastExit = appState.status.lastExit
+
+                    // Update Quick Connect item state
+                    if let quickConnectItem = locationSubmenu.item(at: 0) {
+                        switch lastExit {
+                        case .any:
+                            quickConnectItem.state = .on
+                        default:
+                            quickConnectItem.state = .off
+                        }
+                    }
+
+                    var lastExitIsPinned = false
+
+                    if !pinnedLocations.isEmpty {
+                        let pinnedLocationsSubHeaderItem = self.createSectionHeaderMenuItem(title: "Pinned Locations")
+                        pinnedLocationsSubHeaderItem.indentationLevel = 1
+                        locationSubmenu.addItem(pinnedLocationsSubHeaderItem)
+
+                        for pinnedLocation in pinnedLocations {
+                            let cityName = self.getCityDisplayName(countryCode: pinnedLocation.country_code, cityCode: pinnedLocation.city_code)
+
+                            let menuItem = NSMenuItem(
+                                title: "\(cityName), \(pinnedLocation.country_code.uppercased())",
+                                action: #selector(self.connectAction),
+                                keyEquivalent: ""
+                            )
+                            menuItem.target = self
+                            menuItem.representedObject = ExitSelector.city(country_code: pinnedLocation.country_code, city_code: pinnedLocation.city_code)
+
+                            // Check if this pinned location matches the last chosen exit
+                            let isLastChosen: Bool
+                            switch lastExit {
+                            case .city(let country_code, let city_code):
+                                isLastChosen = country_code == pinnedLocation.country_code && city_code == pinnedLocation.city_code
+                                if isLastChosen {
+                                    lastExitIsPinned = true
+                                }
+                            default:
+                                isLastChosen = false
+                            }
+
+                            if isLastChosen {
+                                menuItem.state = .on
+                            }
+
+                            menuItem.indentationLevel = 1
+                            locationSubmenu.addItem(menuItem)
+                        }
+                    }
+
+                    // If the last chosen exit is a city that's not in the pinned locations, add a header and menu item
+                    if case .city(let country_code, let city_code) = lastExit, !lastExitIsPinned {
+                        let nonPinnedLocationHeaderItem = self.createSectionHeaderMenuItem(title: "Current Selection")
+                        nonPinnedLocationHeaderItem.indentationLevel = 1
+                        locationSubmenu.addItem(nonPinnedLocationHeaderItem)
+
+                        let cityName = self.getCityDisplayName(countryCode: country_code, cityCode: city_code)
+
+                        let nonPinnedMenuItem = NSMenuItem(
+                            title: "\(cityName), \(country_code.uppercased())",
+                            action: #selector(self.connectAction),
+                            keyEquivalent: ""
+                        )
+                        nonPinnedMenuItem.target = self
+                        nonPinnedMenuItem.representedObject = ExitSelector.city(country_code: country_code, city_code: city_code)
+                        nonPinnedMenuItem.state = .on
+                        nonPinnedMenuItem.indentationLevel = 1
+
+                        locationSubmenu.addItem(nonPinnedMenuItem)
+                    }
+                }
+                self.addMoreLocationsItem()
+            }
+        }
+    }
+
+    private func addMoreLocationsItem() {
+        guard let locationSubmenu = self.locationSubmenu else { return }
+        locationSubmenu.addItem(NSMenuItem.separator())
+        let moreLocationsMenuItem = NSMenuItem(
+            title: "More Locations…",
+            action: #selector(self.openMoreLocations),
+            keyEquivalent: ""
+        )
+        moreLocationsMenuItem.target = self
+        let image = NSImage(named: NSImage.applicationIconName)!
+        image.size = NSSize(width: 16.0, height: 16.0)
+        moreLocationsMenuItem.image = image
+        locationSubmenu.addItem(moreLocationsMenuItem)
     }
 }
 
@@ -277,7 +531,7 @@ struct StatusItem: View {
                     }
                     self.osStatusModel.osStatus = await self.startupModel.appState?.getOsStatus(knownVersion: self.osStatusModel.osStatus?.version)
                 } catch {
-                    logger.error("could not update osStatsus. \(error, privacy: .public)")
+                    logger.error("could not update osStatus. \(error, privacy: .public)")
                     do {
                         try await Task.sleep(seconds: 1)
                     } catch {

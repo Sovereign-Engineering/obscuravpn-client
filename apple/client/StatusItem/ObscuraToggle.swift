@@ -72,9 +72,10 @@ struct ObscuraToggle: View {
             Task {
                 self.toggleLabel = ToggleLabels.connecting
                 do {
-                    try await self.startupModel.appState?.enableTunnel(TunnelArgs(exit: .any))
+                    let exitSelector = self.getVpnStatus()?.lastChosenExit ?? .any
+                    try await self.startupModel.appState?.enableTunnel(TunnelArgs(exit: exitSelector))
                 } catch {
-                    logger.error("Failed to connect from status menu \(error, privacy: .public)")
+                    logger.error("Failed to connect from status menu toggle \(error, privacy: .public)")
                     self.toggleLabel = ToggleLabels.notConnected
                 }
                 self.allowToggleSync = true

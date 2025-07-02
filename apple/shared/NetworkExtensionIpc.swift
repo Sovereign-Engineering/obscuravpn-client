@@ -19,6 +19,8 @@ enum NeManagerCmd: Codable {
     case ping
     case setTunnelArgs(args: TunnelArgs?, allowActivation: Bool = false)
     case login(accountId: String, validate: Bool)
+    case getExitList(knownVersion: String?)
+    case refreshExitList(freshness: TimeInterval)
 }
 
 // See ../../rustlib/src/manager.rs
@@ -70,6 +72,7 @@ struct ExitInfo: Codable {
     var id: String
     var country_code: String
     var city_name: String
+    var city_code: String
 }
 
 enum TransportKind: String, Codable, Equatable {

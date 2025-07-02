@@ -112,6 +112,8 @@ class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
             self.obscuraWebView?.handlePaymentSucceeded()
         case .some("/account"):
             self.tab = .account
+        case .some("/location"):
+            self.tab = .location
         case let unknownPath:
             logger.error(
                 "Unknown URL path: \(unknownPath, privacy: .public)"

@@ -187,6 +187,50 @@ func getAccountInfo(
     return try await runNeCommand(manager, NeManagerCmd.apiGetAccountInfo, attemptTimeout: attemptTimeout, maxAttempts: maxAttempts)
 }
 
+func getExitList(_ manager: NETunnelProviderManager,
+                 knownVersion: String?,
+                 attemptTimeout: Duration? = nil,
+                 maxAttempts: UInt = 10) async throws -> CachedValue<ExitList>
+{
+    return try await runNeCommand(manager, NeManagerCmd.getExitList(knownVersion: knownVersion), attemptTimeout: attemptTimeout, maxAttempts: maxAttempts)
+}
+
+func refreshExitList(_ manager: NETunnelProviderManager,
+                     freshness: TimeInterval,
+                     attemptTimeout: Duration? = nil,
+                     maxAttempts: UInt = 10) async throws -> CachedValue<ExitList>
+{
+    return try await runNeCommand(manager, NeManagerCmd.refreshExitList(freshness: freshness), attemptTimeout: attemptTimeout, maxAttempts: maxAttempts)
+}
+
+struct CachedValue<T: Codable>: Codable {
+    var version: String
+    var last_updated: TimeInterval
+    var value: T
+}
+
+struct ExitList: Codable {
+    var exits: [OneExit]
+}
+
+struct CityExit: Hashable {
+    var city_code: String
+    var country_code: String
+}
+
+struct OneExit: Codable {
+    var id: String
+    var city_code: String
+    var country_code: String
+    var city_name: String
+    var provider_id: String
+    var provider_url: String
+    var provider_name: String
+    var provider_homepage_url: String
+    var datacenter_id: UInt32
+    var tier: UInt8
+}
+
 func runNeCommand<T: Codable>(
     _ manager: NETunnelProviderManager,
     _ cmd: NeManagerCmd,

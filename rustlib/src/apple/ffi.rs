@@ -1,6 +1,7 @@
 use std::sync::{Arc, LazyLock, OnceLock};
 use tokio::runtime::Runtime;
 
+use crate::config::KeychainSetSecretKeyFn;
 use crate::ffi_helpers::*;
 use crate::manager::Manager;
 use crate::manager_cmd::ManagerCmd;
@@ -44,7 +45,13 @@ fn global_manager() -> Arc<Manager> {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn initialize(config_dir: FfiStr, user_agent: FfiStr, receive_cb: extern "C" fn(FfiBytes)) {
+pub unsafe extern "C" fn initialize(
+    config_dir: FfiStr,
+    user_agent: FfiStr,
+    keychain_wg_secret_key: FfiBytes,
+    receive_cb: extern "C" fn(FfiBytes),
+    keychain_set_wg_secret_key: extern "C" fn(FfiBytes) -> bool,
+) {
     let mut first_init = false;
     GLOBAL.get_or_init(|| {
         rustls::crypto::aws_lc_rs::default_provider()
@@ -53,7 +60,16 @@ pub unsafe extern "C" fn initialize(config_dir: FfiStr, user_agent: FfiStr, rece
 
         let config_dir = config_dir.to_string().into();
         let user_agent = user_agent.to_string();
-        match Manager::new(config_dir, user_agent, &RUNTIME, receive_cb) {
+        let keychain_wg_sk = Some(keychain_wg_secret_key.to_vec()).filter(|v| !v.is_empty());
+        let keychain_set_wg_secret_key: KeychainSetSecretKeyFn = Box::new(move |sk: &[u8; 32]| keychain_set_wg_secret_key(sk.ffi()));
+        match Manager::new(
+            config_dir,
+            keychain_wg_sk.as_deref(),
+            user_agent,
+            &RUNTIME,
+            receive_cb,
+            Some(keychain_set_wg_secret_key),
+        ) {
             Ok(c) => {
                 first_init = true;
                 tracing::info!("ffi initialized");

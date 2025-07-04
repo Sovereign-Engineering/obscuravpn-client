@@ -33,7 +33,7 @@ fn random_config() -> Config {
 #[test]
 fn load_no_config() {
     let dir = Path::new("/var/empty/");
-    assert_eq!(load(dir).unwrap(), Default::default());
+    assert_eq!(load(dir, None).unwrap(), Default::default());
 }
 
 #[test]
@@ -44,7 +44,7 @@ fn load_config() {
 
     save(dir.as_ref(), &config).unwrap();
 
-    assert_eq!(load(dir.as_ref()).unwrap(), config);
+    assert_eq!(load(dir.as_ref(), None).unwrap(), config);
 }
 
 #[test]
@@ -56,7 +56,7 @@ fn load_invalid_json() {
     fs::write(&file, corrupted).unwrap();
 
     // Load returns a default config.
-    assert_eq!(load(dir.as_ref()).unwrap(), Default::default());
+    assert_eq!(load(dir.as_ref(), None).unwrap(), Default::default());
 
     let backup_files = fs::read_dir(&dir)
         .unwrap()
@@ -85,7 +85,7 @@ fn load_empty() {
     fs::write(&file, empty).unwrap();
 
     // Load returns a default config.
-    assert_eq!(load(dir.as_ref()).unwrap(), Default::default());
+    assert_eq!(load(dir.as_ref(), None).unwrap(), Default::default());
 
     let backup_files = fs::read_dir(&dir)
         .unwrap()
@@ -114,7 +114,7 @@ fn load_no_permission() {
     fs::set_permissions(&file, permissions).unwrap();
 
     // Load returns a default config.
-    assert_eq!(load(dir.as_ref()).unwrap(), Default::default());
+    assert_eq!(load(dir.as_ref(), None).unwrap(), Default::default());
 
     let backup_files = fs::read_dir(&dir)
         .unwrap()
@@ -131,7 +131,7 @@ fn load_no_permission() {
     fs::rename(backup_path, file).unwrap();
 
     // The backup file contained the original config.
-    assert_eq!(load(dir.as_ref()).unwrap(), config);
+    assert_eq!(load(dir.as_ref(), None).unwrap(), config);
 }
 
 #[test]

@@ -20,7 +20,7 @@ use uuid::Uuid;
 use crate::{
     backoff::Backoff,
     client_state::AccountStatus,
-    config::{cached::ConfigCached, Config, ConfigDebug, ConfigLoadError, ConfigSaveError, PinnedLocation},
+    config::{cached::ConfigCached, Config, ConfigDebug, ConfigLoadError, ConfigSaveError, KeychainSetSecretKeyFn, PinnedLocation},
     errors::ApiError,
     exit_selection::ExitSelector,
     quicwg::TransportKind,
@@ -139,12 +139,14 @@ impl VpnStatus {
 impl Manager {
     pub fn new(
         config_dir: PathBuf,
+        keychain_wg_sk: Option<&[u8]>,
         user_agent: String,
         runtime: &Runtime,
         receive_cb: extern "C" fn(FfiBytes),
+        set_keychain_wg_sk: Option<KeychainSetSecretKeyFn>,
     ) -> Result<Arc<Self>, ConfigLoadError> {
         let cancellation_token = CancellationToken::new();
-        let client_state = Arc::new(ClientState::new(config_dir, user_agent)?);
+        let client_state = Arc::new(ClientState::new(config_dir, keychain_wg_sk, user_agent, set_keychain_wg_sk)?);
         let config = client_state.get_config();
         let (target_tunnel_args, tunnel_state) = TunnelState::new(runtime, client_state.clone(), receive_cb, cancellation_token.clone());
         let initial_status = Status::new(Uuid::new_v4(), VpnStatus::Disconnected {}, config, client_state.base_url());

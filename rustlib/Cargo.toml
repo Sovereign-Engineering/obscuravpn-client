@@ -31,7 +31,6 @@ futures = "0.3.29"
 include_dir = "0.7.3"
 ipnetwork = { version =  "0.21.1", features = ["serde"] }
 lazy_static = "1.4.0"
-quinn = "0.11.8"
 rand = "0.8.5"
 ring = "0.17.14"
 rustls = "0.23.28"
@@ -60,6 +59,10 @@ rev = "ff3b5555b5b1c4f85ae23d8d4aaf00bea2cd2bf0"
 [dependencies.obscuravpn-api]
 git = "https://github.com/Sovereign-Engineering/obscuravpn-api.git"
 rev = "aa771aed6f5c05b039ad7e366356babddedd5e1e"
+
+[dependencies.quinn]
+git = "https://github.com/Sovereign-Engineering/quinn.git"
+rev = "8f690a22535dcf2d76c369cadd3f0bec93667a4d"
 
 [target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
 oslog = "0.2.0"

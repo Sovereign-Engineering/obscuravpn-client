@@ -117,6 +117,10 @@ pub enum ManagerCmd {
     SetAutoConnect {
         enable: bool,
     },
+    SetFeatureFlag {
+        flag: String,
+        active: bool,
+    },
     SetInNewAccountFlow {
         value: bool,
     },
@@ -168,6 +172,7 @@ impl ManagerCmd {
     pub(super) async fn run(self, manager: &Manager) -> Result<ManagerCmdOk, ManagerCmdErrorCode> {
         match self {
             Self::ApiGetAccountInfo {} => map_result(manager.get_account_info().await),
+            Self::SetFeatureFlag { flag, active } => map_result(manager.set_feature_flag(&flag, active)),
             Self::GetDebugInfo {} => Ok(ManagerCmdOk::GetDebugInfo(manager.get_debug_info())),
             Self::GetExitList { known_version } => {
                 let mut recv = manager.subscribe_exit_list();

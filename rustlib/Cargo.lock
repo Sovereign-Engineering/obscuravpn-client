@@ -1781,7 +1781,7 @@ dependencies = [
  "neptun",
  "obscuravpn-api",
  "oslog",
- "quinn",
+ "quinn 0.11.8 (git+https://github.com/Sovereign-Engineering/quinn.git?rev=8f690a22535dcf2d76c369cadd3f0bec93667a4d)",
  "rand 0.8.5",
  "ring",
  "rustls",
@@ -1827,9 +1827,9 @@ checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 
 [[package]]
 name = "openssl-probe"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
+checksum = "d05e27ee213611ffe7d6348b942e8f942b37114c00cc03cec254295a4a17852e"
 
 [[package]]
 name = "oslog"
@@ -1980,8 +1980,27 @@ dependencies = [
  "bytes",
  "cfg_aliases 0.2.1",
  "pin-project-lite",
- "quinn-proto",
- "quinn-udp",
+ "quinn-proto 0.11.12 (registry+https://github.com/rust-lang/crates.io-index)",
+ "quinn-udp 0.5.7",
+ "rustc-hash 2.0.0",
+ "rustls",
+ "socket2",
+ "thiserror 2.0.12",
+ "tokio",
+ "tracing",
+ "web-time",
+]
+
+[[package]]
+name = "quinn"
+version = "0.11.8"
+source = "git+https://github.com/Sovereign-Engineering/quinn.git?rev=8f690a22535dcf2d76c369cadd3f0bec93667a4d#8f690a22535dcf2d76c369cadd3f0bec93667a4d"
+dependencies = [
+ "bytes",
+ "cfg_aliases 0.2.1",
+ "pin-project-lite",
+ "quinn-proto 0.11.12 (git+https://github.com/Sovereign-Engineering/quinn.git?rev=8f690a22535dcf2d76c369cadd3f0bec93667a4d)",
+ "quinn-udp 0.5.12",
  "rustc-hash 2.0.0",
  "rustls",
  "socket2",
@@ -1996,6 +2015,26 @@ name = "quinn-proto"
 version = "0.11.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49df843a9161c85bb8aae55f101bc0bac8bcafd637a620d9122fd7e0b2f7422e"
+dependencies = [
+ "bytes",
+ "getrandom 0.3.3",
+ "lru-slab",
+ "rand 0.9.1",
+ "ring",
+ "rustc-hash 2.0.0",
+ "rustls",
+ "rustls-pki-types",
+ "slab",
+ "thiserror 2.0.12",
+ "tinyvec",
+ "tracing",
+ "web-time",
+]
+
+[[package]]
+name = "quinn-proto"
+version = "0.11.12"
+source = "git+https://github.com/Sovereign-Engineering/quinn.git?rev=8f690a22535dcf2d76c369cadd3f0bec93667a4d#8f690a22535dcf2d76c369cadd3f0bec93667a4d"
 dependencies = [
  "bytes",
  "fastbloom",
@@ -2019,6 +2058,19 @@ name = "quinn-udp"
 version = "0.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d5a626c6807713b15cac82a6acaccd6043c9a5408c24baae07611fec3f243da"
+dependencies = [
+ "cfg_aliases 0.2.1",
+ "libc",
+ "once_cell",
+ "socket2",
+ "tracing",
+ "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "quinn-udp"
+version = "0.5.12"
+source = "git+https://github.com/Sovereign-Engineering/quinn.git?rev=8f690a22535dcf2d76c369cadd3f0bec93667a4d#8f690a22535dcf2d76c369cadd3f0bec93667a4d"
 dependencies = [
  "cfg_aliases 0.2.1",
  "libc",
@@ -2184,7 +2236,7 @@ dependencies = [
  "log",
  "percent-encoding",
  "pin-project-lite",
- "quinn",
+ "quinn 0.11.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustls",
  "rustls-pki-types",
  "serde",
@@ -2323,7 +2375,7 @@ dependencies = [
  "rustls-webpki",
  "security-framework",
  "security-framework-sys",
- "webpki-root-certs",
+ "webpki-root-certs 0.26.11",
  "windows-sys 0.52.0",
 ]
 
@@ -3312,9 +3364,18 @@ dependencies = [
 
 [[package]]
 name = "webpki-root-certs"
-version = "0.26.6"
+version = "0.26.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8c6dfa3ac045bc517de14c7b1384298de1dbd229d38e08e169d9ae8c170937c"
+checksum = "75c7f0ef91146ebfb530314f5f1d24528d7f0767efbfd31dce919275413e393e"
+dependencies = [
+ "webpki-root-certs 1.0.1",
+]
+
+[[package]]
+name = "webpki-root-certs"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86138b15b2b7d561bc4469e77027b8dd005a43dc502e9031d1f5afc8ce1f280e"
 dependencies = [
  "rustls-pki-types",
 ]
@@ -3342,9 +3403,9 @@ dependencies = [
 
 [[package]]
 name = "wide"
-version = "0.7.32"
+version = "0.7.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41b5576b9a81633f3e8df296ce0063042a73507636cbe956c61133dd7034ab22"
+checksum = "0ce5da8ecb62bcd8ec8b7ea19f69a51275e91299be594ea5cc6ef7819e16cd03"
 dependencies = [
  "bytemuck",
  "safe_arch",

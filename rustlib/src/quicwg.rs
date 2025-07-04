@@ -606,6 +606,7 @@ impl QuicWgConnHandshaking {
         transport_config.keep_alive_interval(Some(Duration::from_secs(10)));
         transport_config.max_idle_timeout(Some(quinn::VarInt::from_u32(QUIC_MAX_IDLE_MS).into()));
         transport_config.congestion_controller_factory(Arc::new(quinn::congestion::BbrConfig::default()));
+        transport_config.pad_to_mtu(true);
         client_cfg.transport_config(Arc::new(transport_config));
         Ok(client_cfg)
     }

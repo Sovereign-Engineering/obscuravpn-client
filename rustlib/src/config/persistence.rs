@@ -20,6 +20,7 @@ use x25519_dalek::PublicKey;
 
 use crate::client_state::AccountStatus;
 use crate::config::cached::ConfigCached;
+use crate::config::feature_flags::FeatureFlags;
 use crate::exit_selection::ExitSelector;
 
 pub(super) const CONFIG_FILE: &str = "config.json";
@@ -208,6 +209,8 @@ pub struct Config {
     #[serde(skip)]
     pub exit: (), // Removed
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
+    pub feature_flags: FeatureFlags,
+    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub in_new_account_flow: bool,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub cached_auth_token: Option<String>,
@@ -253,6 +256,7 @@ pub struct ConfigDebug {
     pub api_url: Option<String>,
     pub cached_exits: Option<ConfigCached<Arc<ExitList>>>,
     pub local_tunnels_ids: Vec<String>,
+    pub feature_flags: FeatureFlags,
     pub in_new_account_flow: bool,
     pub pinned_locations: Vec<PinnedLocation>,
     pub last_chosen_exit: Option<String>,
@@ -275,6 +279,7 @@ impl From<Config> for ConfigDebug {
             old_account_ids: _,
             local_tunnels_ids,
             exit: (),
+            feature_flags,
             in_new_account_flow,
             cached_auth_token,
             cached_exits,
@@ -293,6 +298,7 @@ impl From<Config> for ConfigDebug {
             api_url,
             cached_exits,
             local_tunnels_ids,
+            feature_flags,
             in_new_account_flow,
             pinned_locations,
             last_chosen_exit,

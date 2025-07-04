@@ -171,6 +171,7 @@ fn test_ignore_invalid_fields() {
         cached_account_status: Default::default(),
         auto_connect: true,
         force_tcp_tls_relay_transport: true,
+        feature_flags: Default::default(),
     };
     let example_json = match serde_json::to_value(&example_config).unwrap() {
         serde_json::Value::Object(m) => m,

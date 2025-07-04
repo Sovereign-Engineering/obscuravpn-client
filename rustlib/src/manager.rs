@@ -20,7 +20,10 @@ use uuid::Uuid;
 use crate::{
     backoff::Backoff,
     client_state::AccountStatus,
-    config::{cached::ConfigCached, Config, ConfigDebug, ConfigLoadError, ConfigSaveError, KeychainSetSecretKeyFn, PinnedLocation},
+    config::{
+        cached::ConfigCached, feature_flags::FeatureFlags, Config, ConfigDebug, ConfigLoadError, ConfigSaveError, KeychainSetSecretKeyFn,
+        PinnedLocation,
+    },
     errors::ApiError,
     exit_selection::ExitSelector,
     quicwg::TransportKind,
@@ -56,6 +59,8 @@ pub struct Status {
     pub account: Option<AccountStatus>,
     pub auto_connect: bool,
     pub force_tcp_tls_relay_transport: bool,
+    pub feature_flags: FeatureFlags,
+    pub feature_flag_keys: &'static [&'static str],
 }
 
 impl Status {
@@ -69,6 +74,7 @@ impl Status {
             cached_account_status,
             auto_connect,
             force_tcp_tls_relay_transport,
+            feature_flags,
             ..
         } = config;
         Self {
@@ -83,6 +89,8 @@ impl Status {
             account: cached_account_status,
             auto_connect,
             force_tcp_tls_relay_transport,
+            feature_flags,
+            feature_flag_keys: FeatureFlags::KEYS,
         }
     }
 }
@@ -196,6 +204,12 @@ impl Manager {
             *target_args = new_target_args;
             true
         });
+        ret
+    }
+
+    pub fn set_feature_flag(&self, flag: &str, active: bool) -> Result<(), ConfigSaveError> {
+        let ret = self.client_state.set_feature_flag(flag, active);
+        self.update_status_if_changed(None);
         ret
     }
 

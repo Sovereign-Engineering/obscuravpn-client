@@ -442,6 +442,7 @@ impl QuicWgConnHandshaking {
         relay_addr: SocketAddr,
         relay_cert: CertificateDer<'static>,
         relay_sni: &str,
+        pad_to_mtu: bool,
     ) -> Result<Self, QuicWgConnectError> {
         let port = relay_addr.port();
         tracing::info!(
@@ -450,7 +451,7 @@ impl QuicWgConnHandshaking {
             &relay_id,
             port
         );
-        let quic_config = Self::quic_config(relay_cert).map_err(QuicWgConnectError::CryptoConfig)?;
+        let quic_config = Self::quic_config(relay_cert, pad_to_mtu).map_err(QuicWgConnectError::CryptoConfig)?;
         let connecting = quic_endpoint
             .connect_with(quic_config.clone(), relay_addr, relay_sni)
             .map_err(QuicWgConnectError::QuicConfig)?;
@@ -589,7 +590,7 @@ impl QuicWgConnHandshaking {
         Ok(TlsConnector::from(Arc::new(crypto)))
     }
 
-    fn quic_config(relay_cert: CertificateDer<'static>) -> Result<ClientConfig, anyhow::Error> {
+    fn quic_config(relay_cert: CertificateDer<'static>, pad_to_mtu: bool) -> Result<ClientConfig, anyhow::Error> {
         let mut crypto = Self::rustls_config(relay_cert)?;
         crypto.alpn_protocols = vec![b"h3".to_vec()];
         let crypto = QuicClientConfig::try_from(crypto)?;
@@ -606,7 +607,7 @@ impl QuicWgConnHandshaking {
         transport_config.keep_alive_interval(Some(Duration::from_secs(10)));
         transport_config.max_idle_timeout(Some(quinn::VarInt::from_u32(QUIC_MAX_IDLE_MS).into()));
         transport_config.congestion_controller_factory(Arc::new(quinn::congestion::BbrConfig::default()));
-        transport_config.pad_to_mtu(true);
+        transport_config.pad_to_mtu(pad_to_mtu);
         client_cfg.transport_config(Arc::new(transport_config));
         Ok(client_cfg)
     }

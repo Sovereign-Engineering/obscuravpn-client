@@ -158,6 +158,13 @@ impl ClientState {
         Ok(())
     }
 
+    pub fn set_feature_flag(&self, flag: &str, active: bool) -> Result<(), ConfigSaveError> {
+        Self::change_config(&mut self.lock(), |config, _| {
+            config.feature_flags.set(flag, active);
+        })?;
+        Ok(())
+    }
+
     pub fn set_api_host_alternate(&self, value: Option<String>) -> Result<(), ConfigSaveError> {
         let mut inner = self.lock();
         Self::change_config(&mut inner, move |config, _| {
@@ -373,7 +380,8 @@ impl ClientState {
             "Racing relays",
         );
         let use_tcp_tls = self.get_config().force_tcp_tls_relay_transport;
-        let racing_handshakes = race_relay_handshakes(relays, sni, use_tcp_tls)?;
+        let pad_to_mtu = self.get_config().feature_flags.quic_frame_padding.unwrap_or(false);
+        let racing_handshakes = race_relay_handshakes(relays, sni, use_tcp_tls, pad_to_mtu)?;
         let mut relays_connected_successfully = BTreeSet::new();
         let mut best_candidate = None;
 

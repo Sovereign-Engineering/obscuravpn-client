@@ -1,6 +1,6 @@
 import Foundation
-import Security
 import OSLog
+import Security
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "keychain")
 private let wgSecretKeyquery: [String: Any] = [
@@ -11,7 +11,7 @@ private let wgSecretKeyquery: [String: Any] = [
 
 func keychainSetWgSecretKey(_ sk: Data) -> Bool {
     SecItemDelete(wgSecretKeyquery as CFDictionary)
-    var insert = wgSecretKeyquery;
+    var insert = wgSecretKeyquery
     insert[kSecValueData as String] = sk
     let insertStatus = SecItemAdd(insert as CFDictionary, nil)
     switch insertStatus {
@@ -40,11 +40,11 @@ func keychainGetWgSecretKey() -> Data? {
         logger.error("error getting keychain item: \(status, privacy: .public)")
         return .none
     }
-    
+
     guard let data = item as? NSData else {
         logger.error("got unexpected result format from keychain")
         return .none
     }
-    
+
     return data as Data
 }

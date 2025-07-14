@@ -297,6 +297,18 @@ struct ContentView: View {
                 .onOpenURL { incomingURL in
                     self.webviewsController.handleObscuraURL(url: incomingURL)
                 }
+                .overlay(alignment: .topTrailing) {
+                    #if DEBUG
+                        Button(action: {
+                            self.webviewsController.tab = .developer
+                        }) {
+                            Image(systemName: "hammer.circle.fill")
+                                .foregroundColor(.purple)
+                                .font(.title2)
+                        }
+                        .padding()
+                    #endif
+                }
             #endif
         } else {
             EmptyView()

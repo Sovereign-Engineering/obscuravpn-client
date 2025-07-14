@@ -18,6 +18,23 @@ class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
 
     let useExernalBrowserForPayments = true
 
+    private enum LinkDestination {
+        case social
+        case checkConnection
+        case pay
+        case homepage
+        case termsOfService
+
+        var openExternally: Bool {
+            switch self {
+            case .social, .checkConnection, .homepage, .pay:
+                return true
+            case .termsOfService:
+                return false
+            }
+        }
+    }
+
     func initializeWebviews(appState: AppState) {
         self.obscuraWebView = ObscuraUIWebView(appState: appState)
         self.externalWebView = ExternalWebView(appState: appState)
@@ -46,7 +63,7 @@ class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
 
     #if !os(macOS)
         private func handleWebsiteLinkiOS(url: URL) {
-            if url.absoluteString.contains("obscuravpn") {
+            if url.absoluteString.contains("obscuravpn:///") {
                 self.handleObscuraURL(url: url)
                 return
             }
@@ -56,31 +73,50 @@ class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
                 let components = NSURLComponents(
                     url: url,
                     resolvingAgainstBaseURL: true
-                ), let path = components.path, components.host?.contains("obscura") ?? false
+                ), let path = components.path, let host = components.host
             else {
                 logger.error("Failed to parse URL into components")
                 return
             }
 
-            if (path.contains("pay") && self.useExernalBrowserForPayments) ||
-                // "Check connection link"
-                path.contains("check") ||
-                // "Website" button
-                path == "/"
-            {
-                UIApplication.shared.open(url)
-                return
+            let destination: LinkDestination?
+            if host.contains("obscura") {
+                if path.contains("pay") {
+                    destination = .pay
+                } else if path.contains("check") {
+                    destination = .checkConnection
+                } else if path.contains("legal") {
+                    destination = .termsOfService
+                } else if path == "/" {
+                    destination = .homepage
+                } else {
+                    destination = nil
+                }
+            } else {
+                if host
+                    .contains("discord") || host
+                    .contains("matrix.to") || host
+                    .contains("x.com")
+                {
+                    destination = .social
+                } else {
+                    destination = nil
+                }
             }
 
-            // Open modal browser
-            Task { @MainActor in
-                // Clear webview
-                self.externalWebView?.webView.load(URLRequest(url: URL(string: "about:blank")!))
+            if destination?.openExternally ?? true {
+                UIApplication.shared.open(url)
+                return
+            } else {
+                Task { @MainActor in
+                    // Clear webview
+                    self.externalWebView?.webView.load(URLRequest(url: URL(string: "about:blank")!))
 
-                // Load the requested page
-                self.externalWebView?.webView.load(URLRequest(url: url))
+                    // Load the requested page
+                    self.externalWebView?.webView.load(URLRequest(url: url))
 
-                self.showModalWebview = true
+                    self.showModalWebview = true
+                }
             }
         }
     #endif

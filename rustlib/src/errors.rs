@@ -51,6 +51,7 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
                         | MissingOrInvalidAuthToken {}
                         | NoApiRoute {}
                         | NoMatchingExit {}
+                        | SaleNotFound {}
                         | SignupLimitExceeded {}
                         | WgKeyRotationRequired {}
                         | Unknown(_) => Self::ApiError,

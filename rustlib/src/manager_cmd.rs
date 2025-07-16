@@ -4,7 +4,7 @@ use std::{sync::Arc, time::Duration};
 
 use base64::prelude::*;
 use obscuravpn_api::{
-    cmd::{ApiErrorKind, Cmd, ExitList, GetAccountInfo},
+    cmd::{ApiErrorKind, AppleCreateAppAccountTokenOutput, ApplePollSubscriptionOutput, ExitList},
     types::{AccountId, AccountInfo},
     ClientError,
 };
@@ -66,6 +66,7 @@ impl From<&ApiError> for ManagerCmdErrorCode {
                     | ApiErrorKind::MissingOrInvalidAuthToken {}
                     | ApiErrorKind::NoApiRoute {}
                     | ApiErrorKind::NoMatchingExit {}
+                    | ApiErrorKind::SaleNotFound {}
                     | ApiErrorKind::TunnelLimitExceeded {}
                     | ApiErrorKind::WgKeyRotationRequired {}
                     | ApiErrorKind::Unknown(_) => Self::ApiError,
@@ -86,6 +87,10 @@ impl From<&ApiError> for ManagerCmdErrorCode {
 #[derive(derive_more::Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum ManagerCmd {
+    ApiAppleCreateAppAccountToken {},
+    ApiApplePollSubscription {
+        transaction_id: String,
+    },
     ApiGetAccountInfo {},
     GetDebugInfo {},
     GetExitList {
@@ -137,21 +142,20 @@ pub enum ManagerCmd {
     ToggleForceTcpTlsRelayTransport {},
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, derive_more::From, Serialize)]
 #[serde(untagged)]
 pub enum ManagerCmdOk {
-    ApiGetAccountInfo(<GetAccountInfo as Cmd>::Output),
+    #[from]
+    ApiAppleCreateAppAccountToken(AppleCreateAppAccountTokenOutput),
+    #[from]
+    ApiApplePollSubscription(ApplePollSubscriptionOutput),
+    #[from]
+    ApiGetAccountInfo(AccountInfo),
     Empty,
     GetDebugInfo(DebugInfo),
     GetExitList(CachedValue<Arc<ExitList>>),
     GetStatus(Status),
     GetTrafficStats(ManagerTrafficStats),
-}
-
-impl From<AccountInfo> for ManagerCmdOk {
-    fn from(info: AccountInfo) -> Self {
-        Self::ApiGetAccountInfo(info)
-    }
 }
 
 impl From<()> for ManagerCmdOk {
@@ -171,6 +175,8 @@ where
 impl ManagerCmd {
     pub(super) async fn run(self, manager: &Manager) -> Result<ManagerCmdOk, ManagerCmdErrorCode> {
         match self {
+            Self::ApiAppleCreateAppAccountToken {} => map_result(manager.apple_create_app_account_token().await),
+            Self::ApiApplePollSubscription { transaction_id } => map_result(manager.apple_poll_subscription(transaction_id).await),
             Self::ApiGetAccountInfo {} => map_result(manager.get_account_info().await),
             Self::SetFeatureFlag { flag, active } => map_result(manager.set_feature_flag(&flag, active)),
             Self::GetDebugInfo {} => Ok(ManagerCmdOk::GetDebugInfo(manager.get_debug_info())),
@@ -184,7 +190,6 @@ impl ManagerCmd {
                         ManagerCmdErrorCode::Other
                     })?;
                 let res = res.as_ref().unwrap();
-
                 Ok(ManagerCmdOk::GetExitList(CachedValue {
                     version: res.version().to_vec(),
                     last_updated: res.last_updated,

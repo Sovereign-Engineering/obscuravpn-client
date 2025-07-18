@@ -10,6 +10,7 @@ private let logger = Logger(
 // This is the navigation for all web views within the app
 class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
     @Published var showModalWebview: Bool = false
+    @Published var showSubscriptionManageSheet: Bool = false
 
     @Published var obscuraWebView: ObscuraUIWebView? = nil
     @Published var externalWebView: ExternalWebView? = nil
@@ -21,15 +22,16 @@ class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
     private enum LinkDestination {
         case social
         case checkConnection
-        case pay
+        case managePayment
+        case stripePayment
         case homepage
         case termsOfService
 
         var openExternally: Bool {
             switch self {
-            case .social, .checkConnection, .homepage, .pay:
+            case .social, .checkConnection, .homepage, .stripePayment:
                 return true
-            case .termsOfService:
+            case .termsOfService, .managePayment:
                 return false
             }
         }
@@ -62,7 +64,7 @@ class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
     }
 
     #if !os(macOS)
-        private func handleWebsiteLinkiOS(url: URL) {
+        public func handleWebsiteLinkiOS(url: URL) {
             if url.absoluteString.contains("obscuravpn:///") {
                 self.handleObscuraURL(url: url)
                 return
@@ -82,7 +84,16 @@ class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
             let destination: LinkDestination?
             if host.contains("obscura") {
                 if path.contains("pay") {
-                    destination = .pay
+                    #if DEBUG
+                        if url.absoluteString.contains("external") {
+                            destination = .stripePayment
+                        } else {
+                            self.showSubscriptionManageSheet = true
+                            return
+                        }
+                    #else
+                        destination = .stripePayment
+                    #endif
                 } else if path.contains("check") {
                     destination = .checkConnection
                 } else if path.contains("legal") {

@@ -12,6 +12,8 @@ class AppState: ObservableObject {
     @Published var status: NeStatus
     #if os(macOS)
         public let updater: SparkleUpdater
+    #else
+        let storeKitModel = StoreKitModel()
     #endif
     @Published public var webviewsController: WebviewsController
 

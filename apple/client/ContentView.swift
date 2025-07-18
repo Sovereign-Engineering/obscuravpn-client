@@ -294,19 +294,30 @@ struct ContentView: View {
                         .presentationDetents([.large])
                         .presentationDragIndicator(.visible)
                 }
+                .sheet(
+                    isPresented: self.$webviewsController.showSubscriptionManageSheet)
+                {
+                    SubscriptionManageSheet(manager: self.appState.manager, storeKitModel: self.appState.storeKitModel, openUrl: { url in
+                        self.webviewsController.handleWebsiteLinkiOS(url: url)
+                    })
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+                }
                 .onOpenURL { incomingURL in
                     self.webviewsController.handleObscuraURL(url: incomingURL)
                 }
                 .overlay(alignment: .topTrailing) {
                     #if DEBUG
-                        Button(action: {
-                            self.webviewsController.tab = .developer
-                        }) {
-                            Image(systemName: "hammer.circle.fill")
-                                .foregroundColor(.purple)
-                                .font(.title2)
+                        VStack {
+                            Button(action: {
+                                self.webviewsController.tab = .developer
+                            }) {
+                                Image(systemName: "hammer.circle.fill")
+                                    .foregroundColor(.purple)
+                                    .font(.title2)
+                            }
+                            .padding()
                         }
-                        .padding()
                     #endif
                 }
             #endif

@@ -10,13 +10,13 @@ struct AccountStatus: Codable, Equatable {
     }
 
     func expirationDate() -> Date? {
-        if let subscription = accountInfo.subscription {
+        if let subscription = accountInfo.stripeSubscription {
             if !subscription.cancelAtPeriodEnd {
                 return nil
             }
         }
         let top_up_end = self.accountInfo.topUp?.creditExpiresAt ?? 0
-        let subscription_end = self.accountInfo.subscription?.currentPeriodEnd ?? 0
+        let subscription_end = self.accountInfo.stripeSubscription?.currentPeriodEnd ?? 0
         let end = max(top_up_end, subscription_end, 0)
         return Date(timeIntervalSince1970: TimeInterval(end))
     }
@@ -55,13 +55,15 @@ struct AccountInfo: Codable {
     let id: String
     let active: Bool
     let topUp: TopUpInfo?
-    let subscription: SubscriptionInfo?
+    let stripeSubscription: StripeSubscriptionInfo?
+    let appleSubscription: AppleSubscriptionInfo?
 
     enum CodingKeys: String, CodingKey {
         case topUp = "top_up"
         case id
         case active
-        case subscription
+        case stripeSubscription = "subscription"
+        case appleSubscription = "apple_subscription"
     }
 }
 
@@ -73,8 +75,14 @@ struct TopUpInfo: Codable {
     }
 }
 
-struct SubscriptionInfo: Codable {
-    let status: SubscriptionStatus
+extension TopUpInfo {
+    var expiryDate: Date {
+        return Date(timeIntervalSince1970: TimeInterval(self.creditExpiresAt))
+    }
+}
+
+struct StripeSubscriptionInfo: Codable {
+    let status: StripeSubscriptionStatus
     let currentPeriodStart: Int64
     let currentPeriodEnd: Int64
     let cancelAtPeriodEnd: Bool
@@ -87,7 +95,7 @@ struct SubscriptionInfo: Codable {
     }
 }
 
-enum SubscriptionStatus: String, Codable {
+enum StripeSubscriptionStatus: String, Codable {
     case active
     case canceled
     case incomplete
@@ -97,3 +105,67 @@ enum SubscriptionStatus: String, Codable {
     case trialing
     case unpaid
 }
+
+struct AppleSubscriptionInfo: Codable {
+    // https://developer.apple.com/documentation/appstoreserverapi/status
+    let status: Int32
+    let autoRenewalStatus: Bool
+    let renewalDate: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case autoRenewalStatus = "auto_renew_status"
+        case renewalDate = "renewal_date"
+    }
+
+    enum Status: Int32 {
+        case active = 1
+        case expired = 2
+        case billingRetry = 3
+        case gracePeriod = 4
+        case revoked = 5
+
+        var description: String {
+            switch self {
+            case .active:
+                "Active"
+            case .expired:
+                "Expired"
+            case .billingRetry:
+                "In Billing Retry Period"
+            case .gracePeriod:
+                "In Billing Grace Period"
+            case .revoked:
+                "Revoked"
+            }
+        }
+    }
+
+    var subscriptionStatus: Status {
+        Status(rawValue: self.status) ?? .expired
+    }
+}
+
+// Output types for Apple subscription management
+struct AppleCreateAppAccountTokenOutput: Codable {
+    let appAccountToken: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case appAccountToken = "app_account_token"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let tokenString = try container.decode(String.self, forKey: .appAccountToken)
+        guard let uuid = UUID(uuidString: tokenString) else {
+            throw DecodingError.dataCorruptedError(forKey: .appAccountToken, in: container, debugDescription: "Could not parse UUID string")
+        }
+        self.appAccountToken = uuid
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.appAccountToken.uuidString, forKey: .appAccountToken)
+    }
+}
+

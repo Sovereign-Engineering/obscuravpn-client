@@ -106,6 +106,16 @@
 		A936D49A2DD161B00031B646 /* UXImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A936D4982DD1617F0031B646 /* UXImage.swift */; };
 		A936D49C2DD162AB0031B646 /* InstallSystemExtensionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A936D49B2DD162AB0031B646 /* InstallSystemExtensionView.swift */; };
 		A94743F92DD17143002ACD85 /* iOSClientApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94743F72DD170F5002ACD85 /* iOSClientApp.swift */; };
+		A94B1D9C2E286B3900E5F325 /* ConditionallyDisabled.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B1D9B2E286B3900E5F325 /* ConditionallyDisabled.swift */; };
+		A94B1DCD2E28B13E00E5F325 /* AccountInfo+Util.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B1DCC2E28B13E00E5F325 /* AccountInfo+Util.swift */; };
+		A94B1DCE2E28B13E00E5F325 /* AccountInfo+Util.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B1DCC2E28B13E00E5F325 /* AccountInfo+Util.swift */; };
+		A94B1DD42E28B16800E5F325 /* Product+Convenience.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B1DD02E28B16800E5F325 /* Product+Convenience.swift */; };
+		A94B1DD62E28B16800E5F325 /* SubscriptionManageSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B1DD32E28B16800E5F325 /* SubscriptionManageSheetView.swift */; };
+		A94B1DD72E28B16800E5F325 /* PurchaseOptionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B1DD12E28B16800E5F325 /* PurchaseOptionsView.swift */; };
+		A94B1DE02E28B2D000E5F325 /* AccountInfoOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B1DDE2E28B2D000E5F325 /* AccountInfoOverviewView.swift */; };
+		A94B1DE22E28B4E100E5F325 /* SubscriptionManageSheetViewPreviewCarousel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B1DE12E28B4E100E5F325 /* SubscriptionManageSheetViewPreviewCarousel.swift */; };
+		A94B1E242E2B03B900E5F325 /* ConditionallyDisabled.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B1D9B2E286B3900E5F325 /* ConditionallyDisabled.swift */; };
+		A952CE0A2E1B87B8007E25AC /* SubscriptionManageSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A952CE082E1B87B8007E25AC /* SubscriptionManageSheet.swift */; };
 		A95A91332DF9910C005CB52A /* ObscuraUIIOSWrapperAndTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = A95A91322DF9910C005CB52A /* ObscuraUIIOSWrapperAndTabs.swift */; };
 		A9768FAD2DBB01AD00A4595F /* UpdaterDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9768FAC2DBB01AD00A4595F /* UpdaterDriver.swift */; };
 		A9768FAF2DBB01C400A4595F /* CheckForUpdatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9768FAE2DBB01C400A4595F /* CheckForUpdatesView.swift */; };
@@ -162,6 +172,11 @@
 		A9BCB05E2DC54AC0006C0133 /* DebugBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9BCB05D2DC54AC0006C0133 /* DebugBundle.swift */; };
 		A9BCB0612DC54B68006C0133 /* UpdaterDriver+XP.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9BCB0602DC54B68006C0133 /* UpdaterDriver+XP.swift */; };
 		A9BCB0622DC54B68006C0133 /* UpdaterDriver+XP.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9BCB0602DC54B68006C0133 /* UpdaterDriver+XP.swift */; };
+		A9E44A772E093DA7006B4616 /* Obscura VPN.storekit in Resources */ = {isa = PBXBuildFile; fileRef = A9E44A762E093DA7006B4616 /* Obscura VPN.storekit */; };
+		A9E44A782E093DA7006B4616 /* Obscura VPN.storekit in Resources */ = {isa = PBXBuildFile; fileRef = A9E44A762E093DA7006B4616 /* Obscura VPN.storekit */; };
+		A9E44A7A2E093E79006B4616 /* StoreKitModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9E44A792E093E79006B4616 /* StoreKitModel.swift */; };
+		A9E44A7C2E0947EA006B4616 /* Product+Convenience.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9E44A7B2E0947EA006B4616 /* Product+Convenience.swift */; };
+		A9E44A802E0950ED006B4616 /* StoreDebugUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9E44A7E2E0950ED006B4616 /* StoreDebugUI.swift */; };
 		C90161572BE011B2005B14AF /* libobscuravpn-client.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C90161542BE01159005B14AF /* libobscuravpn-client.a */; };
 /* End PBXBuildFile section */
 
@@ -310,6 +325,14 @@
 		A936D4982DD1617F0031B646 /* UXImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UXImage.swift; sourceTree = "<group>"; };
 		A936D49B2DD162AB0031B646 /* InstallSystemExtensionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallSystemExtensionView.swift; sourceTree = "<group>"; };
 		A94743F72DD170F5002ACD85 /* iOSClientApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSClientApp.swift; sourceTree = "<group>"; };
+		A94B1D9B2E286B3900E5F325 /* ConditionallyDisabled.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConditionallyDisabled.swift; sourceTree = "<group>"; };
+		A94B1DCC2E28B13E00E5F325 /* AccountInfo+Util.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AccountInfo+Util.swift"; sourceTree = "<group>"; };
+		A94B1DD02E28B16800E5F325 /* Product+Convenience.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Product+Convenience.swift"; sourceTree = "<group>"; };
+		A94B1DD12E28B16800E5F325 /* PurchaseOptionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseOptionsView.swift; sourceTree = "<group>"; };
+		A94B1DD32E28B16800E5F325 /* SubscriptionManageSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManageSheetView.swift; sourceTree = "<group>"; };
+		A94B1DDE2E28B2D000E5F325 /* AccountInfoOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountInfoOverviewView.swift; sourceTree = "<group>"; };
+		A94B1DE12E28B4E100E5F325 /* SubscriptionManageSheetViewPreviewCarousel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManageSheetViewPreviewCarousel.swift; sourceTree = "<group>"; };
+		A952CE082E1B87B8007E25AC /* SubscriptionManageSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManageSheet.swift; sourceTree = "<group>"; };
 		A95A91322DF9910C005CB52A /* ObscuraUIIOSWrapperAndTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObscuraUIIOSWrapperAndTabs.swift; sourceTree = "<group>"; };
 		A9768FAC2DBB01AD00A4595F /* UpdaterDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdaterDriver.swift; sourceTree = "<group>"; };
 		A9768FAE2DBB01C400A4595F /* CheckForUpdatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckForUpdatesView.swift; sourceTree = "<group>"; };
@@ -321,6 +344,10 @@
 		A998710F2DBAF8080044D136 /* NoFadeButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoFadeButtonStyle.swift; sourceTree = "<group>"; };
 		A9BCB05D2DC54AC0006C0133 /* DebugBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugBundle.swift; sourceTree = "<group>"; };
 		A9BCB0602DC54B68006C0133 /* UpdaterDriver+XP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UpdaterDriver+XP.swift"; sourceTree = "<group>"; };
+		A9E44A762E093DA7006B4616 /* Obscura VPN.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Obscura VPN.storekit"; sourceTree = "<group>"; };
+		A9E44A792E093E79006B4616 /* StoreKitModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitModel.swift; sourceTree = "<group>"; };
+		A9E44A7B2E0947EA006B4616 /* Product+Convenience.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Product+Convenience.swift"; sourceTree = "<group>"; };
+		A9E44A7E2E0950ED006B4616 /* StoreDebugUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreDebugUI.swift; sourceTree = "<group>"; };
 		C901614E2BE01159005B14AF /* obscuravpn-client.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "obscuravpn-client.xcodeproj"; sourceTree = "<group>"; };
 		C90161A62BE01A8E005B14AF /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		C90161A72BE01A8E005B14AF /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
@@ -447,6 +474,7 @@
 		30761C202B6EB17100E5F60D /* client */ = {
 			isa = PBXGroup;
 			children = (
+				A9E44A752E093D3F006B4616 /* Store */,
 				A983D8002DF276DF007306C5 /* Webviews */,
 				A9843F5B2DD7DBF600988B2D /* SwiftUI Hacks */,
 				A94743F62DD170E8002ACD85 /* iOS */,
@@ -543,6 +571,7 @@
 				300452772C49BC90000B78F7 /* Json.swift */,
 				309B467C2C4C152900A1B00F /* StringError.swift */,
 				30C532092CC9558000936E1F /* WatchableValue.swift */,
+				A94B1DCC2E28B13E00E5F325 /* AccountInfo+Util.swift */,
 			);
 			path = shared;
 			sourceTree = "<group>";
@@ -583,6 +612,15 @@
 				A94743F72DD170F5002ACD85 /* iOSClientApp.swift */,
 			);
 			path = iOS;
+			sourceTree = "<group>";
+		};
+		A94B1DE42E28B56800E5F325 /* Debug */ = {
+			isa = PBXGroup;
+			children = (
+				A94B1DE12E28B4E100E5F325 /* SubscriptionManageSheetViewPreviewCarousel.swift */,
+				A9E44A7E2E0950ED006B4616 /* StoreDebugUI.swift */,
+			);
+			path = Debug;
 			sourceTree = "<group>";
 		};
 		A983D8002DF276DF007306C5 /* Webviews */ = {
@@ -633,9 +671,26 @@
 		A99871102DBAF8080044D136 /* Style */ = {
 			isa = PBXGroup;
 			children = (
+				A94B1D9B2E286B3900E5F325 /* ConditionallyDisabled.swift */,
 				A998710F2DBAF8080044D136 /* NoFadeButtonStyle.swift */,
 			);
 			path = Style;
+			sourceTree = "<group>";
+		};
+		A9E44A752E093D3F006B4616 /* Store */ = {
+			isa = PBXGroup;
+			children = (
+				A94B1DE42E28B56800E5F325 /* Debug */,
+				A94B1DD02E28B16800E5F325 /* Product+Convenience.swift */,
+				A94B1DD12E28B16800E5F325 /* PurchaseOptionsView.swift */,
+				A94B1DD32E28B16800E5F325 /* SubscriptionManageSheetView.swift */,
+				A952CE082E1B87B8007E25AC /* SubscriptionManageSheet.swift */,
+				A9E44A762E093DA7006B4616 /* Obscura VPN.storekit */,
+				A9E44A792E093E79006B4616 /* StoreKitModel.swift */,
+				A9E44A7B2E0947EA006B4616 /* Product+Convenience.swift */,
+				A94B1DDE2E28B2D000E5F325 /* AccountInfoOverviewView.swift */,
+			);
+			path = Store;
 			sourceTree = "<group>";
 		};
 		C901614F2BE01159005B14AF /* Products */ = {
@@ -864,6 +919,7 @@
 			files = (
 				30761C292B6EB17200E5F60D /* Preview Assets.xcassets in Resources */,
 				96516AC32BF928DD00576562 /* build in Resources */,
+				A9E44A772E093DA7006B4616 /* Obscura VPN.storekit in Resources */,
 				30761C262B6EB17200E5F60D /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -888,6 +944,7 @@
 			files = (
 				A98F1BD02DADFF17007F04D3 /* Preview Assets.xcassets in Resources */,
 				A98F1BD12DADFF17007F04D3 /* build in Resources */,
+				A9E44A782E093DA7006B4616 /* Obscura VPN.storekit in Resources */,
 				A98F1BD22DADFF17007F04D3 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -926,6 +983,7 @@
 				30497E6E2D9ED584008B22F9 /* Box.swift in Sources */,
 				A936D4452DD1492A0031B646 /* UXViewRepresentable.swift in Sources */,
 				A936D4462DD1492A0031B646 /* UXViewController.swift in Sources */,
+				A94B1DCE2E28B13E00E5F325 /* AccountInfo+Util.swift in Sources */,
 				9632E4642D19C5EC00BC8E3F /* AccountStatusItem.swift in Sources */,
 				30920D752C1F71BB008690C3 /* startup.swift in Sources */,
 				30920D792C2057B1008690C3 /* initNetworkExtension.swift in Sources */,
@@ -946,6 +1004,7 @@
 				A936D4932DD15F6A0031B646 /* StartupStatus.swift in Sources */,
 				A9BCB0622DC54B68006C0133 /* UpdaterDriver+XP.swift in Sources */,
 				A983D7E32DF261BB007306C5 /* ExternalWebView.swift in Sources */,
+				A94B1E242E2B03B900E5F325 /* ConditionallyDisabled.swift in Sources */,
 				300452782C49BC90000B78F7 /* Json.swift in Sources */,
 				968B02B92CFF5B7B0053D0EF /* Account.swift in Sources */,
 				35A6F2522C611DD1004E1A7C /* DebugBundle+XP.swift in Sources */,
@@ -1025,6 +1084,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A952CE0A2E1B87B8007E25AC /* SubscriptionManageSheet.swift in Sources */,
 				A94743F92DD17143002ACD85 /* iOSClientApp.swift in Sources */,
 				A936D49A2DD161B00031B646 /* UXImage.swift in Sources */,
 				A936D4902DD15B6B0031B646 /* startup.swift in Sources */,
@@ -1038,7 +1098,10 @@
 				A99871272DBAF8A60044D136 /* TunnelProvider.swift in Sources */,
 				A99871262DBAF89E0044D136 /* NetworkExtensionIpc.swift in Sources */,
 				A99871252DBAF8990044D136 /* InfoDict.swift in Sources */,
+				A9E44A7C2E0947EA006B4616 /* Product+Convenience.swift in Sources */,
 				A99871242DBAF8940044D136 /* Account.swift in Sources */,
+				A94B1D9C2E286B3900E5F325 /* ConditionallyDisabled.swift in Sources */,
+				A9E44A802E0950ED006B4616 /* StoreDebugUI.swift in Sources */,
 				A99871232DBAF88F0044D136 /* NEVPNStatus.swift in Sources */,
 				A99871222DBAF8890044D136 /* OSLogEntryEncodable.swift in Sources */,
 				A99871212DBAF8850044D136 /* Json.swift in Sources */,
@@ -1050,15 +1113,22 @@
 				A95A91332DF9910C005CB52A /* ObscuraUIIOSWrapperAndTabs.swift in Sources */,
 				A998711E2DBAF8790044D136 /* Concurrency.swift in Sources */,
 				A998711D2DBAF8740044D136 /* Box.swift in Sources */,
+				A94B1DD42E28B16800E5F325 /* Product+Convenience.swift in Sources */,
+				A94B1DD62E28B16800E5F325 /* SubscriptionManageSheetView.swift in Sources */,
+				A94B1DD72E28B16800E5F325 /* PurchaseOptionsView.swift in Sources */,
 				A9BCB0612DC54B68006C0133 /* UpdaterDriver+XP.swift in Sources */,
 				A998711C2DBAF8700044D136 /* Swift.swift in Sources */,
 				A936D4472DD1492A0031B646 /* UXViewRepresentable.swift in Sources */,
+				A94B1DE02E28B2D000E5F325 /* AccountInfoOverviewView.swift in Sources */,
 				A936D4482DD1492A0031B646 /* UXViewController.swift in Sources */,
 				A998711B2DBAF8680044D136 /* FfiCb.swift in Sources */,
 				A998711A2DBAF8610044D136 /* Constants.swift in Sources */,
 				A99871192DBAF85C0044D136 /* ObservableValue.swift in Sources */,
 				A99871182DBAF8590044D136 /* WatchableValue.swift in Sources */,
+				A94B1DCD2E28B13E00E5F325 /* AccountInfo+Util.swift in Sources */,
 				A99871162DBAF8510044D136 /* OsStatus.swift in Sources */,
+				A9E44A7A2E093E79006B4616 /* StoreKitModel.swift in Sources */,
+				A94B1DE22E28B4E100E5F325 /* SubscriptionManageSheetViewPreviewCarousel.swift in Sources */,
 				A99871152DBAF84D0044D136 /* app_state.swift in Sources */,
 				A99871122DBAF8080044D136 /* NoFadeButtonStyle.swift in Sources */,
 			);

@@ -170,6 +170,23 @@ func neLogin(_ manager: NETunnelProviderManager,
     _ = try await runNeJsonCommand(manager, NeManagerCmd.login(accountId: accountId, validate: false).json(), attemptTimeout: attemptTimeout, maxAttempts: maxAttempts)
 }
 
+func neApiAppleCreateAppAccountToken(
+    _ manager: NETunnelProviderManager,
+    attemptTimeout: Duration? = nil,
+    maxAttempts: UInt = 10
+) async throws -> AppleCreateAppAccountTokenOutput {
+    return try await runNeCommand(manager, NeManagerCmd.apiAppleCreateAppAccountToken, attemptTimeout: attemptTimeout, maxAttempts: maxAttempts)
+}
+
+func neApiApplePollSubscription(
+    _ manager: NETunnelProviderManager,
+    transactionId: String,
+    attemptTimeout: Duration? = nil,
+    maxAttempts: UInt = 10
+) async throws {
+    _ = try await runNeJsonCommand(manager, NeManagerCmd.apiApplePollSubscription(transactionId: transactionId).json(), attemptTimeout: attemptTimeout, maxAttempts: maxAttempts)
+}
+
 func getNeStatus(
     _ manager: NETunnelProviderManager,
     knownVersion: UUID?,

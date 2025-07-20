@@ -35,6 +35,7 @@ export interface AccountInfo {
     active: boolean,
     top_up: TopUpInfo | null,
     subscription: SubscriptionInfo | null,
+    apple_subscription: AppleSubscriptionInfo | null,
 }
 
 export interface TopUpInfo {
@@ -48,35 +49,53 @@ export interface SubscriptionInfo {
     cancel_at_period_end: boolean,
 }
 
-export function getActiveSubscription(account: AccountInfo): SubscriptionInfo | undefined {
+// only check if a subscription is active, regardless about renewal status
+export function hasActiveSubscription(account: AccountInfo): boolean {
     if (account.subscription?.status === SubscriptionStatus.ACTIVE
         || account.subscription?.status === SubscriptionStatus.TRIALING) {
-        return account.subscription;
+        return true;
     }
+    if (account.apple_subscription?.status === AppleSubscriptionStatus.ACTIVE
+        && account.apple_subscription.renewal_date > new Date().getTime()) {
+      return true;
+    }
+    return false;
 }
 
 export function isRenewing(account: AccountInfo): boolean {
-    return !!account.subscription
-        && !account.subscription.cancel_at_period_end;
+  return (!!account.subscription
+    && !account.subscription.cancel_at_period_end
+    && account.subscription.status !== SubscriptionStatus.UNPAID
+    && account.subscription.status !== SubscriptionStatus.CANCELED) ||
+    (!!account.apple_subscription
+      && account.apple_subscription.auto_renew_status
+      && account.apple_subscription.status !== AppleSubscriptionStatus.EXPIRED
+      && account.apple_subscription.status !== AppleSubscriptionStatus.REVOKED);
 }
 
 /// Returns the end of the current payment period.
 ///
 /// Note that if the account has a renewing subscription it can stay active for longer.
 export function paidUntil(account: AccountInfo): Date | undefined {
-    let subscriptionExpires = account.subscription?.current_period_end;
-    let topupExpires = account.top_up?.credit_expires_at;
-    if (!subscriptionExpires)
-        return topupExpires ? new Date(topupExpires*1000) : undefined;
-    if (!topupExpires)
-        return subscriptionExpires ? new Date(subscriptionExpires*1000) : undefined;
-    return new Date(Math.max(subscriptionExpires, topupExpires)*1000);
+    const topupExpires = account.top_up?.credit_expires_at;
+    const subscriptionExpires = account.subscription?.current_period_end;
+    const appleExpires = account.apple_subscription?.renewal_date;
+
+    let maxExpiry = Math.max(
+      topupExpires || 0,
+      subscriptionExpires || 0,
+      appleExpires || 0
+    );
+
+    return maxExpiry > 0 ? new Date(maxExpiry * 1000) : undefined;
 }
 
-/**
- * Checks if the active field is false and whether the topup/subscription timestamps have elapsed
- */
 export function accountIsExpired(accountInfo: AccountInfo): boolean {
+  // If a subscription is auto-renewing, the active field can be relied upon
+  if (isRenewing(accountInfo)) {
+    return !accountInfo.active;
+  }
+  // Otherwise, we need to check whether the expiry date is in the past
   const accountPaidUntil = paidUntil(accountInfo);
   return !accountInfo.active || accountPaidUntil === undefined || accountPaidUntil.getTime() < new Date().getTime();
 }
@@ -106,6 +125,21 @@ export const enum SubscriptionStatus {
     PAUSED = "paused",
     TRIALING = "trialing",
     UNPAID = "unpaid",
+}
+
+// https://developer.apple.com/documentation/appstoreserverapi/status
+export const enum AppleSubscriptionStatus {
+    ACTIVE = 1,
+    EXPIRED = 2,
+    BILLING_RETRY = 3,
+    GRACE_PERIOD = 4,
+    REVOKED = 5,
+}
+
+export interface AppleSubscriptionInfo {
+    status: AppleSubscriptionStatus,
+    auto_renew_status: boolean,
+    renewal_date: number,
 }
 
 /**

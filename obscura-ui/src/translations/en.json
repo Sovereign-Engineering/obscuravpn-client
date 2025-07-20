@@ -99,7 +99,7 @@
   "account-SubscriptionRenewsOn": "Your subscription will renew automatically in {{ count }} day on {{ endDate }}.",
   "account-SubscriptionRenewsOn_0": "Your subscription will renew automatically today, {{ endDate }}.",
   "account-SubscriptionRenewsOn_other": "Your subscription will renew automatically in {{ count }} days on {{ endDate }}.",
-  "account-SubscriptionWillStart": "Your subscription will start automatically once your top-ups are used up on {{ endDate }}.",
+  "account-SubscriptionWillStart": "Your subscription will start automatically after your top-up credit is used up on {{ endDate }}.",
   "accountIdError-invalidChecksum": "Mistyped Account Number",
   "accountIdError-tooLong": "Account Number is too long (should be 20)",
   "accountIdError-tooShort": "Account Number is too short (should be 20)",

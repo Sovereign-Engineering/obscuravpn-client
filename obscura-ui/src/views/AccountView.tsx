@@ -9,7 +9,7 @@ import { MdOutlineWifiOff } from 'react-icons/md';
 import * as commands from '../bridge/commands';
 import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
 import * as ObscuraAccount from '../common/accountUtils';
-import { AccountInfo, accountIsExpired, getActiveSubscription, isRenewing, paidUntil, paidUntilDays, useReRenderWhenExpired } from '../common/api';
+import { AccountInfo, accountIsExpired, hasActiveSubscription, isRenewing, paidUntil, paidUntilDays, useReRenderWhenExpired } from '../common/api';
 import { AppContext } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { normalizeError } from '../common/utils';
@@ -77,7 +77,7 @@ function AccountStatusCard() {
     return <AccountPaidUpSubscriptionActive accountInfo={accountInfo} />
   } else if (isRenewing(accountInfo)) {
     return <SubscriptionActive accountInfo={accountInfo} />
-  } else if (getActiveSubscription(accountInfo)) {
+  } else if (hasActiveSubscription(accountInfo)) {
     return <SubscriptionPaused accountInfo={accountInfo} />
   }
   const expiryD = paidUntilDays(accountInfo);

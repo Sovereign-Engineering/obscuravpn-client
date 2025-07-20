@@ -1,4 +1,5 @@
 import Foundation
+import NetworkExtension
 import os
 import StoreKit
 
@@ -11,10 +12,17 @@ class StoreKitModel: ObservableObject {
     @Published @MainActor private(set) var productsAvailable: [Product] = []
     @Published @MainActor private(set) var productsPurchased: [Product] = []
     private var updateListenerTask: Task<Void, Error>?
+    private var purchaseIntentListenerTask: Task<Void, Error>?
+    private let manager: NETunnelProviderManager?
 
-    init() {
+    init(manager: NETunnelProviderManager?) {
+        self.manager = manager
+        self.purchaseIntentListenerTask = self.listenForPurchaseIntents()
         self.updateListenerTask = self.listenForTransactions()
 
+        if manager == nil {
+            logger.info("Warning!! Without a NE Manager there is no way to complete purchases")
+        }
         Task {
             try? await self.reloadProductsAvailable()
             await self.updateStoreKitSubscriptionStatus()
@@ -23,25 +31,31 @@ class StoreKitModel: ObservableObject {
 
     deinit {
         updateListenerTask?.cancel()
+        purchaseIntentListenerTask?.cancel()
     }
 
     func reloadProductsAvailable() async throws {
         guard await self.productsAvailable.isEmpty else { return }
 
+        logger.info("Attempting to reload products reloadProductsAvailable")
+
         Task { @MainActor in
-            self.productsAvailable = try await Product
-                .products(for: ObscuraProduct.allProductIds)
+            do {
+                self.productsAvailable = try await Product
+                    .products(for: ObscuraProduct.allProductIds)
+                logger.info("Loaded \(self.productsAvailable.count) products")
+            } catch {
+                logger.error("Failed to load products: \(error)")
+            }
         }
     }
 
-    func purchase(_ product: Product, appAccountToken: UUID? = nil) async throws {
+    func purchase(_ product: Product, accountId: String) async throws {
+        guard let appAccountToken = try await appAccountToken(accountId: accountId) else {
+            throw "Could not purchase product. Could not fetch appAccountToken for \(accountId)"
+        }
         do {
-            let options: Set<Product.PurchaseOption>
-            if let token = appAccountToken {
-                options = [.appAccountToken(token)]
-            } else {
-                options = []
-            }
+            let options: Set<Product.PurchaseOption> = [.appAccountToken(appAccountToken)]
             let result = try await product.purchase(options: options)
 
             switch result {
@@ -111,6 +125,34 @@ class StoreKitModel: ObservableObject {
         }
     }
 
+    private func listenForPurchaseIntents() -> Task<Void, Error>? {
+        guard let manager else {
+            logger.error("Cannot listen for purchase intents without a NE Manager")
+            return nil
+        }
+        logger.info("Began listening for Purchase Intents")
+        return Task.detached {
+            for await purchaseIntent in PurchaseIntent.intents {
+                do {
+                    logger
+                        .info(
+                            "Received purchase intent for \(purchaseIntent.product.displayName) need to fetch accountID"
+                        )
+                    let accountId = try await getAccountInfo(
+                        manager
+                    ).id
+                    try await self.purchase(
+                        purchaseIntent.product,
+                        accountId: accountId
+                    )
+                } catch {
+                    assertionFailure()
+                    logger.error("Purchase intent purchase failed")
+                }
+            }
+        }
+    }
+
     private func listenForTransactions() -> Task<Void, Error> {
         logger.info("Began listening for Transaction.updates")
         return Task.detached {
@@ -150,6 +192,36 @@ class StoreKitModel: ObservableObject {
             )
         self.productsPurchased = currentProductsPurchased
     }
+
+    func appAccountToken(accountId: String) async throws -> UUID? {
+        guard let manager else {
+            return nil
+        }
+        let persistedTokenMappings = PersistedAppAccountTokenMappings()
+
+        // Get appAccountToken
+        let appAccountToken: UUID
+        if let existingToken = persistedTokenMappings.getAccountToken(
+            for: accountId)
+        {
+            appAccountToken = existingToken
+        } else {
+            do {
+                appAccountToken = try await neApiAppleCreateAppAccountToken(
+                    manager
+                ).appAccountToken
+                persistedTokenMappings
+                    .setAccountToken(
+                        accountId: accountId,
+                        appAccountToken: appAccountToken
+                    )
+            } catch {
+                logger.error("Failed to get app account token: \(error)")
+                throw error
+            }
+        }
+        return appAccountToken
+    }
 }
 
 // MARK: - Convenience
@@ -171,16 +243,36 @@ extension StoreKitModel {
         self.productsAvailable.first { $0.id == product.rawValue }
     }
 
-    func purchase(obscuraProduct: ObscuraProduct, appAccountToken: UUID? = nil) async throws {
+    func purchase(obscuraProduct: ObscuraProduct, accountId: String) async throws {
         guard let availableProduct = await availableStoreKitProductObject(
             obscuraProduct
         ) else {
             throw "Cannot purchase \(obscuraProduct) as it is not in the list of StoreKit available products"
         }
-        try await self.purchase(availableProduct, appAccountToken: appAccountToken)
+        try await self.purchase(availableProduct, accountId: accountId)
     }
 
     @MainActor var hasActiveMonthlySubscription: Bool {
         self.productsPurchased.contains { $0.id == ObscuraProduct.monthlySubscription.rawValue }
+    }
+}
+
+private class PersistedAppAccountTokenMappings {
+    private static let userDefaultsKey = "storekit_account_token"
+
+    func setAccountToken(accountId: String, appAccountToken: UUID) {
+        let data = [accountId: appAccountToken.uuidString]
+        UserDefaults.standard.set(data, forKey: Self.userDefaultsKey)
+    }
+
+    func getAccountToken(for accountId: String) -> UUID? {
+        guard let data = UserDefaults.standard.dictionary(forKey: Self.userDefaultsKey) as? [String: String],
+              let uuidString = data[accountId],
+              data.keys.first == accountId,
+              let uuid = UUID(uuidString: uuidString)
+        else {
+            return nil
+        }
+        return uuid
     }
 }

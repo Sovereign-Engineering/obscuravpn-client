@@ -95,7 +95,7 @@ struct SubscriptionManageSheetViewPreviewCarousel: View {
                         .font(.title)
                     SubscriptionManageSheetView(
                         accountInfo: config.accountInfo,
-                        storeKitModel: StoreKitModel(),
+                        storeKitModel: StoreKitModel(manager: nil),
                         manager: nil,
                         openUrl: self.noOpUrlHandler
                     )

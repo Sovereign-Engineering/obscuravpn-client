@@ -115,34 +115,15 @@ struct PurchaseOptionsView: View {
             logger.error("Cannot purchaseSubscription without a manager")
             return
         }
-        let persistedTokenMappings = PersistedAppAccountTokenMappings()
-
-        // Get appAccountToken
-        let appAccountToken: UUID
-        if let existingToken = persistedTokenMappings.getAccountToken(
-            for: accountInfo
-                .id)
-        {
-            appAccountToken = existingToken
-        } else {
-            do {
-                appAccountToken = try await neApiAppleCreateAppAccountToken(
-                    manager
-                ).appAccountToken
-                persistedTokenMappings
-                    .setAccountToken(
-                        accountId: self.accountInfo.id,
-                        appAccountToken: appAccountToken
-                    )
-            } catch {
-                logger.error("Failed to get app account token: \(error)")
-                throw error
-            }
-        }
 
         // Purchase
         do {
-            try await self.storeKitModel.purchase(obscuraProduct: .monthlySubscription, appAccountToken: appAccountToken)
+            try await self.storeKitModel
+                .purchase(
+                    obscuraProduct: .monthlySubscription,
+                    accountId: self.accountInfo
+                        .id
+                )
         } catch {
             logger.error("Purchase failed: \(error)")
             throw error
@@ -220,25 +201,5 @@ private struct ProductButton: View {
         .scaleEffect(self.isPressed ? 0.98 : 1.0)
         .animation(.easeOut(duration: 0.15), value: self.isPressed)
         .saturation(self.isLoading ? 0.3 : 1)
-    }
-}
-
-private class PersistedAppAccountTokenMappings {
-    private static let userDefaultsKey = "storekit_account_token"
-
-    func setAccountToken(accountId: String, appAccountToken: UUID) {
-        let data = [accountId: appAccountToken.uuidString]
-        UserDefaults.standard.set(data, forKey: Self.userDefaultsKey)
-    }
-
-    func getAccountToken(for accountId: String) -> UUID? {
-        guard let data = UserDefaults.standard.dictionary(forKey: Self.userDefaultsKey) as? [String: String],
-              let uuidString = data[accountId],
-              data.keys.first == accountId,
-              let uuid = UUID(uuidString: uuidString)
-        else {
-            return nil
-        }
-        return uuid
     }
 }

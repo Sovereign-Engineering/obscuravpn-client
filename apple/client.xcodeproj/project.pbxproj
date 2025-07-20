@@ -115,6 +115,7 @@
 		A94B1DE02E28B2D000E5F325 /* AccountInfoOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B1DDE2E28B2D000E5F325 /* AccountInfoOverviewView.swift */; };
 		A94B1DE22E28B4E100E5F325 /* SubscriptionManageSheetViewPreviewCarousel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B1DE12E28B4E100E5F325 /* SubscriptionManageSheetViewPreviewCarousel.swift */; };
 		A94B1E242E2B03B900E5F325 /* ConditionallyDisabled.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B1D9B2E286B3900E5F325 /* ConditionallyDisabled.swift */; };
+		A94B1E3D2E2B236800E5F325 /* Obscura VPN Local.storekit in Resources */ = {isa = PBXBuildFile; fileRef = A94B1E3C2E2B236800E5F325 /* Obscura VPN Local.storekit */; };
 		A952CE0A2E1B87B8007E25AC /* SubscriptionManageSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A952CE082E1B87B8007E25AC /* SubscriptionManageSheet.swift */; };
 		A95A91332DF9910C005CB52A /* ObscuraUIIOSWrapperAndTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = A95A91322DF9910C005CB52A /* ObscuraUIIOSWrapperAndTabs.swift */; };
 		A9768FAD2DBB01AD00A4595F /* UpdaterDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9768FAC2DBB01AD00A4595F /* UpdaterDriver.swift */; };
@@ -172,7 +173,6 @@
 		A9BCB05E2DC54AC0006C0133 /* DebugBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9BCB05D2DC54AC0006C0133 /* DebugBundle.swift */; };
 		A9BCB0612DC54B68006C0133 /* UpdaterDriver+XP.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9BCB0602DC54B68006C0133 /* UpdaterDriver+XP.swift */; };
 		A9BCB0622DC54B68006C0133 /* UpdaterDriver+XP.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9BCB0602DC54B68006C0133 /* UpdaterDriver+XP.swift */; };
-		A9E44A772E093DA7006B4616 /* Obscura VPN.storekit in Resources */ = {isa = PBXBuildFile; fileRef = A9E44A762E093DA7006B4616 /* Obscura VPN.storekit */; };
 		A9E44A782E093DA7006B4616 /* Obscura VPN.storekit in Resources */ = {isa = PBXBuildFile; fileRef = A9E44A762E093DA7006B4616 /* Obscura VPN.storekit */; };
 		A9E44A7A2E093E79006B4616 /* StoreKitModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9E44A792E093E79006B4616 /* StoreKitModel.swift */; };
 		A9E44A7C2E0947EA006B4616 /* Product+Convenience.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9E44A7B2E0947EA006B4616 /* Product+Convenience.swift */; };
@@ -332,6 +332,7 @@
 		A94B1DD32E28B16800E5F325 /* SubscriptionManageSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManageSheetView.swift; sourceTree = "<group>"; };
 		A94B1DDE2E28B2D000E5F325 /* AccountInfoOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountInfoOverviewView.swift; sourceTree = "<group>"; };
 		A94B1DE12E28B4E100E5F325 /* SubscriptionManageSheetViewPreviewCarousel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManageSheetViewPreviewCarousel.swift; sourceTree = "<group>"; };
+		A94B1E3C2E2B236800E5F325 /* Obscura VPN Local.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Obscura VPN Local.storekit"; sourceTree = "<group>"; };
 		A952CE082E1B87B8007E25AC /* SubscriptionManageSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManageSheet.swift; sourceTree = "<group>"; };
 		A95A91322DF9910C005CB52A /* ObscuraUIIOSWrapperAndTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObscuraUIIOSWrapperAndTabs.swift; sourceTree = "<group>"; };
 		A9768FAC2DBB01AD00A4595F /* UpdaterDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdaterDriver.swift; sourceTree = "<group>"; };
@@ -685,6 +686,7 @@
 				A94B1DD12E28B16800E5F325 /* PurchaseOptionsView.swift */,
 				A94B1DD32E28B16800E5F325 /* SubscriptionManageSheetView.swift */,
 				A952CE082E1B87B8007E25AC /* SubscriptionManageSheet.swift */,
+				A94B1E3C2E2B236800E5F325 /* Obscura VPN Local.storekit */,
 				A9E44A762E093DA7006B4616 /* Obscura VPN.storekit */,
 				A9E44A792E093E79006B4616 /* StoreKitModel.swift */,
 				A9E44A7B2E0947EA006B4616 /* Product+Convenience.swift */,
@@ -919,7 +921,6 @@
 			files = (
 				30761C292B6EB17200E5F60D /* Preview Assets.xcassets in Resources */,
 				96516AC32BF928DD00576562 /* build in Resources */,
-				A9E44A772E093DA7006B4616 /* Obscura VPN.storekit in Resources */,
 				30761C262B6EB17200E5F60D /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -942,6 +943,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A94B1E3D2E2B236800E5F325 /* Obscura VPN Local.storekit in Resources */,
 				A98F1BD02DADFF17007F04D3 /* Preview Assets.xcassets in Resources */,
 				A98F1BD12DADFF17007F04D3 /* build in Resources */,
 				A9E44A782E093DA7006B4616 /* Obscura VPN.storekit in Resources */,

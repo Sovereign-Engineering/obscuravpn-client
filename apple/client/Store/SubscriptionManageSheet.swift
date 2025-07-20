@@ -39,7 +39,7 @@ struct SubscriptionManageSheet: View {
     init(accountInfo: AccountInfo) {
         self.manager = nil
         self.openUrl = nil
-        self.storeKitModel = StoreKitModel()
+        self.storeKitModel = StoreKitModel(manager: nil)
         self._accountInfo = State(initialValue: accountInfo)
     }
 
@@ -143,7 +143,7 @@ struct SubscriptionManageSheet: View {
         .sheet(item: self.$activeSheet) { sheetType in
             switch sheetType {
             case .storeKitDebug:
-                StoreDebugUI(storeKitModel: self.storeKitModel)
+                StoreDebugUI(storeKitModel: self.storeKitModel, accountId: self.accountInfo?.id)
             case .previewCarousel:
                 SubscriptionManageSheetViewPreviewCarousel()
             }

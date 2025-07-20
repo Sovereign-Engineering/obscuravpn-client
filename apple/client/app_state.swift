@@ -13,7 +13,7 @@ class AppState: ObservableObject {
     #if os(macOS)
         public let updater: SparkleUpdater
     #else
-        let storeKitModel = StoreKitModel()
+        let storeKitModel: StoreKitModel
     #endif
     @Published public var webviewsController: WebviewsController
 
@@ -26,6 +26,8 @@ class AppState: ObservableObject {
         self.osStatus = OsStatus.watchable(manager: manager)
         #if os(macOS)
             self.updater = SparkleUpdater(osStatus: self.osStatus)
+        #else
+            self.storeKitModel = StoreKitModel(manager: manager)
         #endif
 
         self.webviewsController = WebviewsController()

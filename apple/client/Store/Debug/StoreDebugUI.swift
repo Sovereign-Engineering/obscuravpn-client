@@ -3,9 +3,11 @@ import SwiftUI
 
 struct StoreDebugUI: View {
     @ObservedObject public var storeKitModel: StoreKitModel
+    let accountId: String?
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var selectedProduct: Product?
+    @State private var appAccountToken: UUID?
 
     var body: some View {
         NavigationStack {
@@ -21,6 +23,39 @@ struct StoreDebugUI: View {
 
                     Spacer()
                 }
+
+                HStack {
+                    VStack {
+                        Text("Account ID")
+                            .fontWeight(.bold)
+                        Text(self.accountId ?? "nil")
+                            .textSelection(.enabled)
+                            .font(.subheadline)
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    VStack {
+                        Text("App Account Token")
+                            .fontWeight(.bold)
+                            .task {
+                                // Load app account token on view open
+                                if let accountId {
+                                    appAccountToken = try? await self.storeKitModel.appAccountToken(accountId: accountId)
+                                } else {
+                                    appAccountToken = nil
+                                }
+                            }
+                        if let appAccountToken {
+                            Text(appAccountToken.uuidString.lowercased())
+                                .textSelection(.enabled)
+                                .font(.subheadline)
+                        } else {
+                            ProgressView()
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .padding(.vertical)
 
                 HStack {
                     Button("Reload Products") {
@@ -102,8 +137,14 @@ struct StoreDebugUI: View {
     private func purchaseProduct(_ product: Product) async {
         self.isLoading = true
 
+        guard let accountId else {
+            self.errorMessage = "Cannot purchase without an accountId"
+            self.isLoading = false
+            return
+        }
+
         do {
-            try await self.storeKitModel.purchase(product)
+            try await self.storeKitModel.purchase(product, accountId: accountId)
         } catch {
             self.errorMessage = "Purchase failed: \(error.localizedDescription)"
         }
@@ -423,5 +464,5 @@ extension StoreKitModel {
 }
 
 #Preview {
-    StoreDebugUI(storeKitModel: StoreKitModel())
+    StoreDebugUI(storeKitModel: StoreKitModel(manager: nil), accountId: "nothing")
 }

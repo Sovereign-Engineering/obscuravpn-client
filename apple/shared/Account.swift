@@ -168,4 +168,3 @@ struct AppleCreateAppAccountTokenOutput: Codable {
         try container.encode(self.appAccountToken.uuidString, forKey: .appAccountToken)
     }
 }
-

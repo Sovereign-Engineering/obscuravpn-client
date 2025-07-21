@@ -382,6 +382,12 @@ final class StatusItemManager: ObservableObject {
                         locationSubmenu.addItem(pinnedLocationsSubHeaderItem)
 
                         for pinnedLocation in pinnedLocations {
+                            // Do not show location in status menu if the pinned exit is not found in the fetched cityNames
+                            let cityExit = CityExit(city_code: pinnedLocation.city_code, country_code: pinnedLocation.country_code)
+                            if !self.cityNames.isEmpty && self.cityNames[cityExit] == nil {
+                                continue
+                            }
+
                             let cityName = self.getCityDisplayName(countryCode: pinnedLocation.country_code, cityCode: pinnedLocation.city_code)
 
                             let menuItem = NSMenuItem(

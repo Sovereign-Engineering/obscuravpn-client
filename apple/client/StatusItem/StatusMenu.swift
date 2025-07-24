@@ -325,19 +325,14 @@ final class StatusItemManager: ObservableObject {
                 var takeBreak = true
                 if let appState = StartupModel.shared.appState {
                     do {
-                        let cachedValue = try await getExitList(appState.manager, knownVersion: exitListKnownVersion)
+                        let result = try await getCityNames(appState.manager, knownVersion: exitListKnownVersion)
                         guard let self = self else { return }
-                        exitListKnownVersion = cachedValue.version
-                        var newCityNames: [CityExit: String] = [:]
-                        for exit in cachedValue.value.exits {
-                            newCityNames[CityExit(city_code: exit.city_code, country_code: exit.country_code)] = exit.city_name
-                        }
-                        self.cityNames = newCityNames
+                        exitListKnownVersion = result.version
+                        self.cityNames = result.cityNames
                         self.triggerSetLocationMenuItems()
                         takeBreak = false
                     } catch {
                         logger.error("Failed to get exit list: \(error, privacy: .public)")
-                        takeBreak = true
                     }
                 }
                 if takeBreak {
@@ -362,7 +357,7 @@ final class StatusItemManager: ObservableObject {
 
                 if let appState = StartupModel.shared.appState {
                     let pinnedLocations = appState.status.pinnedLocations
-                    let lastExit = appState.status.lastExit
+                    let lastExit = appState.status.lastChosenExit
 
                     // Update Quick Connect item state
                     if let quickConnectItem = locationSubmenu.item(at: 0) {

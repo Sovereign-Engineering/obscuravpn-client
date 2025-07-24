@@ -248,6 +248,15 @@ struct OneExit: Codable {
     var tier: UInt8
 }
 
+func getCityNames(_ manager: NETunnelProviderManager, knownVersion: String?) async throws -> (cityNames: [CityExit: String], version: String) {
+    let cachedValue = try await getExitList(manager, knownVersion: knownVersion)
+    var newCityNames: [CityExit: String] = [:]
+    for exit in cachedValue.value.exits {
+        newCityNames[CityExit(city_code: exit.city_code, country_code: exit.country_code)] = exit.city_name
+    }
+    return (cityNames: newCityNames, version: cachedValue.version)
+}
+
 func runNeCommand<T: Codable>(
     _ manager: NETunnelProviderManager,
     _ cmd: NeManagerCmd,

@@ -22,6 +22,8 @@ struct ObscuraToggle: View {
     @State private var allowToggleSync = true
     @State private var vpnStatusId: UUID = .init()
     @State private var disconnecting = false
+    @State private var isHovering = false
+    @State private var cityNames: [CityExit: String] = [:]
 
     let vpnStatusTimer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
 
@@ -38,6 +40,25 @@ struct ObscuraToggle: View {
         }
     }
 
+    func getConnectHint() -> String {
+        let exitSelector = self.getVpnStatus()?.lastChosenExit
+
+        switch exitSelector {
+        case .city(let countryCode, let cityCode):
+            let cityExit = CityExit(city_code: cityCode, country_code: countryCode)
+            if let cityName = self.cityNames[cityExit] {
+                return "Connect to \(cityName), \(countryCode.uppercased())"
+            }
+            return cityCode
+        case .country(let countryCode):
+            return "Connect to \(countryCode.uppercased())"
+        case .exit(let exitId):
+            return exitId
+        default:
+            return "Connect via Quick Connect"
+        }
+    }
+
     func getToggleText() -> String {
         switch self.toggleLabel {
         case .connected:
@@ -49,8 +70,12 @@ struct ObscuraToggle: View {
         case .connecting: return "Connecting..."
         case .reconnecting: return "Reconnecting..."
         case .disconnecting: return "Disconnecting..."
-        // adding tabs prevents text overflow on the first status menu connect
-        case .notConnected: return "Not Connected\t\t\t"
+        case .notConnected:
+            if self.isHovering {
+                return self.getConnectHint()
+            }
+            // adding tabs prevents text overflow on the first status menu connect
+            return "Not Connected\t\t\t"
         }
     }
 
@@ -103,6 +128,7 @@ struct ObscuraToggle: View {
                 Text(self.getToggleText())
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .italic(self.isHovering)
             }
             .lineLimit(1)
             // so that the text doesn't collapse horizontally and truncate
@@ -118,6 +144,9 @@ struct ObscuraToggle: View {
         // leading and trailing matches Tailscale's values as observed via Accessibility Inspector
         .padding(EdgeInsets(top: 5, leading: 14, bottom: 5, trailing: 12))
         .onTapGesture { self.toggleClick() }
+        .onHover { hovering in
+            self.isHovering = hovering
+        }
         .onReceive(self.vpnStatusTimer, perform: { _ in
             if self.allowToggleSync {
                 if self.osStatusModel.osStatus?.osVpnStatus == .disconnecting {
@@ -145,5 +174,29 @@ struct ObscuraToggle: View {
                 }
             }
         })
+        .task {
+            var exitListKnownVersion: String?
+            while true {
+                var takeBreak = true
+                if let appState = self.startupModel.appState {
+                    do {
+                        let result = try await getCityNames(appState.manager, knownVersion: exitListKnownVersion)
+                        exitListKnownVersion = result.version
+                        self.cityNames = result.cityNames
+                        takeBreak = false
+                    } catch {
+                        logger.error("Failed to get exit list in ObscuraToggle: \(error, privacy: .public)")
+                    }
+                }
+                if takeBreak {
+                    do {
+                        try await Task.sleep(seconds: 1)
+                    } catch {
+                        logger.error("exitListWatcher Task cancelled in ObscuraToggle \(error, privacy: .public)")
+                        return
+                    }
+                }
+            }
+        }
     }
 }

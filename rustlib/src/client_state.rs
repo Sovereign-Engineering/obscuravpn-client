@@ -25,9 +25,9 @@ use obscuravpn_api::{
 };
 use rand::{seq::SliceRandom, thread_rng};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard};
+use std::{collections::BTreeSet, num::NonZeroU32};
 use std::{
     mem,
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -219,9 +219,11 @@ impl ClientState {
     pub async fn connect(
         &self,
         exit_selector: &ExitSelector,
+        network_interface_index: Option<NonZeroU32>,
         selection_state: &mut ExitSelectionState,
     ) -> Result<(QuicWgConn, NetworkConfig, OneExit, OneRelay), TunnelConnectError> {
-        let (token, tunnel_config, wg_sk, exit, relay, handshaking) = self.new_tunnel(exit_selector, selection_state).await?;
+        let (token, tunnel_config, wg_sk, exit, relay, handshaking) =
+            self.new_tunnel(exit_selector, network_interface_index, selection_state).await?;
         let network_config = NetworkConfig::new(&tunnel_config)?;
         let client_ip_v4 = network_config.ipv4;
         tracing::info!(
@@ -256,11 +258,15 @@ impl ClientState {
     async fn new_tunnel(
         &self,
         exit_selector: &ExitSelector,
+        network_interface_index: Option<NonZeroU32>,
         selection_state: &mut ExitSelectionState,
     ) -> anyhow::Result<(Uuid, ObfuscatedTunnelConfig, StaticSecret, OneExit, OneRelay, QuicWgConnHandshaking), TunnelConnectError> {
         // Ideally we would avoid return a failure immediately if the relay selection fails and continue the exit update in the background but we currently have no ability to execute tasks in the background for this type. The downside of a slight delay in the failure case is suboptimal but minor.
 
-        let (select_relay, update_exits) = tokio::join!(self.select_relay(), self.maybe_update_exits(Duration::from_secs(60)),);
+        let (select_relay, update_exits) = tokio::join!(
+            self.select_relay(network_interface_index),
+            self.maybe_update_exits(Duration::from_secs(60)),
+        );
         match update_exits {
             Ok(()) => {}
             Err(error) => {
@@ -369,7 +375,7 @@ impl ClientState {
         }
     }
 
-    pub async fn select_relay(&self) -> Result<(OneRelay, QuicWgConnHandshaking), TunnelConnectError> {
+    pub async fn select_relay(&self, network_interface_index: Option<NonZeroU32>) -> Result<(OneRelay, QuicWgConnHandshaking), TunnelConnectError> {
         let relays = self.api_request(ListRelays {}).await?;
         let sni = self.lock().config.sni_relay.clone().unwrap_or_else(|| DEFAULT_RELAY_SNI.into());
 
@@ -381,7 +387,7 @@ impl ClientState {
         );
         let use_tcp_tls = self.get_config().force_tcp_tls_relay_transport;
         let pad_to_mtu = self.get_config().feature_flags.quic_frame_padding.unwrap_or(false);
-        let racing_handshakes = race_relay_handshakes(relays, sni, use_tcp_tls, pad_to_mtu)?;
+        let racing_handshakes = race_relay_handshakes(network_interface_index, relays, sni, use_tcp_tls, pad_to_mtu)?;
         let mut relays_connected_successfully = BTreeSet::new();
         let mut best_candidate = None;
 

@@ -33,7 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut exit_selection_state = ExitSelectionState::default();
     let conn = loop {
-        match client_state.connect(&ExitSelector::Any {}, &mut exit_selection_state).await {
+        match client_state.connect(&ExitSelector::Any {}, None, &mut exit_selection_state).await {
             Ok((conn, ..)) => break conn,
             Err(error) => tracing::error!("connection attempt failed: {error}"),
         }

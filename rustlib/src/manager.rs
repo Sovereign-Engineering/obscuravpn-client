@@ -1,5 +1,6 @@
 use std::{
     future::Future,
+    num::NonZeroU32,
     path::PathBuf,
     sync::{Arc, Weak},
     time::Duration,
@@ -30,7 +31,7 @@ use crate::{
     errors::ApiError,
     exit_selection::ExitSelector,
     quicwg::TransportKind,
-    tunnel_state::TunnelState,
+    tunnel_state::{TargetState, TunnelState},
 };
 
 use crate::{client_state::ClientState, errors::ConnectErrorCode, network_config::NetworkConfig};
@@ -41,7 +42,7 @@ pub struct Manager {
     background_taks_cancellation_token: CancellationToken,
     client_state: Arc<ClientState>,
     tunnel_state: Receiver<TunnelState>,
-    target_tunnel_args: Sender<Option<TunnelArgs>>,
+    target_state: Sender<TargetState>,
     status_watch: Sender<Status>,
     runtime: Handle,
     _background_task_drop_guard: DropGuard,
@@ -129,20 +130,24 @@ impl VpnStatus {
     fn from_tunnel_state(tunnel_state: &TunnelState) -> Self {
         match tunnel_state {
             TunnelState::Disconnected { .. } => VpnStatus::Disconnected {},
-            TunnelState::Connecting { args, connect_error, disconnect_reason, offset_traffic_stats: _ } => VpnStatus::Connecting {
-                tunnel_args: args.clone(),
-                connect_error: connect_error.as_ref().map(|error_at| ConnectErrorCode::from(&error_at.error)),
-                reconnecting: disconnect_reason.is_some(),
-            },
-            TunnelState::Connected { args, conn, relay, exit, network_config, offset_traffic_stats: _ } => VpnStatus::Connected {
-                tunnel_args: args.clone(),
-                relay: relay.clone(),
-                exit: exit.clone(),
-                network_config: network_config.clone(),
-                client_public_key: WgPubkey(conn.client_public_key().to_bytes()),
-                exit_public_key: WgPubkey(conn.exit_public_key().to_bytes()),
-                transport: conn.transport(),
-            },
+            TunnelState::Connecting { args, connect_error, disconnect_reason, offset_traffic_stats: _, network_interface_index: _ } => {
+                VpnStatus::Connecting {
+                    tunnel_args: args.clone(),
+                    connect_error: connect_error.as_ref().map(|error_at| ConnectErrorCode::from(&error_at.error)),
+                    reconnecting: disconnect_reason.is_some(),
+                }
+            }
+            TunnelState::Connected { args, conn, relay, exit, network_config, offset_traffic_stats: _, network_interface_index: _ } => {
+                VpnStatus::Connected {
+                    tunnel_args: args.clone(),
+                    relay: relay.clone(),
+                    exit: exit.clone(),
+                    network_config: network_config.clone(),
+                    client_public_key: WgPubkey(conn.client_public_key().to_bytes()),
+                    exit_public_key: WgPubkey(conn.exit_public_key().to_bytes()),
+                    transport: conn.transport(),
+                }
+            }
         }
     }
 }
@@ -159,10 +164,10 @@ impl Manager {
         let cancellation_token = CancellationToken::new();
         let client_state = Arc::new(ClientState::new(config_dir, keychain_wg_sk, user_agent, set_keychain_wg_sk)?);
         let config = client_state.get_config();
-        let (target_tunnel_args, tunnel_state) = TunnelState::new(runtime, client_state.clone(), receive_cb, cancellation_token.clone());
+        let (target_state, tunnel_state) = TunnelState::new(runtime, client_state.clone(), receive_cb, cancellation_token.clone());
         let initial_status = Status::new(Uuid::new_v4(), VpnStatus::Disconnected {}, config, client_state.base_url());
         let this = Arc::new(Self {
-            target_tunnel_args,
+            target_state,
             tunnel_state,
             client_state,
             status_watch: channel(initial_status).0,
@@ -191,23 +196,33 @@ impl Manager {
     pub fn set_target_state(&self, new_target_args: Option<TunnelArgs>, allow_activation: bool) -> Result<(), ()> {
         let mut ret = Ok(());
         let ret_ref = &mut ret;
-        _ = self.target_tunnel_args.send_if_modified(move |target_args| {
-            if target_args == &new_target_args {
+        _ = self.target_state.send_if_modified(move |target_state| {
+            if target_state.tunnel_args == new_target_args {
                 tracing::warn!(
                     message_id = "oqQ8GZEE",
                     "not setting target state, because the new one is identical to the current one"
                 );
                 return false;
             }
-            if target_args.is_none() && new_target_args.is_some() && !allow_activation {
+            if target_state.tunnel_args.is_none() && new_target_args.is_some() && !allow_activation {
                 *ret_ref = Err(());
                 tracing::warn!(message_id = "juurJ3bm", "not setting target state, because activation is not allowed");
                 return false;
             }
-            *target_args = new_target_args;
+            target_state.tunnel_args = new_target_args;
             true
         });
         ret
+    }
+
+    pub fn set_network_interface_index(&self, new_index: Option<NonZeroU32>) {
+        _ = self.target_state.send_if_modified(move |target_state| {
+            if target_state.network_interface_index != new_index {
+                target_state.network_interface_index = new_index;
+                return true;
+            }
+            false
+        })
     }
 
     pub fn set_feature_flag(&self, flag: &str, active: bool) -> Result<(), ConfigSaveError> {

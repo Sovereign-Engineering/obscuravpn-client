@@ -227,6 +227,7 @@
   "vpnError-apiError": "API request failed. Please make sure you are connected to the internet and no other VPN or firewall is running.",
   "vpnError-apiUnreachable": "Unable to connect to the Obscura API. You may be offline or something is interfering with your connection.",
   "vpnError-invalidAccountId": "Account Number invalid (checksum failed)",
+  "vpnError-noInternet": "Not connected to the internet",
   "vpnError-noLongerSupported": "This client is too old, please update to the latest version to connect",
   "vpnError-noNetworkAvailable": "Not connected to a network",
   "vpnError-noSlotsLeft": "No more than three tunnels may be active",

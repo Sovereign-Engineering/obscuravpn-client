@@ -84,16 +84,12 @@ class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
             let destination: LinkDestination?
             if host.contains("obscura") {
                 if path.contains("pay") {
-                    #if DEBUG
-                        if url.absoluteString.contains("external") {
-                            destination = .stripePayment
-                        } else {
-                            self.showSubscriptionManageSheet = true
-                            return
-                        }
-                    #else
+                    if url.absoluteString.contains("external") {
                         destination = .stripePayment
-                    #endif
+                    } else {
+                        self.showSubscriptionManageSheet = true
+                        return
+                    }
                 } else if path.contains("check") {
                     destination = .checkConnection
                 } else if path.contains("legal") {

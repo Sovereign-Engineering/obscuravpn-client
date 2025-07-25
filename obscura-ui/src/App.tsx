@@ -40,7 +40,7 @@ export default function () {
   // App State
   const [vpnConnected, setVpnConnected] = useState(false);
   // keep track of how the connection was initiated to show correct transitioning UI
-  const [initiatingExitSelector, setExitSelector] = useState<commands.ExitSelector>();
+  const [initiatingExitSelector, setInitiatingExitSelector] = useState<commands.ExitSelector>();
   const [connectionInProgress, setConnectionInProgress] = useState<ConnectionInProgress>(ConnectionInProgress.UNSET);
   const [warningNotices, setWarningNotices] = useState<string[]>([]);
   const [importantNotices, setImportantNotices] = useState<string[]>([]);
@@ -88,7 +88,7 @@ export default function () {
   }, []);
 
   async function tryConnect(exit: commands.ExitSelector) {
-    setExitSelector(exit);
+    setInitiatingExitSelector(exit);
     if (vpnConnected) {
       setConnectionInProgress(ConnectionInProgress.ChangingLocations);
     } else {
@@ -215,12 +215,18 @@ export default function () {
   useEffect(() => {
     if (osStatus !== null) {
       const { osVpnStatus } = osStatus;
-      if (osVpnStatus === NEVPNStatus.Disconnecting) {
-        setConnectionInProgress(ConnectionInProgress.Disconnecting);
-      } else if (osVpnStatus === NEVPNStatus.Disconnected) {
-        setConnectionInProgress(ConnectionInProgress.UNSET);
-        setVpnConnected(false);
-        setExitSelector(undefined);
+      switch (osVpnStatus) {
+        case NEVPNStatus.Disconnecting:
+          setConnectionInProgress(ConnectionInProgress.Disconnecting);
+          break;
+        case NEVPNStatus.Disconnected:
+          setConnectionInProgress(ConnectionInProgress.UNSET);
+          setVpnConnected(false);
+          setInitiatingExitSelector(undefined);
+          break;
+        case NEVPNStatus.Connected:
+          setInitiatingExitSelector(undefined);
+          break;
       }
     }
   }, [osStatus]);

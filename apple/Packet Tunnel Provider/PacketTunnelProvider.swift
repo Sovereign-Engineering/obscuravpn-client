@@ -59,6 +59,8 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
          - start a tunnel
          - any IPC that should result in handleAppMessage getting called will fail.
          This is not redundant with the `exit` in stopTunnel, because in the case described above `stopTunnel` is not called.
+
+         https://linear.app/soveng/issue/OBS-2070
          */
         exit(0)
     }
@@ -130,6 +132,8 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         logger.log("stopTunnel exit and abort \(self.providerId, privacy: .public)")
         /*
          Hack to avoid macos bugs where no methods of self are called after stopTunnel including deinit.
+
+         https://linear.app/soveng/issue/OBS-2069
          */
         exit(0)
     }

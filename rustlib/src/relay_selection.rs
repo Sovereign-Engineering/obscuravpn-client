@@ -3,12 +3,14 @@ use crate::net::{new_quic, new_udp};
 use crate::quicwg::{QuicWgConnHandshaking, QuicWgConnectError};
 use flume::{bounded, Receiver, SendError};
 use obscuravpn_api::types::OneRelay;
+use std::num::NonZeroU32;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::spawn;
 use tokio::task::JoinSet;
 
 pub fn race_relay_handshakes(
+    network_interface_index: Option<NonZeroU32>,
     relays: Vec<OneRelay>,
     sni: String,
     use_tcp_tls: bool,
@@ -16,7 +18,7 @@ pub fn race_relay_handshakes(
 ) -> Result<Receiver<(OneRelay, u16, Duration, QuicWgConnHandshaking)>, RelaySelectionError> {
     let sni = Arc::new(sni);
     let mut tasks = JoinSet::new();
-    let udp = new_udp(None).map_err(RelaySelectionError::UdpSetup)?;
+    let udp = new_udp(None, network_interface_index).map_err(RelaySelectionError::UdpSetup)?;
     let quic_endpoint = new_quic(udp).map_err(RelaySelectionError::QuicSetup)?;
 
     // Maximum number of relays to probe. This limit should be high enough that a non-malicious API server won't exceed it.

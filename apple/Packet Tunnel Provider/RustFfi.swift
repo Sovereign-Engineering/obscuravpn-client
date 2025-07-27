@@ -32,6 +32,19 @@ func ffiJsonManagerCmd(_ jsonCmd: Data) async -> NeManagerCmdResult {
     }
 }
 
+func ffiSetNetworkInterfaceIndex(_ index:  Int?) {
+    if let index: Int = index {
+        if index <= 0 || Int64(index) > Int64(UInt32.max) {
+            logger.critical("network interface index out of range \(index, privacy: .public)")
+            libobscuravpn_client.set_network_interface_index(0)
+        } else {
+            libobscuravpn_client.set_network_interface_index(UInt32(index))
+        }
+    } else {
+        libobscuravpn_client.set_network_interface_index(0)
+    }
+}
+
 private func keychainSetWgSecretKeyCallback(key: FfiBytes) -> Bool {
     logger.log("keychainSetWgSecretKeyCallback entry")
     let ret = keychainSetWgSecretKey(key.data())

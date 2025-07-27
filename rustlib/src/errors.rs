@@ -27,6 +27,7 @@ pub enum ConnectErrorCode {
     ApiRateLimitExceeded,
     ApiUnreachable,
     InvalidAccountId,
+    NoInternet,
     NoLongerSupported,
     NoSlotsLeft,
     Other,
@@ -63,6 +64,7 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
                 },
                 ApiError::ConfigSave(_) => Self::Other,
             },
+            TunnelConnectError::NoInternet => Self::NoInternet,
             TunnelConnectError::NetworkConfig(_)
             | TunnelConnectError::NoExit
             | TunnelConnectError::TunnelConnect(_)
@@ -88,6 +90,8 @@ pub enum TunnelConnectError {
     NetworkConfig(#[from] NetworkConfigError),
     #[error("No matching exit.")]
     NoExit,
+    #[error("No internet.")]
+    NoInternet,
     #[error("relay selection failed: {0}")]
     RelaySelection(#[from] RelaySelectionError),
     #[error("tunnel connect: {0}")]

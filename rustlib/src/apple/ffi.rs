@@ -1,3 +1,4 @@
+use std::num::NonZeroU32;
 use std::sync::{Arc, LazyLock, OnceLock};
 use tokio::runtime::Runtime;
 
@@ -87,6 +88,14 @@ pub unsafe extern "C" fn initialize(
 pub unsafe extern "C" fn send_packet(packet: FfiBytes) {
     let packet = packet.to_vec();
     global_manager().send_packet(&packet);
+}
+
+/// Set the network interface to use by index.
+///
+/// 0 means no interface (do not try connecting).
+#[no_mangle]
+pub unsafe extern "C" fn set_network_interface_index(index: u32) {
+    global_manager().set_network_interface_index(NonZeroU32::new(index));
 }
 
 #[no_mangle]

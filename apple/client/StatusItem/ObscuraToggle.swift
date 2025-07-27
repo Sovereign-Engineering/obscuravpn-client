@@ -41,7 +41,7 @@ struct ObscuraToggle: View {
     }
 
     func getConnectHint() -> String {
-        let exitSelector = self.getVpnStatus()?.lastChosenExit
+        let exitSelector = self.getVpnStatus()?.lastExit
 
         switch exitSelector {
         case .city(let countryCode, let cityCode):
@@ -97,7 +97,7 @@ struct ObscuraToggle: View {
             Task {
                 self.toggleLabel = ToggleLabels.connecting
                 do {
-                    let exitSelector = self.getVpnStatus()?.lastChosenExit ?? .any
+                    let exitSelector = self.getVpnStatus()?.lastExit ?? .any
                     try await self.startupModel.appState?.enableTunnel(TunnelArgs(exit: exitSelector))
                 } catch {
                     logger.error("Failed to connect from status menu toggle \(error, privacy: .public)")

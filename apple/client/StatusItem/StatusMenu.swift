@@ -357,7 +357,7 @@ final class StatusItemManager: ObservableObject {
 
                 if let appState = StartupModel.shared.appState {
                     let pinnedLocations = appState.status.pinnedLocations
-                    let lastExit = appState.status.lastChosenExit
+                    let lastExit = appState.status.lastExit
 
                     // Update Quick Connect item state
                     if let quickConnectItem = locationSubmenu.item(at: 0) {

@@ -68,6 +68,23 @@
 				</dict>
 			</dict>
 		</dict>
+		<key>net.obscura.vpn-client-app-ios</key>
+		<dict>
+			<key>DEFAULT-OPTIONS</key>
+			<dict>
+				<key>Enable-Oversize-Messages</key>
+				<true/>
+				<key>Enable-Private-Data</key>
+				<true/>
+				<key>Level</key>
+				<dict>
+					<key>Enable</key>
+					<string>Debug</string>
+					<key>Persist</key>
+					<string>Debug</string>
+				</dict>
+			</dict>
+		</dict>
 	</dict>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>

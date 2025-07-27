@@ -9,6 +9,77 @@
 		<key>NSExtensionPrincipalClass</key>
 		<string>$(PRODUCT_MODULE_NAME).PacketTunnelProvider</string>
 	</dict>
+	<key>OSLogPreferences</key>
+	<dict>
+		<key>net.obscura.vpn-client-app-ios.app-network-extension</key>
+		<dict>
+			<key>DEFAULT-OPTIONS</key>
+			<dict>
+				<key>Enable-Oversize-Messages</key>
+				<true/>
+				<key>Enable-Private-Data</key>
+				<true/>
+				<key>Level</key>
+				<dict>
+					<key>Enable</key>
+					<string>Debug</string>
+					<key>Persist</key>
+					<string>Debug</string>
+				</dict>
+			</dict>
+		</dict>
+		<key>com.apple.extensionkit</key>
+		<dict>
+			<key>DEFAULT-OPTIONS</key>
+			<dict>
+				<key>Enable-Oversize-Messages</key>
+				<true/>
+				<key>Enable-Private-Data</key>
+				<true/>
+				<key>Level</key>
+				<dict>
+					<key>Enable</key>
+					<string>Debug</string>
+					<key>Persist</key>
+					<string>Debug</string>
+				</dict>
+			</dict>
+		</dict>
+		<key>com.apple.xpc.transaction</key>
+		<dict>
+			<key>DEFAULT-OPTIONS</key>
+			<dict>
+				<key>Enable-Oversize-Messages</key>
+				<true/>
+				<key>Enable-Private-Data</key>
+				<true/>
+				<key>Level</key>
+				<dict>
+					<key>Enable</key>
+					<string>Debug</string>
+					<key>Persist</key>
+					<string>Debug</string>
+				</dict>
+			</dict>
+		</dict>
+		<key>net.obscura.rust-apple</key>
+		<dict>
+			<key>DEFAULT-OPTIONS</key>
+			<dict>
+				<key>Enable-Oversize-Messages</key>
+				<true/>
+				<key>Enable-Private-Data</key>
+				<true/>
+				<key>Level</key>
+				<dict>
+					<key>Enable</key>
+					<string>Debug</string>
+					<key>Persist</key>
+					<string>Debug</string>
+				</dict>
+			</dict>
+		</dict>
+	</dict>
 	<key>Obscura</key>
 	<dict>
 		<key>ObscuraSourceVersion</key>

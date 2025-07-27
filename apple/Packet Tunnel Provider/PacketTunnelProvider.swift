@@ -12,7 +12,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     private let isActive = AsyncMutex(false)
     private let isConnected = WatchableValue(false)
     private let networkConfig: AsyncMutex<NetworkConfig?> = AsyncMutex(.none)
-    private let nwPathMonitor: NWPathMonitor = NWPathMonitor()
+    private let nwPathMonitor: NWPathMonitor = .init()
 
     var selfObservation: NSKeyValueObservation?
 
@@ -33,7 +33,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         logger.log("config dir \(configDir, privacy: .public)")
         logger.log("user agent \(userAgent, privacy: .public)")
         ffiInitialize(configDir: configDir, userAgent: userAgent, receiveCallback)
-        
+
         self.nwPathMonitor.pathUpdateHandler = { path in
             if path.status != .satisfied {
                 logger.log("network path not satisfied")
@@ -48,10 +48,9 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
                 logger.log("no available network path interface")
                 ffiSetNetworkInterfaceIndex(.none)
             }
-            
         }
         self.nwPathMonitor.start(queue: .main)
-        
+
         super.init()
 
         self.selfObservation = self.observe(

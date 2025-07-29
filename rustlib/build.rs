@@ -6,9 +6,19 @@ const OUTPUT_HEADER_PATH_ENVVAR: &str = "OBSCURA_CLIENT_RUSTLIB_CBINDGEN_OUTPUT_
 const CBINDGEN_CONFIG_PATH_ENVVAR: &str = "OBSCURA_CLIENT_RUSTLIB_CBINDGEN_CONFIG_PATH";
 
 fn main() {
-    // Tell cargo to re-run this script if the config file changes
-    println!("cargo:rerun-if-env-changed={}", CBINDGEN_CONFIG_PATH_ENVVAR);
-    println!("cargo:rerun-if-env-changed={}", OUTPUT_HEADER_PATH_ENVVAR);
+    // NOTE: DO NOT emit any `cargo:rerun-if-*` instructions.
+    //
+    //       When there are `cargo:rerun-if-*` instructions, `cargo` relies on these instructions
+    //       to be fully accurate for change detection and WILL NOT rerun build scripts if files
+    //       not listed in the instructions change.
+    //
+    //       If there are no `cargo:rerun-if-*` instructions, `cargo` will "always re-running the
+    //       build script if any file within the package is changed (or the list of files
+    //       controlled by the exclude and include fields)". Which is what we want for `cbindgen`.
+    //
+    //       Also note that `cbindgen` itself does not emit any `cargo:rerun-if-*` instructions.
+    //
+    //       Source: https://doc.rust-lang.org/cargo/reference/build-scripts.html#change-detection
 
     // Use var_os instead of var to isolate env var presence from Unicode parsing
     let Some(cbindgen_config_path) = env::var_os(CBINDGEN_CONFIG_PATH_ENVVAR) else {
@@ -18,7 +28,6 @@ fn main() {
         );
         return;
     };
-    println!("cargo:rerun-if-changed={}", cbindgen_config_path.clone().into_string().unwrap());
 
     let Some(output_header_path) = env::var_os(OUTPUT_HEADER_PATH_ENVVAR) else {
         println!(

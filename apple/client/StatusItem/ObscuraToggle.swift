@@ -82,7 +82,7 @@ struct ObscuraToggle: View {
     func toggleClick() {
         self.allowToggleSync = false
         switch self.getVpnStatus()?.vpnStatus {
-        case .connected:
+        case .connected, .connecting:
             self.isToggled = false
             // this returns faster than the UI could show "Disconnecting"
             self.toggleLabel = ToggleLabels.disconnecting
@@ -98,9 +98,11 @@ struct ObscuraToggle: View {
                 self.toggleLabel = ToggleLabels.connecting
                 do {
                     let exitSelector = self.getVpnStatus()?.lastExit ?? .any
-                    try await self.startupModel.appState?.enableTunnel(TunnelArgs(exit: exitSelector))
+                    try await self.startupModel.appState?.enableTunnel(
+                        TunnelArgs(exit: exitSelector))
                 } catch {
-                    logger.error("Failed to connect from status menu toggle \(error, privacy: .public)")
+                    logger.error(
+                        "Failed to connect from status menu toggle \(error, privacy: .public)")
                     self.toggleLabel = ToggleLabels.notConnected
                 }
                 self.allowToggleSync = true
@@ -112,6 +114,7 @@ struct ObscuraToggle: View {
     //   - .fixedSize(...)
     //   - Spacer(minLength: 54)
     var body: some View {
+        let toggleDisabled = self.toggleLabel == ToggleLabels.disconnecting
         // Separate the presentation from the function to avoid
         // https://stackoverflow.com/a/59398852/7732434
         let toggleBind = Binding<Bool>(
@@ -125,9 +128,10 @@ struct ObscuraToggle: View {
             VStack(alignment: .leading) {
                 Text("Obscura VPN")
                     .font(.headline.weight(.regular))
+                    .foregroundStyle(toggleDisabled ? .secondary : .primary)
                 Text(self.getToggleText())
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(toggleDisabled ? .tertiary : .secondary)
                     .italic(self.isHovering)
             }
             .lineLimit(1)
@@ -137,62 +141,75 @@ struct ObscuraToggle: View {
             Toggle(isOn: toggleBind) {}
                 .toggleStyle(.switch)
                 .tint(Color("ObscuraOrange"))
-                .disabled(self.toggleLabel == ToggleLabels.disconnecting)
+                .disabled(toggleDisabled)
         }
         // this allows the Spacer to be clickable
         .contentShape(Rectangle())
         // leading and trailing matches Tailscale's values as observed via Accessibility Inspector
         .padding(EdgeInsets(top: 5, leading: 14, bottom: 5, trailing: 12))
-        .onTapGesture { self.toggleClick() }
+        .onTapGesture {
+            if !toggleDisabled {
+                self.toggleClick()
+            }
+        }
         .onHover { hovering in
             self.isHovering = hovering
         }
-        .onReceive(self.vpnStatusTimer, perform: { _ in
-            if self.allowToggleSync {
-                if self.osStatusModel.osStatus?.osVpnStatus == .disconnecting {
-                    self.isToggled = false
-                    self.toggleLabel = ToggleLabels.disconnecting
-                    return
-                }
-                guard let vpnStatus = self.getVpnStatus() else { return }
-                // Don't update the toggle's state if the state has already been updated for a particular vpnStatus
-                // This avoids bugs where the toggle is the component driving a vpn status change
-                // E.g. The vpnStatus reports disconnected and the user starts a connection through the toggle
-                //  -> Show the connecting state until the new vpnStatus rather than showing a disconnected state
-                if vpnStatus.version == self.vpnStatusId { return }
-                self.vpnStatusId = vpnStatus.version
-                switch vpnStatus.vpnStatus {
-                case .connected:
-                    self.isToggled = true
-                    self.toggleLabel = ToggleLabels.connected
-                case .connecting(tunnelArgs: _, connectError: _, reconnecting: let reconnecting):
-                    self.isToggled = false
-                    self.toggleLabel = reconnecting ? ToggleLabels.reconnecting : ToggleLabels.connecting
-                default:
-                    self.isToggled = false
-                    self.toggleLabel = ToggleLabels.notConnected
+        .onReceive(
+            self.vpnStatusTimer,
+            perform: { _ in
+                if self.allowToggleSync {
+                    if self.osStatusModel.osStatus?.osVpnStatus == .disconnecting {
+                        self.isToggled = false
+                        self.toggleLabel = ToggleLabels.disconnecting
+                        return
+                    }
+                    guard let vpnStatus = self.getVpnStatus() else { return }
+                    // Don't update the toggle's state if the state has already been updated for a particular vpnStatus
+                    // This avoids bugs where the toggle is the component driving a vpn status change
+                    // E.g. The vpnStatus reports disconnected and the user starts a connection through the toggle
+                    //  -> Show the connecting state until the new vpnStatus rather than showing a disconnected state
+                    if vpnStatus.version == self.vpnStatusId { return }
+                    self.vpnStatusId = vpnStatus.version
+                    switch vpnStatus.vpnStatus {
+                    case .connected:
+                        self.isToggled = true
+                        self.toggleLabel = ToggleLabels.connected
+                    case .connecting(tunnelArgs: _, connectError: _, let reconnecting):
+                        self.isToggled = false
+                        self.toggleLabel =
+                            reconnecting ? ToggleLabels.reconnecting : ToggleLabels.connecting
+                    default:
+                        self.isToggled = false
+                        self.toggleLabel = ToggleLabels.notConnected
+                    }
                 }
             }
-        })
+        )
         .task {
             var exitListKnownVersion: String?
             while true {
                 var takeBreak = true
                 if let appState = self.startupModel.appState {
                     do {
-                        let result = try await getCityNames(appState.manager, knownVersion: exitListKnownVersion)
+                        let result = try await getCityNames(
+                            appState.manager, knownVersion: exitListKnownVersion
+                        )
                         exitListKnownVersion = result.version
                         self.cityNames = result.cityNames
                         takeBreak = false
                     } catch {
-                        logger.error("Failed to get exit list in ObscuraToggle: \(error, privacy: .public)")
+                        logger.error(
+                            "Failed to get exit list in ObscuraToggle: \(error, privacy: .public)")
                     }
                 }
                 if takeBreak {
                     do {
                         try await Task.sleep(seconds: 1)
                     } catch {
-                        logger.error("exitListWatcher Task cancelled in ObscuraToggle \(error, privacy: .public)")
+                        logger.error(
+                            "exitListWatcher Task cancelled in ObscuraToggle \(error, privacy: .public)"
+                        )
                         return
                     }
                 }

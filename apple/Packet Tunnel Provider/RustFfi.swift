@@ -32,7 +32,7 @@ func ffiJsonManagerCmd(_ jsonCmd: Data) async -> NeManagerCmdResult {
     }
 }
 
-func ffiSetNetworkInterfaceIndex(_ index:  Int?) {
+func ffiSetNetworkInterfaceIndex(_ index: Int?) {
     if let index: Int = index {
         if index <= 0 || Int64(index) > Int64(UInt32.max) {
             logger.critical("network interface index out of range \(index, privacy: .public)")

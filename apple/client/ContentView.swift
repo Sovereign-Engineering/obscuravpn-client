@@ -320,6 +320,15 @@ struct ContentView: View {
                         }
                     #endif
                 }
+                .fullScreenCover(isPresented: self.$appState.needsIsEnabledFix) {
+                    VStack(spacing: 12) {
+                        Text("Obscura VPN was disabled by another VPN app. Click the button below if you want to enable it again. This will close any active VPN tunnels from other apps.").font(.body)
+                        Button("Continue") {
+                            self.appState.runIsEnabledFix()
+                        }.buttonStyle(.borderedProminent)
+                    }
+                    .padding()
+                }
             #endif
         } else {
             EmptyView()

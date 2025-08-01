@@ -10,6 +10,9 @@ class AppState: ObservableObject {
     private let configQueue: DispatchQueue = .init(label: "config queue")
     public let osStatus: WatchableValue<OsStatus>
     @Published var status: NeStatus
+    @Published var needsIsEnabledFix: Bool = false
+    private var didBecomeActiveObserver: NSObjectProtocol? = nil
+
     #if os(macOS)
         public let updater: SparkleUpdater
     #else
@@ -32,6 +35,10 @@ class AppState: ObservableObject {
 
         self.webviewsController = WebviewsController()
         self.webviewsController.initializeWebviews(appState: self)
+
+        self.didBecomeActiveObserver = NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.updateNeedIsEnabledFix()
+        }
 
         if initialStatus.autoConnect {
             Task {
@@ -91,7 +98,7 @@ class AppState: ObservableObject {
         Task { @MainActor in
             var version: UUID = initialStatus.version
             while true {
-                if let status = try? await self.getStatus(knownVersion: version) {
+                if let status = try? await getNeStatus(self.manager, knownVersion: version) {
                     Self.logger.info("Status updated: \(debugFormat(status), privacy: .public)")
                     version = status.version
                     self.status = status
@@ -126,12 +133,52 @@ class AppState: ObservableObject {
                  In order to resolve this we simply ping the network extension in a loop.
              */
             while true {
-                try! await Task.sleep(seconds: 30)
                 do {
                     try await self.ping()
+                    try! await Task.sleep(seconds: 30)
                 } catch {
                     Self.logger.error("Ping failed \(error.localizedDescription, privacy: .public)")
+                    try! await Task.sleep(seconds: 5)
                 }
+            }
+        }
+    }
+
+    func updateNeedIsEnabledFix() {
+        Self.logger.info("updating need for isEnabled fix")
+        Task { @MainActor in
+            do {
+                try await self.manager.loadFromPreferences()
+                if self.manager.isEnabled {
+                    Self.logger.info("manager is enabled, isEnabled fix not needed")
+                    return
+                }
+            } catch {
+                Self.logger.error("error loading NE preferences: \(error), assuming isEnabled fix is not needed")
+                return
+            }
+            Self.logger.info("manager is disabled")
+            do {
+                try await self.ping()
+                Self.logger.info("ping succeeded, isEnabled fix not needed")
+                return
+            } catch {
+                Self.logger.error("ping failed: \(error)")
+            }
+            Self.logger.error("manager is disabled and ping failed, isEnabled fix needed")
+            self.needsIsEnabledFix = true
+        }
+    }
+
+    func runIsEnabledFix() {
+        Task { @MainActor in
+            Self.logger.info("running isEnabledFix")
+            do {
+                self.manager.isEnabled = true
+                try await self.manager.saveToPreferences()
+                self.needsIsEnabledFix = false
+            } catch {
+                Self.logger.error("error loading NE preferences: \(error)")
             }
         }
     }
@@ -208,10 +255,6 @@ class AppState: ObservableObject {
         self.manager.connection.stopVPNTunnel()
     }
 
-    func getStatus(knownVersion: UUID?) async throws -> NeStatus {
-        return try await getNeStatus(self.manager, knownVersion: knownVersion)
-    }
-
     func getOsStatus(knownVersion: UUID?) async -> OsStatus {
         return await self.osStatus.getIfOrNext { current in
             current.version != knownVersion
@@ -219,7 +262,7 @@ class AppState: ObservableObject {
     }
 
     func ping() async throws(String) {
-        let _: Empty = try await runNeCommand(self.manager, .ping)
+        let _: Empty = try await runNeCommand(self.manager, .ping, attemptTimeout: Duration.seconds(5), maxAttempts: 1)
     }
 
     func getTrafficStats() async throws(String) -> TrafficStats {

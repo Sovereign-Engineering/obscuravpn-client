@@ -152,20 +152,23 @@ function PrimaryConnectButton() {
   const specificInitiation = !(initiatingExitSelector === undefined || 'any' in initiatingExitSelector);
   const connectingToCity = (targetCity !== undefined || specificInitiation) && (osStatus.osVpnStatus !== NEVPNStatus.Disconnected || appStatus.vpnStatus.connecting !== undefined);
 
-  const showQuickConnect = !vpnConnected && !connectingToCity && accountInfo !== null && !appStatus.vpnStatus.connecting && osStatus.osVpnStatus !== NEVPNStatus.Disconnecting;
-  const qcBtnAction = (_: MouseEvent) => vpnConnected ? vpnDisconnect() : vpnConnect({ any: {} });
-  const qcBtnDisabled = !internetAvailable || connectionTransition;
-  const primaryBtnDisconnectProps = (vpnConnected && connectionInProgress !== ConnectionInProgress.Reconnecting) ? theme.other.buttonDisconnectProps : {};
 
   if (!vpnConnected && accountInfo !== null && accountHasExpired) {
     return <Button component='a' href={ObscuraAccount.APP_ACCOUNT_TAB}>{t('ManageAccount')}</Button>;
   }
-  if (inConnectingState && !connectingToCity && osStatus.osVpnStatus !== NEVPNStatus.Disconnecting) {
+
+  if (inConnectingState && (!connectingToCity || appStatus.vpnStatus.connecting?.reconnecting) && osStatus.osVpnStatus !== NEVPNStatus.Disconnecting) {
     return <>
       <Space h='lg' />
       <Button w={BUTTON_WIDTH} {...theme.other.buttonDisconnectProps} mt={5} onClick={vpnDisconnect}>{t('Cancel Connecting')}</Button>
     </>
   }
+
+  const showQuickConnect = !vpnConnected && !connectingToCity && accountInfo !== null && !appStatus.vpnStatus.connecting && osStatus.osVpnStatus !== NEVPNStatus.Disconnecting;
+  const qcBtnAction = (_: MouseEvent) => vpnConnected ? vpnDisconnect() : vpnConnect({ any: {} });
+  const qcBtnDisabled = !internetAvailable || connectionTransition;
+  const primaryBtnDisconnectProps = (vpnConnected && connectionInProgress !== ConnectionInProgress.Reconnecting) ? theme.other.buttonDisconnectProps : {};
+
   if (showQuickConnect) {
     const buttonContent = connectionTransition ? t(connectionInProgress) + '...' : <Group gap={5}><BoltBadgeAuto />{t('QuickConnect')}</Group>;
     return <Button size='md' className={commonClasses.button} onClick={qcBtnAction} w={BUTTON_WIDTH} disabled={qcBtnDisabled} {...primaryBtnDisconnectProps}>{buttonContent}</Button>

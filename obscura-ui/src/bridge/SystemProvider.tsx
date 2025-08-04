@@ -2,6 +2,7 @@ import { ErrorInfo, useEffect } from 'react';
 
 export const PLATFORM = import.meta.env.OBS_WEB_PLATFORM as Platform;
 
+// Update translation files whenever Platform is updated
 export enum Platform {
   macOS = 'macosx',
   iOS = 'iphoneos',

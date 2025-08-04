@@ -3,6 +3,7 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 import { ReactNode } from 'react';
 import { initReactI18next } from 'react-i18next';
 import { CommandError } from '../bridge/commands';
+import { PLATFORM } from '../bridge/SystemProvider';
 import en from './en.json';
 
 export type TranslationKey = keyof typeof en;
@@ -33,6 +34,9 @@ i18n
 export default i18n;
 
 export function fmtVpnError(t: TFunction, errorCode: string): ReactNode {
+  if (errorCode === "other") {
+    t("vpnError-other", { context: PLATFORM });
+  }
   return t(`vpnError-${errorCode}` as TranslationKey);
 }
 

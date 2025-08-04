@@ -118,8 +118,7 @@ interface IAppContext {
     accountLoading: boolean,
     appStatus: AppStatus,
     osStatus: OsStatus,
-    // e.g. useful for UI
-    isOffline: boolean,
+    showOfflineUI: boolean,
     accountInfo: AccountInfo | null,
     connectionInProgress: ConnectionInProgress
 }
@@ -165,12 +164,11 @@ export function isConnecting(connectionInProgress: ConnectionInProgress) {
     return false;
 }
 
-/**
- * No Reconnecting
- */
-export function isConnectingStatus(connectionInProgress: ConnectionInProgress, osVpnStatus: NEVPNStatus) {
-  return connectionInProgress === ConnectionInProgress.ChangingLocations
-    || connectionInProgress === ConnectionInProgress.Connecting
-    || osVpnStatus === NEVPNStatus.Connecting
-    || osVpnStatus === NEVPNStatus.Disconnecting;
+export function connectionIsIdle(connectionInProgress: ConnectionInProgress, vpnStatus: VpnStatus, osVpnStatus: NEVPNStatus) {
+  return connectionInProgress === ConnectionInProgress.UNSET
+    && vpnStatus.disconnected !== undefined
+    && (
+      osVpnStatus === NEVPNStatus.Disconnected ||
+      osVpnStatus === NEVPNStatus.Invalid
+    );
 }

@@ -169,7 +169,7 @@ interface LocationCarProps {
 
 function LocationCard({ exit, connected, onSelect, togglePin, pinned }: LocationCarProps) {
     const { t } = useTranslation();
-    const { osStatus, isOffline, appStatus, initiatingExitSelector } = useContext(AppContext);
+    const { osStatus, showOfflineUI, appStatus, initiatingExitSelector } = useContext(AppContext);
     const colorScheme = useComputedColorScheme();
 
     const onPinClick = (e: MouseEvent) => {
@@ -177,7 +177,7 @@ function LocationCard({ exit, connected, onSelect, togglePin, pinned }: Location
         togglePin(exit);
     };
 
-    const disableClick = osStatus.osVpnStatus === NEVPNStatus.Disconnecting || isOffline;
+    const disableClick = osStatus.osVpnStatus === NEVPNStatus.Disconnecting || showOfflineUI;
     const cardClasses = [];
     if (connected) cardClasses.push(classes.locationCardConnected);
     else if (!connected && osStatus.osVpnStatus !== NEVPNStatus.Disconnecting && (exitCityEquals(getCityFromStatus(appStatus.vpnStatus), exit) || exitCityEquals(getCityFromArgs(initiatingExitSelector), exit))) {
@@ -257,11 +257,11 @@ function NoExitServers() {
 function VpnStatusCard() {
     const theme = useMantineTheme();
     const { t } = useTranslation();
-    const { appStatus, vpnConnected, isOffline, osStatus, connectionInProgress, vpnDisconnect, vpnConnect } = useContext(AppContext);
+    const { appStatus, vpnConnected, showOfflineUI, osStatus, connectionInProgress, vpnDisconnect, vpnConnect } = useContext(AppContext);
 
     const getStatusTitle = () => {
         if (connectionInProgress !== ConnectionInProgress.UNSET) return t(connectionInProgress) + '...';
-        if (isOffline) return t('Offline');
+        if (showOfflineUI) return t('Offline');
         const selectedLocation = appStatus.vpnStatus.connected?.exit.city_name;
         // vpnConnected <-> vpnStatus.connected.exit defined
         if (selectedLocation !== undefined) return t('connectedToLocation', { location: selectedLocation });
@@ -274,11 +274,11 @@ function VpnStatusCard() {
         }
         if (vpnConnected) return t('trafficProtected');
         if (connectionInProgress !== ConnectionInProgress.UNSET) return t('trafficVulnerable');
-        return isOffline ? t('connectToInternet') : t('trafficVulnerable');
+        return showOfflineUI ? t('connectToInternet') : t('trafficVulnerable');
     };
 
     const allowCancel = connectionInProgress === ConnectionInProgress.Connecting || connectionInProgress === ConnectionInProgress.Reconnecting;
-    const btnDisabled = !allowCancel && (connectionInProgress === ConnectionInProgress.Disconnecting || connectionInProgress === ConnectionInProgress.ChangingLocations || isOffline);
+    const btnDisabled = !allowCancel && (connectionInProgress === ConnectionInProgress.Disconnecting || connectionInProgress === ConnectionInProgress.ChangingLocations || showOfflineUI);
     const buttonDisconnectProps = ((allowCancel || vpnConnected) && !btnDisabled) ? theme.other.buttonDisconnectProps : {};
 
     const getButtonContent = () => {
@@ -290,7 +290,7 @@ function VpnStatusCard() {
 
     const btnTitle = () => {
         if (!btnDisabled) return;
-        if (isOffline) return t('noInternet');
+        if (showOfflineUI) return t('noInternet');
         return t('busyConnection');
     };
 

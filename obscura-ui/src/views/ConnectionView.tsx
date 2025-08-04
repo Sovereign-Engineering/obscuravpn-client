@@ -47,7 +47,7 @@ const BUTTON_WIDTH = 320;
 export default function Connection() {
     const colorScheme = useComputedColorScheme();
     const { t } = useTranslation();
-    const { vpnConnected, initiatingExitSelector, connectionInProgress, osStatus, appStatus, isOffline } = useContext(AppContext);
+    const { vpnConnected, initiatingExitSelector, connectionInProgress, osStatus, appStatus, showOfflineUI } = useContext(AppContext);
     const connectionTransition = useIsTransitioning();
 
     const { account } = appStatus;
@@ -94,7 +94,7 @@ export default function Connection() {
             }
         }
         if (vpnConnected) return t('connectedToObscura');
-        if (isOffline) return t('disconnected');
+        if (showOfflineUI) return t('disconnected');
         if (accountInfo === null) return t('validatingAccount')
         return t('notConnected');
     }
@@ -103,7 +103,7 @@ export default function Connection() {
         if (vpnConnected && !connectionTransition) return t('enjoyObscura');
         if (accountHasExpired) return t('continueUsingObscura');
         if (connectionTransition) return t('pleaseWaitAMoment');
-        if (isOffline) return t('connectToInternet');
+        if (showOfflineUI) return t('connectToInternet');
         if (accountInfo === null) return '';
         return t('connectToEnjoy');
     }
@@ -178,7 +178,7 @@ function ConnectionProgressBar() {
     const {
         vpnConnected,
         connectionInProgress,
-        isOffline
+        showOfflineUI
     } = useContext(AppContext);
 
     const bg = colorScheme === 'light' ? 'dark.9' : 'dark.6';
@@ -196,7 +196,7 @@ function ConnectionProgressBar() {
                     <Text size='xs' c='white'>{t('yourDevice')}</Text>
                 </Stack>
                 {
-                    isOffline &&
+                    showOfflineUI &&
                     <>
                         <Progress w={80} value={0} h={2} bg={progressBg} />
                         <Stack gap='0' align='center'>
@@ -209,7 +209,7 @@ function ConnectionProgressBar() {
                     </>
                 }
                 {
-                    !isOffline && (connectionInProgress === ConnectionInProgress.Disconnecting || (!vpnConnected && connectionInProgress === ConnectionInProgress.UNSET)) &&
+                    !showOfflineUI && (connectionInProgress === ConnectionInProgress.Disconnecting || (!vpnConnected && connectionInProgress === ConnectionInProgress.UNSET)) &&
                     <Stack gap='xs' align='center' justify='flex-end' h={50} className={classes.trafficVulnerable}>
                         <Progress className={classes.trafficVulnerableProgressBar} value={100} color='red.6' h={2} bg={progressBg} />
                         <Text size='xs' c='red.6'>
@@ -236,10 +236,10 @@ function ConnectionProgressBar() {
                     <Progress w={progressWidth} value={(vpnConnected && connectionInProgress !== ConnectionInProgress.ChangingLocations) ? 100 : 0} h={2} bg={progressBg} />
                 </>}
                 <Stack gap='0' align='center'>
-                    <ThemeIcon variant='transparent' c={isOffline ? 'red.6' : (connectionInProgress === ConnectionInProgress.UNSET ? 'white' : 'dimmed')}>
+                    <ThemeIcon variant='transparent' c={showOfflineUI ? 'red.6' : (connectionInProgress === ConnectionInProgress.UNSET ? 'white' : 'dimmed')}>
                         <MdLanguage size={20} />
                     </ThemeIcon>
-                    <Text size='xs' c={isOffline ? 'red.6' : (connectionInProgress === ConnectionInProgress.UNSET ? 'white' : 'dimmed')}>{t('Internet')}</Text>
+                    <Text size='xs' c={showOfflineUI ? 'red.6' : (connectionInProgress === ConnectionInProgress.UNSET ? 'white' : 'dimmed')}>{t('Internet')}</Text>
                 </Stack>
             </Group>
         </Paper>
@@ -304,7 +304,7 @@ function Deco() {
     const {
         vpnConnected,
         connectionInProgress,
-        isOffline,
+        showOfflineUI,
         osStatus
     } = useContext(AppContext);
     const colorScheme = useComputedColorScheme();
@@ -326,7 +326,7 @@ function Deco() {
         return () => stop();
     }, [connectionInProgress, start, stop]);
 
-    if (isOffline) return colorScheme === 'light' ? DecoOfflineLight : DecoOfflineDark;
+    if (showOfflineUI) return colorScheme === 'light' ? DecoOfflineLight : DecoOfflineDark;
 
     if (connectionInProgress !== ConnectionInProgress.UNSET) {
         // reverse the animation when disconnecting
@@ -361,7 +361,7 @@ function Mascot() {
         vpnConnected,
         connectionInProgress,
         appStatus,
-        isOffline
+        showOfflineUI
     } = useContext(AppContext);
     const accountInfo = appStatus.account?.account_info ?? null;
     // tuned to show ... for 3 extra cycles
@@ -406,7 +406,7 @@ function Mascot() {
             }
             return mascotConnecting;
         }
-        if (isOffline) return MascotDead;
+        if (showOfflineUI) return MascotDead;
         if (vpnConnected) return connectedBefore === ConnectedBefore.FIRST_CONNECT ? MascotConnectedFirstTime : MascotConnected;
         if (accountInfo === null) return MascotValidating;
         if (accountIsExpired(accountInfo)) return MascotDead;
@@ -428,7 +428,7 @@ function LocationSelect(): ReactNode {
       );
     }, [exitList]);
 
-    const { appStatus, vpnConnect, vpnConnected, connectionInProgress, osStatus, isOffline } = useContext(AppContext);
+    const { appStatus, vpnConnect, vpnConnected, connectionInProgress, osStatus, showOfflineUI } = useContext(AppContext);
     const { internetAvailable } = osStatus;
     const { lastChosenExit, pinnedLocations } = appStatus;
     const connectedExit = appStatus.vpnStatus.connected?.exit;
@@ -515,7 +515,7 @@ function LocationSelect(): ReactNode {
                             >
                                 {
                                   selectedCity === null
-                                  ? <Text>{isOffline ? t('noInternet') : t('selectLocation')}</Text>
+                                  ? <Text>{showOfflineUI ? t('noInternet') : t('selectLocation')}</Text>
                                   : <Group gap='xs'>
                                     <Text size='lg'>{getCountryFlag(selectedCity.country_code)} {selectedExampleExit?.city_name}</Text>
                                   </Group>
@@ -584,12 +584,12 @@ interface LocationConnectRightButtonProps {
 function LocationConnectRightButton({ dropdownOpened, selectedCity }: LocationConnectRightButtonProps) {
     const { t } = useTranslation();
     const theme = useMantineTheme();
-    const { vpnConnect, vpnDisconnect, vpnConnected, connectionInProgress, osStatus, isOffline } = useContext(AppContext);
+    const { vpnConnect, vpnDisconnect, vpnConnected, connectionInProgress, osStatus, showOfflineUI } = useContext(AppContext);
 
     const buttonText = connectionInProgress === ConnectionInProgress.Connecting ? 'Cancel' : ((isConnecting(connectionInProgress) || vpnConnected) ? 'Disconnect' : 'Connect');
     const btnDisabled = selectedCity === null
       || (dropdownOpened && buttonText === 'Connect')
-      || isOffline
+      || showOfflineUI
       || osStatus.osVpnStatus === NEVPNStatus.Disconnecting
       // to keep the resulting state predictable for the user, disallow cancel when changing locations
       || connectionInProgress === ConnectionInProgress.ChangingLocations;

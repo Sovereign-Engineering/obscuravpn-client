@@ -5,10 +5,11 @@ import OSLog
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "PacketTunnelProvider")
 
-enum TunnelProviderInitStatus: String {
+enum TunnelProviderInitStatus {
     case checking
     case blockingBeforePermissionPopup
-    case waitingForUserApproval
+    case waitingForUserPermissionApproval
+    case waitingForUserStopOtherTunnelApproval(manager: NETunnelProviderManager)
     case configuring
     case testingCommunication
     case permissionDenied
@@ -45,7 +46,7 @@ class TunnelProviderInit {
                     }
                 }
                 if managers.isEmpty {
-                    // There are no managers, we will get a permission prompt when we add one. Wait for a call to `cont()`, so we can prepare the user for the popup.
+                    // There are no managers, we will get a permission prompt when we add one. Wait for a call to `continueAfterPermissionPriming()`, so we can prepare the user for the popup.
                     self.update(.blockingBeforePermissionPopup)
                 } else {
                     // There already is a manager we can use, no permission promp will be shown, continue automatically.
@@ -62,8 +63,10 @@ class TunnelProviderInit {
                 return
             }
 
+            var askedForUserApproval = false
             if managers.isEmpty {
-                self.update(.waitingForUserApproval)
+                self.update(.waitingForUserPermissionApproval)
+                askedForUserApproval = true
             } else {
                 self.update(.configuring)
             }
@@ -78,9 +81,11 @@ class TunnelProviderInit {
             proto.serverAddress = "obscura.net"
             proto.includeAllNetworks = manager.protocolConfiguration?.includeAllNetworks ?? false
             manager.protocolConfiguration = proto
-            manager.isEnabled = true
 
             do {
+                if askedForUserApproval {
+                    manager.isEnabled = true
+                }
                 try await manager.saveToPreferences()
             } catch {
                 logger.error("error saving tunnel provider to preferences early: \(error)")
@@ -92,6 +97,29 @@ class TunnelProviderInit {
                         self.update(.unexpectedError)
                     }
                 }
+                return
+            }
+
+            if manager.isEnabled {
+                self.continueAfterStopOtherTunnelPriming(manager)
+            } else {
+                logger.info("tunnel provider is not enabled, asking for permission to enable (which kills other tunnels)")
+                self.update(.waitingForUserStopOtherTunnelApproval(manager: manager))
+            }
+        }
+    }
+
+    func continueAfterStopOtherTunnelPriming(_ manager: NETunnelProviderManager) {
+        Task {
+            do {
+                if !manager.isEnabled {
+                    logger.info("enabling tunnel provider")
+                    manager.isEnabled = true
+                    try await manager.saveToPreferences()
+                }
+            } catch {
+                logger.error("error saving tunnel provider to preferences after late enablement: \(error)")
+                self.update(.unexpectedError)
                 return
             }
 
@@ -138,7 +166,7 @@ class TunnelProviderInit {
     }
 
     private func update(_ status: TunnelProviderInitStatus) {
-        logger.log("TunnelProviderInit status: \(status.rawValue, privacy: .public)")
+        logger.log("TunnelProviderInit status: \(debugFormat(status), privacy: .public)")
         if let cont = self.continuation {
             cont.yield(.status(status))
         }

@@ -183,6 +183,14 @@ class AppState: ObservableObject {
             }
             Self.logger.log("Starting tunnel")
             do {
+                try await self.manager.loadFromPreferences()
+                if !self.manager.isEnabled {
+                    Self.logger.info("NETunnelProviderManager is disabled, enabling")
+                    self.manager.isEnabled = true
+                    try await self.manager.saveToPreferences()
+                    try await self.manager.loadFromPreferences()
+                }
+
                 try self.manager.connection.startVPNTunnel(options: ["tunnelArgs": NSString(string: tunnelArgs.json())])
                 Self.logger.log("startVPNTunnel called without error")
                 return

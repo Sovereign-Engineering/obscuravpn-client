@@ -35,12 +35,14 @@ struct StartupView: View {
                 VpnChecksView(subtext: "Checking Tunnel Provider")
             case .tunnelProviderInit(let tpInit, .blockingBeforePermissionPopup):
                 VpnConfigurationView(startupModel: self.model, subtext: "This configuration is required for Obscura VPN to anonymize your network traffic.", tpInit: tpInit)
-            case .tunnelProviderInit(_, .waitingForUserApproval):
-                VpnConfigurationView(startupModel: self.model, subtext: "For Obscura VPN to add itself as a VPN to your system, please click \"Allow\" in the request for permission.")
+            case .tunnelProviderInit(_, .waitingForUserPermissionApproval):
+                VpnConfigurationView(startupModel: self.model, subtext: "For Obscura VPN to add itself as a VPN to your system, please click \"Allow\" in the request for permission. If you are currently connected to a VPN, this will disconnect it.")
             case .tunnelProviderInit(let tpInit, .permissionDenied):
                 VpnConfigurationView(startupModel: self.model, subtext: "Permission was denied. Click below to request permission again.", tpInit: tpInit, isError: true)
             case .tunnelProviderInit(_, .configuring):
                 VpnChecksView(subtext: "Configuring Tunnel Provider")
+            case .tunnelProviderInit(let tpInit, .waitingForUserStopOtherTunnelApproval(let manager)):
+                VpnEnableView(manager: manager, subtext: "Obscura VPN was disabled by another VPN. Click below to enable it. If you are currently connected to a VPN, this will disconnect it.", tpInit: tpInit)
             case .tunnelProviderInit(_, .testingCommunication):
                 VpnChecksView(subtext: "Testing Tunnel Provider communication")
             case .tunnelProviderInit(_, .unexpectedError):
@@ -64,6 +66,7 @@ func AppIcon() -> some View {
 }
 
 struct VpnChecksView: View {
+    var manager: NETunnelProviderManager?
     var subtext: String
 
     var body: some View {
@@ -73,6 +76,39 @@ struct VpnChecksView: View {
             Text(self.subtext)
                 .font(.headline)
         }
+    }
+}
+
+struct VpnEnableView: View {
+    var manager: NETunnelProviderManager
+    var subtext: String
+    var tpInit: TunnelProviderInit
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            Image(systemName: "network.badge.shield.half.filled")
+                .font(.system(size: 48))
+                .foregroundStyle(.blue)
+                .buttonStyle(.plain)
+        }
+        .padding()
+
+        Text("Enable Obscura VPN")
+            .font(.title)
+        if !self.subtext.isEmpty {
+            Text(self.subtext)
+                .padding()
+                .italic()
+                .frame(width: 350)
+                .frame(minHeight: 100)
+                .multilineTextAlignment(.center)
+        }
+        Button(action: { self.tpInit.continueAfterStopOtherTunnelPriming(self.manager) }) {
+            Text("Continue")
+                .font(.headline)
+                .frame(width: 300)
+        }
+        .buttonStyle(NoFadeButtonStyle())
     }
 }
 

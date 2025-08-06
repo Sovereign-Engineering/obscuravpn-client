@@ -6,17 +6,25 @@ import SwiftUI
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "PurchaseOptionsView")
 
 struct PurchaseOptionsView: View {
-    let accountInfo: AccountInfo
     let openUrl: (URL) -> Void
+    @ObservedObject var viewModel: SubscriptionManageViewModel
     @ObservedObject var storeKitModel: StoreKitModel
-    let manager: NETunnelProviderManager?
 
     @State private var manageSubscriptionsPopover: Bool = false
     @State private var restorePurchasesInProgress: Bool = false
     @State private var isOfferCodeSheetPresented: Bool = false
 
+    init(
+        openUrl: @escaping (URL) -> Void,
+        viewModel: SubscriptionManageViewModel
+    ) {
+        self.openUrl = openUrl
+        self.viewModel = viewModel
+        self.storeKitModel = viewModel.storeKitModel
+    }
+
     private var monthlySubscriptionProduct: Product? {
-        self.storeKitModel.product(for: .monthlySubscription)
+        return self.storeKitModel.product(for: .monthlySubscription)
     }
 
     private var displayPrice: String? {
@@ -30,18 +38,18 @@ struct PurchaseOptionsView: View {
         let alreadyStripeSubscribed = "You're already subscribed through Stripe! You can't subscribe through the App Store until your subscription expires."
         let alreadyToppedUp = "You're already topped-up! You can't subscribe through the App Store until your top-up expires."
         VStack(alignment: .leading, spacing: 24) {
-            if let monthlySubscriptionProduct, !accountInfo.hasActiveAppleSubscription, !storeKitModel.hasActiveMonthlySubscription {
+            if let monthlySubscriptionProduct, let accountInfo = viewModel.accountInfo, !accountInfo.hasActiveAppleSubscription, !storeKitModel.hasActiveMonthlySubscription {
                 ProductButton(
                     displayName: monthlySubscriptionProduct.displayName,
                     description: monthlySubscriptionProduct.description,
                     displayPrice: self.displayPrice ?? "",
                     purchaseClosure: {
-                        try await self.purchaseSubscription()
+                        try await self.viewModel.purchaseSubscription()
                     }
                 )
                 .conditionallyDisabled(
-                    when: self.accountInfo.hasActiveExternalPaymentPlan,
-                    explanation: self.accountInfo.hasStripeSubscription ? alreadyStripeSubscribed : alreadyToppedUp
+                    when: accountInfo.hasActiveExternalPaymentPlan,
+                    explanation: accountInfo.hasStripeSubscription ? alreadyStripeSubscribed : alreadyToppedUp
                 )
 
                 self.restorePurchasesButton
@@ -49,11 +57,15 @@ struct PurchaseOptionsView: View {
                 self.redeemCodeButton
             }
 
-            if self.accountInfo.hasActiveAppleSubscription {
+            if self.viewModel.accountInfo?.hasActiveAppleSubscription ?? false {
                 self.manageSubscriptionButton
             }
 
-            self.externalPaymentButton
+            self.restorePurchasesButton
+
+            if let accountInfo = self.viewModel.accountInfo {
+                self.externalPaymentButton(accountInfo: accountInfo)
+            }
         }
     }
 
@@ -90,11 +102,12 @@ struct PurchaseOptionsView: View {
         }
     }
 
-    var externalPaymentButton: some View {
+    @ViewBuilder
+    func externalPaymentButton(accountInfo: AccountInfo) -> some View {
         Button {
             self.openUrl(
                 URL(
-                    string: "https://obscura.net/pay/#account_id=\(self.accountInfo.id)&external"
+                    string: "https://obscura.net/pay/#account_id=\(accountInfo.id)&external"
                 )!
             )
         } label: {
@@ -108,7 +121,7 @@ struct PurchaseOptionsView: View {
         }
         .buttonStyle(HyperlinkButtonStyle())
         .conditionallyDisabled(
-            when: self.accountInfo.hasActiveAppleSubscription || self.storeKitModel.hasActiveMonthlySubscription,
+            when: accountInfo.hasActiveAppleSubscription || self.storeKitModel.hasActiveMonthlySubscription,
             explanation: "You're already subscribed through the App Store! You can't pay externally until your subscription expires."
         )
     }
@@ -126,21 +139,6 @@ struct PurchaseOptionsView: View {
             case .failure(let error):
                 logger.error("Offer code redemption failed: \(error)")
             }
-        }
-    }
-
-    func purchaseSubscription() async throws {
-        // Purchase
-        do {
-            try await self.storeKitModel
-                .purchase(
-                    obscuraProduct: .monthlySubscription,
-                    accountId: self.accountInfo
-                        .id
-                )
-        } catch {
-            logger.error("Purchase failed: \(error)")
-            throw error
         }
     }
 }

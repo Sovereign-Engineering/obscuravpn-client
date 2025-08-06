@@ -13,14 +13,10 @@ private enum SheetType: Identifiable {
 }
 
 struct SubscriptionManageSheet: View {
-    let manager: NETunnelProviderManager?
     let openUrl: ((URL) -> Void)?
 
-    @State private var accountInfo: AccountInfo?
-    let storeKitModel: StoreKitModel
-    @State private var isLoading = false
-    @State private var initialLoad = true
-    @State private var showErrorAlert = false
+    @StateObject private var viewModel: SubscriptionManageViewModel
+
     @State private var showStoreKitDebugUI = false
     @State private var showPreviewCarousel = false
     @State private var activeSheet: SheetType?
@@ -30,36 +26,27 @@ struct SubscriptionManageSheet: View {
 
     // Initializer for production use with manager
     init(manager: NETunnelProviderManager, storeKitModel: StoreKitModel, openUrl: @escaping (URL) -> Void) {
-        self.manager = manager
         self.openUrl = openUrl
-        self.storeKitModel = storeKitModel
+        self._viewModel = StateObject(wrappedValue: SubscriptionManageViewModel(manager: manager, storeKitModel: storeKitModel))
     }
 
     // Initializer for testing
     init(accountInfo: AccountInfo) {
-        self.manager = nil
         self.openUrl = nil
-        self.storeKitModel = StoreKitModel(manager: nil)
-        self._accountInfo = State(initialValue: accountInfo)
-    }
-
-    private var canRefresh: Bool {
-        self.manager != nil
+        self._viewModel = StateObject(wrappedValue: SubscriptionManageViewModel(manager: nil, accountInfo: accountInfo))
     }
 
     var body: some View {
         NavigationView {
             ZStack {
-                if let accountInfo = accountInfo {
+                if self.viewModel.accountInfo != nil {
                     SubscriptionManageSheetView(
-                        accountInfo: accountInfo,
-                        storeKitModel: self.storeKitModel,
-                        manager: self.manager,
+                        viewModel: self.viewModel,
                         openUrl: self.openUrl
                     )
-                    .opacity(self.isLoading ? 0.3 : 1.0)
-                    .animation(.easeInOut(duration: 0.2), value: self.isLoading)
-                } else if !self.initialLoad {
+                    .opacity(self.viewModel.isLoading ? 0.3 : 1.0)
+                    .animation(.easeInOut(duration: 0.2), value: self.viewModel.isLoading)
+                } else if !self.viewModel.initialLoad {
                     ContentUnavailableView(
                         "No Account Information",
                         systemImage: "person.crop.circle.badge.exclamationmark",
@@ -67,12 +54,12 @@ struct SubscriptionManageSheet: View {
                     )
                 }
 
-                if self.isLoading && !self.initialLoad {
+                if self.viewModel.isLoading && !self.viewModel.initialLoad {
                     ProgressView("Loading account information...")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .cornerRadius(12)
                         .transition(.opacity)
-                        .animation(.easeInOut(duration: 0.3), value: self.isLoading)
+                        .animation(.easeInOut(duration: 0.3), value: self.viewModel.isLoading)
                 }
             }
             .navigationTitle("Account Management")
@@ -108,64 +95,36 @@ struct SubscriptionManageSheet: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         Task {
-                            await self.loadAccountInfo()
+                            await self.viewModel.refresh()
                         }
                     } label: {
                         Image(systemName: "arrow.clockwise")
                     }
-                    .disabled(self.isLoading || !self.canRefresh)
+                    .disabled(self.viewModel.isLoading)
                 }
             }
         }
         .onAppear {
-            if self.manager != nil {
-                // Load account info from manager
-                Task {
-                    await self.loadAccountInfo()
-                }
+            // Load account info from manager
+            Task {
+                await self.viewModel.refresh()
             }
         }
         .refreshable {
-            if self.canRefresh {
-                await self.loadAccountInfo()
-            }
+            await self.viewModel.refresh()
         }
-        .alert("Error", isPresented: self.$showErrorAlert) {
+        .alert("Error", isPresented: self.$viewModel.showErrorAlert) {
             Button("OK") {}
-            Button("Retry") {
-                Task {
-                    await self.loadAccountInfo()
-                }
-            }
         } message: {
             Text("Something went wrong")
         }
         .sheet(item: self.$activeSheet) { sheetType in
             switch sheetType {
             case .storeKitDebug:
-                StoreDebugUI(storeKitModel: self.storeKitModel, accountId: self.accountInfo?.id)
+                StoreDebugUI(storeKitModel: self.viewModel.storeKitModel, accountId: self.viewModel.accountInfo?.id)
             case .previewCarousel:
                 SubscriptionManageSheetViewPreviewCarousel()
             }
-        }
-    }
-
-    @MainActor
-    private func loadAccountInfo() async {
-        guard let manager = manager else {
-            logger.warning("Attempted to load account info without manager")
-            return
-        }
-
-        self.isLoading = true
-        do {
-            let accountInfo = try await getAccountInfo(manager)
-            self.accountInfo = accountInfo
-            self.isLoading = false
-        } catch {
-            logger.error("Failed to load account info: \(error, privacy: .public)")
-            self.showErrorAlert = true
-            self.isLoading = false
         }
     }
 }

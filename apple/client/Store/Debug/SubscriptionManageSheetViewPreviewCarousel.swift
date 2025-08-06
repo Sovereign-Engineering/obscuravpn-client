@@ -94,9 +94,10 @@ struct SubscriptionManageSheetViewPreviewCarousel: View {
                     Text(config.title)
                         .font(.title)
                     SubscriptionManageSheetView(
-                        accountInfo: config.accountInfo,
-                        storeKitModel: StoreKitModel(manager: nil),
-                        manager: nil,
+                        viewModel: SubscriptionManageViewModel(
+                            manager: nil,
+                            accountInfo: config.accountInfo
+                        ),
                         openUrl: self.noOpUrlHandler
                     )
                     .navigationTitle(config.title)

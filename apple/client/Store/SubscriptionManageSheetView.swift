@@ -2,25 +2,35 @@ import NetworkExtension
 import SwiftUI
 
 struct SubscriptionManageSheetView: View {
-    let accountInfo: AccountInfo
+    @ObservedObject var viewModel: SubscriptionManageViewModel
     @ObservedObject var storeKitModel: StoreKitModel
-    let manager: NETunnelProviderManager?
     let openUrl: ((URL) -> Void)?
 
+    init(
+        viewModel: SubscriptionManageViewModel,
+        openUrl: ((URL) -> Void)?
+    ) {
+        self.viewModel = viewModel
+        self.storeKitModel = viewModel.storeKitModel
+        self.openUrl = openUrl
+    }
+
     var body: some View {
+        self.overviewAndPurchaseOptions
+    }
+
+    var overviewAndPurchaseOptions: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                AccountInfoOverviewView(
-                    accountInfo: self.accountInfo,
-                    storeKitSubscriptionActive: self.storeKitModel.hasActiveMonthlySubscription
-                )
+                AccountInfoOverviewView(viewModel: self.viewModel)
 
-                if let openUrl {
+                if self.viewModel.storeKitPurchasedAwaitingServerAck {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let openUrl {
                     PurchaseOptionsView(
-                        accountInfo: self.accountInfo,
                         openUrl: openUrl,
-                        storeKitModel: self.storeKitModel,
-                        manager: self.manager
+                        viewModel: self.viewModel
                     )
                 }
             }

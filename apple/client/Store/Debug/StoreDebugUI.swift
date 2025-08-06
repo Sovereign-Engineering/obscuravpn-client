@@ -73,7 +73,7 @@ struct StoreDebugUI: View {
                     .buttonStyle(.borderedProminent)
                 }
 
-                if self.storeKitModel.productsAvailable.isEmpty {
+                if self.storeKitModel.products.isEmpty {
                     ContentUnavailableView(
                         "No Products Available",
                         systemImage: "cart.badge.questionmark",
@@ -82,10 +82,10 @@ struct StoreDebugUI: View {
                 } else {
                     ScrollView {
                         VStack {
-                            ForEach(self.storeKitModel.productsAvailable, id: \.id) { product in
+                            ForEach(self.storeKitModel.products, id: \.id) { product in
                                 ProductRow(
                                     product: product,
-                                    isPurchased: self.storeKitModel.isPurchased(productId: product.id),
+                                    isPurchased: self.storeKitModel.cachedIsPurchased(product: product),
                                     onPurchase: {
                                         Task {
                                             await self.purchaseProduct(product)
@@ -425,7 +425,7 @@ extension StoreKitModel {
         }
 
         // Check if this product is currently purchased
-        info["Is Currently Purchased"] = self.isPurchased(productId: storekitProduct.id) ? "Yes" : "No"
+        info["Is Currently Purchased"] = await self.isPurchased(product: storekitProduct) ? "Yes" : "No"
 
         if let latestTransaction = await storekitProduct.latestTransaction {
             info["latestTransaction"] = "Some!"

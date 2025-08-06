@@ -109,9 +109,11 @@ struct AccountInfoOverviewView: View {
     typealias Section = SectionedTableInfoView.Configuration.Section
 
     let accountInfo: AccountInfo
+    let storeKitSubscriptionActive: Bool
 
-    public init(accountInfo: AccountInfo) {
+    public init(accountInfo: AccountInfo, storeKitSubscriptionActive: Bool) {
         self.accountInfo = accountInfo
+        self.storeKitSubscriptionActive = storeKitSubscriptionActive
     }
 
     public var body: some View {
@@ -130,15 +132,31 @@ struct AccountInfoOverviewView: View {
         ])
         sections.append(accountSection)
 
-        let statusSection = Section(rows: [
-            Row(
-                title: "Status",
-                importance: .high,
-                data: self.accountInfo.active ? "Active" : "Inactive",
-                dataColor: self.accountInfo.active ? .green : .red
-            ),
-        ])
-        sections.append(statusSection)
+        if !self.accountInfo.active && self.storeKitSubscriptionActive {
+            sections.append(Section(rows: [
+                Row(
+                    title: "Account Status",
+                    importance: .high,
+                    data: self.accountInfo.active ? "Active" : "Inactive",
+                    dataColor: self.accountInfo.active ? .green : .red
+                ),
+                Row(
+                    title: "Purchase Status",
+                    importance: .medium,
+                    data: "Purchased",
+                    dataColor: .yellow
+                ),
+            ]))
+        } else {
+            sections.append(Section(rows: [
+                Row(
+                    title: "Status",
+                    importance: .high,
+                    data: self.accountInfo.active ? "Active" : "Inactive",
+                    dataColor: self.accountInfo.active ? .green : .red
+                ),
+            ]))
+        }
 
         if let topUp = self.accountInfo.topUp {
             let topUpSection = Section(rows: [

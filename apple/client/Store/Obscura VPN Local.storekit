@@ -90,7 +90,18 @@
 
           ],
           "codeOffers" : [
-
+            {
+              "eligibility" : [
+                "expired",
+                "existing",
+                "new"
+              ],
+              "internalID" : "2D97084D",
+              "isStackable" : false,
+              "paymentMode" : "free",
+              "referenceName" : "One Month",
+              "subscriptionPeriod" : "P1M"
+            }
           ],
           "displayPrice" : "6.0",
           "familyShareable" : false,

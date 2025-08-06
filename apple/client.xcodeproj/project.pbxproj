@@ -118,6 +118,8 @@
 		A94B1E3D2E2B236800E5F325 /* Obscura VPN Local.storekit in Resources */ = {isa = PBXBuildFile; fileRef = A94B1E3C2E2B236800E5F325 /* Obscura VPN Local.storekit */; };
 		A952CE0A2E1B87B8007E25AC /* SubscriptionManageSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A952CE082E1B87B8007E25AC /* SubscriptionManageSheet.swift */; };
 		A95A91332DF9910C005CB52A /* ObscuraUIIOSWrapperAndTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = A95A91322DF9910C005CB52A /* ObscuraUIIOSWrapperAndTabs.swift */; };
+		A9758FDE2E41910300741928 /* HyperlinkButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9758FDD2E41910300741928 /* HyperlinkButtonStyle.swift */; };
+		A9758FDF2E41910300741928 /* HyperlinkButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9758FDD2E41910300741928 /* HyperlinkButtonStyle.swift */; };
 		A9768FAD2DBB01AD00A4595F /* UpdaterDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9768FAC2DBB01AD00A4595F /* UpdaterDriver.swift */; };
 		A9768FAF2DBB01C400A4595F /* CheckForUpdatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9768FAE2DBB01C400A4595F /* CheckForUpdatesView.swift */; };
 		A9768FB42DBB01EE00A4595F /* SparkleUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9768FB32DBB01EE00A4595F /* SparkleUpdater.swift */; };
@@ -335,6 +337,7 @@
 		A94B1E3C2E2B236800E5F325 /* Obscura VPN Local.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Obscura VPN Local.storekit"; sourceTree = "<group>"; };
 		A952CE082E1B87B8007E25AC /* SubscriptionManageSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManageSheet.swift; sourceTree = "<group>"; };
 		A95A91322DF9910C005CB52A /* ObscuraUIIOSWrapperAndTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObscuraUIIOSWrapperAndTabs.swift; sourceTree = "<group>"; };
+		A9758FDD2E41910300741928 /* HyperlinkButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HyperlinkButtonStyle.swift; sourceTree = "<group>"; };
 		A9768FAC2DBB01AD00A4595F /* UpdaterDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdaterDriver.swift; sourceTree = "<group>"; };
 		A9768FAE2DBB01C400A4595F /* CheckForUpdatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckForUpdatesView.swift; sourceTree = "<group>"; };
 		A9768FB32DBB01EE00A4595F /* SparkleUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkleUpdater.swift; sourceTree = "<group>"; };
@@ -674,6 +677,7 @@
 			children = (
 				A94B1D9B2E286B3900E5F325 /* ConditionallyDisabled.swift */,
 				A998710F2DBAF8080044D136 /* NoFadeButtonStyle.swift */,
+				A9758FDD2E41910300741928 /* HyperlinkButtonStyle.swift */,
 			);
 			path = Style;
 			sourceTree = "<group>";
@@ -972,6 +976,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A9758FDF2E41910300741928 /* HyperlinkButtonStyle.swift in Sources */,
 				3096E0222BDC1FFB0026DE7F /* ScriptMessageHandlers.swift in Sources */,
 				A983D7E02DF25435007306C5 /* WebviewsController.swift in Sources */,
 				A9200A862DD1251C00FD035C /* ObscuraUIWebView.swift in Sources */,
@@ -1094,6 +1099,7 @@
 				A936D4722DD14E040031B646 /* ScriptMessageHandlers.swift in Sources */,
 				A936D4712DD14DC30031B646 /* ObscuraUIWebView.swift in Sources */,
 				A9200A872DD127A200FD035C /* Notifications.swift in Sources */,
+				A9758FDE2E41910300741928 /* HyperlinkButtonStyle.swift in Sources */,
 				A9768FBE2DBB02BC00A4595F /* ContentView.swift in Sources */,
 				A99871292DBAF90B0044D136 /* Debug.swift in Sources */,
 				A99871282DBAF8FB0044D136 /* DebugBundle+XP.swift in Sources */,

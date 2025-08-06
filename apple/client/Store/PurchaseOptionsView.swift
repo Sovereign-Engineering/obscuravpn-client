@@ -13,6 +13,7 @@ struct PurchaseOptionsView: View {
 
     @State private var manageSubscriptionsPopover: Bool = false
     @State private var restorePurchasesInProgress: Bool = false
+    @State private var isOfferCodeSheetPresented: Bool = false
 
     private var monthlySubscriptionProduct: Product? {
         self.storeKitModel.product(for: .monthlySubscription)
@@ -29,7 +30,7 @@ struct PurchaseOptionsView: View {
         let alreadyStripeSubscribed = "You're already subscribed through Stripe! You can't subscribe through the App Store until your subscription expires."
         let alreadyToppedUp = "You're already topped-up! You can't subscribe through the App Store until your top-up expires."
         VStack(alignment: .leading, spacing: 24) {
-            if let monthlySubscriptionProduct, !accountInfo.hasActiveAppleSubscription {
+            if let monthlySubscriptionProduct, !accountInfo.hasActiveAppleSubscription, !storeKitModel.hasActiveMonthlySubscription {
                 ProductButton(
                     displayName: monthlySubscriptionProduct.displayName,
                     description: monthlySubscriptionProduct.description,
@@ -42,13 +43,15 @@ struct PurchaseOptionsView: View {
                     when: self.accountInfo.hasActiveExternalPaymentPlan,
                     explanation: self.accountInfo.hasStripeSubscription ? alreadyStripeSubscribed : alreadyToppedUp
                 )
+
+                self.restorePurchasesButton
+
+                self.redeemCodeButton
             }
 
             if self.accountInfo.hasActiveAppleSubscription {
                 self.manageSubscriptionButton
             }
-
-            self.restorePurchasesButton
 
             self.externalPaymentButton
         }
@@ -103,19 +106,30 @@ struct PurchaseOptionsView: View {
                     .font(.caption)
             }
         }
-        .foregroundColor(.blue)
+        .buttonStyle(HyperlinkButtonStyle())
         .conditionallyDisabled(
-            when: self.accountInfo.hasActiveAppleSubscription,
+            when: self.accountInfo.hasActiveAppleSubscription || self.storeKitModel.hasActiveMonthlySubscription,
             explanation: "You're already subscribed through the App Store! You can't pay externally until your subscription expires."
         )
     }
 
-    func purchaseSubscription() async throws {
-        guard let manager else {
-            logger.error("Cannot purchaseSubscription without a manager")
-            return
+    var redeemCodeButton: some View {
+        Button {
+            self.isOfferCodeSheetPresented = true
+        } label: {
+            Text("Redeem Code")
         }
+        .offerCodeRedemption(isPresented: self.$isOfferCodeSheetPresented) { result in
+            switch result {
+            case .success:
+                logger.info("Offer code redemption flow completed successfully. (errors only show up if a valid code fails to redeem. So invalid codes and not entering a code land you here)")
+            case .failure(let error):
+                logger.error("Offer code redemption failed: \(error)")
+            }
+        }
+    }
 
+    func purchaseSubscription() async throws {
         // Purchase
         do {
             try await self.storeKitModel

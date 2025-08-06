@@ -11,7 +11,10 @@ class AppState: ObservableObject {
     public let osStatus: WatchableValue<OsStatus>
     @Published var status: NeStatus
     @Published var needsIsEnabledFix: Bool = false
-    private var didBecomeActiveObserver: NSObjectProtocol? = nil
+
+    #if !os(macOS)
+        private var didBecomeActiveObserver: NSObjectProtocol?
+    #endif
 
     #if os(macOS)
         public let updater: SparkleUpdater
@@ -36,9 +39,11 @@ class AppState: ObservableObject {
         self.webviewsController = WebviewsController()
         self.webviewsController.initializeWebviews(appState: self)
 
-        self.didBecomeActiveObserver = NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.updateNeedIsEnabledFix()
-        }
+        #if !os(macOS)
+            self.didBecomeActiveObserver = NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+                self?.updateNeedIsEnabledFix()
+            }
+        #endif
 
         if initialStatus.autoConnect {
             Task {

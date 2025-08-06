@@ -1,13 +1,12 @@
 import { Button, Group, Loader, Text } from '@mantine/core';
-import { useContext } from 'react';
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { revealItemInDir } from '../bridge/commands';
-import { AppContext } from '../common/appContext';
+import { OsStatus } from '../common/appContext';
 import { useDebuggingArchive } from '../common/debuggingArchiveHook';
 
-export default function DebuggingArchive() {
+// this component may be used before appContext is created, and thus requires explicitly passing osStatus
+export default function DebuggingArchive({ osStatus }: { osStatus: OsStatus}) {
     const { t } = useTranslation();
-    const { osStatus } = useContext(AppContext);
     const createDebuggingArchive = useDebuggingArchive();
 
     return (

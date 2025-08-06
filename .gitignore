@@ -9,3 +9,4 @@ result-*
 
 # DMG
 *.dmg
+obscura-ui/src/views/Secrets.tsx

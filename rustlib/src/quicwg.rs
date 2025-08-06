@@ -14,6 +14,7 @@ use quinn::rustls::{CertificateError, DigitallySignedStruct, SignatureScheme};
 use quinn::{rustls, ClientConfig, MtuDiscoveryConfig};
 use rand::random;
 use serde::Serialize;
+use std::cmp::{max, min};
 use std::collections::VecDeque;
 use std::mem;
 use std::net::{Ipv4Addr, SocketAddr};
@@ -25,8 +26,8 @@ use strum::Display;
 use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadHalf};
 use tokio::net::TcpStream;
-use tokio::sync::{watch, Notify};
-use tokio::time::{interval, timeout, MissedTickBehavior};
+use tokio::sync::watch;
+use tokio::time::{sleep_until, timeout};
 use tokio::time::{Duration, Instant};
 use tokio::{io, select, spawn};
 use tokio_rustls::client::TlsStream;
@@ -35,11 +36,28 @@ use uuid::Uuid;
 
 use crate::tokio::AbortOnDrop;
 
-const QUIC_MAX_IDLE_MS: u32 = 5000;
 const WG_FIRST_HANDSHAKE_RESENDS: usize = 25; // 2.5s per handshake.
 const WG_FIRST_HANDSHAKE_TIMEOUT: Duration = Duration::from_millis(100);
-const WG_MAX_IDLE_MS: u32 = QUIC_MAX_IDLE_MS;
-const WG_TICK_MS: u32 = 1000;
+
+/// Time to start sending keepalives on an idle connection.
+const WG_KEEPALIVE_IDLE: Duration = Duration::from_secs(60);
+
+/// Interval to send keepalives when we sent packets but didn't get a response.
+const WG_KEEPALIVE_REPLY_INTERVAL: Duration = Duration::from_secs(1);
+
+/// Minimum keepalive interval for measuring RTT.
+const WG_RTT_MEASURE_INTERVAL: Duration = Duration::from_secs(5 * 60);
+
+/// If we don't receive traffic for this long after sending traffic (despite sending keepalives) consider the connection dead.
+const WG_REPLY_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Ideally we would have a shorter QUIC idle timeout at the beginning and no timeout once the connection starts but this is not supported by quinn.
+const QUIC_IDLE_TIMEOUT: Duration = WG_KEEPALIVE_IDLE.saturating_add(WG_REPLY_TIMEOUT).saturating_add(Duration::from_secs(1));
+
+/// How fast to call `update_timers`.
+///
+/// In the boringtun repo they call it at 4Hz, however we have traditionally called it at 1Hz and doesn't seem to have any problems.
+const WG_TIMER_TICK: Duration = Duration::from_secs(1);
 
 #[derive(Debug, Error)]
 pub enum QuicWgReceiveError {
@@ -118,8 +136,6 @@ pub struct QuicWgConn {
     ping_keepalive_ip_v4: Ipv4Addr,
     ping_keepalive_payload: [u8; 16],
     connected_at: Instant,
-    wg_tick_notify: Arc<Notify>,
-    _tick_abort: AbortOnDrop,
     _tcp_tls_sender_abort: Option<AbortOnDrop>,
     _quic_control_stream: Option<(quinn::SendStream, quinn::RecvStream)>,
 }
@@ -134,11 +150,49 @@ pub struct QuicWgTrafficStats {
 
 struct WgState {
     buffer: Vec<u8>,
-    wg: Tunn,
-    traffic_stats: QuicWgTrafficStats,
-    ticks_since_last_packet: Saturating<u32>,
-    ticks_since_last_pong: Saturating<u32>,
+    last_keepalive_tx: Instant,
+    /// This is the oldest packet that was sent since we last received a packet.
+    /// If it is <= last_rx then it isn't very important as we have since received something.
+    earliest_unacknowledged_tx: Instant,
+    /// Last inner packet received (no protocol-level messages counted).
+    last_rx: Instant,
+    /// Last inner packet sent (no protocol-level messages counted).
+    last_tx: Instant,
+    next_wg_timers_tick: Instant,
     tick_stats: TickStats,
+    traffic_stats: QuicWgTrafficStats,
+    wg: Tunn,
+}
+
+impl WgState {
+    /// If we have sent the last packet.
+    ///
+    /// If this is true we are waiting for a packet from the exit. Generally this will happen automatically due to protocol-level acknowledgements on the user traffic but if not we will provoke an explicit response after a short delay by sending a ping.
+    fn awaiting_reply(&self) -> bool {
+        self.earliest_unacknowledged_tx > self.last_rx
+    }
+
+    // Bump transmitted packet stats.
+    fn bump_tx(&mut self) {
+        let now = Instant::now();
+        self.last_tx = now;
+        if !self.awaiting_reply() {
+            self.earliest_unacknowledged_tx = now;
+        }
+    }
+
+    /// The earliest time that we may possibly need to send a keepalive.
+    ///
+    /// If packets are send or received the actual time that the next keepalive should be sent may move back even if no keepalives were sent.
+    fn next_keepalive(&self) -> Instant {
+        let reply_trigger = if self.awaiting_reply() {
+            max(self.earliest_unacknowledged_tx, self.last_keepalive_tx)
+        } else {
+            // In case we send a packet immediately after this function.
+            Instant::now()
+        };
+        min(self.last_tx + WG_KEEPALIVE_IDLE, reply_trigger + WG_KEEPALIVE_REPLY_INTERVAL)
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -180,25 +234,16 @@ impl QuicWgConn {
             .await
             .map_err(QuicWgConnectError::WireguardHandshake)?;
         tracing::info!(message_id = "TJ4nH30h", "connected to exit");
-        let wg_tick_notify = Arc::new(Notify::new());
-        let wg_tick_notify_clone = wg_tick_notify.clone();
-        let tick_abort = spawn(async move {
-            let mut timer = interval(Duration::from_millis(WG_TICK_MS.into()));
-            timer.set_missed_tick_behavior(MissedTickBehavior::Delay);
-            loop {
-                timer.tick().await;
-                wg_tick_notify_clone.notify_one();
-            }
-        })
-        .abort_handle()
-        .into();
         let now = Instant::now();
         let wg_state = Mutex::new(WgState {
             wg,
             traffic_stats: QuicWgTrafficStats { connected_at: now, tx_bytes: 0, rx_bytes: 0, latest_latency_ms: 0 },
             buffer: vec![0u8; u16::MAX as usize],
-            ticks_since_last_packet: Saturating(0),
-            ticks_since_last_pong: Saturating(0),
+            last_keepalive_tx: now,
+            last_rx: now,
+            last_tx: now,
+            next_wg_timers_tick: now + WG_TIMER_TICK,
+            earliest_unacknowledged_tx: now,
             tick_stats: Default::default(),
         });
         Ok(Self {
@@ -211,8 +256,6 @@ impl QuicWgConn {
             ping_keepalive_ip_v4,
             ping_keepalive_payload: random(),
             connected_at: now,
-            wg_tick_notify,
-            _tick_abort: tick_abort,
             _tcp_tls_sender_abort: tcp_tls_sender_abort,
             _quic_control_stream: quic_control_stream,
         })
@@ -327,55 +370,79 @@ impl QuicWgConn {
     pub fn send(&self, packet: &[u8]) {
         let mut wg_state = self.wg_state.lock().unwrap();
         let WgState { buffer, wg, traffic_stats, tick_stats, .. } = &mut *wg_state;
+
         traffic_stats.tx_bytes += packet.len() as u64;
         tick_stats.ip_tx_count += 1;
         tick_stats.min_ip_tx_size = Some(tick_stats.min_ip_tx_size.unwrap_or(usize::MAX).min(packet.len()));
         tick_stats.max_ip_tx_size = Some(tick_stats.max_ip_tx_size.unwrap_or(0).max(packet.len()));
+
         match wg.encapsulate(packet, buffer) {
             TunnResult::Done => tracing::error!(message_id = "10g8g1D1", "WG encapsulate did not yield a datagram to send"),
             TunnResult::Err(error) => tracing::warn!(message_id = "MAvGA9tf", ?error, "wireguard error"),
             TunnResult::WriteToNetwork(wg_message) => {
                 tick_stats.wg_tx_count += 1;
-                self.wg_sender.send_wg_message(wg_message)
+                self.wg_sender.send_wg_message(wg_message);
+                wg_state.bump_tx();
             }
             TunnResult::WriteToTunnelV4(_, _) | TunnResult::WriteToTunnelV6(_, _) => {
                 tracing::error!(message_id = "mOwsH8Eu", "WG encapsulate yielded a received ip packet")
             }
         }
+
+        // We send periodic keepalives to measure RTT even if we are receiving packets. We send them at the same time as regular traffic to avoid unnecessary radio wakes.
+        if wg_state.last_keepalive_tx.elapsed() > WG_RTT_MEASURE_INTERVAL {
+            self.send_keepalive(&mut wg_state, "rtt");
+        }
+    }
+
+    fn send_keepalive(&self, wg_state: &mut WgState, reason: &'static str) {
+        tracing::info!(
+            earliest_unacknoledged_tx_ms = wg_state.earliest_unacknowledged_tx.elapsed().as_millis(),
+            keepalive.reason = reason,
+            last_keepalive_tx = wg_state.last_keepalive_tx.elapsed().as_millis(),
+            last_rx_ms = wg_state.last_rx.elapsed().as_millis(),
+            message_id = "WKqFjXMA",
+            tick_stats =? wg_state.tick_stats,
+            "wg keepalive send",
+        );
+        wg_state.tick_stats = TickStats::default();
+
+        let ping_packet = self.build_ping_keepalive_packet();
+        let ping_result = wg_state.wg.encapsulate(&ping_packet, &mut wg_state.buffer);
+        Self::handle_result(&self.wg_sender, ping_result);
+        wg_state.bump_tx();
+        wg_state.last_keepalive_tx = Instant::now();
     }
 
     pub async fn receive(&self) -> Result<Vec<u8>, QuicWgReceiveError> {
         // TODO: implement QUIC recovery and detect WG interruptions fast (OBS-274)
         loop {
+            let next_keepalive;
+            let next_wg_timers_tick;
+            {
+                let wg_state = &mut *self.wg_state.lock().unwrap();
+                next_keepalive = wg_state.next_keepalive();
+                next_wg_timers_tick = wg_state.next_wg_timers_tick;
+            }
+
             select! {
                 biased;
-                _ = self.wg_tick_notify.notified() => {
-                    let mut wg_state = self.wg_state.lock().unwrap();
-                    let WgState {buffer, wg, ticks_since_last_packet, ticks_since_last_pong, tick_stats, .. } = &mut *wg_state;
-                    tracing::info!(message_id = "WKqFjXMA", ticks_since_last_packet = ticks_since_last_packet.0 , ticks_since_last_pong = ticks_since_last_pong.0, ?tick_stats,  "wg tick");
-                    *tick_stats = TickStats::default();
-                    if (*ticks_since_last_packet * Saturating(WG_TICK_MS)).0 > WG_MAX_IDLE_MS {
-                        tracing::error!(message_id = "YQwnx6rF", "no packets received for {WG_MAX_IDLE_MS}ms");
-                        return Err(QuicWgReceiveError::WireguardIdleTimeout)
-                    }
+                _ = sleep_until(next_wg_timers_tick) => {
+                    let wg_state = &mut*self.wg_state.lock().unwrap();
                     loop {
-                        let timer_result = wg.update_timers(buffer);
+                        let timer_result = wg_state.wg.update_timers(&mut wg_state.buffer);
                         match Self::handle_result(&self.wg_sender, timer_result) {
                             ControlFlow::Continue(()) => continue,
                             ControlFlow::Break(Some(_)) => tracing::warn!(message_id = "nmuKdNnr", "unexpected packet during update_timers"),
                             ControlFlow::Break(None) => break,
                         }
                     }
-                    let ping_packet = self.build_ping_keepalive_packet();
-                    let ping_result = wg.encapsulate(&ping_packet, buffer);
-                    Self::handle_result(&self.wg_sender, ping_result);
-                    *ticks_since_last_packet += 1 ;
-                    *ticks_since_last_pong += 1;
+                    wg_state.next_wg_timers_tick = Instant::now() + WG_TIMER_TICK;
                 }
                 result = self.wg_receiver.receive_wg_message() => {
                     let mut wg_message = result.map_err(QuicWgReceiveError::QuicReceiveError)?;
                     let mut wg_state = self.wg_state.lock().unwrap();
-                    let WgState {buffer,wg, ticks_since_last_packet, ticks_since_last_pong, traffic_stats, tick_stats, .. } = &mut *wg_state;
+                    let WgState {buffer, last_rx, wg, traffic_stats, tick_stats, .. } = &mut *wg_state;
                     tick_stats.wg_rx_count += 1;
                     loop {
                         let res = wg.decapsulate(None, &wg_message, buffer);
@@ -391,18 +458,49 @@ impl QuicWgConn {
                                 tick_stats.ip_rx_count += 1;
                                 tick_stats.min_ip_rx_size = Some(tick_stats.min_ip_rx_size.unwrap_or(usize::MAX).min(packet.len()));
                                 tick_stats.max_ip_rx_size = Some(tick_stats.max_ip_rx_size.unwrap_or(0).max(packet.len()));
-                                *ticks_since_last_packet = Saturating(0);
+                                *last_rx = Instant::now();
                                 traffic_stats.rx_bytes += packet.len() as u64;
                                 if let Some(latest_latency_ms) = self.latency_ms_from_pong_keepalive_packet(&packet) {
-                                    tracing::info!(message_id = "nQbO3Dqi", "received keepalive pong after {}ms", latest_latency_ms);
+                                    tracing::info!(
+                                        message_id = "nQbO3Dqi",
+                                        "received keepalive pong after {}ms",
+                                        latest_latency_ms,
+                                    );
                                     traffic_stats.latest_latency_ms = latest_latency_ms;
-                                    *ticks_since_last_pong = Saturating(0);
                                     break
                                 }
                                 return Ok(packet)
                             },
                             ControlFlow::Break(None) => break,
                         }
+                    }
+                }
+                _ = sleep_until(next_keepalive) => {
+                    let wg_state = &mut*self.wg_state.lock().unwrap();
+
+                    if wg_state.awaiting_reply() {
+                        if wg_state.earliest_unacknowledged_tx.elapsed() > WG_REPLY_TIMEOUT {
+                            tracing::error!(
+                                message_id = "YQwnx6rF",
+                                earliest_unacknoledged_tx_ms = wg_state.earliest_unacknowledged_tx.elapsed().as_millis(),
+                                last_keepalive_tx = wg_state.last_keepalive_tx.elapsed().as_millis(),
+                                last_rx_ms = wg_state.last_rx.elapsed().as_millis(),
+                                last_tx_ms = wg_state.last_tx.elapsed().as_millis(),
+                                last_unacknoledged_tx_ms = wg_state.earliest_unacknowledged_tx.elapsed().as_millis(),
+                                tick_stats =? wg_state.tick_stats,
+                                "no reply received for {WG_REPLY_TIMEOUT:?}",
+                            );
+                            return Err(QuicWgReceiveError::WireguardIdleTimeout)
+                        } else if wg_state.next_keepalive() <= Instant::now() {
+                            self.send_keepalive(wg_state, "no-reply");
+                        } else {
+                            // This "spurious wakeup" occurs when the sender sends an RTT measurement keepalive while we are sleeping. It should be incredibly rare.
+                            tracing::info!("spurious RTT measurement wakeup");
+                        }
+                    } else if wg_state.last_tx.elapsed() > WG_KEEPALIVE_IDLE {
+                        self.send_keepalive(wg_state, "idle");
+                    } else {
+                        // This "spurious wakeup" occurs when no packets were sent while we were sleeping. In theory we could be more clever by sleeping for WG_KEEPALIVE_IDLE but then we need to interrupt and reduce the sleep when we send a packet. It is much simpler and probably more efficient to just have a few spurious wakeups.
                     }
                 }
             }
@@ -604,8 +702,7 @@ impl QuicWgConnHandshaking {
         let mut mtu_discovery_config = MtuDiscoveryConfig::default();
         mtu_discovery_config.upper_bound(MTU);
         transport_config.mtu_discovery_config(Some(mtu_discovery_config));
-        transport_config.keep_alive_interval(Some(Duration::from_secs(10)));
-        transport_config.max_idle_timeout(Some(quinn::VarInt::from_u32(QUIC_MAX_IDLE_MS).into()));
+        transport_config.max_idle_timeout(Some(QUIC_IDLE_TIMEOUT.try_into()?));
         transport_config.congestion_controller_factory(Arc::new(quinn::congestion::BbrConfig::default()));
         transport_config.pad_to_mtu(pad_to_mtu);
         client_cfg.transport_config(Arc::new(transport_config));

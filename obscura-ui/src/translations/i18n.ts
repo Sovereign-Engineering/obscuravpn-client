@@ -35,7 +35,7 @@ export default i18n;
 
 export function fmtVpnError(t: TFunction, errorCode: string): ReactNode {
   if (errorCode === "other") {
-    t("vpnError-other", { context: PLATFORM });
+    return t("vpnError-other", { context: PLATFORM });
   }
   return t(`vpnError-${errorCode}` as TranslationKey);
 }

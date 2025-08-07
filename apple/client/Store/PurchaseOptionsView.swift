@@ -63,8 +63,11 @@ struct PurchaseOptionsView: View {
 
             self.restorePurchasesButton
 
-            if let accountInfo = self.viewModel.accountInfo {
-                self.externalPaymentButton(accountInfo: accountInfo)
+            // External payments are currently only straightforward in the US
+            if self.storeKitModel.storefront?.countryCode == "USA" {
+                if let accountInfo = self.viewModel.accountInfo {
+                    self.externalPaymentButton(accountInfo: accountInfo)
+                }
             }
         }
     }

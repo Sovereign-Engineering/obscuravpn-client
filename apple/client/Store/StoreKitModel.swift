@@ -14,6 +14,7 @@ class StoreKitModel: ObservableObject {
     private var updateListenerTask: Task<Void, Error>?
     private var purchaseIntentListenerTask: Task<Void, Error>?
     private let manager: NETunnelProviderManager?
+    public var storefront: Storefront?
 
     init(manager: NETunnelProviderManager?) {
         self.manager = manager
@@ -26,6 +27,7 @@ class StoreKitModel: ObservableObject {
         Task {
             try? await self.reloadProductsAvailable()
             await self.updateStoreKitSubscriptionStatus()
+            self.storefront = await Storefront.current
         }
     }
 

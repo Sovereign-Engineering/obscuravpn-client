@@ -17,7 +17,7 @@ import { useAsync } from './common/useAsync';
 import { useLoadable } from './common/useLoadable';
 import { MIN_LOAD_MS, normalizeError } from './common/utils';
 import { ScrollToTop } from './components/ScrollToTop';
-import { fmtVpnError } from './translations/i18n';
+import { VpnError } from './components/VpnErrorFmt';
 import { About, Account, Connection, DeveloperView, FallbackAppRender, Help, Location, LogIn, Settings, SplashScreen } from './views';
 
 // imported views need to be added to the `views` list variable
@@ -104,7 +104,7 @@ export default function () {
       }
       if (!ignoreConnectingErrors.current && error.message !== 'tunnelNotDisconnected') {
         notifications.hide(NotificationId.VPN_ERROR);
-        notifications.show({ title: t('Error Connecting'), message: fmtVpnError(t, error.message), color: 'red', id: NotificationId.VPN_ERROR, autoClose: false });
+        notifications.show({ title: t('Error Connecting'), message: <VpnError errorEnum={error.message} />, color: 'red', id: NotificationId.VPN_ERROR, autoClose: false });
         // see https://linear.app/soveng/issue/OBS-775/not-starting-tunnel-because-it-isnt-disconnected-connecting#comment-e98a7150
         setConnectionInProgress(ConnectionInProgress.UNSET);
       }
@@ -127,7 +127,7 @@ export default function () {
         withCloseButton: true,
         color: 'red',
         title: t('Error'),
-        message: fmtVpnError(t, errorEnum),
+        message: <VpnError errorEnum={errorEnum} />,
         autoClose: 15_000
       });
     }

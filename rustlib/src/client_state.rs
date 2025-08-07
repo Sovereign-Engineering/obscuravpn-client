@@ -25,14 +25,14 @@ use obscuravpn_api::{
 };
 use rand::{seq::SliceRandom, thread_rng};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard};
+use std::{cmp::min, path::PathBuf, time::Instant};
 use std::{collections::BTreeSet, num::NonZeroU32};
 use std::{
     mem,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
-use tokio::spawn;
+use tokio::{spawn, time::timeout_at};
 use uuid::Uuid;
 
 const DEFAULT_API_BACKUP: &str = "crimsonlance.net";
@@ -388,14 +388,39 @@ impl ClientState {
         let use_tcp_tls = self.get_config().force_tcp_tls_relay_transport;
         let pad_to_mtu = self.get_config().feature_flags.quic_frame_padding.unwrap_or(false);
         let racing_handshakes = race_relay_handshakes(network_interface_index, relays, sni, use_tcp_tls, pad_to_mtu)?;
+
+        let start = Instant::now();
+        let mut deadline = start + Duration::from_secs(30);
+
         let mut relays_connected_successfully = BTreeSet::new();
         let mut best_candidate = None;
 
-        while let Ok((relay, port, rtt, handshaking)) = racing_handshakes.recv_async().await {
+        loop {
+            let next = timeout_at(deadline.into(), racing_handshakes.recv_async()).await;
+            let (relay, port, rtt, handshaking) = match next {
+                Ok(Ok(n)) => n,
+                Ok(Err(error)) => {
+                    tracing::info!(message_id = "aeY9Acha", ?error, "relay selection channel ended",);
+                    break;
+                }
+                Err(error) => {
+                    tracing::info!(
+                        message_id = "Eixooph8",
+                        ?error,
+                        deadline_s = (deadline - start).as_secs_f32(),
+                        "relay selection deadline reached",
+                    );
+                    break;
+                }
+            };
             relays_connected_successfully.insert(relay.id.clone());
+
             let rejected = if best_candidate.as_ref().is_some_and(|(_, _, best_rtt, _)| *best_rtt < rtt) {
                 Some(handshaking)
             } else {
+                // Only wait for 3x the time it took to find the best candidate. The chance that future relays have better RTT is minimal and it wastes time and increases the chance that we hang for a long time waiting on unreachable relays.
+                deadline = start + min(start.elapsed() * 3, Duration::from_secs(5));
+
                 best_candidate
                     .replace((relay, port, rtt, handshaking))
                     .map(|(_, _, _, replaced)| replaced)
@@ -403,7 +428,10 @@ impl ClientState {
             if let Some(rejected) = rejected {
                 spawn(rejected.abandon());
             }
+
             if relays_connected_successfully.len() >= 5 {
+                // With the 5 unique relays we have a high probability of having a very good candidate. Waiting for more responses just slows down connection for very minimal benefit.
+                tracing::info!(message_id = "YeiNgo7k", "relay count limit reached",);
                 break;
             }
         }

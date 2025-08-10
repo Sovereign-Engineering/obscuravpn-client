@@ -568,6 +568,9 @@ struct StatusItem: View {
                                     if secondsDelta > 0 {
                                         self.bandwidthStatusModel.uploadBandwidth = BandwidthFmt.fromTransferRate(bytesPerSecond: Double(txBytesDelta) / secondsDelta)
                                         self.bandwidthStatusModel.downloadBandwidth = BandwidthFmt.fromTransferRate(bytesPerSecond: Double(rxBytesDelta) / secondsDelta)
+                                        if newTrafficStats.latestLatencyMs != 0 {
+                                            self.bandwidthStatusModel.exitRTT = .milliseconds(newTrafficStats.latestLatencyMs)
+                                        }
                                         continue
                                     }
                                 }

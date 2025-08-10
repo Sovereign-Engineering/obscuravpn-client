@@ -4,6 +4,7 @@ import SwiftUI
 class BandwidthStatusModel: ObservableObject {
     @Published var uploadBandwidth = BandwidthFmt.fromTransferRate(bytesPerSecond: 0)
     @Published var downloadBandwidth = BandwidthFmt.fromTransferRate(bytesPerSecond: 0)
+    @Published var exitRTT: Duration?
 }
 
 struct BandwidthStatusItem: View {
@@ -29,6 +30,35 @@ struct BandwidthStatusItem: View {
     }
 }
 
+struct ExitRTTStatusItem: View {
+    var exitRTT: Duration?
+    @Environment(\.colorScheme) var colorScheme
+
+    var exitRTTText: String {
+        guard let exitRTT = exitRTT else {
+            return "unknown"
+        }
+        return exitRTT.formatted(.units(allowed: [.milliseconds], width: .condensedAbbreviated))
+    }
+
+    var body: some View {
+        HStack {
+            Image(systemName: "timer")
+            Text("Exit RTT")
+            Spacer()
+            HStack {
+                Text(self.exitRTTText)
+                    .monospaced()
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 8)
+        .background(self.colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
+        .cornerRadius(5)
+        .shadow(radius: 2)
+    }
+}
+
 struct BandwidthStatus: View {
     @ObservedObject var bandwidthStatusModel: BandwidthStatusModel
     @Environment(\.colorScheme) var colorScheme
@@ -37,6 +67,7 @@ struct BandwidthStatus: View {
         VStack {
             BandwidthStatusItem(isUpload: true, bandwidth: self.bandwidthStatusModel.uploadBandwidth)
             BandwidthStatusItem(isUpload: false, bandwidth: self.bandwidthStatusModel.downloadBandwidth)
+            ExitRTTStatusItem(exitRTT: self.bandwidthStatusModel.exitRTT)
         }
         .padding(EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12))
     }

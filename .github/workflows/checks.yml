@@ -16,11 +16,11 @@ concurrency:
   cancel-in-progress: ${{ github.ref_name != 'main' }}
 
 jobs:
-  build_all:
-    name: Build All
+  flake_check:
+    name: Flake check
     runs-on:
       # https://namespace.so/docs/features/faster-github-actions#using-runner-labels
-      - nscloud-macos-sonoma-arm64-12x28-with-cache
+      - nscloud-macos-sequoia-arm64-12x28-with-cache
       - nscloud-cache-tag-obscuravpn-client
       - nscloud-cache-size-50gb
     steps:
@@ -46,12 +46,80 @@ jobs:
             --print-build-logs \
             --show-trace
 
+  macos_build:
+    name: MacOS build
+    runs-on:
+      # https://namespace.so/docs/features/faster-github-actions#using-runner-labels
+      - nscloud-macos-sequoia-arm64-12x28-with-cache
+      - nscloud-cache-tag-obscuravpn-client
+      - nscloud-cache-size-50gb
+    steps:
+      - name: git checkout
+        uses: actions/checkout@v3
+
+      - name: unshallow and fetch git tags
+        shell: bash
+        run: |
+          git fetch --prune --unshallow --tags
+
+      - uses: namespacelabs/nscloud-cache-action@v1
+        with:
+          # The action fails to mount at `/nix` and we want to let the Nix installer handle that anyways.
+          path: /tmp/nix
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          mac-volume-label: obscuravpn-client
+
+      - name: Build macOS client
+        shell: bash
+        run: |
+          xcodebuild build \
+            -workspace apple/client.xcodeproj/project.xcworkspace \
+            -scheme 'Prod Client' \
+            CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_ENTITLEMENTS="" CODE_SIGNING_ALLOWED="NO"
+
+  ios_build:
+    name: iOS All
+    runs-on:
+      # https://namespace.so/docs/features/faster-github-actions#using-runner-labels
+      - nscloud-macos-sequoia-arm64-12x28-with-cache
+      - nscloud-cache-tag-obscuravpn-client
+      - nscloud-cache-size-50gb
+    steps:
+      - name: git checkout
+        uses: actions/checkout@v3
+
+      - name: unshallow and fetch git tags
+        shell: bash
+        run: |
+          git fetch --prune --unshallow --tags
+
+      - uses: namespacelabs/nscloud-cache-action@v1
+        with:
+          # The action fails to mount at `/nix` and we want to let the Nix installer handle that anyways.
+          path: /tmp/nix
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          mac-volume-label: obscuravpn-client
+
+      - name: Build iOS client
+        shell: bash
+        run: |
+          xcodebuild build \
+            -workspace apple/client.xcodeproj/project.xcworkspace \
+            -scheme 'Obscura VPN iOS' \
+            CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_ENTITLEMENTS="" CODE_SIGNING_ALLOWED="NO"
+
   sync:
     name: Sync
     if: |
       github.repository == 'sovereign-engineering/obscuravpn-client-internal'
       && github.ref == 'refs/heads/main'
-    needs: build_all
+    needs: [flake_check, macos_build, ios_build]
     runs-on: nscloud-ubuntu-20.04-amd64-2x2
     environment: sync
     steps:

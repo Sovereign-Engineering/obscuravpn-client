@@ -208,11 +208,11 @@ func neApiAppleCreateAppAccountToken(
 
 func neApiApplePollSubscription(
     _ manager: NETunnelProviderManager,
-    transactionId: String,
+    originalTransactionId: String,
     attemptTimeout: Duration? = nil,
     maxAttempts: UInt = 10
 ) async throws {
-    _ = try await runNeJsonCommand(manager, NeManagerCmd.apiApplePollSubscription(transactionId: transactionId).json(), attemptTimeout: attemptTimeout, maxAttempts: maxAttempts)
+    _ = try await runNeJsonCommand(manager, NeManagerCmd.apiApplePollSubscription(originalTransactionId: originalTransactionId).json(), attemptTimeout: attemptTimeout, maxAttempts: maxAttempts)
 }
 
 func getNeStatus(

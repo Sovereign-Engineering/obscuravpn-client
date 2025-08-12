@@ -14,7 +14,7 @@ enum NeManagerCmdResult: Codable {
 enum NeManagerCmd: Codable {
     case getDebugInfo
     case apiAppleCreateAppAccountToken
-    case apiApplePollSubscription(transactionId: String)
+    case apiApplePollSubscription(originalTransactionId: String)
     case apiGetAccountInfo
     case getStatus(knownVersion: UUID?)
     case getTrafficStats

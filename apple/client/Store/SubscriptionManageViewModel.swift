@@ -40,7 +40,7 @@ final class SubscriptionManageViewModel: ObservableObject {
 
         if self.storeKitPurchasedAwaitingServerAck {
             Task {
-                await self.tellServerTransactionIdToTryToFixAccountStatus()
+                await self.pollSubscription()
                 await self.checkForServerAcknoledgementOfSubscription()
             }
         }
@@ -104,7 +104,7 @@ final class SubscriptionManageViewModel: ObservableObject {
                 try await Task.sleep(for: .seconds(20))
                 await self.checkForServerAcknoledgementOfSubscription()
                 if self.storeKitPurchasedAwaitingServerAck {
-                    await self.tellServerTransactionIdToTryToFixAccountStatus()
+                    await self.pollSubscription()
                 }
             }
         } catch {
@@ -135,18 +135,18 @@ final class SubscriptionManageViewModel: ObservableObject {
         await self.storeKitModel.updateStoreKitSubscriptionStatus()
         await self.loadAccountInfo()
         if self.storeKitPurchasedAwaitingServerAck {
-            await self.tellServerTransactionIdToTryToFixAccountStatus()
+            await self.pollSubscription()
         }
     }
 
-    private func tellServerTransactionIdToTryToFixAccountStatus() async {
-        guard let manager, let monthlySubscriptionProduct, let transactionId = await storeKitModel.transactionId(product: monthlySubscriptionProduct), !storeKitPurchasedAwaitingServerAck else {
+    private func pollSubscription() async {
+        guard let manager, let monthlySubscriptionProduct, let originalTransactionId = await storeKitModel.originalTransactionId(product: monthlySubscriptionProduct), !storeKitPurchasedAwaitingServerAck else {
             return
         }
 
         try? await neApiApplePollSubscription(
             manager,
-            transactionId: String(transactionId)
+            originalTransactionId: String(originalTransactionId)
         )
         await self.loadAccountInfo()
     }

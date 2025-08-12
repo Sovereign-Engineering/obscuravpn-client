@@ -230,7 +230,7 @@ class StoreKitModel: ObservableObject {
         return self.purchasedProducts.contains(where: { $0.id == product.id })
     }
 
-    @MainActor public func transactionId(product: Product) async -> UInt64? {
+    @MainActor public func originalTransactionId(product: Product) async -> UInt64? {
         guard let state = await product.currentEntitlement else {
             return nil
         }
@@ -242,7 +242,7 @@ class StoreKitModel: ObservableObject {
             await transaction.finish()
             return self.isTransactionRelevant(
                 transaction
-            ) ? transaction.id : nil
+            ) ? transaction.originalID : nil
         }
     }
 }

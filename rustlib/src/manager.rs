@@ -307,8 +307,8 @@ impl Manager {
         self.api_request(AppleCreateAppAccountToken).await
     }
 
-    pub async fn apple_poll_subscription(&self, transaction_id: String) -> Result<ApplePollSubscriptionOutput, ApiError> {
-        self.api_request(ApplePollSubscription { transaction_id }).await
+    pub async fn apple_poll_subscription(&self, original_transaction_id: String) -> Result<ApplePollSubscriptionOutput, ApiError> {
+        self.api_request(ApplePollSubscription { original_transaction_id }).await
     }
 
     pub async fn get_account_info(&self) -> Result<AccountInfo, ApiError> {

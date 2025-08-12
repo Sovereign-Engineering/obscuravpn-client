@@ -89,7 +89,7 @@ impl From<&ApiError> for ManagerCmdErrorCode {
 pub enum ManagerCmd {
     ApiAppleCreateAppAccountToken {},
     ApiApplePollSubscription {
-        transaction_id: String,
+        original_transaction_id: String,
     },
     ApiGetAccountInfo {},
     GetDebugInfo {},
@@ -176,7 +176,7 @@ impl ManagerCmd {
     pub(super) async fn run(self, manager: &Manager) -> Result<ManagerCmdOk, ManagerCmdErrorCode> {
         match self {
             Self::ApiAppleCreateAppAccountToken {} => map_result(manager.apple_create_app_account_token().await),
-            Self::ApiApplePollSubscription { transaction_id } => map_result(manager.apple_poll_subscription(transaction_id).await),
+            Self::ApiApplePollSubscription { original_transaction_id } => map_result(manager.apple_poll_subscription(original_transaction_id).await),
             Self::ApiGetAccountInfo {} => map_result(manager.get_account_info().await),
             Self::SetFeatureFlag { flag, active } => map_result(manager.set_feature_flag(&flag, active)),
             Self::GetDebugInfo {} => Ok(ManagerCmdOk::GetDebugInfo(manager.get_debug_info())),

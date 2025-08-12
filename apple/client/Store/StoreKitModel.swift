@@ -51,10 +51,8 @@ class StoreKitModel: ObservableObject {
     }
 
     func purchase(_ product: Product, accountId: String) async throws -> Bool {
-        guard let appAccountToken = try await appAccountToken(accountId: accountId) else {
-            throw "Could not purchase product. Could not fetch appAccountToken for \(accountId)"
-        }
         do {
+            let appAccountToken = try await appAccountToken(accountId: accountId)
             let options: Set<Product.PurchaseOption> = [.appAccountToken(appAccountToken)]
             let result = try await product.purchase(options: options)
 
@@ -182,9 +180,9 @@ class StoreKitModel: ObservableObject {
         self.purchasedProducts = currentProductsPurchased
     }
 
-    func appAccountToken(accountId: String) async throws -> UUID? {
+    func appAccountToken(accountId: String) async throws -> UUID {
         guard let manager else {
-            return nil
+            throw "network extension manager not active"
         }
         let persistedTokenMappings = PersistedAppAccountTokenMappings()
 

@@ -10,14 +10,20 @@ struct AccountStatus: Codable, Equatable {
     }
 
     func expirationDate() -> Date? {
-        if let subscription = accountInfo.stripeSubscription {
-            if !subscription.cancelAtPeriodEnd {
-                return nil
-            }
+        if self.accountInfo.hasRenewingStripeSubscription {
+            return nil
         }
-        let top_up_end = self.accountInfo.topUp?.creditExpiresAt ?? 0
-        let subscription_end = self.accountInfo.stripeSubscription?.currentPeriodEnd ?? 0
-        let end = max(top_up_end, subscription_end, 0)
+        if let subscriptionApple = accountInfo.appleSubscription,
+           subscriptionApple.autoRenewalStatus,
+           subscriptionApple.subscriptionStatus != .expired,
+           subscriptionApple.subscriptionStatus != .revoked
+        {
+            return nil
+        }
+        let topUpExpires = self.accountInfo.topUp?.creditExpiresAt ?? 0
+        let subscriptionEnd = self.accountInfo.stripeSubscription?.currentPeriodEnd ?? 0
+        let appleEnd = self.accountInfo.appleSubscription?.renewalDate ?? 0
+        let end = max(topUpExpires, subscriptionEnd, appleEnd, 0)
         return Date(timeIntervalSince1970: TimeInterval(end))
     }
 
@@ -57,6 +63,13 @@ struct AccountInfo: Codable {
     let topUp: TopUpInfo?
     let stripeSubscription: StripeSubscriptionInfo?
     let appleSubscription: AppleSubscriptionInfo?
+
+    var hasRenewingStripeSubscription: Bool {
+        guard let stripeSubscription else { return false }
+        return !stripeSubscription.cancelAtPeriodEnd
+            && stripeSubscription.status != .unpaid
+            && stripeSubscription.status != .canceled
+    }
 
     enum CodingKeys: String, CodingKey {
         case topUp = "top_up"

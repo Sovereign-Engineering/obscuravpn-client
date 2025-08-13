@@ -140,9 +140,18 @@ final class SubscriptionManageViewModel: ObservableObject {
     }
 
     private func pollSubscription() async {
-        guard let manager, let monthlySubscriptionProduct, let originalTransactionId = await storeKitModel.originalTransactionId(product: monthlySubscriptionProduct), !storeKitPurchasedAwaitingServerAck else {
+        guard let manager, let monthlySubscriptionProduct, let accountId = self.accountInfo?.id,
+              // Only accounts with an app account token can be polled
+              let appAccountToken = try? await storeKitModel.appAccountToken(accountId: accountId),
+              let originalTransactionId = await storeKitModel.originalTransactionId(
+                  product: monthlySubscriptionProduct)
+        else {
             return
         }
+
+        logger.info(
+            "Polling subscription with app account token \(appAccountToken, privacy: .public) and original transaction ID \(originalTransactionId, privacy: .public)"
+        )
 
         try? await neApiApplePollSubscription(
             manager,

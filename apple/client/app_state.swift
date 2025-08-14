@@ -82,11 +82,8 @@ class AppState: ObservableObject {
                         content.interruptionLevel = .active
                         content.sound = UNNotificationSound.defaultCritical
                         displayNotification(
-                            UNNotificationRequest(
-                                identifier: "obscura-auto-connect-failed",
-                                content: content,
-                                trigger: nil
-                            )
+                            .autoConnectFailed,
+                            content,
                         )
                         return
                     }

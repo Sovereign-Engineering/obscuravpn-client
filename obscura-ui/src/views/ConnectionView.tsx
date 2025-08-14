@@ -9,7 +9,7 @@ import { MdLanguage, MdLaptopMac, MdOutlineWifiOff } from 'react-icons/md';
 import { ExitSelector, ExitSelectorCity } from 'src/bridge/commands';
 import * as ObscuraAccount from '../common/accountUtils';
 import { accountIsExpired, Exit, getContinent, getExitCountry, useReRenderWhenExpired } from '../common/api';
-import { AppContext, ConnectionInProgress, getCityFromStatus, isConnecting, NEVPNStatus, PinnedLocation, useIsConnecting, useIsTransitioning } from '../common/appContext';
+import { AppContext, ConnectionInProgress, getCityFromArgs, getCityFromStatus, isConnecting, NEVPNStatus, PinnedLocation, useIsConnecting, useIsTransitioning } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { exitLocation, exitsSortComparator, getCountryFlag, getExitCountryFlag } from '../common/exitUtils';
 import { KeyedSet } from '../common/KeyedSet';
@@ -157,7 +157,9 @@ function PrimaryConnectButton() {
     return <Button component='a' href={ObscuraAccount.APP_ACCOUNT_TAB}>{t('ManageAccount')}</Button>;
   }
 
-  if (inConnectingState && (!connectingToCity || appStatus.vpnStatus.connecting?.reconnecting) && osStatus.osVpnStatus !== NEVPNStatus.Disconnecting) {
+  const isReconnecting = osStatus.osVpnStatus === NEVPNStatus.Reasserting || appStatus.vpnStatus.connecting?.reconnecting;
+
+  if (inConnectingState && (!connectingToCity || isReconnecting) && osStatus.osVpnStatus !== NEVPNStatus.Disconnecting) {
     return <>
       <Space h='lg' />
       <Button w={BUTTON_WIDTH} {...theme.other.buttonDisconnectProps} mt={5} onClick={vpnDisconnect}>{t('Cancel Connecting')}</Button>
@@ -442,17 +444,17 @@ function LocationSelect(): ReactNode {
 
     const [selectedCity, setSelectedCity] = useState<ExitSelectorCity | null>(null);
     const selectedExampleExit = selectedCity && locations.get(selectedCity);
+    const isTransitioning = useIsTransitioning();
 
     useEffect(() => {
-      if (connectionInProgress !== ConnectionInProgress.UNSET) {
-        return;
-      }
-
       if (connectedExit !== undefined) {
-        setSelectedCity({
-          city_code: connectedExit.city_code,
-          country_code: connectedExit.country_code,
-        });
+        setSelectedCity(connectedExit);
+      } else if (isTransitioning) {
+        const cityExit = getCityFromStatus(appStatus.vpnStatus);
+        if (cityExit) {
+          setSelectedCity(cityExit);
+        }
+        return;
       } else if (lastChosenExit && "city" in lastChosenExit) {
         setSelectedCity(lastChosenExit.city);
       } else if (pinnedLocations.length > 0) {
@@ -462,7 +464,7 @@ function LocationSelect(): ReactNode {
           country_code: loc.country_code,
         });
       }
-    }, [connectionInProgress]);
+    }, [isTransitioning, appStatus, connectedExit, lastChosenExit, pinnedLocations]);
 
     // need to disable both combo (forces a collapsed dropdown) and button (non-clickable)
     const comboDisabled = !internetAvailable || connectionInProgress !== ConnectionInProgress.UNSET;
@@ -588,8 +590,8 @@ function LocationConnectRightButton({ dropdownOpened, selectedCity }: LocationCo
     const { t } = useTranslation();
     const theme = useMantineTheme();
     const { vpnConnect, vpnDisconnect, vpnConnected, connectionInProgress, osStatus, showOfflineUI } = useContext(AppContext);
-
-    const buttonText = connectionInProgress === ConnectionInProgress.Connecting ? 'Cancel' : ((isConnecting(connectionInProgress) || vpnConnected) ? 'Disconnect' : 'Connect');
+    const inConnectingState = useIsConnecting();
+    const buttonText = inConnectingState ? 'Cancel' : (vpnConnected ? 'Disconnect' : 'Connect');
     const btnDisabled = selectedCity === null
       || (dropdownOpened && buttonText === 'Connect')
       || showOfflineUI

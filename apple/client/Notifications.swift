@@ -3,8 +3,14 @@ import UserNotifications
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "Notifications")
 
+enum NotificationId: String {
+    case autoConnectFailed = "obscura-auto-connect-failed"
+    case connectFailed = "obscura-connect-failed"
+}
+
 func displayNotification(
-    _ req: UNNotificationRequest
+    _ identifier: NotificationId,
+    _ content: UNMutableNotificationContent
 ) {
     Task {
         do {
@@ -18,7 +24,13 @@ func displayNotification(
                 return
             }
 
-            try await center.add(req)
+            try await center.add(
+                UNNotificationRequest(
+                    identifier: identifier.rawValue,
+                    content: content,
+                    trigger: nil
+                )
+            )
         } catch {
             logger.error("Failed to display notification: \(error, privacy: .public)")
         }
@@ -36,10 +48,7 @@ func notifyConnectError(_ error: Error) {
     content.interruptionLevel = .active
     content.sound = UNNotificationSound.defaultCritical
     displayNotification(
-        UNNotificationRequest(
-            identifier: "obscura-connect-failed",
-            content: content,
-            trigger: nil
-        )
+        .connectFailed,
+        content,
     )
 }

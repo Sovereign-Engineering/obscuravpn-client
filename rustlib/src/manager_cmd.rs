@@ -4,7 +4,7 @@ use std::{sync::Arc, time::Duration};
 
 use base64::prelude::*;
 use obscuravpn_api::{
-    cmd::{ApiErrorKind, AppleCreateAppAccountTokenOutput, ApplePollSubscriptionOutput, ExitList},
+    cmd::{ApiErrorKind, AppleAssociateAccountOutput, AppleCreateAppAccountTokenOutput, ApplePollSubscriptionOutput, ExitList},
     types::{AccountId, AccountInfo},
     ClientError,
 };
@@ -87,6 +87,9 @@ impl From<&ApiError> for ManagerCmdErrorCode {
 #[derive(derive_more::Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum ManagerCmd {
+    ApiAppleAssociateAccount {
+        app_transaction_jws: String,
+    },
     ApiAppleCreateAppAccountToken {},
     ApiApplePollSubscription {
         original_transaction_id: String,
@@ -146,6 +149,8 @@ pub enum ManagerCmd {
 #[serde(untagged)]
 pub enum ManagerCmdOk {
     #[from]
+    ApiAppleAssociateAccount(AppleAssociateAccountOutput),
+    #[from]
     ApiAppleCreateAppAccountToken(AppleCreateAppAccountTokenOutput),
     #[from]
     ApiApplePollSubscription(ApplePollSubscriptionOutput),
@@ -175,6 +180,7 @@ where
 impl ManagerCmd {
     pub(super) async fn run(self, manager: &Manager) -> Result<ManagerCmdOk, ManagerCmdErrorCode> {
         match self {
+            Self::ApiAppleAssociateAccount { app_transaction_jws } => map_result(manager.apple_associate_account(app_transaction_jws).await),
             Self::ApiAppleCreateAppAccountToken {} => map_result(manager.apple_create_app_account_token().await),
             Self::ApiApplePollSubscription { original_transaction_id } => map_result(manager.apple_poll_subscription(original_transaction_id).await),
             Self::ApiGetAccountInfo {} => map_result(manager.get_account_info().await),

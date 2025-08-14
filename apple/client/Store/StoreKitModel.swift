@@ -52,6 +52,7 @@ class StoreKitModel: ObservableObject {
 
     func purchase(_ product: Product, accountId: String) async throws -> Bool {
         do {
+            try await self.associateAccount()
             let appAccountToken = try await appAccountToken(accountId: accountId)
             let options: Set<Product.PurchaseOption> = [.appAccountToken(appAccountToken)]
             let result = try await product.purchase(options: options)
@@ -203,14 +204,25 @@ class StoreKitModel: ObservableObject {
                         appAccountToken: appAccountToken
                     )
             } catch {
-                logger.error("Failed to get app account token: \(error)")
+                logger.error("Failed to get app account token: \(error, privacy: .public)")
                 throw error
             }
         }
         return appAccountToken
     }
 
-    @MainActor public func isPurchased(product: Product) async -> Bool {
+    func associateAccount() async throws {
+        guard let manager else {
+            throw "network extension manager not active"
+        }
+
+        try await neApiAppleAssociateAccount(
+            manager,
+            appTransactionJws: AppTransaction.shared.jwsRepresentation
+        )
+    }
+
+    @MainActor func isPurchased(product: Product) async -> Bool {
         guard let state = await product.currentEntitlement else {
             return false
         }

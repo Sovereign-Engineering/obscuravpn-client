@@ -67,8 +67,16 @@ struct ObscuraToggle: View {
                 return "Connected"
             }
             return "Connected to \(cityName!)"
-        case .connecting: return "Connecting..."
-        case .reconnecting: return "Reconnecting..."
+        case .connecting:
+            if self.isHovering {
+                return "Click to Cancel"
+            }
+            return "Connecting..."
+        case .reconnecting:
+            if self.isHovering {
+                return "Click to Cancel"
+            }
+            return "Reconnecting..."
         case .disconnecting: return "Disconnecting..."
         case .notConnected:
             if self.isHovering {
@@ -110,6 +118,13 @@ struct ObscuraToggle: View {
         }
     }
 
+    var italicizeToggleLabel: Bool {
+        return self.isHovering &&
+            (self.toggleLabel == .notConnected
+                || self.toggleLabel == .reconnecting
+                || self.toggleLabel == .connecting)
+    }
+
     // we're implicitly creating a (calculated) minimum width here with
     //   - .fixedSize(...)
     //   - Spacer(minLength: 54)
@@ -132,7 +147,7 @@ struct ObscuraToggle: View {
                 Text(self.getToggleText())
                     .font(.subheadline)
                     .foregroundStyle(toggleDisabled ? .tertiary : .secondary)
-                    .italic(self.isHovering)
+                    .italic(self.italicizeToggleLabel)
             }
             .lineLimit(1)
             // so that the text doesn't collapse horizontally and truncate

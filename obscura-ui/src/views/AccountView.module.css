@@ -3,6 +3,10 @@
     gap: var(--mantine-spacing-xl) !important;
 }
 
+.accountStatusCardBox {
+    flex-basis: 0;
+}
+
 @media screen and (max-width: $mantine-breakpoint-xs) {
     .container {
         padding-top: calc(20px + env(safe-area-inset-top));

@@ -8,6 +8,7 @@ struct StoreDebugUI: View {
     @State private var errorMessage: String?
     @State private var selectedProduct: Product?
     @State private var appAccountToken: UUID?
+    @State private var manageSubscriptionsPopover: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -57,20 +58,32 @@ struct StoreDebugUI: View {
                 }
                 .padding(.vertical)
 
-                HStack {
-                    Button("Reload Products") {
-                        Task {
-                            await self.reloadProducts()
+                VStack {
+                    HStack {
+                        Button("Reload Products") {
+                            Task {
+                                await self.reloadProducts()
+                            }
                         }
-                    }
-                    .buttonStyle(.borderedProminent)
+                        .buttonStyle(.borderedProminent)
 
-                    Button("Restore Purchases") {
-                        Task {
-                            await self.restorePurchases()
+                        Button("Restore Purchases") {
+                            Task {
+                                await self.restorePurchases()
+                            }
                         }
+                        .buttonStyle(.borderedProminent)
+                    }
+
+                    Button {
+                        self.manageSubscriptionsPopover = true
+                    } label: {
+                        Text("Manage Subscription")
                     }
                     .buttonStyle(.borderedProminent)
+                    .manageSubscriptionsSheet(
+                        isPresented: self.$manageSubscriptionsPopover
+                    )
                 }
 
                 if self.storeKitModel.products.isEmpty {

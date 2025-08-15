@@ -17,8 +17,6 @@ struct SubscriptionManageSheet: View {
 
     @StateObject private var viewModel: SubscriptionManageViewModel
 
-    @State private var showStoreKitDebugUI = false
-    @State private var showPreviewCarousel = false
     @State private var activeSheet: SheetType?
     @State private var showingDebugOptions = false
 

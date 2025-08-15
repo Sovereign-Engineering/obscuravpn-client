@@ -12,7 +12,8 @@ struct PurchaseOptionsView: View {
 
     @State private var manageSubscriptionsPopover: Bool = false
     @State private var restorePurchasesInProgress: Bool = false
-    @State private var isOfferCodeSheetPresented: Bool = false
+    @State private var isPromoCodeSheetPresented: Bool = false
+    @State private var promoCodeAccountAssociationError: Bool = false
 
     init(
         openUrl: @escaping (URL) -> Void,
@@ -129,16 +130,27 @@ struct PurchaseOptionsView: View {
 
     var redeemCodeButton: some View {
         Button {
-            self.isOfferCodeSheetPresented = true
+            Task { @MainActor in
+                do {
+                    try await self.storeKitModel.associateAccount()
+                    self.isPromoCodeSheetPresented = true
+                } catch {
+                    logger.error("Failed to Associate Apple account: \(error, privacy: .public)")
+                    self.promoCodeAccountAssociationError = true
+                }
+            }
         } label: {
             Text("Redeem Code")
         }
-        .offerCodeRedemption(isPresented: self.$isOfferCodeSheetPresented) { result in
+        .alert("Failed to link Apple and Obscura account. Please try again later.", isPresented: self.$promoCodeAccountAssociationError) {
+            Button("OK") {}
+        }
+        .offerCodeRedemption(isPresented: self.$isPromoCodeSheetPresented) { result in
             switch result {
             case .success:
-                logger.info("Offer code redemption flow completed successfully. (errors only show up if a valid code fails to redeem. So invalid codes and not entering a code land you here)")
+                logger.info("Promo code redemption flow completed successfully. (errors only show up if a valid code fails to redeem. So invalid codes and not entering a code land you here)")
             case .failure(let error):
-                logger.error("Offer code redemption failed: \(error)")
+                logger.error("Promo code redemption failed: \(error)")
             }
         }
     }

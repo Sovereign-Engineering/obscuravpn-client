@@ -44,6 +44,13 @@ final class SubscriptionManageViewModel: ObservableObject {
                 await self.pollSubscription()
                 await self.checkForServerAcknoledgementOfSubscription()
             }
+            Task {
+                do {
+                    try await self.storeKitModel.associateAccount()
+                } catch {
+                    logger.warning("Failed to associate Apple account in init: \(error, privacy: .public)")
+                }
+            }
         }
     }
 
@@ -137,6 +144,11 @@ final class SubscriptionManageViewModel: ObservableObject {
         await self.loadAccountInfo()
         if self.storeKitPurchasedAwaitingServerAck {
             await self.pollSubscription()
+        }
+        do {
+            try await self.storeKitModel.associateAccount()
+        } catch {
+            logger.warning("Failed to associate Apple account on refresh: \(error, privacy: .public)")
         }
     }
 

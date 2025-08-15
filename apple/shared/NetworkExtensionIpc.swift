@@ -12,6 +12,7 @@ enum NeManagerCmdResult: Codable {
 
 // See ../../rustlib/src/manager_cmd.rs
 enum NeManagerCmd: Codable {
+    case apiAppleAssociateAccount(appTransactionJws: String)
     case getDebugInfo
     case apiAppleCreateAppAccountToken
     case apiApplePollSubscription(originalTransactionId: String)

@@ -146,6 +146,9 @@ struct AppleSubscriptionInfo: Codable {
     }
 }
 
+// https://github.com/Sovereign-Engineering/obscuravpn-api/blob/main/src/cmd/apple/associate_account.rs
+struct AppleAssociateAccountOutput: Codable {}
+
 // Output types for Apple subscription management
 struct AppleCreateAppAccountTokenOutput: Codable {
     let appAccountToken: UUID

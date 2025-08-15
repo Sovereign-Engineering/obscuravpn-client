@@ -61,8 +61,6 @@ struct PurchaseOptionsView: View {
                 self.manageSubscriptionButton
             }
 
-            self.restorePurchasesButton
-
             // External payments are currently only straightforward in the US
             if self.storeKitModel.storefront?.countryCode == "USA" {
                 if let accountInfo = self.viewModel.accountInfo {

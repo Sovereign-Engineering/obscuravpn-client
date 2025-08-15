@@ -270,13 +270,7 @@ final class StatusItemManager: ObservableObject {
                 content.body = error.localizedDescription
                 content.interruptionLevel = .active
                 content.sound = UNNotificationSound.default
-                displayNotification(
-                    UNNotificationRequest(
-                        identifier: "obscura-debugging-bundle-failed",
-                        content: content,
-                        trigger: nil
-                    )
-                )
+                displayNotification(.debuggingBundleFailed, content)
             }
         }
     }

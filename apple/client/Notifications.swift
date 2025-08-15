@@ -6,6 +6,7 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
 enum NotificationId: String {
     case autoConnectFailed = "obscura-auto-connect-failed"
     case connectFailed = "obscura-connect-failed"
+    case debuggingBundleFailed = "obscura-debugging-bundle-failed"
 }
 
 func displayNotification(
@@ -47,8 +48,5 @@ func notifyConnectError(_ error: Error) {
     content.title = "Tunnel failed to connect"
     content.interruptionLevel = .active
     content.sound = UNNotificationSound.defaultCritical
-    displayNotification(
-        .connectFailed,
-        content,
-    )
+    displayNotification(.connectFailed, content)
 }

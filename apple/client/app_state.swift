@@ -81,10 +81,7 @@ class AppState: ObservableObject {
                         content.body = "Could not connect automatically at launch."
                         content.interruptionLevel = .active
                         content.sound = UNNotificationSound.defaultCritical
-                        displayNotification(
-                            .autoConnectFailed,
-                            content,
-                        )
+                        displayNotification(.autoConnectFailed, content)
                         return
                     }
 

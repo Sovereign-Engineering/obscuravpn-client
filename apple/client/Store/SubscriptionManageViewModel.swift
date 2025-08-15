@@ -14,6 +14,7 @@ final class SubscriptionManageViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var initialLoad = true
     @Published var showErrorAlert = false
+    @Published var debugGestureActivated = false
 
     // If true StoreKit thinks the subscription is owned but server does not show it as owned
     // If you want to observe this property you must have both storeKitModel and SubscriptionManageViewModel as observed

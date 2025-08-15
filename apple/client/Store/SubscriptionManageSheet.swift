@@ -71,7 +71,7 @@ struct SubscriptionManageSheet: View {
                     }
                 }
 
-                #if DEBUG
+                if self.canSeeDebugItems {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button {
                             self.showingDebugOptions = true
@@ -90,7 +90,7 @@ struct SubscriptionManageSheet: View {
                             Button("Cancel", role: .cancel) {}
                         }
                     }
-                #endif
+                }
 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
@@ -126,5 +126,9 @@ struct SubscriptionManageSheet: View {
                 SubscriptionManageSheetViewPreviewCarousel()
             }
         }
+    }
+
+    var canSeeDebugItems: Bool {
+        return self.viewModel.debugGestureActivated
     }
 }

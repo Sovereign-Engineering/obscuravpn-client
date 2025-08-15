@@ -23,6 +23,9 @@ struct SubscriptionManageSheetView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 AccountInfoOverviewView(viewModel: self.viewModel)
+                    .onTapGesture(count: 5) {
+                        self.viewModel.debugGestureActivated = true
+                    }
 
                 if self.viewModel.storeKitPurchasedAwaitingServerAck {
                     ProgressView()

@@ -145,7 +145,7 @@ struct AccountInfoOverviewView: View {
         self.storeKitModel = viewModel.storeKitModel
     }
 
-    public var body: some View {
+    var body: some View {
         SectionedTableInfoView(configuration: self.configuration)
     }
 

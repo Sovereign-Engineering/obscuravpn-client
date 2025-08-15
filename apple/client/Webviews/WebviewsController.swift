@@ -64,7 +64,7 @@ class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
     }
 
     #if !os(macOS)
-        public func handleWebsiteLinkiOS(url: URL) {
+        func handleWebsiteLinkiOS(url: URL) {
             if url.absoluteString.contains("obscuravpn:///") {
                 self.handleObscuraURL(url: url)
                 return

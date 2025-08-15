@@ -2,7 +2,7 @@ import StoreKit
 import SwiftUI
 
 struct StoreDebugUI: View {
-    @ObservedObject public var storeKitModel: StoreKitModel
+    @ObservedObject var storeKitModel: StoreKitModel
     let accountId: String?
     @State private var isLoading = false
     @State private var errorMessage: String?

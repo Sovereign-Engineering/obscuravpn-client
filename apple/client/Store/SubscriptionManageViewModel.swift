@@ -8,7 +8,7 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
 @MainActor
 final class SubscriptionManageViewModel: ObservableObject {
     private let manager: NETunnelProviderManager?
-    @ObservedObject public var storeKitModel: StoreKitModel
+    @ObservedObject var storeKitModel: StoreKitModel
 
     @Published var accountInfo: AccountInfo?
     @Published var isLoading = false

@@ -6,9 +6,9 @@ import UserNotifications
 
 class AppState: ObservableObject {
     private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "AppState")
-    public var manager: NETunnelProviderManager
+    var manager: NETunnelProviderManager
     private let configQueue: DispatchQueue = .init(label: "config queue")
-    public let osStatus: WatchableValue<OsStatus>
+    let osStatus: WatchableValue<OsStatus>
     @Published var status: NeStatus
     @Published var needsIsEnabledFix: Bool = false
 
@@ -17,11 +17,11 @@ class AppState: ObservableObject {
     #endif
 
     #if os(macOS)
-        public let updater: SparkleUpdater
+        let updater: SparkleUpdater
     #else
         let storeKitModel: StoreKitModel
     #endif
-    @Published public var webviewsController: WebviewsController
+    @Published var webviewsController: WebviewsController
 
     init(
         _ manager: NETunnelProviderManager,

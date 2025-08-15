@@ -1,2 +1,3 @@
 --self insert
---disable unusedArguments,hoistPatternLet
+--disable andOperator,unusedArguments,hoistPatternLet
+--trailing-commas collections-only # Old versions of Swift can't handle failing commas in functions. Switch to always (default) when we don't use those anymore.

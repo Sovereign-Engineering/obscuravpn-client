@@ -14,7 +14,7 @@ class StoreKitModel: ObservableObject {
     private var updateListenerTask: Task<Void, Error>?
     private var purchaseIntentListenerTask: Task<Void, Error>?
     private let manager: NETunnelProviderManager?
-    public var storefront: Storefront?
+    var storefront: Storefront?
 
     init(manager: NETunnelProviderManager?) {
         self.manager = manager
@@ -156,7 +156,7 @@ class StoreKitModel: ObservableObject {
         }
     }
 
-    @MainActor public func updateStoreKitSubscriptionStatus() async {
+    @MainActor func updateStoreKitSubscriptionStatus() async {
         var currentProductsPurchased: [Product] = []
 
         for await result in Transaction.currentEntitlements {
@@ -238,11 +238,11 @@ class StoreKitModel: ObservableObject {
 
     // In theory this should always match isPurchased
     // However by computing based on published purchased products this makes cachedIsPurchased observable
-    @MainActor public func cachedIsPurchased(product: Product) -> Bool {
+    @MainActor func cachedIsPurchased(product: Product) -> Bool {
         return self.purchasedProducts.contains(where: { $0.id == product.id })
     }
 
-    @MainActor public func originalTransactionId(product: Product) async -> UInt64? {
+    @MainActor func originalTransactionId(product: Product) async -> UInt64? {
         guard let state = await product.currentEntitlement else {
             return nil
         }

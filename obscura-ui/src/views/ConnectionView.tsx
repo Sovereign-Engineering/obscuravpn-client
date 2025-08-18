@@ -9,9 +9,9 @@ import { MdLanguage, MdLaptopMac, MdOutlineWifiOff } from 'react-icons/md';
 import { ExitSelector, ExitSelectorCity } from 'src/bridge/commands';
 import * as ObscuraAccount from '../common/accountUtils';
 import { accountIsExpired, Exit, getContinent, getExitCountry, useReRenderWhenExpired } from '../common/api';
-import { AppContext, ConnectionInProgress, getCityFromArgs, getCityFromStatus, isConnecting, NEVPNStatus, PinnedLocation, useIsConnecting, useIsTransitioning } from '../common/appContext';
+import { AppContext, ConnectionInProgress, getCityFromStatus, isConnecting, NEVPNStatus, PinnedLocation, useIsConnecting, useIsTransitioning } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
-import { exitLocation, exitsSortComparator, getCountryFlag, getExitCountryFlag } from '../common/exitUtils';
+import { exitCityEquals, exitLocation, exitsSortComparator, getCountryFlag, getExitCountryFlag } from '../common/exitUtils';
 import { KeyedSet } from '../common/KeyedSet';
 import { useExitList } from '../common/useExitList';
 import { useCookie } from '../common/utils';
@@ -632,13 +632,17 @@ interface ItemRightSectionProps {
 function CityOptions({ locations, pinnedLocationSet, lastChosenExit, onExitSelect }: CityOptionsProps) {
     const { t } = useTranslation();
     const [hoveredOption, setHoveredKey] = useState<string | null>(null);
+    const { appStatus } = useContext(AppContext);
+    const connectedExit = appStatus.vpnStatus.connected?.exit;
 
     if (locations.size === 0) return;
 
     let lastCity = lastChosenExit && "city" in lastChosenExit && lastChosenExit.city || undefined;
 
     const ItemRightSection = ({ exit, hoverKey, showIconIfPinned = false }: ItemRightSectionProps) => {
-        // would normally use one line returns, but a mix of logic and JSX in one line is really ugly
+        if (exitCityEquals(connectedExit, exit))
+            return <Text size='sm' c='green.8' fw={550}>{t('Connected')}</Text>;
+
         if (!!hoverKey && hoveredOption === hoverKey)
             return <Text size='sm' c='gray'>{t('clickToConnect')}</Text>;
 

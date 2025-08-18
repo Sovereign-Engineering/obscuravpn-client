@@ -186,7 +186,7 @@ function LocationCard({ exit, connected, onSelect, togglePin, pinned }: Location
     }
     else if (disableClick) cardClasses.push(classes.locationCardDisabled);
     else if (!connected) cardClasses.push(classes.locationCardNotConnected);
-    const cardTitle = (!connected && !disableClick) ? t('Click to connect') : undefined;
+    const cardTitle = (!connected && !disableClick) ? t('clickToConnect') : undefined;
 
     return (
         <Card shadow='xs' title={cardTitle} className={cardClasses.join(' ')} withBorder padding='xs' radius='md' w='100%' onClick={(connected || disableClick) ? undefined : onSelect}>

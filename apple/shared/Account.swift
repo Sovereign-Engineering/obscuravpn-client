@@ -9,7 +9,13 @@ struct AccountStatus: Codable, Equatable {
         case lastUpdatedSec = "last_updated_sec"
     }
 
-    func expirationDate() -> Date? {
+    // returns nil when:
+    //  subscription is active and renewing
+    // returns zero when:
+    //  never topped up
+    // returns a date in the paste when:
+    //  account is past its expiration date (or never funded)
+    var expirationDate: Date? {
         if self.accountInfo.hasRenewingStripeSubscription {
             return nil
         }
@@ -31,7 +37,7 @@ struct AccountStatus: Codable, Equatable {
         if !self.accountInfo.active {
             return 0
         }
-        if let end = self.expirationDate() {
+        if let end = self.expirationDate {
             let now = Date()
             return UInt64(max(Calendar.current.dateComponents([.day], from: now, to: end).day ?? 0, 0))
         }
@@ -39,7 +45,7 @@ struct AccountStatus: Codable, Equatable {
     }
 
     func isActive() -> Bool {
-        if let timestamp = self.expirationDate() {
+        if let timestamp = self.expirationDate {
             return timestamp > Date()
         }
         return self.accountInfo.active

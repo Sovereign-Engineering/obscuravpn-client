@@ -107,7 +107,6 @@ function AccountPaidUpSubscriptionActive({ accountInfo }: AccountStatusProps) {
   const endDate = topupExpires.toLocaleDateString();
   return (
     <AccountStatusCardTemplate
-      shaveOff={100}
       icon={<PaidUpSubscriptionActive />}
       heading={t('account-SubscriptionActive')}
       subtitle={<Text size='sm' c='dimmed'>{t('account-SubscriptionWillStart', { endDate })}</Text>}
@@ -202,70 +201,77 @@ interface AccountStatusCardTemplateProps {
   icon: React.ReactNode,
   heading: string,
   subtitle: React.ReactNode,
-  shaveOff?: number
-}
-
-function AccountStatusButtons({ isMobile = false }: { isMobile?: boolean }) {
-  const { t } = useTranslation();
-  const { appStatus } = useContext(AppContext);
-  return <>
-    <Group grow={isMobile} mt={isMobile ? 'xs' : undefined}>
-      <RefreshButton />
-      <ButtonLink text={t(isMobile ? 'Manage' : 'Manage Payments')} href={ObscuraAccount.payUrl(appStatus.accountId)} />
-    </Group>
-  </>
 }
 
 function AccountStatusCardTemplate({
   icon,
   heading,
-  subtitle,
-  shaveOff = 60
+  subtitle
 }: AccountStatusCardTemplateProps) {
+  const { t } = useTranslation();
   const colorScheme = useComputedColorScheme();
+  const { appStatus } = useContext(AppContext);
   return (
     <Paper w='100%' p='md' radius='md' bg={colorScheme === 'light' ? 'gray.1' : 'dark.6'} shadow='sm'>
-      <Group>
-        {icon}
-        <Box w={`calc(100% - ${shaveOff}px)`}>
-          <Group justify='space-between'>
-            <Text fw={500}>{heading}</Text>
-            <div className={commonClasses.desktopOnly}>
-              <AccountStatusButtons />
-            </div>
-          </Group>
+      <Group grow preventGrowOverflow={false}>
+        <Box maw='min-content'>
+          {icon}
+        </Box>
+        <Box className={classes.accountStatusCardBox}>
+          <Text fw={500}>{heading}</Text>
           {subtitle}
         </Box>
+        <Stack maw='min-content' visibleFrom='xs'>
+          <Group justify='right'>
+            <AccountRefreshButton smallerSize />
+          </Group>
+          <ButtonLink text={t('Manage Payments')} href={ObscuraAccount.payUrl(appStatus.accountId)} />
+        </Stack>
       </Group>
-      <div className={commonClasses.mobileOnly}>
-        <AccountStatusButtons isMobile />
-      </div>
+      <Group grow mt='xs' hiddenFrom='xs'>
+        <Group justify='center'>
+          <AccountRefreshButton />
+        </Group>
+        <ButtonLink text={t('Manage')} href={ObscuraAccount.payUrl(appStatus.accountId)} />
+      </Group>
     </Paper>
   );
 }
 
-function RefreshButton() {
+function AccountRefreshButton({ smallerSize = false }: { smallerSize?: boolean }) {
   const { t } = useTranslation();
   const { pollAccount, accountLoading } = useContext(AppContext);
   const theme = useMantineTheme();
 
+  const onRefresh = async () => {
+    try {
+      await pollAccount();
+    } catch (e) {
+      const error = normalizeError(e);
+      const message = error instanceof commands.CommandError
+        ? fmtErrorI18n(t, error) : error.message;
+      notifications.show({
+        title: t('Account Error'),
+        message: message,
+        color: 'red',
+      });
+    }
+  }
+
+  const smallerRefresh = smallerSize && !IS_HANDHELD_DEVICE;
+
   return (
-    <Group justify='center'>
-      <Anchor onClick={async () => {
-        try {
-          await pollAccount();
-        } catch (e) {
-          const error = normalizeError(e);
-          const message = error instanceof commands.CommandError
-            ? fmtErrorI18n(t, error) : error.message;
-          notifications.show({
-            title: t('Account Error'),
-            message: message,
-            color: 'red',
-          });
-        }
-      }} fw={550} c={theme.primaryColor} size={IS_HANDHELD_DEVICE ? 'md' : undefined}>{(accountLoading) ? <Center w={100}><Loader size='sm' /></Center> : <><FaRotateRight size={13} /> {t('Refresh')}</>}</Anchor>
-    </Group>
+    <Anchor onClick={onRefresh} fw={550} c={theme.primaryColor}
+      size={smallerRefresh ? 'sm' : 'md'}>
+      {accountLoading ? (
+        <Center w={{ base: undefined, xs: 60 }}>
+          {/* set height of loader to avoid layout shifts */}
+          <Loader h='1.25rem' size={smallerRefresh ? 'xs' : 'sm'} />
+        </Center>
+      ) :
+        <Group gap={5}><FaRotateRight size={smallerRefresh ? 11 : 13} /> {t('Refresh')}</Group>
+      }
+    </Anchor>
   );
 }
 

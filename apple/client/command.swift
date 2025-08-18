@@ -14,7 +14,6 @@ enum Command: Codable {
     case revealItemInDir(path: String)
     case registerAsLoginItem
     case unregisterAsLoginItem
-    case isRegisteredAsLoginItem
     case resetUserDefaults
     case getOsStatus(knownVersion: UUID?)
     case checkForUpdates
@@ -68,11 +67,9 @@ extension CommandHandler {
             case .revealItemInDir(let path):
                 NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
             case .registerAsLoginItem:
-                try registerAsLoginItem()
+                try registerAsLoginItem(appState: self.appState)
             case .unregisterAsLoginItem:
-                try unregisterAsLoginItem()
-            case .isRegisteredAsLoginItem:
-                return try isRegisteredAsLoginItem().json()
+                try unregisterAsLoginItem(appState: self.appState)
             case .checkForUpdates:
                 try? appState.updater.checkForUpdates()
             case .installUpdate:
@@ -81,7 +78,7 @@ extension CommandHandler {
                 }
                 appState.updater.showUpdaterIfNeeded()
         #else
-            case .debuggingArchive, .revealItemInDir, .registerAsLoginItem, .unregisterAsLoginItem, .isRegisteredAsLoginItem, .checkForUpdates, .installUpdate:
+            case .debuggingArchive, .revealItemInDir, .registerAsLoginItem, .unregisterAsLoginItem, .checkForUpdates, .installUpdate:
                 throw errorUnsupportedOnOS
         #endif
         }

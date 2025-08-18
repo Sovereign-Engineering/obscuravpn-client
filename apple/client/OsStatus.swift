@@ -14,6 +14,13 @@ class OsStatus: Encodable {
     var updaterStatus = UpdaterStatus()
     var debugBundleStatus = DebugBundleStatus()
 
+    struct LoginItemStatus: Codable {
+        var registered: Bool
+        var error: String?
+    }
+
+    var loginItemStatus: LoginItemStatus?
+
     init(strictLeakPrevention: Bool, osVpnStatus: NEVPNStatus) {
         self.osVpnStatus = osVpnStatus
         self.strictLeakPrevention = strictLeakPrevention
@@ -28,6 +35,13 @@ class OsStatus: Encodable {
             strictLeakPrevention: lastIncludeAllNetworks,
             osVpnStatus: manager.connection.status
         ))
+
+        #if os(macOS)
+            let loginItemRegistered = isRegisteredAsLoginItem()
+            w.update { value in
+                value.loginItemStatus = LoginItemStatus(registered: loginItemRegistered, error: nil)
+            }
+        #endif
         Task {
             for await path in NWPathMonitor().stream() {
                 logger.info("NWPathMonitor event: \(path.debugDescription, privacy: .public)")

@@ -7,7 +7,6 @@ import { IoInformationCircleOutline, IoMoon, IoSunnySharp } from 'react-icons/io
 import * as commands from '../bridge/commands';
 import { AppContext } from '../common/appContext';
 import { NotificationId } from '../common/notifIds';
-import { useAsync } from '../common/useAsync';
 import { errMsg, normalizeError } from '../common/utils';
 import { fmtErrorI18n } from '../translations/i18n';
 import classes from './Settings.module.css';
@@ -15,8 +14,10 @@ import classes from './Settings.module.css';
 export default function Settings() {
     const { t } = useTranslation();
     const { colorScheme, setColorScheme } = useMantineColorScheme();
-    const { value: loginItemRegistered, refresh: recheckLoginItem, loading, error: loginItemError } = useAsync({ load: commands.isRegisteredAsLoginItem, returnError: true });
-    const { appStatus } = useContext(AppContext);
+    const { appStatus, osStatus } = useContext(AppContext);
+    const loginItemStatus = osStatus.loginItemStatus;
+    const loginItemRegistered = loginItemStatus?.registered;
+    const loginItemError = loginItemStatus?.error;
 
     const registerAtLogin = async () => {
         let success = true;
@@ -24,8 +25,6 @@ export default function Settings() {
           await commands.registerAsLoginItem();
         } catch {
           success = false;
-        } finally {
-          await recheckLoginItem();
         }
         notifications.hide(NotificationId.OPEN_AT_LOGIN);
         notifications.show({
@@ -43,8 +42,6 @@ export default function Settings() {
           await commands.unregisterAsLoginItem();
         } catch {
           success = false;
-        } finally {
-          await recheckLoginItem();
         }
         notifications.hide(NotificationId.OPEN_AT_LOGIN);
         notifications.show({
@@ -76,8 +73,8 @@ export default function Settings() {
             <Stack gap='lg'>
               <Title order={4}>{t('General')}</Title>
               {
-                loginItemError?.message !== 'errorUnsupportedOnOS' &&
-                <Switch error={loginItemError === undefined ? undefined : `${loginItemError}`} disabled={loginItemError !== undefined || loading || loginItemRegistered === undefined} checked={loginItemRegistered} onChange={event => event.currentTarget.checked ? registerAtLogin() : unregisterAtLogin()} label={t('openAtLoginRegister')} />
+                loginItemStatus &&
+                <Switch error={loginItemError === undefined ? undefined : loginItemError} disabled={loginItemError !== undefined || loginItemRegistered === undefined} checked={loginItemRegistered} onChange={event => event.currentTarget.checked ? registerAtLogin() : unregisterAtLogin()} label={t('openAtLoginRegister')} />
               }
               <Stack gap={2}>
                 <Switch checked={appStatus.autoConnect} onChange={event => commands.setAutoConnect(event.currentTarget.checked)} label={t('autoConnectStartup')} />

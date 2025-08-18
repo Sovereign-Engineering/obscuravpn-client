@@ -185,10 +185,6 @@ export function unregisterAsLoginItem() {
   return invoke('unregisterAsLoginItem');
 }
 
-export async function isRegisteredAsLoginItem(): Promise<boolean> {
-  return await invoke('isRegisteredAsLoginItem') as boolean;
-}
-
 export function developerResetUserDefaults() {
     return invoke('resetUserDefaults');
 }

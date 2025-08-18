@@ -267,7 +267,7 @@ class StartupModel: ObservableObject {
                 self.update(status: .askToRegisterLoginItem(value))
                 if await value.get() {
                     do {
-                        try registerAsLoginItem()
+                        try registerAsLoginItem(appState: self.appState)
                     } catch {}
                 }
                 UserDefaults.standard.set(true, forKey: UserDefaultKeys.LoginItemRegistered)

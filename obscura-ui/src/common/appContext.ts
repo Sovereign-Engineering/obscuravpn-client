@@ -50,6 +50,10 @@ export interface OsStatus {
         inProgress: boolean,
         logsAvailable: boolean
     },
+    loginItemStatus?: {
+        registered: boolean,
+        error?: string
+    }
 }
 
 export enum TransportKind {

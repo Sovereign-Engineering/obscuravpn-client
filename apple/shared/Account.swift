@@ -92,6 +92,10 @@ struct TopUpInfo: Codable {
     enum CodingKeys: String, CodingKey {
         case creditExpiresAt = "credit_expires_at"
     }
+
+    var creditExpiresAtDate: Date {
+        return Date(timeIntervalSince1970: TimeInterval(self.creditExpiresAt))
+    }
 }
 
 extension TopUpInfo {
@@ -112,6 +116,14 @@ struct StripeSubscriptionInfo: Codable {
         case cancelAtPeriodEnd = "cancel_at_period_end"
         case status
     }
+
+    var currentPeriodStartDate: Date {
+        return Date(timeIntervalSince1970: TimeInterval(self.currentPeriodStart))
+    }
+
+    var currentPeriodEndDate: Date {
+        return Date(timeIntervalSince1970: TimeInterval(self.currentPeriodEnd))
+    }
 }
 
 enum StripeSubscriptionStatus: String, Codable {
@@ -129,12 +141,12 @@ struct AppleSubscriptionInfo: Codable {
     // https://developer.apple.com/documentation/appstoreserverapi/status
     let status: Int32
     let autoRenewalStatus: Bool
-    let renewalDate: Int64
+    let renewalTime: Int64
 
     enum CodingKeys: String, CodingKey {
         case status
         case autoRenewalStatus = "auto_renew_status"
-        case renewalDate = "renewal_date"
+        case renewalTime = "renewal_date"
     }
 
     enum Status: Int32 {
@@ -162,6 +174,10 @@ struct AppleSubscriptionInfo: Codable {
 
     var subscriptionStatus: Status {
         Status(rawValue: self.status) ?? .expired
+    }
+
+    var renewalDate: Date {
+        return Date(timeIntervalSince1970: TimeInterval(self.renewalTime))
     }
 }
 

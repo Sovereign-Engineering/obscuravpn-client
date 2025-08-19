@@ -148,6 +148,9 @@ struct PurchaseOptionsView: View {
         .offerCodeRedemption(isPresented: self.$isPromoCodeSheetPresented) { result in
             switch result {
             case .success:
+                Task {
+                    await self.viewModel.onOfferCodeRedemption()
+                }
                 logger.info("Promo code redemption flow completed successfully. (errors only show up if a valid code fails to redeem. So invalid codes and not entering a code land you here)")
             case .failure(let error):
                 logger.error("Promo code redemption failed: \(error)")

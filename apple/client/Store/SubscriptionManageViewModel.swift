@@ -16,6 +16,9 @@ final class SubscriptionManageViewModel: ObservableObject {
     @Published var showErrorAlert = false
     @Published var debugGestureActivated = false
 
+    // Bool is canRepeat
+    private var refreshTaskPerCanRepeat: [Bool: Task<Void, Error>?] = [:]
+
     // If true StoreKit thinks the subscription is owned but server does not show it as owned
     // If you want to observe this property you must have both storeKitModel and SubscriptionManageViewModel as observed
     var storeKitPurchasedAwaitingServerAck: Bool {
@@ -30,27 +33,10 @@ final class SubscriptionManageViewModel: ObservableObject {
         self.manager = manager
         self.storeKitModel = storeKitModel ?? StoreKitModel(manager: manager)
         self.accountInfo = accountInfo
-        self.initialLoad = accountInfo != nil
+        self.initialLoad = accountInfo == nil
 
-        // If we have a manager and no initial account info, load it
-        if manager != nil && accountInfo == nil {
-            Task {
-                await self.loadAccountInfo()
-            }
-        }
-
-        if self.storeKitPurchasedAwaitingServerAck {
-            Task {
-                await self.pollSubscription()
-                await self.checkForServerAcknoledgementOfSubscription()
-            }
-            Task {
-                do {
-                    try await self.storeKitModel.associateAccount()
-                } catch {
-                    logger.warning("Failed to associate Apple account in init: \(error, privacy: .public)")
-                }
-            }
+        Task {
+            await self.refresh(repeatWithBinaryBackoffAllowed: true, userOriginated: true)
         }
     }
 
@@ -109,11 +95,7 @@ final class SubscriptionManageViewModel: ObservableObject {
                     accountId: id
                 )
             if purchased {
-                try await Task.sleep(for: .seconds(20))
-                await self.checkForServerAcknoledgementOfSubscription()
-                if self.storeKitPurchasedAwaitingServerAck {
-                    await self.pollSubscription()
-                }
+                await self.afterAnyPurchase()
             }
         } catch {
             logger.error("Purchase failed: \(error)")
@@ -121,38 +103,100 @@ final class SubscriptionManageViewModel: ObservableObject {
         }
     }
 
-    private func checkForServerAcknoledgementOfSubscription() async {
+    func onOfferCodeRedemption() async {
+        await self.afterAnyPurchase()
+    }
+
+    private func afterAnyPurchase() async {
+        await self.refresh(
+            repeatWithBinaryBackoffAllowed: true,
+            userOriginated: false
+        )
+    }
+
+    func refresh(repeatWithBinaryBackoffAllowed: Bool = false, userOriginated: Bool = false) async {
+        if userOriginated {
+            Task {
+                await self.logCurrentStatus(context: "User originated refresh")
+            }
+        }
+        self.refreshTaskPerCanRepeat[repeatWithBinaryBackoffAllowed]??.cancel()
+        self.refreshTaskPerCanRepeat[repeatWithBinaryBackoffAllowed] = Task {
+            await self.storeKitModel.updateStoreKitSubscriptionStatus()
+
+            // Do one simple load to see if we can get a match between client and server state
+            await self.loadAccountInfo(showLoading: userOriginated)
+
+            // Attempt to fetch and save the app account token locally if we havent fetched it before and weve made a purchase
+            if self.storeKitModel.hasActiveMonthlySubscription {
+                if let accountId = self.accountInfo?.id {
+                    do {
+                        _ = try await self.storeKitModel
+                            .appAccountToken(accountId: accountId)
+                    } catch {
+                        logger.error("Could not get or generate app account token \(error.localizedDescription)")
+                    }
+                }
+            }
+
+            if self.storeKitPurchasedAwaitingServerAck {
+                if repeatWithBinaryBackoffAllowed {
+                    try await self.pollCheckingForServerAcknoledgementOfSubscription()
+                } else {
+                    // Just do it once
+                    await self.askBackendToCheckTransactionId()
+                }
+            }
+
+            do {
+                try await self.storeKitModel.associateAccount()
+            } catch {
+                logger.warning("Failed to associate Apple account on refresh: \(error, privacy: .public)")
+            }
+        }
+        try? await self.refreshTaskPerCanRepeat[repeatWithBinaryBackoffAllowed]??.value
+    }
+
+    // Polls with binary backoff checking for updates to loadAccountInfo until
+    // client and server paid state match up. Periodically, if they do not match up,
+    // calls askBackendToCheckTransactionId to attempt to force backend to
+    // match it up
+    private func pollCheckingForServerAcknoledgementOfSubscription() async throws {
         let delays = [1, 2, 4, 8, 16, 32, 64]
 
+        Task {
+            await self.logCurrentStatus(context: "Starting to poll in pollCheckingForServerAcknoledgementOfSubscription")
+        }
+
         for delay in delays {
+            logger.debug("Polling loadAccountInfo, then send backend transaction id, then wait \(delay)")
             await self.loadAccountInfo(showLoading: false)
 
             // If that load resolved the mismatch return
             if !self.storeKitPurchasedAwaitingServerAck {
                 return
             }
+            await self.askBackendToCheckTransactionId()
 
-            try? await Task.sleep(for: .seconds(delay))
+            // Schedule a loadAccount info 3 seconds after poll subscription always so we hear of a change without waiting for next backoff
+            Task {
+                try await Task.sleep(for: .seconds(3))
+                await self.loadAccountInfo(showLoading: false)
+            }
+
+            try await Task.sleep(for: .seconds(delay))
         }
 
         logger.error("Server failed to acknowledge subscription after all retries")
+        Task {
+            await self.logCurrentStatus(context: "polling pollCheckingForServerAcknoledgementOfSubscription failed")
+        }
         self.showErrorAlert = true
     }
 
-    func refresh() async {
-        await self.storeKitModel.updateStoreKitSubscriptionStatus()
-        await self.loadAccountInfo()
-        if self.storeKitPurchasedAwaitingServerAck {
-            await self.pollSubscription()
-        }
-        do {
-            try await self.storeKitModel.associateAccount()
-        } catch {
-            logger.warning("Failed to associate Apple account on refresh: \(error, privacy: .public)")
-        }
-    }
-
-    private func pollSubscription() async {
+    // Attempt to force backend to match storekit subscription state with its own
+    // by providing the transaction ID of the Transaction the client paid with
+    private func askBackendToCheckTransactionId() async {
         guard let manager, let monthlySubscriptionProduct, let accountId = self.accountInfo?.id,
               // Only accounts with an app account token can be polled
               let appAccountToken = try? await storeKitModel.appAccountToken(accountId: accountId),
@@ -170,26 +214,36 @@ final class SubscriptionManageViewModel: ObservableObject {
             manager,
             originalTransactionId: String(originalTransactionId)
         )
-        await self.loadAccountInfo()
-    }
-}
-
-private class PersistedAppAccountTokenMappings {
-    private static let userDefaultsKey = "storekit_account_token"
-
-    func setAccountToken(accountId: String, appAccountToken: UUID) {
-        let data = [accountId: appAccountToken.uuidString]
-        UserDefaults.standard.set(data, forKey: Self.userDefaultsKey)
+        await self.loadAccountInfo(showLoading: false)
     }
 
-    func getAccountToken(for accountId: String) -> UUID? {
-        guard let data = UserDefaults.standard.dictionary(forKey: Self.userDefaultsKey) as? [String: String],
-              let uuidString = data[accountId],
-              data.keys.first == accountId,
-              let uuid = UUID(uuidString: uuidString)
-        else {
-            return nil
+    private func logCurrentStatus(context: String) async {
+        let appAccountTokenString: String
+        if let accountInfo {
+            if let appAccountToken = try? await storeKitModel.appAccountToken(
+                accountId: accountInfo.id)
+            {
+                appAccountTokenString = appAccountToken.uuidString
+            } else {
+                appAccountTokenString = "(nil))"
+            }
+        } else {
+            appAccountTokenString = "(nil we dont have an account id)"
         }
-        return uuid
+
+        let originalTransactionIdString: String
+        if let monthlySubscriptionProduct {
+            if let originalTransactionId = await storeKitModel.originalTransactionId(
+                product: monthlySubscriptionProduct)
+            {
+                originalTransactionIdString = String(originalTransactionId)
+            } else {
+                originalTransactionIdString = "(nil)"
+            }
+        } else {
+            originalTransactionIdString = "(nil PROBLEM we do not have monthlySubscriptionProduct)"
+        }
+
+        logger.log("SubscriptionViewModel Status Update: \"\(context)\" accountId: \(self.accountInfo?.id ?? "(nil)"), appAccountToken: \(appAccountTokenString), purchasedSubscription: \(self.storeKitModel.hasActiveMonthlySubscription), originalTransactionId: \(originalTransactionIdString), accountInfo: \(self.accountInfo?.description ?? "(nil)") ")
     }
 }

@@ -20,6 +20,13 @@ struct SubscriptionManageSheet: View {
     @State private var activeSheet: SheetType?
     @State private var showingDebugOptions = false
 
+    @State private var longLoadDetected: Bool = false
+    @State private var longLoadingTask: Task<Void, Error>? = nil
+    var isLongLoading: Bool {
+        // Failsafe so that isLongLoading is never true when viewModel.isLoading is false
+        return self.longLoadDetected && self.viewModel.isLoading
+    }
+
     @Environment(\.dismiss) private var dismiss
 
     // Initializer for production use with manager
@@ -42,8 +49,8 @@ struct SubscriptionManageSheet: View {
                         viewModel: self.viewModel,
                         openUrl: self.openUrl
                     )
-                    .opacity(self.viewModel.isLoading ? 0.3 : 1.0)
-                    .animation(.easeInOut(duration: 0.2), value: self.viewModel.isLoading)
+                    .opacity(self.isLongLoading ? 0.3 : 1.0)
+                    .animation(.easeInOut(duration: 0.2), value: self.isLongLoading)
                 } else if !self.viewModel.initialLoad {
                     ContentUnavailableView(
                         "No Account Information",
@@ -52,8 +59,8 @@ struct SubscriptionManageSheet: View {
                     )
                 }
 
-                if self.viewModel.isLoading && !self.viewModel.initialLoad {
-                    ProgressView("Loading account information...")
+                if self.viewModel.isLoading {
+                    ProgressView(self.isLongLoading ? "Loading account information..." : "")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .cornerRadius(12)
                         .transition(.opacity)
@@ -93,7 +100,7 @@ struct SubscriptionManageSheet: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         Task {
-                            await self.viewModel.refresh()
+                            await self.viewModel.refresh(userOriginated: true)
                         }
                     } label: {
                         Image(systemName: "arrow.clockwise")
@@ -102,14 +109,8 @@ struct SubscriptionManageSheet: View {
                 }
             }
         }
-        .onAppear {
-            // Load account info from manager
-            Task {
-                await self.viewModel.refresh()
-            }
-        }
         .refreshable {
-            await self.viewModel.refresh()
+            await self.viewModel.refresh(userOriginated: true)
         }
         .alert("Error", isPresented: self.$viewModel.showErrorAlert) {
             Button("OK") {}
@@ -122,6 +123,18 @@ struct SubscriptionManageSheet: View {
                 StoreDebugUI(storeKitModel: self.viewModel.storeKitModel, accountId: self.viewModel.accountInfo?.id)
             case .previewCarousel:
                 SubscriptionManageSheetViewPreviewCarousel()
+            }
+        }
+        .onChange(of: self.viewModel.isLoading) { _, newValue in
+            self.longLoadingTask?.cancel()
+            if !newValue {
+                self.longLoadDetected = false
+            } else {
+                self.longLoadingTask = Task {
+                    try await Task.sleep(for: .seconds(1))
+                    try Task.checkCancellation()
+                    self.longLoadDetected = true
+                }
             }
         }
     }

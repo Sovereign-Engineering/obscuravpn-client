@@ -80,7 +80,7 @@ struct SubscriptionManageSheetViewPreviewCarousel: View {
                 appleSubscription: AppleSubscriptionInfo(
                     status: 1, // Active status
                     autoRenewalStatus: true,
-                    renewalDate: futureDate
+                    renewalTime: futureDate
                 )
             )
         )

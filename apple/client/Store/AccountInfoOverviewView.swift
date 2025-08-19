@@ -170,7 +170,7 @@ struct AccountInfoOverviewView: View {
                     Row(
                         title: "Expiration Date",
                         importance: .medium,
-                        date: Date(timeIntervalSince1970: TimeInterval(topUp.creditExpiresAt))
+                        date: topUp.creditExpiresAtDate
                     ),
                 ])
                 sections.append(topUpSection)
@@ -193,12 +193,12 @@ struct AccountInfoOverviewView: View {
                     Row(
                         title: "Period Start",
                         importance: .medium,
-                        date: Date(timeIntervalSince1970: TimeInterval(stripeSubscription.currentPeriodStart))
+                        date: stripeSubscription.currentPeriodStartDate
                     ),
                     Row(
                         title: "Period End",
                         importance: .medium,
-                        date: Date(timeIntervalSince1970: TimeInterval(stripeSubscription.currentPeriodEnd))
+                        date: stripeSubscription.currentPeriodEndDate
                     ),
                     Row(
                         title: "Cancel at Period End",
@@ -231,7 +231,7 @@ struct AccountInfoOverviewView: View {
                     Row(
                         title: "Renewal Date",
                         importance: .medium,
-                        date: Date(timeIntervalSince1970: TimeInterval(appleSubscription.renewalDate))
+                        date: appleSubscription.renewalDate
                     ),
                 ])
                 sections.append(appleSection)

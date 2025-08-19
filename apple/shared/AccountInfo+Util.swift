@@ -4,9 +4,7 @@ extension AccountInfo {
     var hasTopUp: Bool {
         guard let topUp else { return false }
 
-        let topUpEnd = Date(timeIntervalSince1970: TimeInterval(topUp.creditExpiresAt))
-
-        return topUpEnd > .now
+        return topUp.creditExpiresAtDate > .now
     }
 
     var hasStripeSubscription: Bool {

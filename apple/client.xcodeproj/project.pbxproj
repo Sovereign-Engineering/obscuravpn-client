@@ -117,6 +117,10 @@
 		A94B1DE22E28B4E100E5F325 /* SubscriptionManageSheetViewPreviewCarousel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B1DE12E28B4E100E5F325 /* SubscriptionManageSheetViewPreviewCarousel.swift */; };
 		A94B1E242E2B03B900E5F325 /* ConditionallyDisabled.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B1D9B2E286B3900E5F325 /* ConditionallyDisabled.swift */; };
 		A94B1E3D2E2B236800E5F325 /* Obscura VPN Local.storekit in Resources */ = {isa = PBXBuildFile; fileRef = A94B1E3C2E2B236800E5F325 /* Obscura VPN Local.storekit */; };
+		A94BF4462E53BBEF007FDD1C /* Account+CustomStringConvertible.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94BF4452E53BBE9007FDD1C /* Account+CustomStringConvertible.swift */; };
+		A94BF4472E53BBEF007FDD1C /* Account+CustomStringConvertible.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94BF4452E53BBE9007FDD1C /* Account+CustomStringConvertible.swift */; };
+		A94BF4482E53BBEF007FDD1C /* Account+CustomStringConvertible.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94BF4452E53BBE9007FDD1C /* Account+CustomStringConvertible.swift */; };
+		A94BF4492E53BBEF007FDD1C /* Account+CustomStringConvertible.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94BF4452E53BBE9007FDD1C /* Account+CustomStringConvertible.swift */; };
 		A952CE0A2E1B87B8007E25AC /* SubscriptionManageSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A952CE082E1B87B8007E25AC /* SubscriptionManageSheet.swift */; };
 		A95A91332DF9910C005CB52A /* ObscuraUIIOSWrapperAndTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = A95A91322DF9910C005CB52A /* ObscuraUIIOSWrapperAndTabs.swift */; };
 		A9758FDE2E41910300741928 /* HyperlinkButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9758FDD2E41910300741928 /* HyperlinkButtonStyle.swift */; };
@@ -337,6 +341,7 @@
 		A94B1DDE2E28B2D000E5F325 /* AccountInfoOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountInfoOverviewView.swift; sourceTree = "<group>"; };
 		A94B1DE12E28B4E100E5F325 /* SubscriptionManageSheetViewPreviewCarousel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManageSheetViewPreviewCarousel.swift; sourceTree = "<group>"; };
 		A94B1E3C2E2B236800E5F325 /* Obscura VPN Local.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Obscura VPN Local.storekit"; sourceTree = "<group>"; };
+		A94BF4452E53BBE9007FDD1C /* Account+CustomStringConvertible.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Account+CustomStringConvertible.swift"; sourceTree = "<group>"; };
 		A952CE082E1B87B8007E25AC /* SubscriptionManageSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManageSheet.swift; sourceTree = "<group>"; };
 		A95A91322DF9910C005CB52A /* ObscuraUIIOSWrapperAndTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObscuraUIIOSWrapperAndTabs.swift; sourceTree = "<group>"; };
 		A9758FDD2E41910300741928 /* HyperlinkButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HyperlinkButtonStyle.swift; sourceTree = "<group>"; };
@@ -563,6 +568,7 @@
 			children = (
 				30497E6D2D9ED57F008B22F9 /* Box.swift */,
 				968B02B82CFF5B7B0053D0EF /* Account.swift */,
+				A94BF4452E53BBE9007FDD1C /* Account+CustomStringConvertible.swift */,
 				96C920682CD91D94002C85EA /* String.swift */,
 				35230C182C764F0D007ECFEC /* Swift.swift */,
 				35230C152C764B97007ECFEC /* Concurrency.swift */,
@@ -994,6 +1000,7 @@
 				A936D4452DD1492A0031B646 /* UXViewRepresentable.swift in Sources */,
 				A936D4462DD1492A0031B646 /* UXViewController.swift in Sources */,
 				A94B1DCE2E28B13E00E5F325 /* AccountInfo+Util.swift in Sources */,
+				A94BF4462E53BBEF007FDD1C /* Account+CustomStringConvertible.swift in Sources */,
 				9632E4642D19C5EC00BC8E3F /* AccountStatusItem.swift in Sources */,
 				30920D752C1F71BB008690C3 /* startup.swift in Sources */,
 				30920D792C2057B1008690C3 /* initNetworkExtension.swift in Sources */,
@@ -1046,6 +1053,7 @@
 			files = (
 				A9963C632DB8401100D10893 /* Sleep.swift in Sources */,
 				A9963C622DB8400D00D10893 /* PacketTunnelProvider.swift in Sources */,
+				A94BF4492E53BBEF007FDD1C /* Account+CustomStringConvertible.swift in Sources */,
 				A9963C612DB8400900D10893 /* Concurrency.swift in Sources */,
 				A9963C602DB8400300D10893 /* WatchableValue.swift in Sources */,
 				A9963C5F2DB83FFD00D10893 /* NetworkExtensionIpc.swift in Sources */,
@@ -1074,6 +1082,7 @@
 				35230C1A2C764F0D007ECFEC /* Swift.swift in Sources */,
 				352D58E12C4AE796002F3404 /* ObservableValue.swift in Sources */,
 				30920DAE2C3DC174008690C3 /* InfoDict.swift in Sources */,
+				A94BF4482E53BBEF007FDD1C /* Account+CustomStringConvertible.swift in Sources */,
 				35219C3C2C6BD57F00E63BB8 /* Debug.swift in Sources */,
 				3098C1942B921489008877AA /* main.swift in Sources */,
 				17B910022E0DB3E50073AAD7 /* Keychain.swift in Sources */,
@@ -1101,6 +1110,7 @@
 				A936D4902DD15B6B0031B646 /* startup.swift in Sources */,
 				A936D4732DD14E470031B646 /* command.swift in Sources */,
 				A936D4722DD14E040031B646 /* ScriptMessageHandlers.swift in Sources */,
+				A94BF4472E53BBEF007FDD1C /* Account+CustomStringConvertible.swift in Sources */,
 				A936D4712DD14DC30031B646 /* ObscuraUIWebView.swift in Sources */,
 				A9200A872DD127A200FD035C /* Notifications.swift in Sources */,
 				A9758FDE2E41910300741928 /* HyperlinkButtonStyle.swift in Sources */,

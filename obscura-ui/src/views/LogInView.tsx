@@ -6,22 +6,28 @@ import { ChangeEvent, FormEvent, ForwardedRef, forwardRef, PropsWithChildren, Re
 import { Trans, useTranslation } from 'react-i18next';
 import ExternalLinkIcon from '../components/ExternalLinkIcon';
 
+import { IoIosCard, IoIosCopy } from 'react-icons/io';
+import { IoArrowForward } from 'react-icons/io5';
 import AppIcon from '../../../apple/client/Assets.xcassets/AppIcon.appiconset/icon_128x128.png';
 import * as commands from '../bridge/commands';
-import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
+import { IS_HANDHELD_DEVICE, PLATFORM } from '../bridge/SystemProvider';
 import * as ObscuraAccount from '../common/accountUtils';
 import commonClasses from '../common/common.module.css';
 import { HEADER_TITLE, multiRef, normalizeError } from '../common/utils';
 import DecoOrangeTop from '../res/deco/deco-orange-top.svg';
 import DecoOrangeBottom from '../res/deco/deco-signup-mobile.svg';
+import { appleReviewIds, stagingAPIURL } from '../Secrets';
 import { fmtErrorI18n, TranslationKey } from '../translations/i18n';
 import classes from './LoginView.module.css';
-import { stagingAPIURL, appleReviewIds } from '../Secrets';
 
 interface LogInProps {
   accountNumber: ObscuraAccount.AccountId,
   accountActive?: boolean
 }
+
+// minimum width required of the account number input
+const ACCOUNT_INPUT_WIDTH = 270;
+const COPY_ACCOUNT_WIDTH = IS_HANDHELD_DEVICE ? 300 : '24ch';
 
 export default function LogIn({ accountNumber, accountActive }: LogInProps) {
   const { t } = useTranslation();
@@ -123,7 +129,7 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
                   components={[<Anchor href={ObscuraAccount.LEGAL_WEBPAGE} />]}
                 />
               </Text>
-              <Button w={260} onClick={initiateAccountCreation}>{t('Create an Account')}</Button>
+              <Button w={ACCOUNT_INPUT_WIDTH} onClick={initiateAccountCreation}>{t('Create an Account')}</Button>
               {
                 apiError &&
                 <Card shadow='sm' padding='lg' my={0} m={0} radius='md'>
@@ -131,7 +137,7 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
                 </Card>
               }
               <AccountNumberInput ref={inputRef} />
-              <Button w={260} disabled={loginWaiting} type='submit' variant='outline'>{loginWaiting ? <Loader size='sm' /> : t('Log In')}</Button>
+              <Button w={ACCOUNT_INPUT_WIDTH} disabled={loginWaiting} type='submit' variant='outline'>{loginWaiting ? <Loader size='sm' /> : t('Log In')}</Button>
             </Stack >
         }
       </div>
@@ -167,6 +173,16 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
     return () => clearTimeout(timeoutRef.current);
   }, [loading]);
 
+  useEffect(() => {
+    const onScreenshotDetected = () => {
+      console.log("Screenshot detected, enabling payment button");
+      userPressOnCopy(true);
+    };
+
+    window.addEventListener('screenshotDetected', onScreenshotDetected);
+    return () => window.removeEventListener('screenshotDetected', onScreenshotDetected);
+  }, []);
+
   const showDoneButton = accountActive || paymentPressed;
 
   const cancelSignUp = async () => {
@@ -196,32 +212,49 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
         <Image src={AppIcon} w={64} />
         <AccountId accountId={value} />
         <Transition mounted={value === generatedAccountId} transition='fade-up' duration={600}>
-          {styles => <Stack style={styles} justify='center' align='center'>
+          {styles => <Stack style={styles} justify='space-between' align='center' h='40vh'>
             <CopyButton value={ObscuraAccount.accountIdToString(generatedAccountId)}>
               {({ copied, copy }) => (
-                <Button variant={copied ? 'filled' : undefined} color={copied ? 'teal' : undefined} miw={IS_HANDHELD_DEVICE ? 300 : '22ch'}
+                <Button variant={copied ? 'filled' : undefined} color={copied ? 'teal' : undefined} miw={COPY_ACCOUNT_WIDTH}
                   onClick={() => {
                     userPressOnCopy(true);
                     copy();
-                  }}>
+                  }} leftSection={<IoIosCopy size='1em' />}>
                   {copied ? t('Copied Account Number') : t('Copy Account Number')}
                 </Button>
               )}
             </CopyButton>
-            <Text ta='center' fw={800} ml='xs' mr='xs'>{t('writeDownAccountNumber')}</Text>
-            <Group grow={IS_HANDHELD_DEVICE} w={IS_HANDHELD_DEVICE ? 300 : undefined}>
-              <Button disabled={!copyPressed} variant={IS_HANDHELD_DEVICE ? 'outline' : undefined} onClick={open} rightSection={<ExternalLinkIcon />}>{t('Payment')}</Button>
-              {
-                (!IS_HANDHELD_DEVICE || showDoneButton) &&
-                <Button disabled={!showDoneButton} onClick={() => commands.setInNewAccountFlow(false)}>{t('Done')}</Button>
+            <Stack align='center' gap='lg'>
+              {!copyPressed &&
+                <Text ta='center' size='sm' ml='xs' mr='xs'>
+                  <Trans i18nKey='pleaseCopyAccountNumber' values={{ context: PLATFORM }} components={{ b: <b /> }} />
+                </Text>
               }
-            </Group>
-            {
-              !paymentPressed &&
-              <Button fw='bold' size='sm' variant='subtle' onClick={cancelSignUp} c='red'>
-                {t('cancelSignUp')}
-              </Button>
-            }
+              <Group preventGrowOverflow={false} grow miw={COPY_ACCOUNT_WIDTH} justify='center'>
+                <Button
+                  miw={showDoneButton ? undefined : COPY_ACCOUNT_WIDTH}
+                  variant={(!showDoneButton && IS_HANDHELD_DEVICE) ? 'outline' : undefined}
+                  disabled={!copyPressed}
+                  onClick={open}
+                  leftSection={showDoneButton ? <IoIosCard /> : <IoArrowForward />}
+                >
+                  {showDoneButton ? t('Payment') : t('proceedToPayment')}
+                </Button>
+                {
+                  showDoneButton &&
+                  <Button leftSection={<IoArrowForward />} variant='outline' disabled={!showDoneButton} onClick={() => commands.setInNewAccountFlow(false)}>{t('Done')}</Button>
+                }
+              </Group>
+              {
+                !showDoneButton &&
+                <Text size='sm' ta='center'>
+                  <Trans
+                    i18nKey='wantExistingAccount'
+                    components={[<Anchor onClick={cancelSignUp} c='blue' />]}
+                  />
+                </Text>
+              }
+            </Stack>
           </Stack>}
         </Transition>
       </Stack>
@@ -333,7 +366,7 @@ const AccountNumberInput = forwardRef(function AccountNumberInput(props: {}, ref
     setError(newValue.length === 0 ? null : validateAccountNumber(e.currentTarget.value));
   }
 
-  return <TextInput inputMode='numeric' ref={multiRef(internalRef, ref)} value={value} onChange={onChange} error={error} required w={260} label={t('Obscura Account Number')} placeholder='XXXX - XXXX - XXXX - XXXX - XXXX' />
+  return <TextInput inputMode='numeric' ref={multiRef(internalRef, ref)} value={value} onChange={onChange} error={error} required w={ACCOUNT_INPUT_WIDTH} label={t('Obscura Account Number')} placeholder='XXXX - XXXX - XXXX - XXXX - XXXX' />
 });
 
 interface ConfirmationDialogProps extends PropsWithChildren {

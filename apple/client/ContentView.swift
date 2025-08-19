@@ -1,6 +1,9 @@
 import OrderedCollections
 import OSLog
 import SwiftUI
+#if !os(macOS)
+    import UIKit
+#endif
 import UniformTypeIdentifiers
 import WebKit
 
@@ -305,6 +308,13 @@ struct ContentView: View {
                 }
                 .onOpenURL { incomingURL in
                     self.webviewsController.handleObscuraURL(url: incomingURL)
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.userDidTakeScreenshotNotification)) { _ in
+                    guard self.appState.status.inNewAccountFlow else {
+                        return
+                    }
+                    logger.debug("Screenshot detected during new account flow")
+                    self.webviewsController.obscuraWebView?.handleScreenshotDetected()
                 }
                 .overlay(alignment: .topTrailing) {
                     #if DEBUG

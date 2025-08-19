@@ -75,6 +75,16 @@ class ObscuraUIWebView: WKWebView {
             window.dispatchEvent(new CustomEvent("paymentSucceeded"))
         """
     }
+
+    func handleScreenshotDetected() {
+        self.evaluateJavaScript(ObscuraUIWebView.generateScreenshotDetectedEventJS())
+    }
+
+    static func generateScreenshotDetectedEventJS() -> String {
+        return """
+            window.dispatchEvent(new CustomEvent("screenshotDetected"))
+        """
+    }
 }
 
 #if !os(macOS)

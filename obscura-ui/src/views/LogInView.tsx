@@ -4,7 +4,6 @@ import { notifications } from '@mantine/notifications';
 import { motion, MotionValue, useSpring, useTransform } from 'framer-motion';
 import { ChangeEvent, FormEvent, ForwardedRef, forwardRef, PropsWithChildren, ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import ExternalLinkIcon from '../components/ExternalLinkIcon';
 
 import { IoIosCard, IoIosCopy } from 'react-icons/io';
 import { IoArrowForward } from 'react-icons/io5';
@@ -25,8 +24,6 @@ interface LogInProps {
   accountActive?: boolean
 }
 
-// minimum width required of the account number input
-const ACCOUNT_INPUT_WIDTH = 270;
 const COPY_ACCOUNT_WIDTH = IS_HANDHELD_DEVICE ? 300 : '24ch';
 
 export default function LogIn({ accountNumber, accountActive }: LogInProps) {
@@ -123,21 +120,23 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
                 <Image src={AppIcon} w={64} />
                 <Title>{HEADER_TITLE}</Title>
               </Group>
-              <Text size='sm' ta='center' w={300}>
-                <Trans
-                  i18nKey='legalNotice'
-                  components={[<Anchor href={ObscuraAccount.LEGAL_WEBPAGE} />]}
-                />
-              </Text>
-              <Button w={ACCOUNT_INPUT_WIDTH} onClick={initiateAccountCreation}>{t('Create an Account')}</Button>
-              {
-                apiError &&
-                <Card shadow='sm' padding='lg' my={0} m={0} radius='md'>
-                  <Text c='red'>{t(apiError as TranslationKey)}</Text>
-                </Card>
-              }
-              <AccountNumberInput ref={inputRef} />
-              <Button w={ACCOUNT_INPUT_WIDTH} disabled={loginWaiting} type='submit' variant='outline'>{loginWaiting ? <Loader size='sm' /> : t('Log In')}</Button>
+              <Stack maw='min-content'>
+                <Text size='sm' ta='center'>
+                  <Trans
+                    i18nKey='legalNotice'
+                    components={[<Anchor href={ObscuraAccount.LEGAL_WEBPAGE} />]}
+                  />
+                </Text>
+                <Button onClick={initiateAccountCreation}>{t('Create an Account')}</Button>
+                {
+                  apiError &&
+                  <Card shadow='sm' padding='lg' my={0} m={0} radius='md'>
+                    <Text c='red'>{t(apiError as TranslationKey)}</Text>
+                  </Card>
+                }
+                <AccountNumberInput ref={inputRef} />
+                <Button disabled={loginWaiting} type='submit' variant='outline'>{loginWaiting ? <Loader size='sm' /> : t('Log In')}</Button>
+              </Stack>
             </Stack >
         }
       </div>
@@ -159,7 +158,7 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
   const [value, setValue] = useState(ObscuraAccount.generateAccountNumber());
   const [confirmAccountSecured, { open, close }] = useDisclosure(false);
   const [paymentPressed, userPressOnPayment] = useState(false);
-  const [copyPressed, userPressOnCopy] = useState(false);
+  const [accountNumberCopied, setAccountNumberCopied] = useState(false);
   const timeoutRef = useRef<number>();
 
   const rollAccountValue = (tries: number) => {
@@ -176,7 +175,7 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
   useEffect(() => {
     const onScreenshotDetected = () => {
       console.log("Screenshot detected, enabling payment button");
-      userPressOnCopy(true);
+      setAccountNumberCopied(true);
     };
 
     window.addEventListener('screenshotDetected', onScreenshotDetected);
@@ -217,7 +216,7 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
               {({ copied, copy }) => (
                 <Button variant={copied ? 'filled' : undefined} color={copied ? 'teal' : undefined} miw={COPY_ACCOUNT_WIDTH}
                   onClick={() => {
-                    userPressOnCopy(true);
+                    setAccountNumberCopied(true);
                     copy();
                   }} leftSection={<IoIosCopy size='1em' />}>
                   {copied ? t('Copied Account Number') : t('Copy Account Number')}
@@ -225,7 +224,7 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
               )}
             </CopyButton>
             <Stack align='center' gap='lg'>
-              {!copyPressed &&
+              {!accountNumberCopied &&
                 <Text ta='center' size='sm' ml='xs' mr='xs'>
                   <Trans i18nKey='pleaseCopyAccountNumber' values={{ context: PLATFORM }} components={{ b: <b /> }} />
                 </Text>
@@ -234,7 +233,7 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
                 <Button
                   miw={showDoneButton ? undefined : COPY_ACCOUNT_WIDTH}
                   variant={(!showDoneButton && IS_HANDHELD_DEVICE) ? 'outline' : undefined}
-                  disabled={!copyPressed}
+                  disabled={!accountNumberCopied}
                   onClick={open}
                   leftSection={showDoneButton ? <IoIosCard /> : <IoArrowForward />}
                 >
@@ -366,7 +365,7 @@ const AccountNumberInput = forwardRef(function AccountNumberInput(props: {}, ref
     setError(newValue.length === 0 ? null : validateAccountNumber(e.currentTarget.value));
   }
 
-  return <TextInput inputMode='numeric' ref={multiRef(internalRef, ref)} value={value} onChange={onChange} error={error} required w={ACCOUNT_INPUT_WIDTH} label={t('Obscura Account Number')} placeholder='XXXX - XXXX - XXXX - XXXX - XXXX' />
+  return <TextInput inputMode='numeric' ref={multiRef(internalRef, ref)} value={value} onChange={onChange} error={error} required miw={270} label={t('Obscura Account Number')} placeholder='XXXX - XXXX - XXXX - XXXX - XXXX' />
 });
 
 interface ConfirmationDialogProps extends PropsWithChildren {

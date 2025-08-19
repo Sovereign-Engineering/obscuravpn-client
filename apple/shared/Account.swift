@@ -28,7 +28,7 @@ struct AccountStatus: Codable, Equatable {
         }
         let topUpExpires = self.accountInfo.topUp?.creditExpiresAt ?? 0
         let subscriptionEnd = self.accountInfo.stripeSubscription?.currentPeriodEnd ?? 0
-        let appleEnd = self.accountInfo.appleSubscription?.renewalDate ?? 0
+        let appleEnd = self.accountInfo.appleSubscription?.renewalTime ?? 0
         let end = max(topUpExpires, subscriptionEnd, appleEnd, 0)
         return Date(timeIntervalSince1970: TimeInterval(end))
     }

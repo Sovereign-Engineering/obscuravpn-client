@@ -9,15 +9,27 @@ struct AccountStatus: Codable, Equatable {
         case lastUpdatedSec = "last_updated_sec"
     }
 
-    func expirationDate() -> Date? {
-        if let subscription = accountInfo.stripeSubscription {
-            if !subscription.cancelAtPeriodEnd {
-                return nil
-            }
+    // returns nil when:
+    //  subscription is active and renewing
+    // returns zero when:
+    //  never topped up
+    // returns a date in the paste when:
+    //  account is past its expiration date (or never funded)
+    var expirationDate: Date? {
+        if self.accountInfo.hasRenewingStripeSubscription {
+            return nil
         }
-        let top_up_end = self.accountInfo.topUp?.creditExpiresAt ?? 0
-        let subscription_end = self.accountInfo.stripeSubscription?.currentPeriodEnd ?? 0
-        let end = max(top_up_end, subscription_end, 0)
+        if let subscriptionApple = accountInfo.appleSubscription,
+           subscriptionApple.autoRenewalStatus,
+           subscriptionApple.subscriptionStatus != .expired,
+           subscriptionApple.subscriptionStatus != .revoked
+        {
+            return nil
+        }
+        let topUpExpires = self.accountInfo.topUp?.creditExpiresAt ?? 0
+        let subscriptionEnd = self.accountInfo.stripeSubscription?.currentPeriodEnd ?? 0
+        let appleEnd = self.accountInfo.appleSubscription?.renewalDate ?? 0
+        let end = max(topUpExpires, subscriptionEnd, appleEnd, 0)
         return Date(timeIntervalSince1970: TimeInterval(end))
     }
 
@@ -25,7 +37,7 @@ struct AccountStatus: Codable, Equatable {
         if !self.accountInfo.active {
             return 0
         }
-        if let end = self.expirationDate() {
+        if let end = self.expirationDate {
             let now = Date()
             return UInt64(max(Calendar.current.dateComponents([.day], from: now, to: end).day ?? 0, 0))
         }
@@ -33,7 +45,7 @@ struct AccountStatus: Codable, Equatable {
     }
 
     func isActive() -> Bool {
-        if let timestamp = self.expirationDate() {
+        if let timestamp = self.expirationDate {
             return timestamp > Date()
         }
         return self.accountInfo.active
@@ -57,6 +69,13 @@ struct AccountInfo: Codable {
     let topUp: TopUpInfo?
     let stripeSubscription: StripeSubscriptionInfo?
     let appleSubscription: AppleSubscriptionInfo?
+
+    var hasRenewingStripeSubscription: Bool {
+        guard let stripeSubscription else { return false }
+        return !stripeSubscription.cancelAtPeriodEnd
+            && stripeSubscription.status != .unpaid
+            && stripeSubscription.status != .canceled
+    }
 
     enum CodingKeys: String, CodingKey {
         case topUp = "top_up"

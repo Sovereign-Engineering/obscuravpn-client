@@ -11,7 +11,7 @@ extension AccountInfo {
 
     var hasStripeSubscription: Bool {
         guard let stripeSubscription else { return false }
-        if !stripeSubscription.cancelAtPeriodEnd { return true }
+        if self.hasRenewingStripeSubscription { return true }
         let expirationDate = Date(
             timeIntervalSince1970: TimeInterval(
                 stripeSubscription.currentPeriodEnd

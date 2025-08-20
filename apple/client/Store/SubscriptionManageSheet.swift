@@ -13,6 +13,8 @@ private enum SheetType: Identifiable {
 }
 
 struct SubscriptionManageSheet: View {
+    @Environment(\.scenePhase) private var scenePhase
+
     let openUrl: ((URL) -> Void)?
 
     @StateObject private var viewModel: SubscriptionManageViewModel
@@ -106,6 +108,13 @@ struct SubscriptionManageSheet: View {
                         Image(systemName: "arrow.clockwise")
                     }
                     .disabled(self.viewModel.isLoading)
+                }
+            }
+        }
+        .onChange(of: self.scenePhase) { _, newPhase in
+            if newPhase == .active {
+                Task {
+                    await self.viewModel.refresh(userOriginated: false)
                 }
             }
         }

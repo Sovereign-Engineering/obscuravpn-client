@@ -73,7 +73,7 @@ struct SubscriptionManageSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Done") {
+                    Button("Close") {
                         self.dismiss()
                     }
                 }

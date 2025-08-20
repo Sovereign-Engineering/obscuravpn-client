@@ -5,6 +5,30 @@ import SwiftUI
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "PurchaseOptionsView")
 
+struct LabelledDivider: View {
+    let label: String
+    let horizontalPadding: CGFloat
+    let color: Color
+
+    init(label: String, horizontalPadding: CGFloat = 20, color: Color = .gray) {
+        self.label = label
+        self.horizontalPadding = horizontalPadding
+        self.color = color
+    }
+
+    var body: some View {
+        HStack {
+            self.line
+            Text(self.label).foregroundColor(self.color)
+            self.line
+        }
+    }
+
+    var line: some View {
+        VStack { Divider().background(self.color) }.padding(self.horizontalPadding)
+    }
+}
+
 struct PurchaseOptionsView: View {
     let openUrl: (URL) -> Void
     @ObservedObject var viewModel: SubscriptionManageViewModel
@@ -14,6 +38,10 @@ struct PurchaseOptionsView: View {
     @State private var restorePurchasesInProgress: Bool = false
     @State private var isPromoCodeSheetPresented: Bool = false
     @State private var promoCodeAccountAssociationError: Bool = false
+    @State private var redeemCodeInProgress: Bool = false
+
+    @State private var restoreLinkFlash: Bool = false
+    @State private var redeemLinkFlash: Bool = false
 
     init(
         openUrl: @escaping (URL) -> Void,
@@ -28,84 +56,110 @@ struct PurchaseOptionsView: View {
         return self.storeKitModel.product(for: .monthlySubscription)
     }
 
-    private var displayPrice: String? {
-        if let monthlySubscriptionProduct, let subscriptionPeriodFormatted = monthlySubscriptionProduct.subscriptionPeriodFormatted() {
-            return "\(monthlySubscriptionProduct.displayPrice)/\n\(subscriptionPeriodFormatted)"
+    var body: some View {
+        if let accountInfo = viewModel.accountInfo {
+            if !accountInfo.active {
+                VStack(alignment: .center, spacing: 18) {
+                    VStack(alignment: .center, spacing: 14) {
+                        if self.monthlySubscriptionProduct != nil {
+                            self.inAppSubscriptionManageButton(accountInfo: accountInfo)
+                        }
+
+                        // Beware!!! redeemCodeButton are given 10pts of padding for their hit target to account for small text
+                        // Make sure they are not spaced any closer than that
+                        self.redeemCodeButton
+                            .font(.footnote)
+                        self.restorePurchasesButton
+                            .font(.footnote)
+                    }
+                    // Account for padding coming out of nested v stack
+                    .padding(-14)
+
+                    // External payments are currently only straightforward in the US
+                    if self.storeKitModel.storefront?.countryCode == "USA" {
+                        LabelledDivider(label: "or")
+                            .padding(.horizontal, 30)
+                        self.externalPaymentManageButton(accountInfo: accountInfo)
+                    }
+                }
+            } else if accountInfo.hasActiveAppleSubscription {
+                VStack(alignment: .center, spacing: 14) {
+                    self.inAppSubscriptionManageButton(accountInfo: accountInfo)
+                    self.redeemCodeButton
+                        .font(.footnote)
+                }
+            } else if accountInfo.hasActiveExternalPaymentPlan {
+                self.externalPaymentManageButton(accountInfo: accountInfo)
+            }
         }
-        return nil
     }
 
-    var body: some View {
+    func inAppSubscriptionManageButton(accountInfo: AccountInfo) -> some View {
         let alreadyStripeSubscribed = "You're already subscribed through Stripe! You can't subscribe through the App Store until your subscription expires."
         let alreadyToppedUp = "You're already topped-up! You can't subscribe through the App Store until your top-up expires."
-        VStack(alignment: .leading, spacing: 24) {
-            if let monthlySubscriptionProduct, let accountInfo = viewModel.accountInfo, !accountInfo.hasActiveAppleSubscription, !storeKitModel.hasActiveMonthlySubscription {
-                ProductButton(
-                    displayName: monthlySubscriptionProduct.displayName,
-                    description: monthlySubscriptionProduct.description,
-                    displayPrice: self.displayPrice ?? "",
-                    purchaseClosure: {
-                        try await self.viewModel.purchaseSubscription()
-                    }
-                )
-                .conditionallyDisabled(
-                    when: accountInfo.hasActiveExternalPaymentPlan,
-                    explanation: accountInfo.hasStripeSubscription ? alreadyStripeSubscribed : alreadyToppedUp
-                )
-
-                self.restorePurchasesButton
-
-                self.redeemCodeButton
-            }
-
-            if self.viewModel.accountInfo?.hasActiveAppleSubscription ?? false {
-                self.manageSubscriptionButton
-            }
-
-            // External payments are currently only straightforward in the US
-            if self.storeKitModel.storefront?.countryCode == "USA" {
-                if let accountInfo = self.viewModel.accountInfo {
-                    self.externalPaymentButton(accountInfo: accountInfo)
+        return Button {
+            if self.storeKitModel.hasActiveMonthlySubscription {
+                self.manageSubscriptionsPopover = true
+            } else {
+                Task {
+                    try await self.viewModel.purchaseSubscription()
                 }
             }
+        } label: {
+            if self.storeKitModel.hasActiveMonthlySubscription {
+                Text("Manage Subscription")
+                    .frame(maxWidth: .infinity)
+            } else {
+                Text("Subscribe In App")
+                    .frame(maxWidth: .infinity)
+            }
         }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
+        .padding(.horizontal, 30)
+        .bold()
+        .tint(Color.obscuraOrange)
+        .manageSubscriptionsSheet(
+            isPresented: self.$manageSubscriptionsPopover
+        )
+        .conditionallyDisabled(
+            when: accountInfo.hasActiveExternalPaymentPlan,
+            explanation: accountInfo.hasStripeSubscription ? alreadyStripeSubscribed : alreadyToppedUp
+        )
     }
 
-    var manageSubscriptionButton: some View {
-        Button {
-            self.manageSubscriptionsPopover = true
-        } label: {
-            Text("Manage Subscription")
+    var restorePurchasesButton: some View {
+        HStack {
+            Text("Restore Purchases")
+                .underline()
+                .foregroundColor((self.restorePurchasesInProgress || self.restoreLinkFlash) ? .gray : .blue)
         }
+        .padding(10)
+        .onTapGesture {
+            Task { @MainActor in
+                self.restorePurchasesInProgress = true
+                await self.storeKitModel.restorePurchases()
+                self.restorePurchasesInProgress = false
+            }
+
+            // Animation for pressing. We cant use button because we want to expand hit target
+            withAnimation(.easeInOut(duration: 0.15)) { self.restoreLinkFlash = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                withAnimation(.easeInOut(duration: 0.15)) { self.restoreLinkFlash = false }
+            }
+        }
+        .contentShape(Rectangle())
+        .accessibilityAddTraits(.isButton)
+        .padding(-10)
+        .disabled(self.restorePurchasesInProgress)
+        .contentShape(Rectangle())
         .manageSubscriptionsSheet(
             isPresented: self.$manageSubscriptionsPopover
         )
     }
 
-    var restorePurchasesButton: some View {
-        ZStack {
-            Button {
-                Task { @MainActor in
-                    self.restorePurchasesInProgress = true
-                    await self.storeKitModel.restorePurchases()
-                    self.restorePurchasesInProgress = false
-                }
-            } label: {
-                Text("Restore Purchases")
-            }
-            .manageSubscriptionsSheet(
-                isPresented: self.$manageSubscriptionsPopover
-            )
-            .disabled(self.restorePurchasesInProgress)
-
-            if self.restorePurchasesInProgress {
-                ProgressView()
-            }
-        }
-    }
-
     @ViewBuilder
-    func externalPaymentButton(accountInfo: AccountInfo) -> some View {
+    func externalPaymentManageButton(accountInfo: AccountInfo) -> some View {
         Button {
             self.openUrl(
                 URL(
@@ -114,14 +168,19 @@ struct PurchaseOptionsView: View {
             )
         } label: {
             HStack {
-                Text("Pay on Obscura.net")
-                    .font(.body)
+                Text(
+                    accountInfo.hasActiveExternalPaymentPlan ? "Manage Payment on obscura.net" : "Pay on obscura.net"
+                )
 
                 Image(systemName: "arrow.up.right")
-                    .font(.caption)
             }
+            .frame(maxWidth: .infinity)
         }
-        .buttonStyle(HyperlinkButtonStyle())
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
+        .padding(.horizontal, accountInfo.hasActiveExternalPaymentPlan ? 10 : 30)
+        .bold()
+        .tint(Color.obscuraOrange)
         .conditionallyDisabled(
             when: accountInfo.hasActiveAppleSubscription || self.storeKitModel.hasActiveMonthlySubscription,
             explanation: "You're already subscribed through the App Store! You can't pay externally until your subscription expires."
@@ -129,23 +188,42 @@ struct PurchaseOptionsView: View {
     }
 
     var redeemCodeButton: some View {
-        Button {
-            Task { @MainActor in
-                do {
-                    try await self.storeKitModel.associateAccount()
-                    self.isPromoCodeSheetPresented = true
-                } catch {
-                    logger.error("Failed to Associate Apple account: \(error, privacy: .public)")
-                    self.promoCodeAccountAssociationError = true
-                }
-            }
-        } label: {
+        HStack {
+            Text("Have a promo code?")
             Text("Redeem Code")
+                .underline()
+                .foregroundColor((self.redeemLinkFlash || self.redeemCodeInProgress) ? .gray : .blue)
+                .padding(10)
+                .onTapGesture(perform: {
+                    self.redeemCodeInProgress = true
+
+                    Task { @MainActor in
+                        do {
+                            try await self.storeKitModel.associateAccount()
+                            self.isPromoCodeSheetPresented = true
+                        } catch {
+                            logger.error("Failed to Associate Apple account: \(error, privacy: .public)")
+                            self.promoCodeAccountAssociationError = true
+                        }
+                    }
+
+                    // Animation for pressing. We cant use button because we want to expand hit target
+                    withAnimation(.easeInOut(duration: 0.15)) { self.redeemLinkFlash = true }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                        withAnimation(.easeInOut(duration: 0.15)) { self.redeemLinkFlash = false }
+                    }
+                })
+                .contentShape(Rectangle())
+                .accessibilityAddTraits(.isButton)
+                .padding(-10)
         }
-        .alert("Failed to link Apple and Obscura account. Please try again later.", isPresented: self.$promoCodeAccountAssociationError) {
+        .alert("Failed to redeem promo code.", isPresented: self.$promoCodeAccountAssociationError) {
             Button("OK") {}
         }
         .offerCodeRedemption(isPresented: self.$isPromoCodeSheetPresented) { result in
+            Task { @MainActor in
+                self.redeemCodeInProgress = false
+            }
             switch result {
             case .success:
                 Task {
@@ -156,78 +234,6 @@ struct PurchaseOptionsView: View {
                 logger.error("Promo code redemption failed: \(error)")
             }
         }
-    }
-}
-
-private struct ProductButton: View {
-    let displayName: String
-    let description: String
-    let displayPrice: String
-    let color: Color = .init("ObscuraOrange")
-    let purchaseClosure: () async throws -> Void
-    @State private var isLoading = false
-
-    // Workaround :( For some reason SwiftUI animation system cannot keep up with Configuration.isPressed in this view
-    // Normally you should use ButtonStyle + Configuration.isPressed
-    @State private var isPressed: Bool = false
-
-    var body: some View {
-        Button {
-            // HACK!
-            self.isPressed = true
-            Task { @MainActor in
-                try? await Task.sleep(for: .seconds(0.15))
-                self.isPressed = false
-            }
-
-            Task {
-                self.isLoading = true
-                do {
-                    try await self.purchaseClosure()
-                } catch {
-                    print("Purchase failed: \(error)")
-                }
-                self.isLoading = false
-            }
-        } label: {
-            HStack {
-                HStack(spacing: 12) {
-                    Image(systemName: "repeat")
-                        .font(.title)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(self.displayName)
-                            .font(.headline)
-                            .lineLimit(1)
-                            .fixedSize()
-                        Text(self.description)
-                            .multilineTextAlignment(.leading)
-                            .font(.subheadline)
-                            .lineLimit(2)
-                            .foregroundColor(.secondary)
-                    }
-                }
-
-                Spacer()
-
-                Text(self.displayPrice)
-                    .font(.subheadline)
-                    .lineLimit(2)
-                    .fixedSize()
-            }
-        }
-        .foregroundColor(self.color)
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemGray6))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(self.color, lineWidth: 1)
-                )
-        )
-        .scaleEffect(self.isPressed ? 0.98 : 1.0)
-        .animation(.easeOut(duration: 0.15), value: self.isPressed)
-        .saturation(self.isLoading ? 0.3 : 1)
+        .disabled(self.redeemCodeInProgress)
     }
 }

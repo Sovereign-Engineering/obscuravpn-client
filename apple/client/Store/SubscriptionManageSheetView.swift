@@ -17,6 +17,16 @@ struct SubscriptionManageSheetView: View {
 
     var body: some View {
         self.overviewAndPurchaseOptions
+            .safeAreaInset(edge: .bottom) {
+                if !self.viewModel.storeKitPurchasedAwaitingServerAck, let openUrl {
+                    PurchaseOptionsView(
+                        openUrl: openUrl,
+                        viewModel: self.viewModel
+                    )
+                    .padding()
+                    .padding(.bottom, 20)
+                }
+            }
     }
 
     var overviewAndPurchaseOptions: some View {
@@ -30,11 +40,6 @@ struct SubscriptionManageSheetView: View {
                 if self.viewModel.storeKitPurchasedAwaitingServerAck {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let openUrl {
-                    PurchaseOptionsView(
-                        openUrl: openUrl,
-                        viewModel: self.viewModel
-                    )
                 }
             }
             .padding()

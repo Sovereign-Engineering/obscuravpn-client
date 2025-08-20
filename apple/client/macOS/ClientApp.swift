@@ -24,6 +24,8 @@ func closeWindow(id: String) {
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate, ObservableObject {
+    private var statusItemManager: StatusItemManager?
+
     func applicationWillFinishLaunching(_ notification: Notification) {
         UNUserNotificationCenter.current().delegate = self
     }
@@ -43,7 +45,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
                 closeWindow(id: WindowIds.RootWindowId)
             }
         }
-        _ = StatusItemManager()
+        self.statusItemManager = StatusItemManager()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

@@ -42,6 +42,8 @@ struct BandwidthStatus: View {
     }
 }
 
+let BANDWIDTH_MAX_INTENSITY: Int = 4 // levels
+
 struct BandwidthFmt {
     let TransferPerSecond: String
     // TB/s, GB/s, MB/s, KB/s

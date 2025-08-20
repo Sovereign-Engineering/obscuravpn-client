@@ -26,8 +26,13 @@ struct StatusItemAccount: View {
                             Text("Fund your account...")
                                 .font(.system(size: 13))
                             HStack {
-                                Text(self.account.isActive() ? "Account expires soon" : "Account is expired")
-                                    .foregroundStyle(.secondary)
+                                if self.account.isActive() {
+                                    Text("Account expires soon")
+                                        .foregroundStyle(.secondary)
+                                } else {
+                                    Text("Account is expired")
+                                        .foregroundStyle(.red)
+                                }
                                 Spacer()
                                 Text(self.account.isActive() ? getExpiredInDaysText(self.account.daysUntilExpiry()!) : "        ")
                                     .foregroundStyle(.tertiary)

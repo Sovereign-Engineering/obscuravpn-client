@@ -70,6 +70,11 @@ class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
                 return
             }
 
+            if url.scheme == "mailto" {
+                UIApplication.shared.open(url)
+                return
+            }
+
             // Check that it is a staging.obscura.net or obscura.net url
             guard
                 let components = NSURLComponents(

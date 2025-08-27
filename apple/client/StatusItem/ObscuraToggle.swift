@@ -152,7 +152,7 @@ struct ObscuraToggle: View {
             .lineLimit(1)
             // so that the text doesn't collapse horizontally and truncate
             .fixedSize(horizontal: true, vertical: false)
-            Spacer(minLength: 54)
+            Spacer()
             Toggle(isOn: toggleBind) {}
                 .toggleStyle(.switch)
                 .tint(Color("ObscuraOrange"))

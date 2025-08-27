@@ -152,11 +152,6 @@ function PrimaryConnectButton() {
   const specificInitiation = !(initiatingExitSelector === undefined || 'any' in initiatingExitSelector);
   const connectingToCity = (targetCity !== undefined || specificInitiation) && (osStatus.osVpnStatus !== NEVPNStatus.Disconnected || appStatus.vpnStatus.connecting !== undefined);
 
-
-  if (!vpnConnected && accountInfo !== null && accountHasExpired) {
-    return <Button component='a' href={ObscuraAccount.APP_ACCOUNT_TAB}>{t('ManageAccount')}</Button>;
-  }
-
   const isReconnecting = osStatus.osVpnStatus === NEVPNStatus.Reasserting || appStatus.vpnStatus.connecting?.reconnecting;
 
   if (inConnectingState && (!connectingToCity || isReconnecting) && osStatus.osVpnStatus !== NEVPNStatus.Disconnecting) {
@@ -164,6 +159,10 @@ function PrimaryConnectButton() {
       <Space h='lg' />
       <Button w={BUTTON_WIDTH} {...theme.other.buttonDisconnectProps} mt={5} onClick={vpnDisconnect}>{t('Cancel Connecting')}</Button>
     </>
+  }
+
+  if (!vpnConnected && accountInfo !== null && accountHasExpired) {
+    return <Button component='a' href={ObscuraAccount.APP_ACCOUNT_TAB}>{t('ManageAccount')}</Button>;
   }
 
   const showQuickConnect = !vpnConnected && !connectingToCity && accountInfo !== null && !appStatus.vpnStatus.connecting && osStatus.osVpnStatus !== NEVPNStatus.Disconnecting;

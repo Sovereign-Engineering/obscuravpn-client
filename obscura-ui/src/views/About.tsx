@@ -32,7 +32,7 @@ export default function About() {
   const updaterStatusDelayed = useThrottledValue(updaterStatus, updaterStatus.type === UpdaterStatusType.Initiated ? MIN_LOAD_MS : 0);
   const isLatest = errorCodeIsLatestVersion(updaterStatusDelayed.errorCode);
   return (
-    <Flex className={classes.container} gap='md' direction='column' justify='flex-end' h='100%' >
+    <Flex className={classes.container} gap='md' direction='column' justify='space-between' h='100vh'>
       <Stack align='center' style={{ flexGrow: '1' }} justify='space-around'>
         <Stack align='center'>
           <Image src={AppIcon} w={120} />
@@ -60,14 +60,14 @@ export default function About() {
             }</>}
           </Group>
         </Stack>
+        {IS_HANDHELD_DEVICE && <Stack gap='lg' p='md'>
+          <LogsCapture osStatus={osStatus} />
+          <Socials />
+        </Stack>}
       </Stack>
-      {IS_HANDHELD_DEVICE && <Stack gap='lg' p='md'>
-        <LogsCapture osStatus={osStatus} />
-        <Socials />
-      </Stack>}
-      <Stack mb={10} align='center' ta='center'>
+      <Stack pb={10} align='center' ta='center'>
         <Text c='dimmed'>{t('copyright')}</Text>
-        <Modal opened={showLicenses} onClose={() => setShowLicenses(false)} size='lg' mt={IS_HANDHELD_DEVICE ? 20 : undefined} title={<Title order={3}>{t('openSourceLicenses')}</Title>}>
+        <Modal opened={showLicenses} onClose={() => setShowLicenses(false)} size={IS_HANDHELD_DEVICE ? 'md' : 'lg'} mt={IS_HANDHELD_DEVICE ? 20 : undefined} title={<Title order={3}>{t('openSourceLicenses')}</Title>} centered>
           <Suspense fallback={<Center><Loader type='bars' size='md' /></Center>}>
             <Stack>
               <Licenses />

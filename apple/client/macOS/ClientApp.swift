@@ -46,6 +46,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
             }
         }
         self.statusItemManager = StatusItemManager()
+        // if the user selected an appearance within the app, restore appearance
+        if let colorSchemeValue = UserDefaults.standard.string(forKey: UserDefaultKeys.Appearance), let colorSchemeSelected = ColorScheme(rawValue: colorSchemeValue) {
+            setAppearance(colorScheme: colorSchemeSelected)
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

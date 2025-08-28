@@ -17,6 +17,11 @@ struct iOSClientApp: App {
                 ContentView(appState: appState)
             } else {
                 StartupView()
+                    .onAppear {
+                        if let colorSchemeValue = UserDefaults.standard.string(forKey: UserDefaultKeys.Appearance), let colorSchemeSelected = ColorScheme(rawValue: colorSchemeValue) {
+                            setAppearance(colorScheme: colorSchemeSelected)
+                        }
+                    }
             }
         }
     }

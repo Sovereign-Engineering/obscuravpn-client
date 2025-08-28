@@ -13,7 +13,8 @@ import classes from './Settings.module.css';
 
 export default function Settings() {
     const { t } = useTranslation();
-    const { colorScheme, setColorScheme } = useMantineColorScheme();
+    const { setColorScheme } = useMantineColorScheme();
+    const resetMantineColorScheme = () => setColorScheme('auto');
     const { appStatus, osStatus } = useContext(AppContext);
     const loginItemStatus = osStatus.loginItemStatus;
     const loginItemRegistered = loginItemStatus?.registered;
@@ -89,19 +90,40 @@ export default function Settings() {
             <Stack gap='lg'>
               <Title order={4}>{t('Appearance')}</Title>
               <Group gap='md'>
-                  <ActionIcon variant='default' onClick={() => setColorScheme('light')} h={80} w={100} disabled={colorScheme === 'light'}>
+                  <ActionIcon variant='default' onClick={async () => {
+                      resetMantineColorScheme();
+                      try {
+                        await commands.setColorScheme('light');
+                      } catch (e) {
+                        console.error('Failed to set theme:', e);
+                      }
+                    }} h={80} w={100}>
                       <Stack align='center' gap='xs'>
                           <IoSunnySharp size='1.5em' />
                           <Text size='sm'>{t('Light')}</Text>
                       </Stack>
                   </ActionIcon>
-                  <ActionIcon variant='default' onClick={() => setColorScheme('dark')} h={80} w={100} disabled={colorScheme === 'dark'}>
+                  <ActionIcon variant='default' onClick={async () => {
+                      resetMantineColorScheme();
+                      try {
+                        await commands.setColorScheme('dark');
+                      } catch (e) {
+                        console.error('Failed to set theme:', e);
+                      }
+                    }} h={80} w={100}>
                       <Stack align='center' gap='xs'>
                           <IoMoon size='1.25em' />
                           <Text size='sm'>{t('Dark')}</Text>
                       </Stack>
                   </ActionIcon>
-                  <ActionIcon variant='default' onClick={() => setColorScheme('auto')} h={80} w={100} disabled={colorScheme === 'auto'}>
+                  <ActionIcon variant='default' onClick={async () => {
+                      resetMantineColorScheme();
+                      try {
+                        await commands.setColorScheme('auto');
+                      } catch (e) {
+                        console.error('Failed to set theme:', e);
+                      }
+                    }} h={80} w={100}>
                       <Stack align='center' gap='xs'>
                           <BsCircleHalf style={{ transform: 'rotate(180deg)' }} size='1.25em' />
                           <Text size='sm'>{t('System')}</Text>

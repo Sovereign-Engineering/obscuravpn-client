@@ -92,6 +92,10 @@ export async function setStrictLeakPrevention(enable: boolean): Promise<void> {
     await invoke('setStrictLeakPrevention', { enable });
 }
 
+export async function setColorScheme(value: 'dark' | 'light' | 'auto'): Promise<void> {
+    await invoke('setColorScheme', { value });
+}
+
 // See ../../../rustlib/src/manager.rs
 export interface TunnelArgs {
     exit: ExitSelector,

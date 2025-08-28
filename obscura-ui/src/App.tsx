@@ -1,4 +1,4 @@
-import { AppShell, AppShellMain, Modal, Text, Title, useMantineColorScheme } from '@mantine/core';
+import { AppShell, AppShellMain, Modal, Text, Title } from '@mantine/core';
 import { useHotkeys, useThrottledValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { ReactNode, useEffect, useRef, useState } from 'react';
@@ -32,7 +32,24 @@ export default function () {
   const { t } = useTranslation();
   // Boilerplate State
   const navigate = useNavigate();
-  const { toggleColorScheme } = useMantineColorScheme();
+  const [colorScheme, setColorScheme] = useState(() => {
+    // Get initial theme from localStorage or system preference
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) return savedTheme;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
+
+  const toggleColorScheme = async () => {
+    const newColorScheme = colorScheme === 'dark' ? 'light' : 'dark';
+    setColorScheme(newColorScheme);
+    localStorage.setItem('theme', newColorScheme);
+    try {
+      await commands.setColorScheme(newColorScheme);
+    } catch (e) {
+      console.error('Failed to set theme:', e);
+    }
+  };
+
   useSystemChecks();
   useHotkeys([[PLATFORM === Platform.macOS ? 'mod+J' : 'ctrl+J', toggleColorScheme]]);
   const [scroller, setScroller] = useState<HTMLElement | null>(null);

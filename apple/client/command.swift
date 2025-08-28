@@ -10,6 +10,7 @@ enum Command: Codable {
     case startTunnel(tunnelArgs: String)
     case stopTunnel
     case setStrictLeakPrevention(enable: Bool)
+    case setColorScheme(value: ColorScheme)
     case debuggingArchive
     case revealItemInDir(path: String)
     case registerAsLoginItem
@@ -42,6 +43,9 @@ extension CommandHandler {
                 logger.error("Could not set includeAllNetworks \(error, privacy: .public)")
                 throw errorCodeOther
             }
+        case .setColorScheme(let colorScheme):
+            UserDefaults.standard.set(colorScheme.rawValue, forKey: UserDefaultKeys.Appearance)
+            setAppearance(colorScheme: colorScheme)
         case .jsonFfiCmd(cmd: let jsonCmd, let timeoutMs):
             let attemptTimeout: Duration? = switch timeoutMs {
             case .some(let ms): .milliseconds(ms)

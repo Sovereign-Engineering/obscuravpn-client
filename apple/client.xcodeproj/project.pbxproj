@@ -86,6 +86,8 @@
 		96C9205B2CD549B1002C85EA /* BandwidthStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C9205A2CD549B1002C85EA /* BandwidthStatus.swift */; };
 		96C920692CD91D96002C85EA /* String.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C920682CD91D94002C85EA /* String.swift */; };
 		96C9206A2CD91D96002C85EA /* String.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C920682CD91D94002C85EA /* String.swift */; };
+		96DB3D542E60F01B005B4D1B /* Appearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96DB3D532E60F01B005B4D1B /* Appearance.swift */; };
+		96DB3D552E60F01B005B4D1B /* Appearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96DB3D532E60F01B005B4D1B /* Appearance.swift */; };
 		A082F8232C46BF5B002AF810 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A082F8222C46BF5B002AF810 /* Sparkle */; };
 		A9029C192DEEDCBC00AAD761 /* ObscuraUIMacOSWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9029C182DEEDCBC00AAD761 /* ObscuraUIMacOSWrapper.swift */; };
 		A91CEF122E386B0300454518 /* SubscriptionManageViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A91CEF112E386B0300454518 /* SubscriptionManageViewModel.swift */; };
@@ -320,6 +322,7 @@
 		968B02B82CFF5B7B0053D0EF /* Account.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Account.swift; sourceTree = "<group>"; };
 		96C9205A2CD549B1002C85EA /* BandwidthStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BandwidthStatus.swift; sourceTree = "<group>"; };
 		96C920682CD91D94002C85EA /* String.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = String.swift; sourceTree = "<group>"; };
+		96DB3D532E60F01B005B4D1B /* Appearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Appearance.swift; sourceTree = "<group>"; };
 		A06E85A62C2ECA680087C8C8 /* bundle-ids.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "bundle-ids.xcconfig"; sourceTree = "<group>"; };
 		A06E85A92C2ECA680087C8C8 /* app.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = app.xcconfig; sourceTree = "<group>"; };
 		A06E85AA2C2ECA680087C8C8 /* buildversion.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = buildversion.xcconfig; sourceTree = "<group>"; };
@@ -683,6 +686,7 @@
 		A99871102DBAF8080044D136 /* Style */ = {
 			isa = PBXGroup;
 			children = (
+				96DB3D532E60F01B005B4D1B /* Appearance.swift */,
 				A94B1D9B2E286B3900E5F325 /* ConditionallyDisabled.swift */,
 				A998710F2DBAF8080044D136 /* NoFadeButtonStyle.swift */,
 				A9758FDD2E41910300741928 /* HyperlinkButtonStyle.swift */,
@@ -1040,6 +1044,7 @@
 				35230C192C764F0D007ECFEC /* Swift.swift in Sources */,
 				3096BFF92CECD50F003D062E /* NEVPNStatus.swift in Sources */,
 				A936D4992DD1617F0031B646 /* UXImage.swift in Sources */,
+				96DB3D542E60F01B005B4D1B /* Appearance.swift in Sources */,
 				309BA9132C45DFC8000A7428 /* Sleep.swift in Sources */,
 				A9029C192DEEDCBC00AAD761 /* ObscuraUIMacOSWrapper.swift in Sources */,
 				A936D49C2DD162AB0031B646 /* InstallSystemExtensionView.swift in Sources */,
@@ -1125,6 +1130,7 @@
 				A94B1D9C2E286B3900E5F325 /* ConditionallyDisabled.swift in Sources */,
 				A9E44A802E0950ED006B4616 /* StoreDebugUI.swift in Sources */,
 				A99871232DBAF88F0044D136 /* NEVPNStatus.swift in Sources */,
+				96DB3D552E60F01B005B4D1B /* Appearance.swift in Sources */,
 				A99871222DBAF8890044D136 /* OSLogEntryEncodable.swift in Sources */,
 				A99871212DBAF8850044D136 /* Json.swift in Sources */,
 				A99871202DBAF8810044D136 /* StringError.swift in Sources */,

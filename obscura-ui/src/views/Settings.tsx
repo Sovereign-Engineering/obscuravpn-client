@@ -11,9 +11,16 @@ import { errMsg, normalizeError } from '../common/utils';
 import { fmtErrorI18n } from '../translations/i18n';
 import classes from './Settings.module.css';
 
+const colorSchemeOptions = [
+  { colorScheme: 'light', i18nKey: 'Light', icon: <IoSunnySharp size='1.5em' /> },
+  { colorScheme: 'dark', i18nKey: 'Dark', icon: <IoMoon size='1.25em' /> },
+  { colorScheme: 'auto', i18nKey: 'System', icon: <BsCircleHalf style={{ transform: 'rotate(180deg)' }} size='1.25em' /> }
+] as const;
+
 export default function Settings() {
     const { t } = useTranslation();
     const { setColorScheme } = useMantineColorScheme();
+    //
     const resetMantineColorScheme = () => setColorScheme('auto');
     const { appStatus, osStatus } = useContext(AppContext);
     const loginItemStatus = osStatus.loginItemStatus;
@@ -90,45 +97,27 @@ export default function Settings() {
             <Stack gap='lg'>
               <Title order={4}>{t('Appearance')}</Title>
               <Group gap='md'>
-                  <ActionIcon variant='default' onClick={async () => {
-                      resetMantineColorScheme();
-                      try {
-                        await commands.setColorScheme('light');
-                      } catch (e) {
-                        console.error('Failed to set theme:', e);
-                      }
-                    }} h={80} w={100}>
+                  {colorSchemeOptions.map(({ colorScheme, i18nKey, icon }) => (
+                    <ActionIcon
+                      key={colorScheme}
+                      variant='default'
+                      onClick={async () => {
+                        resetMantineColorScheme();
+                        try {
+                          await commands.setColorScheme(colorScheme);
+                        } catch (e) {
+                          console.error('Failed to set theme:', e);
+                        }
+                      }}
+                      h={80}
+                      w={100}
+                    >
                       <Stack align='center' gap='xs'>
-                          <IoSunnySharp size='1.5em' />
-                          <Text size='sm'>{t('Light')}</Text>
+                        {icon}
+                        <Text size='sm'>{t(i18nKey)}</Text>
                       </Stack>
-                  </ActionIcon>
-                  <ActionIcon variant='default' onClick={async () => {
-                      resetMantineColorScheme();
-                      try {
-                        await commands.setColorScheme('dark');
-                      } catch (e) {
-                        console.error('Failed to set theme:', e);
-                      }
-                    }} h={80} w={100}>
-                      <Stack align='center' gap='xs'>
-                          <IoMoon size='1.25em' />
-                          <Text size='sm'>{t('Dark')}</Text>
-                      </Stack>
-                  </ActionIcon>
-                  <ActionIcon variant='default' onClick={async () => {
-                      resetMantineColorScheme();
-                      try {
-                        await commands.setColorScheme('auto');
-                      } catch (e) {
-                        console.error('Failed to set theme:', e);
-                      }
-                    }} h={80} w={100}>
-                      <Stack align='center' gap='xs'>
-                          <BsCircleHalf style={{ transform: 'rotate(180deg)' }} size='1.25em' />
-                          <Text size='sm'>{t('System')}</Text>
-                      </Stack>
-                  </ActionIcon>
+                    </ActionIcon>
+                  ))}
               </Group>
             </Stack>
         </Stack >

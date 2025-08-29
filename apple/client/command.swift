@@ -49,7 +49,7 @@ extension CommandHandler {
             }
             // When setting color scheme to no preference (nil),
             //  only the header changes appearance immediately
-            // Setting to nil a second time does work
+            // Setting to nil a second time results in the expected appearance
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
                 StartupModel.shared.selectedAppearance = colorScheme
             }

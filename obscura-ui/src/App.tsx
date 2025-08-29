@@ -1,4 +1,4 @@
-import { AppShell, AppShellMain, Modal, Text, Title } from '@mantine/core';
+import { AppShell, AppShellMain, Modal, Text, Title, useComputedColorScheme } from '@mantine/core';
 import { useHotkeys, useThrottledValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { ReactNode, useEffect, useRef, useState } from 'react';
@@ -30,19 +30,11 @@ interface View {
 
 export default function () {
   const { t } = useTranslation();
-  // Boilerplate State
   const navigate = useNavigate();
-  const [colorScheme, setColorScheme] = useState(() => {
-    // Get initial theme from localStorage or system preference
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) return savedTheme;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  });
+  const computedColorScheme = useComputedColorScheme();
 
   const toggleColorScheme = async () => {
-    const newColorScheme = colorScheme === 'dark' ? 'light' : 'dark';
-    setColorScheme(newColorScheme);
-    localStorage.setItem('theme', newColorScheme);
+    const newColorScheme = computedColorScheme === 'dark' ? 'light' : 'dark';
     try {
       await commands.setColorScheme(newColorScheme);
     } catch (e) {

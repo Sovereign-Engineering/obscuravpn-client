@@ -185,7 +185,7 @@ class StartupModel: ObservableObject {
     @Published var status = StartupStatus.initial
     @Published var appState: AppState?
 
-    // This must be in StartupModel, otherwise color scheme applies to only the content view and not to the startup view
+    // This must be in StartupModel, otherwise color scheme applies only to the content view and not to the startup view
     @MainActor @AppStorage(UserDefaultKeys.SelectedAppearance) var selectedAppearance: AppAppearance = .auto
 
     init() {

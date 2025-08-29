@@ -10,7 +10,7 @@ enum Command: Codable {
     case startTunnel(tunnelArgs: String)
     case stopTunnel
     case setStrictLeakPrevention(enable: Bool)
-    case setColorScheme(value: ColorScheme)
+    case setColorScheme(value: AppAppearance)
     case debuggingArchive
     case revealItemInDir(path: String)
     case registerAsLoginItem
@@ -44,8 +44,15 @@ extension CommandHandler {
                 throw errorCodeOther
             }
         case .setColorScheme(let colorScheme):
-            UserDefaults.standard.set(colorScheme.rawValue, forKey: UserDefaultKeys.Appearance)
-            setAppearance(colorScheme: colorScheme)
+            DispatchQueue.main.async {
+                StartupModel.shared.selectedAppearance = colorScheme
+            }
+            // When setting color scheme to no preference (nil),
+            //  only the header changes appearance immediately
+            // Setting to nil a second time does work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
+                StartupModel.shared.selectedAppearance = colorScheme
+            }
         case .jsonFfiCmd(cmd: let jsonCmd, let timeoutMs):
             let attemptTimeout: Duration? = switch timeoutMs {
             case .some(let ms): .milliseconds(ms)

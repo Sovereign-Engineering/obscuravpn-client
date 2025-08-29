@@ -15,13 +15,10 @@ struct iOSClientApp: App {
         WindowGroup {
             if let appState = self.startupModel.appState {
                 ContentView(appState: appState)
+                    .preferredColorScheme(self.startupModel.selectedAppearance.colorScheme)
             } else {
                 StartupView()
-                    .onAppear {
-                        if let colorSchemeValue = UserDefaults.standard.string(forKey: UserDefaultKeys.Appearance), let colorSchemeSelected = ColorScheme(rawValue: colorSchemeValue) {
-                            setAppearance(colorScheme: colorSchemeSelected)
-                        }
-                    }
+                    .preferredColorScheme(self.startupModel.selectedAppearance.colorScheme)
             }
         }
     }

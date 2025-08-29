@@ -1,40 +1,18 @@
-#if os(macOS)
-    import AppKit
-#else
-    import UIKit
-#endif
-import Foundation
+import SwiftUICore
 
-enum ColorScheme: String, Codable {
+enum AppAppearance: String, Codable {
     case dark
     case light
     case auto
-}
 
-#if os(macOS)
-    func setAppearance(colorScheme: ColorScheme) {
-        switch colorScheme {
+    var colorScheme: ColorScheme? {
+        switch self {
         case .dark:
-            NSApp.appearance = NSAppearance(named: .darkAqua)
+            return .dark
         case .light:
-            NSApp.appearance = NSAppearance(named: .aqua)
+            return .light
         case .auto:
-            NSApp.appearance = nil
+            return nil
         }
     }
-#else
-    func setAppearance(colorScheme: ColorScheme) {
-        var userInterfaceStyle: UIUserInterfaceStyle = .unspecified
-        switch colorScheme {
-        case .dark:
-            userInterfaceStyle = .dark
-        case .light:
-            userInterfaceStyle = .light
-        case .auto:
-            userInterfaceStyle = .unspecified
-        }
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
-            windowScene.windows.first?.overrideUserInterfaceStyle = userInterfaceStyle
-        }
-    }
-#endif
+}

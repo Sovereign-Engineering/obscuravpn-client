@@ -221,9 +221,11 @@ export interface ExitList {
 }
 
 export async function getExitList(version?: string): Promise<CachedValue<ExitList>> {
-  return await jsonFfiCmd('getExitList', {
-    knownVersion: version,
-  }) as CachedValue<ExitList>;
+  return await jsonFfiCmd(
+    'getExitList',
+    { knownVersion: version },
+    null
+  ) as CachedValue<ExitList>;
 }
 
 export async function refreshExitList(freshnessS: number): Promise<void> {

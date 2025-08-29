@@ -11,16 +11,9 @@ import { errMsg, normalizeError } from '../common/utils';
 import { fmtErrorI18n } from '../translations/i18n';
 import classes from './Settings.module.css';
 
-const colorSchemeOptions = [
-  { colorScheme: 'light', i18nKey: 'Light', icon: <IoSunnySharp size='1.5em' /> },
-  { colorScheme: 'dark', i18nKey: 'Dark', icon: <IoMoon size='1.25em' /> },
-  { colorScheme: 'auto', i18nKey: 'System', icon: <BsCircleHalf style={{ transform: 'rotate(180deg)' }} size='1.25em' /> }
-] as const;
-
 export default function Settings() {
     const { t } = useTranslation();
     const { setColorScheme } = useMantineColorScheme();
-    //
     const resetMantineColorScheme = () => setColorScheme('auto');
     const { appStatus, osStatus } = useContext(AppContext);
     const loginItemStatus = osStatus.loginItemStatus;
@@ -166,3 +159,9 @@ function StrictLeakPreventionSwitch() {
     </Stack>
   );
 }
+
+const colorSchemeOptions = [
+  { colorScheme: 'light', i18nKey: 'Light', icon: <IoSunnySharp size='1.5em' /> },
+  { colorScheme: 'dark', i18nKey: 'Dark', icon: <IoMoon size='1.25em' /> },
+  { colorScheme: 'auto', i18nKey: 'System', icon: <BsCircleHalf style={{ transform: 'rotate(180deg)' }} size='1.25em' /> }
+] as const;

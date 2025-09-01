@@ -158,7 +158,7 @@ struct ClientApp: App {
                 } else {
                     StartupView()
                 }
-            }
+            }.preferredColorScheme(self.startupModel.selectedAppearance.colorScheme)
         }.commands {
             CommandGroup(replacing: CommandGroupPlacement.appTermination) {
                 Button("Close Window") {

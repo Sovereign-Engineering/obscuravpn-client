@@ -15,8 +15,10 @@ struct iOSClientApp: App {
         WindowGroup {
             if let appState = self.startupModel.appState {
                 ContentView(appState: appState)
+                    .preferredColorScheme(self.startupModel.selectedAppearance.colorScheme)
             } else {
                 StartupView()
+                    .preferredColorScheme(self.startupModel.selectedAppearance.colorScheme)
             }
         }
     }

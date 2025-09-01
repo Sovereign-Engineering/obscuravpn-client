@@ -1,4 +1,4 @@
-import { AppShell, AppShellMain, Modal, Text, Title, useMantineColorScheme } from '@mantine/core';
+import { AppShell, AppShellMain, Modal, Text, Title, useComputedColorScheme } from '@mantine/core';
 import { useHotkeys, useThrottledValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { ReactNode, useEffect, useRef, useState } from 'react';
@@ -30,9 +30,18 @@ interface View {
 
 export default function () {
   const { t } = useTranslation();
-  // Boilerplate State
   const navigate = useNavigate();
-  const { toggleColorScheme } = useMantineColorScheme();
+  const computedColorScheme = useComputedColorScheme();
+
+  const toggleColorScheme = async () => {
+    const newColorScheme = computedColorScheme === 'dark' ? 'light' : 'dark';
+    try {
+      await commands.setColorScheme(newColorScheme);
+    } catch (e) {
+      console.error('Failed to set theme:', e);
+    }
+  };
+
   useSystemChecks();
   useHotkeys([[PLATFORM === Platform.macOS ? 'mod+J' : 'ctrl+J', toggleColorScheme]]);
   const [scroller, setScroller] = useState<HTMLElement | null>(null);

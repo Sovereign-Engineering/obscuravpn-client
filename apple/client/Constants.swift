@@ -2,7 +2,8 @@ import Foundation
 
 enum UserDefaultKeys {
     static let LoginItemRegistered = "LoginItemRegistered"
-    static let allKeys = [LoginItemRegistered]
+    static let SelectedAppearance = "SelectedAppearance"
+    static let allKeys = [LoginItemRegistered, SelectedAppearance]
 }
 
 enum URLs {

@@ -47,8 +47,12 @@ extension CommandHandler {
             DispatchQueue.main.async {
                 StartupModel.shared.selectedAppearance = colorScheme
             }
+
             // When setting color scheme to no preference (nil),
             //  only the header changes appearance immediately
+            // This bug is applicable to iOS 18 & macOS Sequoia:
+            //  https://developer.apple.com/forums/thread/677212?answerId=805661022#805661022
+
             // Setting to nil a second time results in the expected visual change
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
                 StartupModel.shared.selectedAppearance = colorScheme

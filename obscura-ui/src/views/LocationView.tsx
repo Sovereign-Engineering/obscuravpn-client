@@ -1,4 +1,4 @@
-import { Accordion, ActionIcon, Anchor, Button, Card, Divider, Drawer, Flex, Grid, Group, Loader, Space, Stack, Text, ThemeIcon, Title, useComputedColorScheme, useMantineTheme } from '@mantine/core';
+import { Accordion, ActionIcon, Anchor, Button, Card, Divider, Drawer, Flex, Grid, Group, Loader, Space, Stack, Text, ThemeIcon, Title, useMantineTheme } from '@mantine/core';
 import { useInterval } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { t } from 'i18next';
@@ -170,7 +170,6 @@ interface LocationCarProps {
 function LocationCard({ exit, connected, onSelect, togglePin, pinned }: LocationCarProps) {
     const { t } = useTranslation();
     const { osStatus, showOfflineUI, appStatus, initiatingExitSelector } = useContext(AppContext);
-    const colorScheme = useComputedColorScheme();
 
     const onPinClick = (e: MouseEvent) => {
         e.stopPropagation();
@@ -182,7 +181,6 @@ function LocationCard({ exit, connected, onSelect, togglePin, pinned }: Location
     if (connected) cardClasses.push(classes.locationCardConnected);
     else if (!connected && osStatus.osVpnStatus !== NEVPNStatus.Disconnecting && (exitCityEquals(getCityFromStatus(appStatus.vpnStatus), exit) || exitCityEquals(getCityFromArgs(initiatingExitSelector), exit))) {
       cardClasses.push(classes.connectingAnimation);
-      cardClasses.push(colorScheme === 'light' ? classes.connectingAnimationLight : classes.connectingAnimationDark);
     }
     else if (disableClick) cardClasses.push(classes.locationCardDisabled);
     else if (!connected) cardClasses.push(classes.locationCardNotConnected);
@@ -434,7 +432,6 @@ function ExitInfoCollapse({ exitProviderId, exitPubKey, connectedExit, provider,
 
 function ExitInfoDrawer({ exitProviderId, exitPubKey, connectedExit, provider, providerUrl, exitProviderURL }: ExitInfoProps) {
   const { t } = useTranslation();
-  const colorScheme = useComputedColorScheme();
   const [showExitInfo, setShowExitInfo] = useState(false);
   return <>
     <SecondaryButton onClick={() => setShowExitInfo(true)}>{t('viewServerInfo')}</SecondaryButton>
@@ -450,7 +447,7 @@ function ExitInfoDrawer({ exitProviderId, exitPubKey, connectedExit, provider, p
               <Text c='dimmed'>{t('Node')}</Text>
               <Text>{exitProviderId}</Text>
             </Group>
-            <Text size='sm' ta='right' c={colorScheme === 'light' ? 'gray.7' : 'gray'}>{connectedExit.city_name}, {getExitCountry(connectedExit).name}</Text>
+            <Text size='sm' ta='right' className={commonClasses.secondaryColor}>{connectedExit.city_name}, {getExitCountry(connectedExit).name}</Text>
           </Stack>
           <Stack gap={5}>
             <Group justify='space-between' gap={5}>

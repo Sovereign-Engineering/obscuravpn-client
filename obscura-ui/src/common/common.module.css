@@ -30,3 +30,19 @@
 .bottomSheet {
     border-radius: var(--mantine-radius-lg) var(--mantine-radius-lg) 0 0 !important;
 }
+
+.elevatedSurface {
+    background-color: light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-6)) !important;
+}
+
+.svgThemed {
+    fill: light-dark(black, white);
+}
+
+.wordmark {
+    fill: light-dark(black, var(--mantine-color-gray-4));
+}
+
+.secondaryColor {
+    color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-gray-text)) !important;
+}

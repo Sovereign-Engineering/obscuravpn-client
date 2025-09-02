@@ -23,3 +23,9 @@
     background-repeat: no-repeat;
     background-size: contain;
 }
+
+.loginContainer {
+    @mixin dark {
+        background-color: var(--mantine-color-dark-8);
+    }
+}

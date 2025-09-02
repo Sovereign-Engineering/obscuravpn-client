@@ -12,6 +12,7 @@ import { ModalsProvider } from '@mantine/modals';
 import { Notifications } from '@mantine/notifications';
 import { PropsWithChildren } from 'react';
 import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
+import CachedColorScheme from './CachedColorScheme';
 
 export default function Mantine({ children }: PropsWithChildren) {
     // override theme for Mantine (default props and styles)
@@ -57,7 +58,7 @@ export default function Mantine({ children }: PropsWithChildren) {
         },
         other: {
             dimmed: 'var(--mantine-color-dimmed)',
-            buttonDisconnectProps: { variant: 'light', c: 'red.7', bg: 'red.1' }
+            buttonDisconnectProps: { variant: 'light', c: 'red.7', bg: 'red.1' },
         }
     });
 
@@ -66,7 +67,9 @@ export default function Mantine({ children }: PropsWithChildren) {
         <MantineProvider defaultColorScheme='auto' theme={theme}>
             <ModalsProvider>
                 <Notifications />
-                {children}
+                <CachedColorScheme>
+                  {children}
+                </CachedColorScheme>
             </ModalsProvider>
         </MantineProvider>
     </>

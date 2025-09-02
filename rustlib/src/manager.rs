@@ -19,6 +19,7 @@ use tokio::{
     sync::watch::{channel, Receiver, Sender},
 };
 use tokio_util::sync::{CancellationToken, DropGuard};
+use tracing_appender::non_blocking::WorkerGuard;
 use uuid::Uuid;
 
 use crate::{
@@ -46,6 +47,7 @@ pub struct Manager {
     status_watch: Sender<Status>,
     runtime: Handle,
     _background_task_drop_guard: DropGuard,
+    _log_flush_guard: Option<Box<WorkerGuard>>,
 }
 
 // Keep synchronized with ../../apple/shared/NetworkExtensionIpc.swift
@@ -160,6 +162,7 @@ impl Manager {
         runtime: &Runtime,
         receive_cb: extern "C" fn(FfiBytes),
         set_keychain_wg_sk: Option<KeychainSetSecretKeyFn>,
+        log_flush_guard: Option<Box<WorkerGuard>>,
     ) -> Result<Arc<Self>, ConfigLoadError> {
         let cancellation_token = CancellationToken::new();
         let client_state = Arc::new(ClientState::new(config_dir, keychain_wg_sk, user_agent, set_keychain_wg_sk)?);
@@ -174,6 +177,7 @@ impl Manager {
             runtime: runtime.handle().clone(),
             _background_task_drop_guard: cancellation_token.clone().drop_guard(),
             background_taks_cancellation_token: cancellation_token,
+            _log_flush_guard: log_flush_guard,
         });
         this.spawn_child_task(Self::wireguard_key_registraction_task);
         this.spawn_child_task(Self::propagate_tunnel_state_updates_to_status_task);
@@ -313,6 +317,16 @@ impl Manager {
 
     pub async fn apple_poll_subscription(&self, original_transaction_id: String) -> Result<ApplePollSubscriptionOutput, ApiError> {
         self.api_request(ApplePollSubscription { original_transaction_id }).await
+    }
+
+    #[cfg(target_os = "ios")]
+    pub fn get_log_dir(&self) -> anyhow::Result<String> {
+        crate::apple::ios::log_dir().map(Into::into)
+    }
+
+    #[cfg(not(target_os = "ios"))]
+    pub fn get_log_dir(&self) -> anyhow::Result<String> {
+        Err(anyhow::format_err!("tried to get log dir on non-iOS platform"))
     }
 
     pub async fn get_account_info(&self) -> Result<AccountInfo, ApiError> {

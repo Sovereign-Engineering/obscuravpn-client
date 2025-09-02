@@ -1,4 +1,7 @@
 import Foundation
+#if os(iOS)
+    import MessageUI
+#endif
 import NetworkExtension
 import OSLog
 import SwiftUI
@@ -19,6 +22,7 @@ class AppState: ObservableObject {
     #if os(macOS)
         let updater: SparkleUpdater
     #else
+        let mailDelegate = MailDelegate()
         let storeKitModel: StoreKitModel
     #endif
     @Published var webviewsController: WebviewsController
@@ -353,6 +357,50 @@ class AppState: ObservableObject {
             return errorCodeOther
         }
     }
+
+    #if os(iOS)
+        private func rootViewController() -> UIViewController? {
+            UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .filter { $0.activationState == .foregroundActive }
+                .first?.keyWindow?.rootViewController
+        }
+
+        private func presentFromRoot(viewController: UIViewController) {
+            let rvc = self.rootViewController()
+            // This generates a ton of spurious warnings and errors, which is
+            // apparently normal. Also, the first present will be slow when
+            // connected for debugging.
+            rvc?.present(viewController, animated: true, completion: nil)
+        }
+
+        func emailArchive(path: String, subject: String, body: String) throws(String) {
+            if !MFMailComposeViewController.canSendMail() {
+                Self.logger.info("Mail services are not available")
+                return
+            }
+            let cvc = MFMailComposeViewController()
+            cvc.mailComposeDelegate = self.mailDelegate
+            cvc.setToRecipients(["support@obscura.net"])
+            cvc.setSubject(subject)
+            cvc.setMessageBody(body, isHTML: false)
+            let url = URL(fileURLWithPath: path)
+            let data: Data
+            do {
+                data = try Data(contentsOf: url)
+            } catch {
+                throw "Failed to read debugging archive: \(error)"
+            }
+            cvc.addAttachmentData(data, mimeType: "application/zip", fileName: url.lastPathComponent)
+            self.presentFromRoot(viewController: cvc)
+        }
+
+        func shareFile(path: String) {
+            let url = URL(fileURLWithPath: path)
+            let avc = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+            self.presentFromRoot(viewController: avc)
+        }
+    #endif
 }
 
 struct TrafficStats: Codable {

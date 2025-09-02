@@ -46,7 +46,8 @@ tokio = { version = "1.44", features = ["full"] }
 tokio-rustls = "0.26.2"
 tokio-util = "0.7.13"
 tracing = "0.1.40"
-tracing-subscriber = { version = "0.3.18", features = ["env-filter", "fmt"] }
+tracing-appender = "0.2.3"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter", "fmt", "json"] }
 tun = { version = "0.6.1", features = ["async"] }
 uuid = { version = "1.11.0", features = ["v4", "serde"] }
 x25519-dalek = { version = "2.0.1" }
@@ -66,7 +67,13 @@ rev = "8f690a22535dcf2d76c369cadd3f0bec93667a4d"
 
 [target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
 oslog = "0.2.0"
-tracing-oslog = "0.1.2"
+tracing-oslog = "0.3.0"
+
+[target.'cfg(target_os = "ios")'.dependencies]
+camino = "1.1.12"
+logroller = { version = "0.1.10", features = ["xz"] }
+objc2 = "0.6.2"
+objc2-foundation = "0.3.1"
 
 [build-dependencies]
 cbindgen = "0.28.0"

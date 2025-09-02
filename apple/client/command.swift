@@ -13,6 +13,8 @@ enum Command: Codable {
     case setColorScheme(value: AppAppearance)
     case debuggingArchive
     case revealItemInDir(path: String)
+    case emailArchive(path: String, subject: String, body: String)
+    case shareFile(path: String)
     case registerAsLoginItem
     case unregisterAsLoginItem
     case resetUserDefaults
@@ -69,16 +71,18 @@ extension CommandHandler {
             )
         case .getOsStatus(knownVersion: let version):
             return try await appState.getOsStatus(knownVersion: version).json()
+        case .debuggingArchive:
+            let path: String
+            do {
+                path = try await createDebuggingArchive(appState: appState)
+            } catch {
+                logger.error("could not create debugging archive \(error, privacy: .public)")
+                throw errorCodeOther
+            }
+            return try path.json()
         #if os(macOS)
-            case .debuggingArchive:
-                let path: String
-                do {
-                    path = try await createDebuggingArchive(appState: appState)
-                } catch {
-                    logger.error("could not create debugging archive \(error, privacy: .public)")
-                    throw errorCodeOther
-                }
-                return try path.json()
+            case .emailArchive, .shareFile:
+                throw errorUnsupportedOnOS
             case .revealItemInDir(let path):
                 NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
             case .registerAsLoginItem:
@@ -93,7 +97,11 @@ extension CommandHandler {
                 }
                 appState.updater.showUpdaterIfNeeded()
         #else
-            case .debuggingArchive, .revealItemInDir, .registerAsLoginItem, .unregisterAsLoginItem, .checkForUpdates, .installUpdate:
+            case .emailArchive(let path, let subject, let body):
+                try appState.emailArchive(path: path, subject: subject, body: body)
+            case .shareFile(let path):
+                appState.shareFile(path: path)
+            case .revealItemInDir, .registerAsLoginItem, .unregisterAsLoginItem, .checkForUpdates, .installUpdate:
                 throw errorUnsupportedOnOS
         #endif
         }

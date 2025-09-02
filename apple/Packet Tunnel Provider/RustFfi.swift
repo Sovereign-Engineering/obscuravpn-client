@@ -6,12 +6,12 @@ import OSLog
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "Rust FFI")
 
 func ffiInitialize(configDir: String, userAgent: String, _ receiveCallback: (@convention(c) (FfiBytes) -> Void)!) {
-    libobscuravpn_client.initialize_macos_system_logging()
+    let logFlushGuard = libobscuravpn_client.initialize_apple_system_logging()
     let wgSecretKey = keychainGetWgSecretKey() ?? Data()
     configDir.withFfiStr { ffiConfigDir in
         userAgent.withFfiStr { ffiUserAgent in
             wgSecretKey.withFfiBytes { ffiWgSecretKey in
-                libobscuravpn_client.initialize(ffiConfigDir, ffiUserAgent, ffiWgSecretKey, receiveCallback, keychainSetWgSecretKeyCallback)
+                libobscuravpn_client.initialize(ffiConfigDir, ffiUserAgent, ffiWgSecretKey, receiveCallback, keychainSetWgSecretKeyCallback, logFlushGuard)
             }
         }
     }

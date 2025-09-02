@@ -169,6 +169,15 @@ export function revealItemInDir(path: String) {
     return invoke('revealItemInDir', { path });
 }
 
+export async function emailArchive(path: String, subject: String, body: String): Promise<void> {
+    await invoke('emailArchive', { path, subject, body });
+}
+
+// trigger native share dialog
+export async function shareFile(path: String): Promise<void> {
+    await invoke('shareFile', { path });
+}
+
 export interface Notice {
   type: 'Error' | 'Warn' | 'Important',
   content: string
@@ -213,7 +222,6 @@ export async function getTrafficStats(): Promise<TrafficStats> {
     return await jsonFfiCmd('getTrafficStats') as TrafficStats;
 }
 
-
 export interface CachedValue<T> {
   version: string,
   last_updated: number,
@@ -257,15 +265,6 @@ export function rotateWgKey() {
 
 export function setAutoConnect(enable: boolean) {
   return jsonFfiCmd('setAutoConnect', { enable });
-}
-
-export async function captureLogs(): Promise<void> {
-  await invoke('captureLogs');
-}
-
-// trigger native share dialog
-export async function shareLogs(): Promise<void> {
-  await invoke('shareLogs');
 }
 
 export function useHandleCommand(t: TFunction) {

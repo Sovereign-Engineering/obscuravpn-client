@@ -9,6 +9,9 @@
 /* Begin PBXBuildFile section */
 		17B910022E0DB3E50073AAD7 /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17B910012E0DB3E00073AAD7 /* Keychain.swift */; };
 		17B910032E0DB3E50073AAD7 /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17B910012E0DB3E00073AAD7 /* Keychain.swift */; };
+		1D9F4FDE2E5BC912001C080B /* DebugBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9BCB05D2DC54AC0006C0133 /* DebugBundle.swift */; };
+		1D9F4FE02E5BCDED001C080B /* time.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35A6F2532C6121C2004E1A7C /* time.swift */; };
+		1D9F50082E6280FF001C080B /* MailDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D9F50072E6280FF001C080B /* MailDelegate.swift */; };
 		300452782C49BC90000B78F7 /* Json.swift in Sources */ = {isa = PBXBuildFile; fileRef = 300452772C49BC90000B78F7 /* Json.swift */; };
 		300452792C49BC90000B78F7 /* Json.swift in Sources */ = {isa = PBXBuildFile; fileRef = 300452772C49BC90000B78F7 /* Json.swift */; };
 		30497E662D9EC09E008B22F9 /* ConcurrencyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30497E652D9EC09E008B22F9 /* ConcurrencyTests.swift */; };
@@ -265,6 +268,7 @@
 
 /* Begin PBXFileReference section */
 		17B910012E0DB3E00073AAD7 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
+		1D9F50072E6280FF001C080B /* MailDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailDelegate.swift; sourceTree = "<group>"; };
 		300452772C49BC90000B78F7 /* Json.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Json.swift; sourceTree = "<group>"; };
 		30497E5E2D9EC038008B22F9 /* Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		30497E652D9EC09E008B22F9 /* ConcurrencyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcurrencyTests.swift; sourceTree = "<group>"; };
@@ -625,6 +629,7 @@
 			isa = PBXGroup;
 			children = (
 				A94743F72DD170F5002ACD85 /* iOSClientApp.swift */,
+				1D9F50072E6280FF001C080B /* MailDelegate.swift */,
 			);
 			path = iOS;
 			sourceTree = "<group>";
@@ -1108,6 +1113,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1D9F4FE02E5BCDED001C080B /* time.swift in Sources */,
+				1D9F4FDE2E5BC912001C080B /* DebugBundle.swift in Sources */,
 				A952CE0A2E1B87B8007E25AC /* SubscriptionManageSheet.swift in Sources */,
 				A94743F92DD17143002ACD85 /* iOSClientApp.swift in Sources */,
 				A91CEF122E386B0300454518 /* SubscriptionManageViewModel.swift in Sources */,
@@ -1145,6 +1152,7 @@
 				A94B1DD62E28B16800E5F325 /* SubscriptionManageSheetView.swift in Sources */,
 				A94B1DD72E28B16800E5F325 /* PurchaseOptionsView.swift in Sources */,
 				A9BCB0612DC54B68006C0133 /* UpdaterDriver+XP.swift in Sources */,
+				1D9F50082E6280FF001C080B /* MailDelegate.swift in Sources */,
 				A998711C2DBAF8700044D136 /* Swift.swift in Sources */,
 				A936D4472DD1492A0031B646 /* UXViewRepresentable.swift in Sources */,
 				A94B1DE02E28B2D000E5F325 /* AccountInfoOverviewView.swift in Sources */,

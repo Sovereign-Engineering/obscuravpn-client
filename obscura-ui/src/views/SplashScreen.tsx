@@ -4,7 +4,6 @@ import AppIcon from '../../../apple/client/Assets.xcassets/AppIcon.appiconset/ic
 import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
 import { OsStatus } from '../common/appContext';
 import DebuggingArchive from '../components/DebuggingArchive';
-import LogsCapture from '../components/LogCapture';
 import ObscuraWordmark from '../components/ObscuraWordmark';
 
 interface SplashScreenProps {
@@ -25,7 +24,7 @@ export default function SplashScreen({ text = '', osStatus }: SplashScreenProps)
       </Group>
       {
         osStatusThrottled !== null &&
-        (IS_HANDHELD_DEVICE ? <LogsCapture osStatus={osStatusThrottled} /> : <DebuggingArchive osStatus={osStatusThrottled} />)
+        <DebuggingArchive osStatus={osStatusThrottled} />
       }
     </Stack>
   );

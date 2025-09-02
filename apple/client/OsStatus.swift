@@ -1,4 +1,7 @@
 import Foundation
+#if os(iOS)
+    import MessageUI
+#endif
 import Network
 import NetworkExtension
 import OSLog
@@ -13,6 +16,11 @@ class OsStatus: Encodable {
     var strictLeakPrevention: Bool
     var updaterStatus = UpdaterStatus()
     var debugBundleStatus = DebugBundleStatus()
+    #if os(macOS)
+        let canSendMail: Bool = false
+    #else
+        let canSendMail: Bool = MFMailComposeViewController.canSendMail()
+    #endif
 
     struct LoginItemStatus: Codable {
         var registered: Bool

@@ -8,6 +8,15 @@ export enum Platform {
   iOS = 'iphoneos',
 }
 
+export function systemName() {
+  switch (PLATFORM) {
+    case Platform.macOS:
+      return "macOS";
+    case Platform.iOS:
+      return "iOS";
+  }
+}
+
 export const IS_HANDHELD_DEVICE = PLATFORM === Platform.iOS;
 const platformDefined = Object.values(Platform).includes(PLATFORM);
 

@@ -1,4 +1,8 @@
-import AppKit
+#if os(macOS)
+    import AppKit
+#else
+    import UIKit
+#endif
 import Foundation
 import NetworkExtension
 import OSLog
@@ -199,23 +203,25 @@ private class DebugBundleBuilder {
         }
     }
 
-    private func bundleCmd(_ name: String, _ args: [String]) {
-        self.bundleTask(name) { _task in
-            let child = Process()
-            child.executableURL = URL(filePath: args[0])
-            child.arguments = Array(args.suffix(from: 1))
-            child.standardInput = FileHandle.nullDevice
-            child.standardOutput = try self.openFile(name: "\(name)-stdout.txt")
-            child.standardError = try self.openFile(name: "\(name)-stderr.txt")
+    #if os(macOS)
+        private func bundleCmd(_ name: String, _ args: [String]) {
+            self.bundleTask(name) { _task in
+                let child = Process()
+                child.executableURL = URL(filePath: args[0])
+                child.arguments = Array(args.suffix(from: 1))
+                child.standardInput = FileHandle.nullDevice
+                child.standardOutput = try self.openFile(name: "\(name)-stdout.txt")
+                child.standardError = try self.openFile(name: "\(name)-stderr.txt")
 
-            try child.run()
-            child.waitUntilExit()
+                try child.run()
+                child.waitUntilExit()
 
-            if child.terminationStatus != 0 {
-                try self.writeFile(name: "\(name)-status.txt", string: String(child.terminationStatus))
+                if child.terminationStatus != 0 {
+                    try self.writeFile(name: "\(name)-status.txt", string: String(child.terminationStatus))
+                }
             }
         }
-    }
+    #endif
 
     private func bundlePlist(name: String, path: URL) {
         self.bundleTask(name) { _task in
@@ -241,18 +247,24 @@ private class DebugBundleBuilder {
             let BundleTimestamp: String
             let LogStartTimestamp: String
             let LowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
-            let macOSVersion = [
+            let OSVersion = [
                 ProcessInfo.processInfo.operatingSystemVersion.majorVersion,
                 ProcessInfo.processInfo.operatingSystemVersion.minorVersion,
                 ProcessInfo.processInfo.operatingSystemVersion.patchVersion,
             ]
-            let macOSVersionString = ProcessInfo.processInfo.operatingSystemVersionString
-            let Model = Sysctl.model // Model identifier to model name: https://support.apple.com/en-ca/102869
+            let OSVersionString = ProcessInfo.processInfo.operatingSystemVersionString
+            #if os(macOS)
+                let Model = Sysctl.model // Model identifier to model name: https://support.apple.com/en-ca/102869
+            #else
+                let Model = UIDevice.current.model
+            #endif
             let PID = ProcessInfo.processInfo.processIdentifier
             let ProcessName = ProcessInfo.processInfo.processName
             let ProcessorCountActive = ProcessInfo.processInfo.processorCount
             let ProcessorCountPhysical = ProcessInfo.processInfo.activeProcessorCount
-            let ProcessorName: String = (try? Sysctl.string(for: "machdep.cpu.brand_string")) ?? "Unknown"
+            #if os(macOS)
+                let ProcessorName: String = (try? Sysctl.string(for: "machdep.cpu.brand_string")) ?? "Unknown"
+            #endif
             let RAMPhysicalGiB = Double(ProcessInfo.processInfo.physicalMemory) / 1024.0 / 1024.0 / 1024.0
             let SourceID = sourceId()
             let ThemralState: String
@@ -274,19 +286,29 @@ private class DebugBundleBuilder {
         try self.writeJson(name: "info.json", Info(self))
     }
 
-    func bundleLogs() {
-        self.bundleTask("logs") { task in
-            let fileName: String
-            let logStore: OSLogStore
+    #if os(macOS)
+        func getLogStore() throws -> (OSLogStore, String) {
             do {
-                logStore = try OSLogStore.local()
-                fileName = "system-log.json"
+                let logStore = try OSLogStore.local()
+                return (logStore, "system-log.json")
             } catch {
                 self.writeError(name: "system-logs", error: error)
-                logStore = try OSLogStore(scope: .currentProcessIdentifier)
-                fileName = "client-log.json"
+                let logStore = try OSLogStore(scope: .currentProcessIdentifier)
+                return (logStore, "client-log.json")
             }
+        }
+    #endif
 
+    #if os(iOS)
+        func getLogStore() throws -> (OSLogStore, String) {
+            let logStore = try OSLogStore(scope: .currentProcessIdentifier)
+            return (logStore, "client-log.json")
+        }
+    #endif
+
+    func bundleLogs() {
+        self.bundleTask("logs") { task in
+            let (logStore, fileName) = try self.getLogStore()
             let logEntries = try logStore.getEntries(
                 at: logStore.position(date: self.logStartTimestamp),
                 matching: NSPredicate(format: """
@@ -331,48 +353,50 @@ private class DebugBundleBuilder {
         }
     }
 
-    func bundleExtensions() async throws {
-        let extensions = await getExtensionDebugInfo()
+    #if os(macOS)
+        func bundleExtensions() async throws {
+            let extensions = await getExtensionDebugInfo()
 
-        struct ExtensionDebugInfo: Encodable {
-            let bundleIdentifier: String
-            let bundleVersion: String
-            let bundleShortVersion: String
-            let url: URL
-            let isAwaitingUserApproval: Bool
-            let isEnabled: Bool
-            let isUninstalling: Bool
-        }
-
-        try self.writeJson(
-            name: "extensions.json",
-            extensions.map {
-                ExtensionDebugInfo(
-                    bundleIdentifier: $0.bundleIdentifier,
-                    bundleVersion: $0.bundleVersion,
-                    bundleShortVersion: $0.bundleShortVersion,
-                    url: $0.url,
-                    isAwaitingUserApproval: $0.isAwaitingUserApproval,
-                    isEnabled: $0.isEnabled,
-                    isUninstalling: $0.isUninstalling
-                )
+            struct ExtensionDebugInfo: Encodable {
+                let bundleIdentifier: String
+                let bundleVersion: String
+                let bundleShortVersion: String
+                let url: URL
+                let isAwaitingUserApproval: Bool
+                let isEnabled: Bool
+                let isUninstalling: Bool
             }
-        )
 
-        for (i, ext) in extensions.enumerated() {
-            if !ext.isEnabled { continue }
+            try self.writeJson(
+                name: "extensions.json",
+                extensions.map {
+                    ExtensionDebugInfo(
+                        bundleIdentifier: $0.bundleIdentifier,
+                        bundleVersion: $0.bundleVersion,
+                        bundleShortVersion: $0.bundleShortVersion,
+                        url: $0.url,
+                        isAwaitingUserApproval: $0.isAwaitingUserApproval,
+                        isEnabled: $0.isEnabled,
+                        isUninstalling: $0.isUninstalling
+                    )
+                }
+            )
 
-            let name = "extension-\(ext.bundleIdentifier)-\(i).provisionprofile"
-            do {
-                try self.copyFile(
-                    source: ext.url.appending(path: "Contents/embedded.provisionprofile"),
-                    name: name
-                )
-            } catch {
-                self.writeError(name: name, error: error)
+            for (i, ext) in extensions.enumerated() {
+                if !ext.isEnabled { continue }
+
+                let name = "extension-\(ext.bundleIdentifier)-\(i).provisionprofile"
+                do {
+                    try self.copyFile(
+                        source: ext.url.appending(path: "Contents/embedded.provisionprofile"),
+                        name: name
+                    )
+                } catch {
+                    self.writeError(name: name, error: error)
+                }
             }
         }
-    }
+    #endif
 
     func bundleNETunnelProviderManager() {
         guard let manager = self.appState?.manager else {
@@ -528,6 +552,19 @@ private class DebugBundleBuilder {
         }
     }
 
+    func bundleRustLog() async {
+        guard let manager = self.appState?.manager else {
+            self.writeError(name: "rust-log", error: "appState or manager is nil")
+            return
+        }
+        do {
+            let logDir: String = try await runNeCommand(manager, NeManagerCmd.getLogDir, attemptTimeout: .seconds(5), maxAttempts: 1)
+            try self.copyFile(source: URL(fileURLWithPath: logDir), name: "rust-logs")
+        } catch {
+            self.writeError(name: "rust-log", error: error)
+        }
+    }
+
     func bundleTask(_ name: String, _ block: @escaping (BundleTask) async throws -> Void) {
         BundleTask(self, name, block)
     }
@@ -536,75 +573,94 @@ private class DebugBundleBuilder {
         self.bundleLogs()
 
         self.bundleTask("app-provisionprofile") { _task in
+            #if os(macOS)
+                let path = "Contents/embedded.provisionprofile"
+            #else
+                let path = "embedded.mobileprovision"
+            #endif
             try self.copyFile(
-                source: Bundle.main.bundleURL.appending(path: "Contents/embedded.provisionprofile"),
+                source: Bundle.main.bundleURL.appending(path: path),
                 name: "app.provisionprofile"
             )
         }
 
         self.bundleTask("app-extension-provisionprofile") { _task in
-            try self.copyFile(
-                source: extensionBundle()
+            #if os(macOS)
+                let source = extensionBundle()
                     .bundleURL
-                    .appending(path: "Contents/embedded.provisionprofile"),
+                    .appending(path: "Contents/embedded.provisionprofile")
+            #else
+                let source = Bundle.main.bundleURL
+                    .appending(path: "PlugIns/App Network Extension.appex/embedded.mobileprovision")
+            #endif
+            try self.copyFile(
+                source: source,
                 name: "app-extension.provisionprofile"
             )
         }
 
-        self.bundleTask("extensions") { _task in try await self.bundleExtensions() }
         self.bundleTask("ne-tunnel-provider-manager") { _task in self.bundleNETunnelProviderManager() }
         self.bundleTask("ne-debug-info") { _task in await self.bundleNEDebugInfo() }
         self.bundleTask("info") { _task in try self.bundleInfo() }
 
-        self.bundleCmd("arp", ["/usr/sbin/arp", "-na"])
-        self.bundleCmd("csrutil-status", ["/usr/bin/csrutil", "status"])
-        self.bundleCmd("dig-apple.com", ["/usr/bin/dig", "+time=2", "www.apple.com"])
-        self.bundleCmd("dig-google.com", ["/usr/bin/dig", "+time=2", "google.com"])
-        self.bundleCmd("dig-v1.api.prod.obscura.net", ["/usr/bin/dig", "+time=2", "v1.api.prod.obscura.net"])
-        self.bundleCmd("dns", ["/usr/sbin/scutil", "--dns", "-dv"])
-        self.bundleCmd("hostinfo", ["/usr/bin/hostinfo"])
-        self.bundleCmd("http-v1.api.prod.obscura.net", ["/usr/bin/curl", "--verbose", "--insecure", "--location", "--silent", "--show-error", "https://v1.api.prod.obscura.net/api/ping"])
-        self.bundleCmd("http-v1.api.prod.obscura.net-apple.com", ["/usr/bin/curl", "--verbose", "--insecure", "--silent", "--show-error", "--connect-to", "::v1.api.prod.obscura.net:", "https://apple.com/api/ping", "-Hhost:v1.api.prod.obscura.net"])
-        self.bundleCmd("http-v1.api.prod.obscura.net-google.com", ["/usr/bin/curl", "--verbose", "--insecure", "--silent", "--show-error", "--connect-to", "::v1.api.prod.obscura.net:", "https://google.com/api/ping", "-Hhost:v1.api.prod.obscura.net"])
-        self.bundleCmd("ifconfig", ["/sbin/ifconfig", "-aLbmrvv"])
-        self.bundleCmd("netstat-interface-stats", ["/usr/sbin/netstat", "-ind"])
-        self.bundleCmd("netstat-listen-queues", ["/usr/sbin/netstat", "-Lanv"])
-        self.bundleCmd("netstat-routes", ["/usr/sbin/netstat", "-nral"])
-        self.bundleCmd("netstat-stats", ["/usr/sbin/netstat", "-s"])
-        self.bundleCmd("network-info", ["/usr/sbin/scutil", "--nwi", "-dv"])
-        self.bundleCmd("ping-1.1.1.1", ["/sbin/ping", "-oc5", "1.1.1.1"])
-        self.bundleCmd("ping-2001:4860:4860::8888", ["/sbin/ping6", "-oc5", "2001:4860:4860::8888"])
-        self.bundleCmd("ping-2606:4700:4700::1111", ["/sbin/ping6", "-oc5", "2606:4700:4700::1111"])
-        self.bundleCmd("ping-8.8.8.8", ["/sbin/ping", "-oc5", "8.8.8.8"])
-        self.bundleCmd("ping-v1.api.prod.obscura.net", ["/sbin/ping", "-oc5", "v1.api.prod.obscura.net"])
-        self.bundleCmd("processes", ["/bin/ps", "axlww"])
-        self.bundleCmd("proxy", ["/usr/sbin/scutil", "--proxy", "-dv"])
-        self.bundleCmd("reachability-0.0.0.0", ["/usr/sbin/scutil", "-r", "www.apple.com", "-dv"])
-        self.bundleCmd("reachability-1.1.1.1", ["/usr/sbin/scutil", "-r", "1.1.1.1", "-dv"])
-        self.bundleCmd("reachability-169.254.0.0", ["/usr/sbin/scutil", "-r", "169.254.0.0", "-dv"])
-        self.bundleCmd("reachability-169.254.0.0", ["/usr/sbin/scutil", "-r", "169.254.0.0", "-dv"])
-        self.bundleCmd("reachability-8.8.8.8", ["/usr/sbin/scutil", "-r", "8.8.8.8", "-dv"])
-        self.bundleCmd("route-0.0.0.0", ["/sbin/route", "-nv", "get", "0.0.0.0"])
-        self.bundleCmd("route-1.1.1.1", ["/sbin/route", "-nv", "get", "1.1.1.1"])
-        self.bundleCmd("route-2001:4860:4860::8888", ["/sbin/route", "-nv", "get", "-inet6", "2001:4860:4860::8888"])
-        self.bundleCmd("route-2606:4700:4700::1111", ["/sbin/route", "-nv", "get", "-inet6", "2606:4700:4700::1111"])
-        self.bundleCmd("route-8.8.8.8", ["/sbin/route", "-nv", "get", "8.8.8.8"])
-        self.bundleCmd("route-::", ["/sbin/route", "-nv", "get", "-inet6", "::"])
-        self.bundleCmd("route-apple.com", ["/sbin/route", "-nv", "get", "www.apple.com"])
-        self.bundleCmd("route-google.com", ["/sbin/route", "-nv", "get", "google.com"])
-        self.bundleCmd("route-v1.api.prod.obscura.net", ["/sbin/route", "-nv", "get", "v1.api.prod.obscura.net"])
-        self.bundleCmd("scutil-advisory", ["/usr/sbin/scutil", "--advisory", ""])
-        self.bundleCmd("scutil-rank", ["/usr/sbin/scutil", "--rank", ""])
-        self.bundleCmd("skywalk-status", ["/usr/sbin/skywalkctl", "status"])
-        self.bundleCmd("sysctl", ["/usr/sbin/sysctl", "-a"])
-        self.bundleCmd("vpn-connections", ["/usr/sbin/scutil", "--nc", "list"])
+        // TODO: https://linear.app/soveng/issue/OBS-2210/implement-more-diagnostics-on-ios
+        #if os(macOS)
+            self.bundleTask("extensions") { _task in try await self.bundleExtensions() }
 
-        self.bundlePlist(path: URL(filePath: "/Library/Preferences/SystemConfiguration/NetworkInterfaces.plist"))
-        self.bundlePlist(path: URL(filePath: "/Library/Preferences/com.apple.networkd.plist"))
-        self.bundlePlist(path: URL(filePath: "/Library/Preferences/com.apple.networkextension.cache.plist"))
-        self.bundlePlist(path: URL(filePath: "/Library/Preferences/com.apple.networkextension.control.plist"))
-        self.bundlePlist(path: URL(filePath: "/Library/Preferences/com.apple.networkextension.necp.plist"))
-        self.bundlePlist(path: URL(filePath: "/etc/bootpd.plist"))
+            self.bundleCmd("arp", ["/usr/sbin/arp", "-na"])
+            self.bundleCmd("csrutil-status", ["/usr/bin/csrutil", "status"])
+            self.bundleCmd("dig-apple.com", ["/usr/bin/dig", "+time=2", "www.apple.com"])
+            self.bundleCmd("dig-google.com", ["/usr/bin/dig", "+time=2", "google.com"])
+            self.bundleCmd("dig-v1.api.prod.obscura.net", ["/usr/bin/dig", "+time=2", "v1.api.prod.obscura.net"])
+            self.bundleCmd("dns", ["/usr/sbin/scutil", "--dns", "-dv"])
+            self.bundleCmd("hostinfo", ["/usr/bin/hostinfo"])
+            self.bundleCmd("http-v1.api.prod.obscura.net", ["/usr/bin/curl", "--verbose", "--insecure", "--location", "--silent", "--show-error", "https://v1.api.prod.obscura.net/api/ping"])
+            self.bundleCmd("http-v1.api.prod.obscura.net-apple.com", ["/usr/bin/curl", "--verbose", "--insecure", "--silent", "--show-error", "--connect-to", "::v1.api.prod.obscura.net:", "https://apple.com/api/ping", "-Hhost:v1.api.prod.obscura.net"])
+            self.bundleCmd("http-v1.api.prod.obscura.net-google.com", ["/usr/bin/curl", "--verbose", "--insecure", "--silent", "--show-error", "--connect-to", "::v1.api.prod.obscura.net:", "https://google.com/api/ping", "-Hhost:v1.api.prod.obscura.net"])
+            self.bundleCmd("ifconfig", ["/sbin/ifconfig", "-aLbmrvv"])
+            self.bundleCmd("netstat-interface-stats", ["/usr/sbin/netstat", "-ind"])
+            self.bundleCmd("netstat-listen-queues", ["/usr/sbin/netstat", "-Lanv"])
+            self.bundleCmd("netstat-routes", ["/usr/sbin/netstat", "-nral"])
+            self.bundleCmd("netstat-stats", ["/usr/sbin/netstat", "-s"])
+            self.bundleCmd("network-info", ["/usr/sbin/scutil", "--nwi", "-dv"])
+            self.bundleCmd("ping-1.1.1.1", ["/sbin/ping", "-oc5", "1.1.1.1"])
+            self.bundleCmd("ping-2001:4860:4860::8888", ["/sbin/ping6", "-oc5", "2001:4860:4860::8888"])
+            self.bundleCmd("ping-2606:4700:4700::1111", ["/sbin/ping6", "-oc5", "2606:4700:4700::1111"])
+            self.bundleCmd("ping-8.8.8.8", ["/sbin/ping", "-oc5", "8.8.8.8"])
+            self.bundleCmd("ping-v1.api.prod.obscura.net", ["/sbin/ping", "-oc5", "v1.api.prod.obscura.net"])
+            self.bundleCmd("processes", ["/bin/ps", "axlww"])
+            self.bundleCmd("proxy", ["/usr/sbin/scutil", "--proxy", "-dv"])
+            self.bundleCmd("reachability-0.0.0.0", ["/usr/sbin/scutil", "-r", "www.apple.com", "-dv"])
+            self.bundleCmd("reachability-1.1.1.1", ["/usr/sbin/scutil", "-r", "1.1.1.1", "-dv"])
+            self.bundleCmd("reachability-169.254.0.0", ["/usr/sbin/scutil", "-r", "169.254.0.0", "-dv"])
+            self.bundleCmd("reachability-169.254.0.0", ["/usr/sbin/scutil", "-r", "169.254.0.0", "-dv"])
+            self.bundleCmd("reachability-8.8.8.8", ["/usr/sbin/scutil", "-r", "8.8.8.8", "-dv"])
+            self.bundleCmd("route-0.0.0.0", ["/sbin/route", "-nv", "get", "0.0.0.0"])
+            self.bundleCmd("route-1.1.1.1", ["/sbin/route", "-nv", "get", "1.1.1.1"])
+            self.bundleCmd("route-2001:4860:4860::8888", ["/sbin/route", "-nv", "get", "-inet6", "2001:4860:4860::8888"])
+            self.bundleCmd("route-2606:4700:4700::1111", ["/sbin/route", "-nv", "get", "-inet6", "2606:4700:4700::1111"])
+            self.bundleCmd("route-8.8.8.8", ["/sbin/route", "-nv", "get", "8.8.8.8"])
+            self.bundleCmd("route-::", ["/sbin/route", "-nv", "get", "-inet6", "::"])
+            self.bundleCmd("route-apple.com", ["/sbin/route", "-nv", "get", "www.apple.com"])
+            self.bundleCmd("route-google.com", ["/sbin/route", "-nv", "get", "google.com"])
+            self.bundleCmd("route-v1.api.prod.obscura.net", ["/sbin/route", "-nv", "get", "v1.api.prod.obscura.net"])
+            self.bundleCmd("scutil-advisory", ["/usr/sbin/scutil", "--advisory", ""])
+            self.bundleCmd("scutil-rank", ["/usr/sbin/scutil", "--rank", ""])
+            self.bundleCmd("skywalk-status", ["/usr/sbin/skywalkctl", "status"])
+            self.bundleCmd("sysctl", ["/usr/sbin/sysctl", "-a"])
+            self.bundleCmd("vpn-connections", ["/usr/sbin/scutil", "--nc", "list"])
+
+            self.bundlePlist(path: URL(filePath: "/Library/Preferences/SystemConfiguration/NetworkInterfaces.plist"))
+            self.bundlePlist(path: URL(filePath: "/Library/Preferences/com.apple.networkd.plist"))
+            self.bundlePlist(path: URL(filePath: "/Library/Preferences/com.apple.networkextension.cache.plist"))
+            self.bundlePlist(path: URL(filePath: "/Library/Preferences/com.apple.networkextension.control.plist"))
+            self.bundlePlist(path: URL(filePath: "/Library/Preferences/com.apple.networkextension.necp.plist"))
+            self.bundlePlist(path: URL(filePath: "/etc/bootpd.plist"))
+        #endif
+
+        #if os(iOS)
+            self.bundleTask("rust-log") { _task in await self.bundleRustLog() }
+        #endif
 
         await self.pendingTasks.waitForAll()
 
@@ -699,7 +755,9 @@ func _createDebuggingArchive(appState: AppState?) async throws -> String {
     let elapsed = SuspendingClock.now - start
     logger.info("Debug Bundle completed in \(elapsed, privacy: .public)")
 
-    NSWorkspace.shared.selectFile(zipPath.path, inFileViewerRootedAtPath: "")
+    #if os(macOS)
+        NSWorkspace.shared.selectFile(zipPath.path, inFileViewerRootedAtPath: "")
+    #endif
     return zipPath.path
 }
 

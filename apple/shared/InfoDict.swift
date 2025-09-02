@@ -32,13 +32,15 @@ func sourceId() -> String {
     return obscuraInfoDict()["ObscuraSourceId"] as! String
 }
 
-func extensionBundle() -> Bundle {
-    let url = Bundle.main.bundleURL
-        .appending(path: "Contents/Library/SystemExtensions/")
-        .appending(component: "\(networkExtensionBundleID()).systemextension")
+#if os(macOS)
+    func extensionBundle() -> Bundle {
+        let url = Bundle.main.bundleURL
+            .appending(path: "Contents/Library/SystemExtensions/")
+            .appending(component: "\(networkExtensionBundleID()).systemextension")
 
-    return Bundle(url: url)!
-}
+        return Bundle(url: url)!
+    }
+#endif
 
 // The correct bundle ID for the client app to connect to based on the build configuration
 public func networkExtensionBundleID() -> String {

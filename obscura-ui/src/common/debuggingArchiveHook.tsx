@@ -3,6 +3,7 @@ import { notifications } from '@mantine/notifications';
 import { useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { CommandError, debuggingArchive, revealItemInDir } from '../bridge/commands';
+import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
 import { fmtErrorI18n } from '../translations/i18n';
 import { normalizeError } from './utils';
 
@@ -16,10 +17,12 @@ export function useDebuggingArchive(): () => Promise<void> {
         setArchiveState({ inProgress: true });
         try {
             const path = await debuggingArchive();
-            notifications.show({
-                title: t('Debugging Archive Created'),
-                message: <Text><Trans i18nKey='findDebugBundleInFinder' components={[<Anchor onClick={() => revealItemInDir(path)} />]} /></Text >
-            });
+            if (!IS_HANDHELD_DEVICE) {
+              notifications.show({
+                  title: t('Debugging Archive Created'),
+                  message: <Text><Trans i18nKey='findDebugBundleInFinder' components={[<Anchor onClick={() => revealItemInDir(path)} />]} /></Text >
+              });
+            }
         } catch (e) {
           const error = normalizeError(e);
           const message = error instanceof CommandError

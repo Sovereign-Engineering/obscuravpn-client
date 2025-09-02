@@ -46,10 +46,7 @@ export interface OsStatus {
         latestPath?: string,
         inProgressCounter: number,
     },
-    logCapture?: {
-        inProgress: boolean,
-        logsAvailable: boolean
-    },
+    canSendMail: boolean,
     loginItemStatus?: {
         registered: boolean,
         error?: string

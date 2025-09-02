@@ -1,3 +1,4 @@
+use std::ffi::c_void;
 use std::num::NonZeroU32;
 use std::sync::{Arc, LazyLock, OnceLock};
 use tokio::runtime::Runtime;
@@ -9,32 +10,53 @@ use crate::manager_cmd::ManagerCmd;
 use crate::manager_cmd::ManagerCmdErrorCode;
 
 /// cbindgen:ignore
-static MACOS_LOG_INIT: std::sync::Once = std::sync::Once::new();
+static APPLE_LOG_INIT: std::sync::Once = std::sync::Once::new();
 
-#[no_mangle]
 /// To view logs info, or debug logs with `log` tool you must pass `--level info|debug`.
 /// To filter logs at the rust level you can set the `RUST_LOG` environment variable.
-pub extern "C" fn initialize_macos_system_logging() {
+///
+/// On iOS, returns the pointer for the drop guard that flushes log writes.
+#[no_mangle]
+pub extern "C" fn initialize_apple_system_logging() -> *mut c_void {
     use tracing_oslog::OsLogger;
     use tracing_subscriber::{
         filter::{EnvFilter, LevelFilter},
-        layer::SubscriberExt,
-        registry, Layer,
+        layer::SubscriberExt as _,
+        registry, Layer as _,
     };
-
-    MACOS_LOG_INIT.call_once(|| {
-        let filter = EnvFilter::from_default_env().add_directive(LevelFilter::INFO.into());
-        let collector = registry().with(OsLogger::new("net.obscura.rust-apple", "default").with_filter(filter));
-
-        tracing::subscriber::set_global_default(collector).expect("failed to set global subscriber");
+    // `EnvFilter` doesn't impl `Clone`
+    fn filter() -> EnvFilter {
+        EnvFilter::from_default_env().add_directive(LevelFilter::INFO.into())
+    }
+    #[cfg_attr(not(target_os = "ios"), allow(unused_mut))]
+    let mut guard_ptr = std::ptr::null_mut();
+    APPLE_LOG_INIT.call_once(|| {
+        let oslog_layer = OsLogger::new("net.obscura.rust-apple", "default").with_filter(filter());
+        let registry = registry().with(oslog_layer);
+        #[cfg(not(target_os = "ios"))]
+        tracing::subscriber::set_global_default(registry).expect("failed to set global subscriber");
+        #[cfg(target_os = "ios")]
+        match super::ios::build_log_roller() {
+            Ok(roller) => {
+                use tracing_appender::non_blocking::NonBlocking;
+                let (writer, guard) = NonBlocking::new(roller);
+                guard_ptr = Box::into_raw(Box::new(guard)) as _;
+                let fs_layer = tracing_subscriber::fmt::Layer::default().json().with_writer(writer).with_filter(filter());
+                tracing::subscriber::set_global_default(registry.with(fs_layer)).expect("failed to set global subscriber");
+            }
+            Err(error) => {
+                tracing::subscriber::set_global_default(registry).expect("failed to set global subscriber");
+                tracing::error!(?error, "failed to initialize log persistence");
+            }
+        }
         tracing::info!("logging initialized");
-
         std::panic::set_hook(Box::new(|info| {
             let backtrace = std::backtrace::Backtrace::force_capture();
             tracing::error!("panic: {}\n{:#}", info, backtrace);
         }));
         tracing::info!("panic logging hook set");
     });
+    guard_ptr
 }
 
 /// cbindgen:ignore
@@ -45,6 +67,9 @@ fn global_manager() -> Arc<Manager> {
     GLOBAL.get().expect("ffi global manager not initialized").clone()
 }
 
+/// SAFETY:
+/// - `log_flush_guard` must be a pointer returned by `initialize_apple_system_logging`
+/// - (TODO)
 #[no_mangle]
 pub unsafe extern "C" fn initialize(
     config_dir: FfiStr,
@@ -52,6 +77,7 @@ pub unsafe extern "C" fn initialize(
     keychain_wg_secret_key: FfiBytes,
     receive_cb: extern "C" fn(FfiBytes),
     keychain_set_wg_secret_key: extern "C" fn(FfiBytes) -> bool,
+    log_flush_guard: *mut c_void,
 ) {
     let mut first_init = false;
     GLOBAL.get_or_init(|| {
@@ -63,6 +89,12 @@ pub unsafe extern "C" fn initialize(
         let user_agent = user_agent.to_string();
         let keychain_wg_sk = Some(keychain_wg_secret_key.to_vec()).filter(|v| !v.is_empty());
         let keychain_set_wg_secret_key: KeychainSetSecretKeyFn = Box::new(move |sk: &[u8; 32]| keychain_set_wg_secret_key(sk.ffi()));
+        let log_flush_guard = std::ptr::NonNull::new(log_flush_guard).map(|log_flush_guard|
+            // SAFETY:
+            // - `log_flush_guard` was checked to be non-null
+            // - Caller guarantees that `log_flush_guard` originates from a
+            //   matching `into_raw` call
+            unsafe { Box::from_raw(log_flush_guard.as_ptr() as _) });
         match Manager::new(
             config_dir,
             keychain_wg_sk.as_deref(),
@@ -70,6 +102,7 @@ pub unsafe extern "C" fn initialize(
             &RUNTIME,
             receive_cb,
             Some(keychain_set_wg_secret_key),
+            log_flush_guard,
         ) {
             Ok(c) => {
                 first_init = true;

@@ -1,7 +1,7 @@
-import { Button, useComputedColorScheme } from "@mantine/core";
-import { PropsWithChildren } from "react";
+import { Button } from '@mantine/core';
+import { PropsWithChildren } from 'react';
+import commonClasses from '../common/common.module.css';
 
 export function SecondaryButton({ children, onClick }: PropsWithChildren & { onClick: () => void }) {
-  const colorScheme = useComputedColorScheme();
-  return <Button onClick={onClick} variant='light' color='gray' c={colorScheme === 'light' ? 'gray.7' : 'gray'}>{children}</Button>;
+  return <Button onClick={onClick} variant='light' color='gray' className={commonClasses.secondaryColor}>{children}</Button>;
 }

@@ -8,6 +8,11 @@
     width: 80%;
     min-width: fit-content;
     margin-bottom: var(--mantine-spacing-lg);
+    background-color: light-dark(var(--mantine-color-dark-8), var(--mantine-color-dark-6)) !important;
+}
+
+.progress, .trafficVulnerableProgressBar {
+    background-color: light-dark(var(--mantine-color-dark-4), var(--mantine-color-dark-3)) !important;
 }
 
 .connectionProgressBarGroup {
@@ -28,6 +33,14 @@
 
 .locationDividerCaption {
     width: 28rem;
+}
+
+.subtitle {
+    color: light-dark(var(--mantine-color-dark-4), var(--mantine-color-dark-2));
+}
+
+.checkMyConnection {
+    color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-gray-5));
 }
 
 @media screen and (max-width: $mantine-breakpoint-xs) {

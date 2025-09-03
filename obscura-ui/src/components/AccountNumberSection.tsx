@@ -1,4 +1,4 @@
-import { ActionIcon, Button, CopyButton, Group, Stack, Text, useComputedColorScheme, useMantineTheme } from '@mantine/core';
+import { ActionIcon, Button, CopyButton, Group, Stack, Text, useMantineTheme } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsClipboardFill } from 'react-icons/bs';
@@ -13,17 +13,16 @@ import PersonBadgeKey from '../res/person.badge.key.svg?react';
 
 export function AccountNumberSection({ accountId, logOut }: { accountId: ObscuraAccount.AccountId, logOut: () => Promise<void> }) {
   const { t } = useTranslation();
-  const colorScheme = useComputedColorScheme();
   const theme = useMantineTheme();
   const primaryColorResolved = usePrimaryColorResolved();
   const [showAccountNumber, setShowAccountNumber] = useState(false);
   const EyeIcon = showAccountNumber ? EyeSlash : Eye;
 
   return (
-    <Stack align='start' w='100%' p='md' gap={0} style={{ borderRadius: theme.radius.md, boxShadow: theme.shadows.sm }} bg={colorScheme === 'light' ? 'gray.1' : 'dark.6'}>
+    <Stack align='start' w='100%' p='md' gap={0} style={{ borderRadius: theme.radius.md, boxShadow: theme.shadows.sm }} className={commonClasses.elevatedSurface}>
       <Group w='100%' justify='space-between'>
         <Group mb='xs' gap={5}>
-          <PersonBadgeKey fill={colorScheme === 'light' ? 'black' : 'white'} width='1em' height='1em' />
+          <PersonBadgeKey width='1em' height='1em' className={commonClasses.svgThemed} />
           <Text fw={500}>Account Number</Text>
           <div className={commonClasses.desktopOnly}>
             <ActionIcon variant='subtle' title={showAccountNumber ? t('hide account number') : t('show account number')} onClick={() => setShowAccountNumber(!showAccountNumber)}>

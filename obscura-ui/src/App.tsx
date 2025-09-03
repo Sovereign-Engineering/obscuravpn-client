@@ -1,7 +1,7 @@
-import { AppShell, AppShellMain, Modal, Text, Title, useComputedColorScheme } from '@mantine/core';
+import { AppShell, AppShellMain, Modal, Text, Title } from '@mantine/core';
 import { useHotkeys, useThrottledValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { ReactNode, useEffect, useRef, useState } from 'react';
+import { ReactNode, useContext, useEffect, useRef, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Trans, useTranslation } from 'react-i18next';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
@@ -16,6 +16,7 @@ import { NotificationId } from './common/notifIds';
 import { useAsync } from './common/useAsync';
 import { useLoadable } from './common/useLoadable';
 import { MIN_LOAD_MS, normalizeError } from './common/utils';
+import { CColorSchemeContext } from './components/CachedColorScheme';
 import { ScrollToTop } from './components/ScrollToTop';
 import { VpnError } from './components/VpnErrorFmt';
 import { About, Account, Connection, DeveloperView, FallbackAppRender, Help, Location, LogIn, Settings, SplashScreen } from './views';
@@ -31,10 +32,10 @@ interface View {
 export default function () {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const computedColorScheme = useComputedColorScheme();
+  const colorScheme = useContext(CColorSchemeContext);
 
   const toggleColorScheme = async () => {
-    const newColorScheme = computedColorScheme === 'dark' ? 'light' : 'dark';
+    const newColorScheme = colorScheme === 'dark' ? 'light' : 'dark';
     try {
       await commands.setColorScheme(newColorScheme);
     } catch (e) {

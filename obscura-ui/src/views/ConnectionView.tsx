@@ -1,4 +1,4 @@
-import { Anchor, Button, Combobox, DefaultMantineColor, Divider, Flex, Group, Image, Paper, Progress, ProgressRootProps, ScrollArea, Space, Stack, StyleProp, Text, ThemeIcon, Title, useCombobox, useComputedColorScheme, useMantineTheme } from '@mantine/core';
+import { Anchor, Button, Combobox, Divider, Flex, Group, Image, Paper, Progress, ProgressRootProps, ScrollArea, Space, Stack, Text, ThemeIcon, Title, useCombobox, useMantineTheme } from '@mantine/core';
 import { useFocusTrap, useInterval, useToggle } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { ReactNode, useContext, useEffect, useMemo, useState } from 'react';
@@ -16,6 +16,7 @@ import { KeyedSet } from '../common/KeyedSet';
 import { useExitList } from '../common/useExitList';
 import { useCookie } from '../common/utils';
 import BoltBadgeAuto from '../components/BoltBadgeAuto';
+import { CColorSchemeContext } from '../components/CachedColorScheme';
 import ExternalLinkIcon from '../components/ExternalLinkIcon';
 import ObscuraChip from '../components/ObscuraChip';
 import DecoConnected from '../res/deco/deco-connected.svg';
@@ -45,7 +46,6 @@ import classes from './ConnectionView.module.css';
 const BUTTON_WIDTH = 320;
 
 export default function Connection() {
-    const colorScheme = useComputedColorScheme();
     const { t } = useTranslation();
     const { vpnConnected, initiatingExitSelector, connectionInProgress, osStatus, appStatus, showOfflineUI } = useContext(AppContext);
     const connectionTransition = useIsTransitioning();
@@ -114,7 +114,7 @@ export default function Connection() {
             <Mascot />
             <Stack align='center' gap={primaryButtonShown ? 0 : 20} mt={primaryButtonShown ? 0 : 20} justify='space-around'>
                 <Title order={2} fw={600}>{getTitle()}</Title>
-                <Title order={4} mt={5} h='xl' c={colorScheme === 'light' ? 'dark.3' : 'dark.2'} fw={350}>{Subtitle()}</Title>
+                <Title order={4} mt={5} h='xl' fw={350} className={classes.subtitle}>{Subtitle()}</Title>
             </Stack>
             <Space h='xs' />
             <PrimaryConnectButton />
@@ -123,7 +123,7 @@ export default function Connection() {
             {
                 vpnConnected && connectionInProgress === ConnectionInProgress.UNSET && <div className={classes.checkMyConnection}>
                     <Space />
-                    <Text c={colorScheme === 'light' ? 'gray.6' : 'gray.5'}><Anchor c='inherit' href={ObscuraAccount.CHECK_STATUS_WEBPAGE} underline='always'>{t('checkMyConnection')}</Anchor> <ExternalLinkIcon size={12} style={{ marginBottom: -1 }} /></Text>
+                    <Text className={classes.checkMyConnection}><Anchor c='inherit' href={ObscuraAccount.CHECK_STATUS_WEBPAGE} underline='always'>{t('checkMyConnection')}</Anchor> <ExternalLinkIcon size={12} style={{ marginBottom: -1 }} /></Text>
                 </div>
             }
             <div style={{ flexGrow: 1 }} />
@@ -178,20 +178,17 @@ function PrimaryConnectButton() {
 
 function ConnectionProgressBar() {
     const { t } = useTranslation();
-    const colorScheme = useComputedColorScheme();
     const {
         vpnConnected,
         connectionInProgress,
         showOfflineUI
     } = useContext(AppContext);
 
-    const bg = colorScheme === 'light' ? 'dark.9' : 'dark.6';
-    const progressBg = colorScheme === 'light' ? 'dark.4' : 'dark.3';
     const progressWidth = { base: 40, xs: 50 };
 
-    const connectingProgressBars = usePulsingProgress({ activated: isConnecting(connectionInProgress), bars: 2, inactiveColor: progressBg, w: progressWidth });
+    const connectingProgressBars = usePulsingProgress({ activated: isConnecting(connectionInProgress), bars: 2, w: progressWidth });
     return (
-        <Paper shadow='xl' withBorder className={classes.connectionProgressBarContainer} maw={600} bg={bg} p={{base: 'xs', xs: 'md'}} pt={5} pb='xs' radius='lg'>
+        <Paper shadow='xl' withBorder className={classes.connectionProgressBarContainer} maw={600} p={{base: 'xs', xs: 'md'}} pt={5} pb='xs' radius='lg'>
             <Group mih={50} className={classes.connectionProgressBarGroup} align='center'>
                 <Stack gap='0' align='center'>
                     <ThemeIcon variant='transparent' c='white'>
@@ -202,20 +199,20 @@ function ConnectionProgressBar() {
                 {
                     showOfflineUI &&
                     <>
-                        <Progress w={80} value={0} h={2} bg={progressBg} />
+                        <Progress className={classes.progress} w={80} value={0} h={2} />
                         <Stack gap='0' align='center'>
                             <ThemeIcon variant='transparent' c='red.6'>
                                 <MdOutlineWifiOff size={22} />
                             </ThemeIcon>
                             <Text size='xs' c='red'>{t('noInternet')}</Text>
                         </Stack>
-                        <Progress w={80} value={0} h={2} bg={progressBg} />
+                        <Progress className={classes.progress} w={80} value={0} h={2} />
                     </>
                 }
                 {
                     !showOfflineUI && (connectionInProgress === ConnectionInProgress.Disconnecting || (!vpnConnected && connectionInProgress === ConnectionInProgress.UNSET)) &&
                     <Stack gap='xs' align='center' justify='flex-end' h={50} className={classes.trafficVulnerable}>
-                        <Progress className={classes.trafficVulnerableProgressBar} value={100} color='red.6' h={2} bg={progressBg} />
+                        <Progress className={classes.trafficVulnerableProgressBar} value={100} color='red.6' h={2} />
                         <Text size='xs' c='red.6'>
                             {t('trafficVulnerable')}
                         </Text>
@@ -237,7 +234,7 @@ function ConnectionProgressBar() {
                         </ThemeIcon>
                         <Text size='xs' c={(vpnConnected && connectionInProgress !== ConnectionInProgress.ChangingLocations) ? 'white' : 'dimmed'}>Blind Relay</Text>
                     </Stack>
-                    <Progress w={progressWidth} value={(vpnConnected && connectionInProgress !== ConnectionInProgress.ChangingLocations) ? 100 : 0} h={2} bg={progressBg} />
+                    <Progress className={classes.progress} w={progressWidth} value={(vpnConnected && connectionInProgress !== ConnectionInProgress.ChangingLocations) ? 100 : 0} h={2} />
                 </>}
                 <Stack gap='0' align='center'>
                     <ThemeIcon variant='transparent' c={showOfflineUI ? 'red.6' : (connectionInProgress === ConnectionInProgress.UNSET ? 'white' : 'dimmed')}>
@@ -253,10 +250,9 @@ function ConnectionProgressBar() {
 interface PulsingProgressProps extends ProgressRootProps {
   activated: boolean,
   bars: number,
-  inactiveColor: StyleProp<DefaultMantineColor>,
 }
 
-function usePulsingProgress({ activated, bars = 2, inactiveColor, w }: PulsingProgressProps) {
+function usePulsingProgress({ activated, bars = 2, w }: PulsingProgressProps) {
     const activeLength = 50;
     const segmentSize = activeLength / 2;
     const values = Array.from({ length: (bars + 1) * (100 / activeLength * bars) }, (_, i) => i * segmentSize);
@@ -281,12 +277,12 @@ function usePulsingProgress({ activated, bars = 2, inactiveColor, w }: PulsingPr
     const progressComponents: ReactNode[] = [];
 
     const ProgressSection = ({ value, threshold }: { value: number, threshold: number }) => {
-        return <Progress.Section bg={!activated || (value >= threshold - activeLength && value <= threshold) ? undefined : inactiveColor} value={25} />
+        return <Progress.Section className={!activated || (value >= threshold - activeLength && value <= threshold) ? undefined : classes.progress} value={25} />
     }
 
     for (let index = 0; index < bars; index++) {
         progressComponents.push(
-            <Progress.Root h={2} w={w} bg={inactiveColor} transitionDuration={50}>
+            <Progress.Root h={2} w={w} className={classes.progress} transitionDuration={50}>
                 <ProgressSection value={value} threshold={activeLength + 100 * index} />
                 <ProgressSection value={value} threshold={(activeLength + segmentSize) + 100 * index} />
                 <ProgressSection value={value} threshold={(activeLength * 2) + (100 * index)} />
@@ -311,7 +307,7 @@ function Deco() {
         showOfflineUI,
         osStatus
     } = useContext(AppContext);
-    const colorScheme = useComputedColorScheme();
+    const colorScheme = useContext(CColorSchemeContext);
     const [connectingIndex, toggleConnectingDeco] = useToggle([0, 1, 2, 2]);
 
     const { start, stop } = useInterval(() => {

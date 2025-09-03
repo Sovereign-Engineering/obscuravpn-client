@@ -1,4 +1,4 @@
-import { Anchor, Box, Button, Center, Code, Group, Loader, Paper, Stack, Text, ThemeIcon, useComputedColorScheme, useMantineTheme } from '@mantine/core';
+import { Anchor, Box, Button, Center, Code, Group, Loader, Paper, Stack, Text, ThemeIcon, useMantineTheme } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import React, { useContext, useEffect } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
@@ -209,10 +209,9 @@ function AccountStatusCardTemplate({
   subtitle
 }: AccountStatusCardTemplateProps) {
   const { t } = useTranslation();
-  const colorScheme = useComputedColorScheme();
   const { appStatus } = useContext(AppContext);
   return (
-    <Paper w='100%' p='md' radius='md' bg={colorScheme === 'light' ? 'gray.1' : 'dark.6'} shadow='sm'>
+    <Paper w='100%' p='md' radius='md' shadow='sm' className={commonClasses.elevatedSurface}>
       <Group grow preventGrowOverflow={false}>
         <Box maw='min-content'>
           {icon}
@@ -278,10 +277,9 @@ function AccountRefreshButton({ smallerSize = false }: { smallerSize?: boolean }
 function WGConfigurations() {
   const { t } = useTranslation();
   const theme = useMantineTheme();
-  const colorScheme = useComputedColorScheme();
   const { appStatus } = useContext(AppContext);
   return <>
-    <Stack align='start' w='100%' p='md' style={{ borderRadius: theme.radius.md, boxShadow: theme.shadows.sm }} bg={colorScheme === 'light' ? 'gray.1' : 'dark.6'}>
+    <Stack align='start' w='100%' p='md' style={{ borderRadius: theme.radius.md, boxShadow: theme.shadows.sm }} className={commonClasses.elevatedSurface}>
       <Group w='100%' justify='space-between'>
         <Text fw={500}>{t('WGConfigs')}</Text>
         <ButtonLink text={t('Manage Configurations')} href={ObscuraAccount.tunnelsUrl(appStatus.accountId)} />

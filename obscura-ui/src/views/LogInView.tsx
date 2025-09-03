@@ -1,4 +1,4 @@
-import { Anchor, Button, Card, Code, CopyButton, Drawer, Group, Image, Loader, Modal, Space, Stack, Text, TextInput, Title, Transition, useComputedColorScheme } from '@mantine/core';
+import { Anchor, Button, Card, Code, CopyButton, Drawer, Group, Image, Loader, Modal, Space, Stack, Text, TextInput, Title, Transition } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { motion, MotionValue, useSpring, useTransform } from 'framer-motion';
@@ -32,7 +32,6 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
   const [awaitingAccountCreation, setCreatingWaiting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const colorScheme = useComputedColorScheme();
 
   useEffect(() => {
     if (!!apiError) {
@@ -109,7 +108,7 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
   }
 
   return (
-    <Stack h='100vh' bg={colorScheme === 'light' ? undefined : 'dark.8'} gap={20}>
+    <Stack h='100vh' className={classes.loginContainer} gap={20}>
       <div style={{ height: '100%', backgroundImage: `url("${IS_HANDHELD_DEVICE ? DecoOrangeBottom : DecoOrangeTop}")`, backgroundPosition: IS_HANDHELD_DEVICE ? 'bottom' : 'top' }} className={classes.backgroundImage}>
         <Space h='28vh' />
         {

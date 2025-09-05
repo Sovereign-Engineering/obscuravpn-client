@@ -13,6 +13,7 @@ import DebuggingArchive from '../components/DebuggingArchive';
 import ObscuraWordmark from '../components/ObscuraWordmark';
 import { Socials } from '../components/Socials';
 import classes from './About.module.css';
+import { useNavigate } from 'react-router-dom';
 
 const Licenses = lazy(() => import('../components/Licenses'));
 
@@ -22,6 +23,18 @@ export default function About() {
   const { updaterStatus } = osStatus;
   const [showLicenses, setShowLicenses] = useState(false);
   const handleCommand = commands.useHandleCommand(t);
+  const navigate = useNavigate();
+  const [_, setVersionClicks] = useState(0);
+
+  const handleVersionClick = () => {
+    setVersionClicks(clicks => {
+      if (clicks === 4) {
+        navigate('/developer');
+        return 0;
+      }
+      return clicks + 1;
+    });
+  }
 
   useEffect(() => {
     // Intentionally run only on mount (recheck once if update not already available)
@@ -42,7 +55,7 @@ export default function About() {
             {updaterStatusDelayed.type === UpdaterStatusType.Available && <ThemeIcon variant='transparent' c='yellow'><FaExclamationTriangle /></ThemeIcon>}
             {updaterStatusDelayed.type === UpdaterStatusType.Initiated && <Loader size='xs' mr='xs' />}
             <Text>
-              {osStatus.srcVersion}
+              <span onClick={handleVersionClick}>{osStatus.srcVersion}</span>
               {isLatest && <> ({t('latestVersion')})</>}
               {updaterStatusDelayed.type === UpdaterStatusType.Available && <> ({t('updateAvailable', { version: updaterStatusDelayed.appcast!.version })})</>}
             </Text>

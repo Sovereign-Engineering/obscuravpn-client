@@ -15,7 +15,6 @@ import commonClasses from '../common/common.module.css';
 import { HEADER_TITLE, multiRef, normalizeError } from '../common/utils';
 import DecoOrangeTop from '../res/deco/deco-orange-top.svg';
 import DecoOrangeBottom from '../res/deco/deco-signup-mobile.svg';
-import { appleReviewIds, stagingAPIURL } from '../Secrets';
 import { fmtErrorI18n, TranslationKey } from '../translations/i18n';
 import classes from './LoginView.module.css';
 
@@ -54,12 +53,6 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
       setLoginWaiting(true);
       try {
         const accountId = ObscuraAccount.parseAccountIdInput(inputRef.current.value);
-
-        // Set API URL to staging if it's a apple review account. They are production builds using sandbox AppStore.
-        if (appleReviewIds.includes(accountId)) {
-          await commands.setApiUrl(stagingAPIURL);
-        }
-
         await commands.setInNewAccountFlow(false);
         await commands.login(accountId, true);
         loginErrorTimeout.current = window.setTimeout(() => {

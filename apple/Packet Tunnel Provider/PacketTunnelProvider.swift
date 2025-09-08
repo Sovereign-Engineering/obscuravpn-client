@@ -112,7 +112,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
                 throw "tunnel already active"
             }
 
-            let networkConfig = NetworkConfig(ipv4: "10.75.76.77", dns: ["10.64.0.99"], ipv6: "fc00:bbbb:bbbb:bb01::c:4c4d/128")
+            let networkConfig = NetworkConfig(ipv4: "10.75.76.77", dns: ["10.64.0.99"], ipv6: "fc00:bbbb:bbbb:bb01::c:4c4d/128", mtu: 1280)
             try await self.setTunnelNetworkSettings(NEPacketTunnelNetworkSettings.build(networkConfig))
             let _: Empty = try await runManagerCmd(.setTunnelArgs(args: tunnelArgs, allowActivation: true))
 

@@ -2,7 +2,6 @@ use super::{
     errors::{ApiError, TunnelConnectError},
     network_config::NetworkConfig,
 };
-use crate::relay_selection::race_relay_handshakes;
 use crate::{config::KeychainSetSecretKeyFn, quicwg::QuicWgConnHandshaking};
 use crate::{config::PinnedLocation, exit_selection::ExitSelectionState};
 use crate::{
@@ -14,6 +13,7 @@ use crate::{
     config::{ConfigSaveError, cached::ConfigCached},
     exit_selection::ExitSelector,
 };
+use crate::{quicwg::TUNNEL_MTU, relay_selection::race_relay_handshakes};
 use boringtun::x25519::{PublicKey, StaticSecret};
 use chrono::Utc;
 use obscuravpn_api::cmd::{CacheWgKey, ETagCmd, ExitList, ListExits2};
@@ -224,7 +224,7 @@ impl ClientState {
     ) -> Result<(QuicWgConn, NetworkConfig, OneExit, OneRelay), TunnelConnectError> {
         let (token, tunnel_config, wg_sk, exit, relay, handshaking) =
             self.new_tunnel(exit_selector, network_interface_index, selection_state).await?;
-        let network_config = NetworkConfig::new(&tunnel_config)?;
+        let network_config = NetworkConfig::new(&tunnel_config, TUNNEL_MTU)?;
         let client_ip_v4 = network_config.ipv4;
         tracing::info!(
             tunnel.id =% token,

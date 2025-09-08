@@ -17,9 +17,9 @@ pub struct TunDevice {
 }
 
 impl TunDevice {
-    pub fn create(addr: IpAddr) -> anyhow::Result<Self> {
+    pub fn create(addr: IpAddr, mtu: u16) -> anyhow::Result<Self> {
         let mut config = tun::Configuration::default();
-        config.name("obscura").address(addr).mtu(1280).up();
+        config.name("obscura").address(addr).mtu(mtu.into()).up();
         let tun = tun::create_as_async(&config)?;
         let buf = vec![0u8; u16::MAX as usize];
         Ok(Self { tun, buf })

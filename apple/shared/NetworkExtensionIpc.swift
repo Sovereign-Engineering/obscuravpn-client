@@ -93,6 +93,7 @@ struct NetworkConfig: Codable, CustomStringConvertible, Equatable {
     var ipv4: String
     var dns: [String]
     var ipv6: String
+    var mtu: UInt16
 }
 
 // We must use NSError to communicate errors via startTunnel.

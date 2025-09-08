@@ -237,7 +237,7 @@ impl Manager {
 
     pub fn send_packet(&self, packet: &[u8]) {
         if let Some(conn) = self.tunnel_state.borrow().get_conn() {
-            conn.send(packet);
+            conn.send(&[packet]);
         }
     }
 

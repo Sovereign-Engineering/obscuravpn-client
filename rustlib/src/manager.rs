@@ -16,7 +16,7 @@ use obscuravpn_api::{
 use serde::{Deserialize, Serialize};
 use tokio::{
     runtime::{Handle, Runtime},
-    sync::watch::{channel, Receiver, Sender},
+    sync::watch::{Receiver, Sender, channel},
 };
 use tokio_util::sync::{CancellationToken, DropGuard};
 use tracing_appender::non_blocking::WorkerGuard;
@@ -26,8 +26,8 @@ use crate::{
     backoff::Backoff,
     client_state::AccountStatus,
     config::{
-        cached::ConfigCached, feature_flags::FeatureFlags, Config, ConfigDebug, ConfigLoadError, ConfigSaveError, KeychainSetSecretKeyFn,
-        PinnedLocation,
+        Config, ConfigDebug, ConfigLoadError, ConfigSaveError, KeychainSetSecretKeyFn, PinnedLocation, cached::ConfigCached,
+        feature_flags::FeatureFlags,
     },
     errors::ApiError,
     exit_selection::ExitSelector,
@@ -131,7 +131,7 @@ pub struct TunnelArgs {
 impl VpnStatus {
     fn from_tunnel_state(tunnel_state: &TunnelState) -> Self {
         match tunnel_state {
-            TunnelState::Disconnected { .. } => VpnStatus::Disconnected {},
+            TunnelState::Disconnected => VpnStatus::Disconnected {},
             TunnelState::Connecting { args, connect_error, disconnect_reason, offset_traffic_stats: _, network_interface_index: _ } => {
                 VpnStatus::Connecting {
                     tunnel_args: args.clone(),

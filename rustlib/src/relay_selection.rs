@@ -1,7 +1,7 @@
 use crate::errors::RelaySelectionError;
 use crate::net::{new_quic, new_udp};
 use crate::quicwg::{QuicWgConnHandshaking, QuicWgConnectError};
-use flume::{bounded, Receiver, SendError};
+use flume::{Receiver, SendError, bounded};
 use obscuravpn_api::types::OneRelay;
 use std::num::NonZeroU32;
 use std::sync::Arc;

@@ -13,7 +13,7 @@ impl FfiBytes<'_> {
             // catch zero sized early, to allow empty null pointer buffers
             return Vec::new();
         }
-        core::slice::from_raw_parts(self.buffer as *const u8, self.len).to_vec()
+        unsafe { core::slice::from_raw_parts(self.buffer as *const u8, self.len).to_vec() }
     }
 }
 
@@ -25,11 +25,11 @@ impl<'a, T: AsRef<[u8]>> From<&'a T> for FfiBytes<'a> {
 }
 
 pub trait FfiBytesExt {
-    fn ffi(&self) -> FfiBytes;
+    fn ffi(&self) -> FfiBytes<'_>;
 }
 
 impl<T: AsRef<[u8]>> FfiBytesExt for T {
-    fn ffi(&self) -> FfiBytes {
+    fn ffi(&self) -> FfiBytes<'_> {
         self.into()
     }
 }
@@ -41,7 +41,8 @@ pub struct FfiStr<'a> {
 
 impl FfiStr<'_> {
     pub unsafe fn to_string(&self) -> String {
-        String::from_utf8(self.bytes.to_vec()).expect("ffi buffer does not contain valid utf8")
+        let s = unsafe { self.bytes.to_vec() };
+        String::from_utf8(s).expect("ffi buffer does not contain valid utf8")
     }
 }
 
@@ -53,11 +54,11 @@ impl<'a, T: AsRef<str>> From<&'a T> for FfiStr<'a> {
 }
 
 pub trait FfiStrExt {
-    fn ffi_str(&self) -> FfiStr;
+    fn ffi_str(&self) -> FfiStr<'_>;
 }
 
 impl<T: AsRef<str>> FfiStrExt for T {
-    fn ffi_str(&self) -> FfiStr {
+    fn ffi_str(&self) -> FfiStr<'_> {
         self.into()
     }
 }

@@ -2,16 +2,16 @@ use boringtun::noise::{Tunn, TunnResult};
 use boringtun::x25519::{PublicKey, StaticSecret};
 use bytes::Bytes;
 use etherparse::{IcmpEchoHeader, Icmpv4Type, PacketBuilder, SlicedPacket, TransportSlice};
-use futures::stream::unfold;
 use futures::Stream;
 use futures::StreamExt;
-use obscuravpn_api::relay_protocol::{MessageCode, MessageContext, MessageHeader, RelayOpCode, RelayResponseCode, PROTOCOL_IDENTIFIER};
+use futures::stream::unfold;
+use obscuravpn_api::relay_protocol::{MessageCode, MessageContext, MessageHeader, PROTOCOL_IDENTIFIER, RelayOpCode, RelayResponseCode};
 use quinn::crypto::rustls::QuicClientConfig;
 use quinn::rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
-use quinn::rustls::crypto::{verify_tls12_signature, verify_tls13_signature, CryptoProvider};
+use quinn::rustls::crypto::{CryptoProvider, verify_tls12_signature, verify_tls13_signature};
 use quinn::rustls::pki_types::{CertificateDer, ServerName, UnixTime};
 use quinn::rustls::{CertificateError, DigitallySignedStruct, SignatureScheme};
-use quinn::{rustls, ClientConfig, MtuDiscoveryConfig};
+use quinn::{ClientConfig, MtuDiscoveryConfig, rustls};
 use rand::random;
 use serde::Serialize;
 use std::cmp::{max, min};
@@ -27,11 +27,11 @@ use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadHalf};
 use tokio::net::TcpStream;
 use tokio::sync::watch;
-use tokio::time::{sleep_until, timeout};
 use tokio::time::{Duration, Instant};
+use tokio::time::{sleep_until, timeout};
 use tokio::{io, select, spawn};
-use tokio_rustls::client::TlsStream;
 use tokio_rustls::TlsConnector;
+use tokio_rustls::client::TlsStream;
 use uuid::Uuid;
 
 use crate::tokio::AbortOnDrop;
@@ -409,7 +409,7 @@ impl QuicWgConn {
 
         let ping_packet = self.build_ping_keepalive_packet();
         let ping_result = wg_state.wg.encapsulate(&ping_packet, &mut wg_state.buffer);
-        Self::handle_result(&self.wg_sender, ping_result);
+        _ = Self::handle_result(&self.wg_sender, ping_result);
         wg_state.bump_tx();
         wg_state.last_keepalive_tx = Instant::now();
     }
@@ -918,7 +918,7 @@ impl WgReceiver {
                         }
                         MessageCode::Response(RelayResponseCode::Ok) => continue,
                         MessageCode::Response(RelayResponseCode::Error(error_code)) => {
-                            return Err(io::Error::other(RelayErrorResponse::new(error_code, &arg)))
+                            return Err(io::Error::other(RelayErrorResponse::new(error_code, &arg)));
                         }
                     };
                     match op_code {

@@ -16,13 +16,17 @@ static APPLE_LOG_INIT: std::sync::Once = std::sync::Once::new();
 /// To filter logs at the rust level you can set the `RUST_LOG` environment variable.
 ///
 /// On iOS, returns the pointer for the drop guard that flushes log writes.
-#[no_mangle]
+///
+/// SAFETY:
+/// - there is no other global function of this name
+#[unsafe(no_mangle)]
 pub extern "C" fn initialize_apple_system_logging() -> *mut c_void {
     use tracing_oslog::OsLogger;
     use tracing_subscriber::{
+        Layer as _,
         filter::{EnvFilter, LevelFilter},
         layer::SubscriberExt as _,
-        registry, Layer as _,
+        registry,
     };
     // `EnvFilter` doesn't impl `Clone`
     fn filter() -> EnvFilter {
@@ -69,8 +73,9 @@ fn global_manager() -> Arc<Manager> {
 
 /// SAFETY:
 /// - `log_flush_guard` must be a pointer returned by `initialize_apple_system_logging`
+/// - there is no other global function of this name
 /// - (TODO)
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn initialize(
     config_dir: FfiStr,
     user_agent: FfiStr,
@@ -85,9 +90,9 @@ pub unsafe extern "C" fn initialize(
             .install_default()
             .expect("Failed to install aws-lc crypto provider");
 
-        let config_dir = config_dir.to_string().into();
-        let user_agent = user_agent.to_string();
-        let keychain_wg_sk = Some(keychain_wg_secret_key.to_vec()).filter(|v| !v.is_empty());
+        let config_dir = unsafe { config_dir.to_string() }.into();
+        let user_agent = unsafe { user_agent.to_string() };
+        let keychain_wg_sk = Some(unsafe { keychain_wg_secret_key.to_vec() }).filter(|v| !v.is_empty());
         let keychain_set_wg_secret_key: KeychainSetSecretKeyFn = Box::new(move |sk: &[u8; 32]| keychain_set_wg_secret_key(sk.ffi()));
         let log_flush_guard = std::ptr::NonNull::new(log_flush_guard).map(|log_flush_guard|
             // SAFETY:
@@ -117,23 +122,30 @@ pub unsafe extern "C" fn initialize(
     }
 }
 
-#[no_mangle]
+/// SAFETY:
+/// - there is no other global function of this name
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn send_packet(packet: FfiBytes) {
-    let packet = packet.to_vec();
+    let packet = unsafe { packet.to_vec() };
     global_manager().send_packet(&packet);
 }
 
 /// Set the network interface to use by index.
 ///
 /// 0 means no interface (do not try connecting).
-#[no_mangle]
+///
+/// SAFETY:
+/// - there is no other global function of this name
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn set_network_interface_index(index: u32) {
     global_manager().set_network_interface_index(NonZeroU32::new(index));
 }
 
-#[no_mangle]
+/// SAFETY:
+/// - there is no other global function of this name
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn json_ffi_cmd(context: usize, json_cmd: FfiBytes, cb: extern "C" fn(context: usize, json_ret: FfiStr, json_err: FfiStr)) {
-    let json_cmd = json_cmd.to_vec();
+    let json_cmd = unsafe { json_cmd.to_vec() };
 
     let hash = ring::digest::digest(&ring::digest::SHA1_FOR_LEGACY_USE_ONLY, &json_cmd);
 

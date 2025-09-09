@@ -4,9 +4,9 @@ use std::{sync::Arc, time::Duration};
 
 use base64::prelude::*;
 use obscuravpn_api::{
+    ClientError,
     cmd::{ApiErrorKind, AppleAssociateAccountOutput, AppleCreateAppAccountTokenOutput, ApplePollSubscriptionOutput, ExitList},
     types::{AccountId, AccountInfo},
-    ClientError,
 };
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;

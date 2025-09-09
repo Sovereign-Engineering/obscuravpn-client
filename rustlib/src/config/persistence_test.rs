@@ -12,12 +12,12 @@ use obscuravpn_api::types::OneExit;
 use tempfile::tempdir;
 use uuid::Uuid;
 
+use crate::config::CONFIG_FILE;
+use crate::config::Config;
+use crate::config::PinnedLocation;
 use crate::config::cached::ConfigCached;
 use crate::config::load;
 use crate::config::save;
-use crate::config::Config;
-use crate::config::PinnedLocation;
-use crate::config::CONFIG_FILE;
 use crate::exit_selection::ExitSelector;
 
 fn random_config() -> Config {

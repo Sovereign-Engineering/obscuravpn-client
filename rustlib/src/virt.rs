@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use std::net::IpAddr;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
-    sync::mpsc::{channel, error::TrySendError, Receiver, Sender},
+    sync::mpsc::{Receiver, Sender, channel, error::TrySendError},
 };
 #[async_trait]
 pub trait Virtual {

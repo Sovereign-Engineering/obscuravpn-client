@@ -16,10 +16,7 @@ pub fn new_udp(fw_mark: Option<u32>, network_interface_index: Option<NonZeroU32>
         #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
         socket.set_mark(fw_mark)?;
         #[cfg(not(any(target_os = "android", target_os = "fuchsia", target_os = "linux")))]
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            "fw_mark only supported on android, linux and fuchsia",
-        ));
+        return Err(io::Error::other("fw_mark only supported on android, linux and fuchsia"));
     }
     Ok(socket.into())
 }

@@ -1,7 +1,7 @@
 use std::io;
 use std::time::Instant;
 
-use obscuravpn_api::{cmd::ApiErrorKind, ClientError};
+use obscuravpn_api::{ClientError, cmd::ApiErrorKind};
 use serde::{Deserialize, Serialize};
 use strum::IntoStaticStr;
 use thiserror::Error;

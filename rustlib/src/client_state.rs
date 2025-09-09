@@ -11,7 +11,7 @@ use crate::{
     quicwg::QuicWgConn,
 };
 use crate::{
-    config::{cached::ConfigCached, ConfigSaveError},
+    config::{ConfigSaveError, cached::ConfigCached},
     exit_selection::ExitSelector,
 };
 use boringtun::x25519::{PublicKey, StaticSecret};
@@ -19,9 +19,9 @@ use chrono::Utc;
 use obscuravpn_api::cmd::{CacheWgKey, ETagCmd, ExitList, ListExits2};
 use obscuravpn_api::types::{AccountId, AccountInfo, AuthToken, OneExit};
 use obscuravpn_api::{
+    Client, ClientError,
     cmd::{ApiErrorKind, Cmd, CreateTunnel, DeleteTunnel, ListRelays, ListTunnels},
     types::{ObfuscatedTunnelConfig, OneRelay, TunnelConfig, WgPubkey},
-    Client, ClientError,
 };
 use rand::{seq::SliceRandom, thread_rng};
 use serde::{Deserialize, Serialize};
@@ -86,7 +86,7 @@ impl ClientState {
         Ok(Self { exit_list_watch, exit_update_lock: Default::default(), inner: Mutex::new(inner), user_agent })
     }
 
-    fn lock(&self) -> MutexGuard<ClientStateInner> {
+    fn lock(&self) -> MutexGuard<'_, ClientStateInner> {
         self.inner.lock().unwrap()
     }
 
@@ -118,10 +118,10 @@ impl ClientState {
                 // Log-out / Change User
 
                 let mut old_account_ids = mem::take(&mut config.old_account_ids);
-                if let Some(old_account_id) = &config.account_id {
-                    if !old_account_ids.contains(old_account_id) {
-                        old_account_ids.push(old_account_id.clone());
-                    }
+                if let Some(old_account_id) = &config.account_id
+                    && !old_account_ids.contains(old_account_id)
+                {
+                    old_account_ids.push(old_account_id.clone());
                 }
 
                 *config = Config {

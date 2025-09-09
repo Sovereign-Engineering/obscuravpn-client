@@ -241,10 +241,10 @@ pub struct Config {
 
 impl Config {
     pub fn migrate(&mut self) {
-        if self.last_chosen_exit_selector == (ExitSelector::Any {}) {
-            if let Some(exit) = &self.last_chosen_exit {
-                self.last_chosen_exit_selector = ExitSelector::Exit { id: exit.clone() };
-            }
+        if self.last_chosen_exit_selector == (ExitSelector::Any {})
+            && let Some(exit) = &self.last_chosen_exit
+        {
+            self.last_chosen_exit_selector = ExitSelector::Exit { id: exit.clone() };
         }
     }
 }

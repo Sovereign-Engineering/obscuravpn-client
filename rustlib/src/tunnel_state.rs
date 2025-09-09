@@ -7,8 +7,8 @@ use obscuravpn_api::types::{OneExit, OneRelay};
 use strum::EnumIs;
 use tokio::runtime::Runtime;
 use tokio::select;
-use tokio::sync::watch::{channel, Receiver, Sender};
-use tokio::time::{sleep_until, Instant};
+use tokio::sync::watch::{Receiver, Sender, channel};
+use tokio::time::{Instant, sleep_until};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 

@@ -213,6 +213,7 @@
   "strictLeakPreventionTooltip": "You must disconnect Obscura VPN before disabling this option",
   "strictLeakPreventionWarning": "This feature protects against attacks from your local network, but there are known macOS and iOS bugs that sometimes cause (re)connection issues while this is turned on. For a reliable connection, we recommend you keep this feature turned off.",
   "supportMsg": "Reach out to <0>{{ email }}</0>",
+  "supportMsgMobile": "Reach out or send debugging archive to <0>{{ email }}</0>",
   "synchronizing": "Synchronizing",
   "toggleTheme": "Toggle theme",
   "tosAndPrivacyPolicy": "Terms of Service and Privacy Policy",

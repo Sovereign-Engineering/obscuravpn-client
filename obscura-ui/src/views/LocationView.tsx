@@ -350,14 +350,18 @@ function VpnStatusCard() {
 
 function CurrentSession() {
   const { t } = useTranslation();
-  const { value: trafficStats, refresh: pollTrafficStats } = useAsync({ deps: [], load: commands.getTrafficStats });
+  const { value: trafficStats, refresh: pollTrafficStats, loading } = useAsync({ deps: [], load: commands.getTrafficStats });
   const { osStatus } = useContext(AppContext);
   useInterval(pollTrafficStats, 1000, { autoInvoke: true });
-  if (trafficStats === undefined) return;
+  if (trafficStats === undefined && !loading) return;
   return (
     <Flex gap={5} className={classes.currentSession}>
       <Text c='gray' size='sm'>{t('currentSession')}:</Text>
-      <Text size='sm'>{fmtTime(osStatus.osVpnStatus === NEVPNStatus.Connected ? trafficStats.connectedMs : 0)}</Text>
+      {
+        trafficStats === undefined ?
+          <Text size='sm'>&nbsp;</Text> :
+          <Text size='sm'>{fmtTime(osStatus.osVpnStatus === NEVPNStatus.Connected && trafficStats !== undefined ? trafficStats.connectedMs : 0)}</Text>
+      }
     </Flex>
   );
 }

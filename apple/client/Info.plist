@@ -86,14 +86,12 @@
 			</dict>
 		</dict>
 	</dict>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
 	<key>Obscura</key>
 	<dict>
-		<key>OBSCURA_NETWORK_EXTENSION_BUNDLE_ID</key>
-		<string>$(OBSCURA_NETWORK_EXTENSION_BUNDLE_ID)</string>
 		<key>AppGroupIdentifier</key>
 		<string>$(OBSCURA_APP_APP_GROUP_ID)</string>
+		<key>OBSCURA_NETWORK_EXTENSION_BUNDLE_ID</key>
+		<string>$(OBSCURA_NETWORK_EXTENSION_BUNDLE_ID)</string>
 		<key>ObscuraSourceId</key>
 		<string>$(OBSCURA_SOURCE_ID)</string>
 		<key>ObscuraSourceVersion</key>

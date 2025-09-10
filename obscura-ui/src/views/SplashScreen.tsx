@@ -23,8 +23,8 @@ export default function SplashScreen({ text = '', osStatus }: SplashScreenProps)
         <Loader size='xl' type='bars' />
       </Group>
       {
-        osStatusThrottled !== null &&
-        <DebuggingArchive osStatus={osStatusThrottled} />
+        osStatusThrottled !== null && osStatus !== null &&
+        <DebuggingArchive osStatus={osStatus} />
       }
     </Stack>
   );

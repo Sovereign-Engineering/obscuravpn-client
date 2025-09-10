@@ -46,7 +46,7 @@ export default function Account() {
   // vpnStatus is used because accountInfo will be null if pollAccount fails
   const accountId = appStatus.accountId;
   return (
-    <Stack align='center' mt='sm' className={classes.container}>
+    <Stack align='center' className={classes.container}>
       <AccountStatusCard />
       <AccountNumberSection accountId={accountId} logOut={logOut} />
       <WGConfigurations />

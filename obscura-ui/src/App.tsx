@@ -26,7 +26,8 @@ interface View {
   component: () => ReactNode,
   path: string,
   exact?: boolean,
-  name: string
+  name: string,
+  needsScroll: boolean,
 }
 
 export default function () {
@@ -45,7 +46,6 @@ export default function () {
 
   useSystemChecks();
   useHotkeys([[PLATFORM === Platform.macOS ? 'mod+J' : 'ctrl+J', toggleColorScheme]]);
-  const [scroller, setScroller] = useState<HTMLElement | null>(null);
 
   // App State
   const [vpnConnected, setVpnConnected] = useState(false);
@@ -59,13 +59,13 @@ export default function () {
   const ignoreConnectingErrors = useRef(false);
 
   const views: View[] = [
-    { component: Connection, path: '/connection', name: t('Connection') },
-    { component: DeveloperView, path: '/developer', name: t('Developer') },
-    { component: Location, path: '/location', name: t('Location') },
-    { component: Account, path: '/account', name: t('Account') },
-    { component: Help, path: '/help', name: t('Help') },
-    { component: About, path: '/about', name: t('About') },
-    { component: Settings, path: '/settings', name: t('Settings') },
+    { component: Connection, path: '/connection', name: t('Connection'), needsScroll: false },
+    { component: DeveloperView, path: '/developer', name: t('Developer'), needsScroll: true },
+    { component: Location, path: '/location', name: t('Location'), needsScroll: true },
+    { component: Account, path: '/account', name: t('Account'), needsScroll: false },
+    { component: Help, path: '/help', name: t('Help'), needsScroll: false },
+    { component: About, path: '/about', name: t('About'), needsScroll: true },
+    { component: Settings, path: '/settings', name: t('Settings'), needsScroll: true },
   ];
 
   const isLoggedIn = !!appStatus?.accountId;
@@ -330,18 +330,27 @@ export default function () {
       navbar={undefined}
       className={classes.appShell}>
       <AppShellMain>
-        <SimpleBar scrollableNodeProps={{ ref: setScroller }} autoHide={false} className={classes.simpleBar}>
-          <AppContext.Provider value={appContext}>
-            <ErrorBoundary FallbackComponent={FallbackAppRender} onReset={_details => resetState()} onError={logReactError}>
-              <Routes>
-                {views[0] !== undefined && <Route path='/' element={<Navigate to={views[0].path} />} />}
-                {views.map((view, index) => <Route key={index} path={view.path} element={<view.component />} />)}
-              </Routes>
-            </ErrorBoundary>
-          </AppContext.Provider>
-          <ScrollToTop scroller={scroller} bottom={20} />
-        </SimpleBar>
+        <AppContext.Provider value={appContext}>
+          <ErrorBoundary FallbackComponent={FallbackAppRender} onReset={_details => resetState()} onError={logReactError}>
+            <Routes>
+              {views[0] !== undefined && <Route path='/' element={<Navigate to={views[0].path} />} />}
+              {views.map((view, index) => <Route key={index} path={view.path} element={<RenderView view={view} />} />)}
+            </Routes>
+          </ErrorBoundary>
+        </AppContext.Provider>
       </AppShellMain>
     </AppShell>
   </>;
+}
+
+function RenderView({ view }: { view: View }) {
+  const [scroller, setScroller] = useState<HTMLElement | null>(null);
+  return (
+    view.needsScroll ?
+      <SimpleBar scrollableNodeProps={{ ref: setScroller }} autoHide={false} className={classes.simpleBar}>
+        <view.component />
+        <ScrollToTop scroller={scroller} bottom={20} />
+      </SimpleBar>
+      : <view.component />
+  );
 }

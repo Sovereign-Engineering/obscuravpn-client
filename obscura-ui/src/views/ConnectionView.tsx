@@ -185,6 +185,7 @@ function ConnectionProgressBar() {
     } = useContext(AppContext);
 
     const progressWidth = { base: 40, xs: 50 };
+    const offlineProgressWidth = { base: 50, xs: 80 };
 
     const connectingProgressBars = usePulsingProgress({ activated: isConnecting(connectionInProgress), bars: 2, w: progressWidth });
     return (
@@ -199,14 +200,14 @@ function ConnectionProgressBar() {
                 {
                     showOfflineUI &&
                     <>
-                        <Progress className={classes.progress} w={80} value={0} h={2} />
+                        <Progress className={classes.progress} w={offlineProgressWidth} value={0} h={2} />
                         <Stack gap='0' align='center'>
                             <ThemeIcon variant='transparent' c='red.6'>
                                 <MdOutlineWifiOff size={22} />
                             </ThemeIcon>
                             <Text size='xs' c='red'>{t('noInternet')}</Text>
                         </Stack>
-                        <Progress className={classes.progress} w={80} value={0} h={2} />
+                        <Progress className={classes.progress} w={offlineProgressWidth} value={0} h={2} />
                     </>
                 }
                 {

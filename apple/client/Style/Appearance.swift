@@ -1,4 +1,4 @@
-import SwiftUICore
+import SwiftUI
 
 enum AppAppearance: String, Codable {
     case dark

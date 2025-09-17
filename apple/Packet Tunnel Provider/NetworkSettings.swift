@@ -5,7 +5,7 @@ extension NEPacketTunnelNetworkSettings {
     static func build(_ ffiNetworkConfig: NetworkConfig) -> NEPacketTunnelNetworkSettings {
         let networkSettings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
 
-        networkSettings.mtu = 1280
+        networkSettings.mtu = ffiNetworkConfig.mtu as NSNumber
 
         let ipv4Settings = NEIPv4Settings(
             addresses: [ffiNetworkConfig.ipv4],

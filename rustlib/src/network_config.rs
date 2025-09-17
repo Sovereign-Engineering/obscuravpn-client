@@ -11,10 +11,11 @@ pub struct NetworkConfig {
     pub dns: Vec<IpAddr>,
     pub ipv4: Ipv4Addr,
     pub ipv6: Ipv6Network,
+    pub mtu: u16,
 }
 
 impl NetworkConfig {
-    pub fn new(tunnel_config: &ObfuscatedTunnelConfig) -> Result<Self, NetworkConfigError> {
+    pub fn new(tunnel_config: &ObfuscatedTunnelConfig, mtu: u16) -> Result<Self, NetworkConfigError> {
         let dns = tunnel_config.dns.clone();
         if dns.is_empty() {
             return Err(NetworkConfigError::NoDns);
@@ -28,7 +29,7 @@ impl NetworkConfig {
             return Err(NetworkConfigError::NoIpv6Ip);
         };
 
-        Ok(Self { dns, ipv4, ipv6 })
+        Ok(Self { dns, ipv4, ipv6, mtu })
     }
 }
 

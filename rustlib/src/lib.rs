@@ -23,5 +23,6 @@ mod backoff_test;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 pub mod apple;
 mod cached_value;
+mod liveness;
 
 pub const DEFAULT_API_URL: &str = "https://v1.api.prod.obscura.net/api";

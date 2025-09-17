@@ -439,7 +439,7 @@ function LocationSelect(): ReactNode {
     );
 
     const [selectedCity, setSelectedCity] = useState<ExitSelectorCity | null>(null);
-    const selectedExampleExit = selectedCity && locations.get(selectedCity);
+    const selectedExampleExit = selectedCity && (locations.get(selectedCity) || connectedExit);
     const isTransitioning = useIsTransitioning();
 
     useEffect(() => {

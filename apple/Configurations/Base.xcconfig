@@ -1,5 +1,6 @@
 #include? "buildversion.xcconfig"
 #include "bundle-ids.xcconfig"
 
-MACOSX_DEPLOYMENT_TARGET = 13.0
 IOS_DEPLOYMENT_TARGET = 18.0
+IPHONEOS_DEPLOYMENT_TARGET = 18.0
+MACOSX_DEPLOYMENT_TARGET = 13.0

@@ -6,6 +6,7 @@ export const PLATFORM = import.meta.env.OBS_WEB_PLATFORM as Platform;
 export enum Platform {
   macOS = 'macosx',
   iOS = 'iphoneos',
+  Android = 'android',
 }
 
 export function systemName() {
@@ -14,10 +15,13 @@ export function systemName() {
       return "macOS";
     case Platform.iOS:
       return "iOS";
+    case Platform.Android:
+      return "Android";
   }
 }
 
-export const IS_HANDHELD_DEVICE = PLATFORM === Platform.iOS;
+export const IS_HANDHELD_DEVICE = PLATFORM === Platform.iOS ||
+  PLATFORM === Platform.Android;
 const platformDefined = Object.values(Platform).includes(PLATFORM);
 
 export function useSystemChecks() {

@@ -1,6 +1,6 @@
 // Command interface for commands, whose arguments and return values can be serialized and deserialized. You should usually prefer other methods unless you are implementing an FFI interface. All commands map more or less directly to another method.
 
-use std::{sync::Arc, time::Duration};
+use std::{sync::Arc, thread::sleep, time::Duration};
 
 use base64::prelude::*;
 use obscuravpn_api::{
@@ -11,6 +11,7 @@ use obscuravpn_api::{
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use strum::IntoStaticStr;
+use tokio::spawn;
 use uuid::Uuid;
 
 use crate::{
@@ -106,6 +107,7 @@ pub enum ManagerCmd {
         known_version: Option<Uuid>,
     },
     GetTrafficStats {},
+    TerminateProcess {},
     Login {
         account_id: AccountId,
         validate: bool,
@@ -218,6 +220,16 @@ impl ManagerCmd {
                     ManagerCmdErrorCode::Other
                 }),
             Self::GetTrafficStats {} => Ok(ManagerCmdOk::GetTrafficStats(manager.traffic_stats())),
+            Self::TerminateProcess {} => {
+                const WAIT: Duration = Duration::from_secs(3);
+                tracing::error!(message_id = "i5BA5bOA", "received termination command, exiting in {}ms", WAIT.as_millis());
+                spawn(async {
+                    sleep(Duration::from_secs(3));
+                    tracing::error!(message_id = "eCoVnCI6", "executing scheduled termination");
+                    std::process::exit(1);
+                });
+                Ok(ManagerCmdOk::Empty)
+            }
             Self::Login { account_id, validate } => map_result(manager.login(account_id, validate).await),
             Self::Logout {} => map_result(manager.logout()),
             Self::Ping {} => Ok(ManagerCmdOk::Empty),

@@ -131,5 +131,6 @@ export default function DeveloperViewer() {
         </Group>
         <JsonInput value={localStorageValue ?? 'null'} contentEditable={false} />
         <Button onClick={ () => jsonFfiCmd("toggleForceTcpTlsRelayTransport", {})}>toggle TCP TLS transport mode</Button>
+        <Button onClick={ () => jsonFfiCmd("terminateProcess", {})}>kill tunnel manager process</Button>
     </Stack>;
 }

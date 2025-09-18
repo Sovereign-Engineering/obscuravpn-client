@@ -1,6 +1,7 @@
 #if os(macOS)
     import AppKit
 #else
+    import StoreKit
     import UIKit
 #endif
 import Foundation
@@ -565,6 +566,57 @@ private class DebugBundleBuilder {
         }
     }
 
+    #if os(iOS)
+        @MainActor func bundleStoreKitInfo() async {
+            guard let storeKitModel = self.appState?.storeKitModel else {
+                self.writeError(name: "storekit-info", error: "appState or storeKitModel is nil")
+                return
+            }
+            var products: [Any] = []
+            var transactionsVerified: [Any] = []
+            var transactionsUnverified: [[String: Any]] = []
+            do {
+                for product in storeKitModel.products {
+                    var subscriptionStatus: [[String: String]] = []
+                    if let subscription = product.subscription {
+                        for status in try await subscription.status {
+                            subscriptionStatus.append(["state": status.state.localizedDescription])
+                        }
+                    }
+                    try products.append([
+                        "product": JSONSerialization.jsonObject(with: product.jsonRepresentation),
+                        "subscriptionStatus": subscriptionStatus,
+                    ])
+                }
+                for await verificationResult in Transaction.all {
+                    switch verificationResult {
+                    case .verified(let transaction):
+                        try transactionsVerified.append(JSONSerialization.jsonObject(with: transaction.jsonRepresentation))
+                    case .unverified(let transaction, let error):
+                        try transactionsUnverified.append([
+                            "transaction": JSONSerialization.jsonObject(with: transaction.jsonRepresentation),
+                            "error": error.localizedDescription,
+                        ])
+                    }
+                }
+                let info: [String: Any] = [
+                    "products": products,
+                    "transactions": [
+                        "verified": transactionsVerified,
+                        "unverified": transactionsUnverified,
+                    ],
+                ]
+                let json = try JSONSerialization.data(
+                    withJSONObject: info,
+                    options: [.fragmentsAllowed, .prettyPrinted, .sortedKeys]
+                )
+                try self.writeFile(name: "storekit-info.json", data: json)
+            } catch {
+                self.writeError(name: "storekit-info", error: error)
+            }
+        }
+    #endif
+
     func bundleTask(_ name: String, _ block: @escaping (BundleTask) async throws -> Void) {
         BundleTask(self, name, block)
     }
@@ -660,6 +712,7 @@ private class DebugBundleBuilder {
 
         #if os(iOS)
             self.bundleTask("rust-log") { _task in await self.bundleRustLog() }
+            self.bundleTask("storekit-info") { _task in await self.bundleStoreKitInfo() }
         #endif
 
         await self.pendingTasks.waitForAll()

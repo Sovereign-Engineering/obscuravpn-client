@@ -152,9 +152,7 @@ function PrimaryConnectButton() {
   const specificInitiation = !(initiatingExitSelector === undefined || 'any' in initiatingExitSelector);
   const connectingToCity = (targetCity !== undefined || specificInitiation) && (osStatus.osVpnStatus !== NEVPNStatus.Disconnected || appStatus.vpnStatus.connecting !== undefined);
 
-  const isReconnecting = osStatus.osVpnStatus === NEVPNStatus.Reasserting || appStatus.vpnStatus.connecting?.reconnecting;
-
-  if (inConnectingState && (!connectingToCity || isReconnecting) && osStatus.osVpnStatus !== NEVPNStatus.Disconnecting) {
+  if (inConnectingState && !connectingToCity && osStatus.osVpnStatus !== NEVPNStatus.Disconnecting) {
     return <>
       <Space h='lg' />
       <Button w={BUTTON_WIDTH} {...theme.other.buttonDisconnectProps} mt={5} onClick={vpnDisconnect}>{t('Cancel Connecting')}</Button>
@@ -591,9 +589,7 @@ function LocationConnectRightButton({ dropdownOpened, selectedCity }: LocationCo
     const btnDisabled = selectedCity === null
       || (dropdownOpened && buttonText === 'Connect')
       || showOfflineUI
-      || osStatus.osVpnStatus === NEVPNStatus.Disconnecting
-      // to keep the resulting state predictable for the user, disallow cancel when changing locations
-      || connectionInProgress === ConnectionInProgress.ChangingLocations;
+      || osStatus.osVpnStatus === NEVPNStatus.Disconnecting;
     // don't want to use color and background props when disabled since they override the disabled styles
     const disconnectVariantProps = !btnDisabled && (isConnecting(connectionInProgress) || vpnConnected) ? theme.other.buttonDisconnectProps : {};
     return (

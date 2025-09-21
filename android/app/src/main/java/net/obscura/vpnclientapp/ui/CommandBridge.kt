@@ -3,6 +3,13 @@ package net.obscura.vpnclientapp.ui
 import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.ValueCallback
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import net.obscura.vpnclientapp.ui.commands.GetOsStatus
+import net.obscura.vpnclientapp.ui.commands.GetStatus
+import net.obscura.vpnclientapp.ui.commands.InvokeCommand
+import net.obscura.vpnclientapp.ui.commands.JsonFfiCommand
 
 class CommandBridge(val eval: (js: String, callback: ValueCallback<String?>?) -> Unit) {
 
@@ -13,6 +20,22 @@ class CommandBridge(val eval: (js: String, callback: ValueCallback<String?>?) ->
     @JavascriptInterface
     fun invoke(data: String, id: Int) {
         Log.d(logTag(), "Invoked command ${data} with id ${id}")
+
+        val invokeData = Json.decodeFromString<InvokeCommand>(data)
+
+        eval("""
+            (() => {
+              "use strict";
+
+              const acceptFn = window.obscuraAndroid.acceptFns.get(${id});
+              if (acceptFn) {
+                window.obscuraAndroid.acceptFns.remove(${id});
+                window.obscuraAndroid.rejectFns.remove(${id});
+              }
+
+              acceptFn(${Json.encodeToString(Json.encodeToString(invokeData.run()))});
+            })();
+        """.trimIndent(), null)
     }
 
     @JavascriptInterface

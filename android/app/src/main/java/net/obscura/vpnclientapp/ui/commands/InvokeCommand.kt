@@ -4,17 +4,17 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class InvokeCommand(
-    val jsonFfiCommand: JsonFfiCommand?
+    val getOsStatus: GetOsStatus? = null,
+    val jsonFfiCommand: JsonFfiCommand? = null,
 ) {
     fun run(): Any {
         return when {
-            jsonFfiCommand != null -> {
-                jsonFfiCommand.run()
-            }
+            getOsStatus != null -> getOsStatus.run()
 
-            else -> {
+            jsonFfiCommand != null -> jsonFfiCommand.run()
+
+            else ->
                 throw NotImplementedError("InvokeCommand not implemented")
-            }
         }
     }
 }

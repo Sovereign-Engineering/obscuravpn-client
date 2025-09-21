@@ -6,12 +6,18 @@ import android.webkit.ValueCallback
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonBuilder
 import net.obscura.vpnclientapp.ui.commands.GetOsStatus
 import net.obscura.vpnclientapp.ui.commands.GetStatus
 import net.obscura.vpnclientapp.ui.commands.InvokeCommand
 import net.obscura.vpnclientapp.ui.commands.JsonFfiCommand
 
 class CommandBridge(val eval: (js: String, callback: ValueCallback<String?>?) -> Unit) {
+
+    val json = Json {
+        encodeDefaults = true
+        ignoreUnknownKeys = true
+    }
 
     inline fun logTag(): String {
         return CommandBridge::class.java.name
@@ -21,21 +27,41 @@ class CommandBridge(val eval: (js: String, callback: ValueCallback<String?>?) ->
     fun invoke(data: String, id: Int) {
         Log.d(logTag(), "Invoked command ${data} with id ${id}")
 
-        val invokeData = Json.decodeFromString<InvokeCommand>(data)
+        val invokeData = json.decodeFromString<InvokeCommand>(data)
 
-        eval("""
-            (() => {
-              "use strict";
+        try {
+            eval(
+                """
+                (() => {
+                  "use strict";
 
-              const acceptFn = window.obscuraAndroid.acceptFns.get(${id});
-              if (acceptFn) {
-                window.obscuraAndroid.acceptFns.remove(${id});
-                window.obscuraAndroid.rejectFns.remove(${id});
-              }
+                  window.obscuraAndroidPromises.accept(${id}, ${
+                    json.encodeToString(
+                        json.encodeToString(
+                            invokeData.run()
+                        )
+                    )
+                }
+                })()
+            """.trimIndent(), null
+            )
+        } catch (error: Throwable) {
+            eval(
+                """
+                (() => {
+                  "use strict";
 
-              acceptFn(${Json.encodeToString(Json.encodeToString(invokeData.run()))});
-            })();
-        """.trimIndent(), null)
+                  window.obscuraAndroidPromises.reject(${id}, ${
+                    json.encodeToString(
+                        json.encodeToString(
+                            error.message
+                        )
+                    )
+                });
+                })()
+            """.trimIndent(), null
+            )
+        }
     }
 
     @JavascriptInterface
@@ -53,13 +79,24 @@ class CommandBridge(val eval: (js: String, callback: ValueCallback<String?>?) ->
               const acceptFns = new Map();
               const rejectFns = new Map();
 
-              Object.defineProperty(window, 'obscura', {
+              Object.defineProperty(window, 'obscuraAndroidPromises', {
                 writable: false,
                 enumerable: false,
                 configurable: false,
                 value: Object.freeze({
-                  acceptFns: acceptFns,
-                  rejectFns: rejectFns,
+                  accept: (id, value) => {
+                    const fn = acceptFns.get(id);
+                    if (fn) {
+                      fn(value);
+                    }
+                  },
+
+                  reject: (id, error) => {
+                    const fn = rejectFns.get(id);
+                    if (fn) {
+                      fn(error);
+                    }
+                  },
                 })
               });
 
@@ -73,8 +110,13 @@ class CommandBridge(val eval: (js: String, callback: ValueCallback<String?>?) ->
                       postMessage: (data) => new Promise((accept, reject) => {
                         const id = window[counterSymbol] += 1;
 
-                        acceptFns[id] = (value) => accept(value);
-                        rejectFns[id] = (error) => reject(new Error(error));
+                        const cleanup = () => {
+                          acceptFns.delete(id);
+                          rejectFns.delete(id);
+                        };
+
+                        acceptFns.set(id, (value) => { cleanup(); accept(value); });
+                        rejectFns.set(id, (error) => { cleanup(); reject(new Error(error)); });
 
                         window.obscuraAndroidCommandBridge.invoke(data, id);
                       })
@@ -85,6 +127,7 @@ class CommandBridge(val eval: (js: String, callback: ValueCallback<String?>?) ->
 
               console.log('onload!!', JSON.stringify(window.webkit.messageHandlers.commandBridge));
             })();
-        """.trimIndent(), null)
+        """.trimIndent(), null
+        )
     }
 }

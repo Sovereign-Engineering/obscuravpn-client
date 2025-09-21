@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class GetOsStatus(
-    val knownVersion: String?
+    val knownVersion: String? = null
 ) {
 
     @Serializable

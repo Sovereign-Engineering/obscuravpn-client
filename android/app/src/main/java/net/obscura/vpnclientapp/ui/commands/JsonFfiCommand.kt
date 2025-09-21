@@ -4,84 +4,69 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class JsonFfiCommand(
-    val timeoutMs: Long?,
+    val timeoutMs: Long? = null,
 
-    val getStatus: GetStatus?,
-    val login: Login?,
-    val logout: Logout?,
-    val setApiUrl: SetApiUrl?,
-    val setApiHostAlternate: SetApiHostAlternate?,
-    val setSniRelay: SetSniRelay?,
-    val getTrafficStats: GetTrafficStats?,
-    val getExitList: GetExistList?,
-    val refreshExitList: RefreshExitList?,
-    val apiGetAccountInfo: ApiGetAccountInfo?,
-    val setInNewAccountFlow: SetInNewAccountFlow?,
-    val setPinnedExits: SetPinnedExits?,
-    val rotateWgKey: RotateWgKey?,
-    val setAutoConnect: SetAutoConnect?,
+    val getStatus: GetStatus? = null,
+    val login: Login? = null,
+    val logout: Logout? = null,
+    val setApiUrl: SetApiUrl? = null,
+    val setApiHostAlternate: SetApiHostAlternate? = null,
+    val setSniRelay: SetSniRelay? = null,
+    val getTrafficStats: GetTrafficStats? = null,
+    val getExitList: GetExistList? = null,
+    val refreshExitList: RefreshExitList? = null,
+    val apiGetAccountInfo: ApiGetAccountInfo? = null,
+    val setInNewAccountFlow: SetInNewAccountFlow? = null,
+    val setPinnedExits: SetPinnedExits? = null,
+    val rotateWgKey: RotateWgKey? = null,
+    val setAutoConnect: SetAutoConnect? = null,
 ) {
     fun run(): Any {
         return when {
-            logout != null -> {
+            logout != null ->
                 logout.run()
-            }
 
-            getTrafficStats != null -> {
+            getTrafficStats != null ->
                 getTrafficStats.run()
-            }
 
-            apiGetAccountInfo != null -> {
+            apiGetAccountInfo != null ->
                 apiGetAccountInfo.run()
-            }
 
-            rotateWgKey != null -> {
+            rotateWgKey != null ->
                 rotateWgKey.run()
-            }
 
-            getStatus != null -> {
+            getStatus != null ->
                 getStatus.run()
-            }
 
-            login != null -> {
+            login != null ->
                 login.run()
-            }
 
-            setApiUrl != null -> {
+            setApiUrl != null ->
                 setApiUrl.run()
-            }
 
-            setApiHostAlternate != null -> {
+            setApiHostAlternate != null ->
                 setApiHostAlternate.run()
-            }
 
-            setSniRelay != null -> {
+            setSniRelay != null ->
                 setSniRelay.run()
-            }
 
-            getExitList != null -> {
+            getExitList != null ->
                 getExitList.run()
-            }
 
-            refreshExitList != null -> {
+            refreshExitList != null ->
                 refreshExitList.run()
-            }
 
-            setInNewAccountFlow != null -> {
+            setInNewAccountFlow != null ->
                 setInNewAccountFlow.run()
-            }
 
-            setPinnedExits != null -> {
+            setPinnedExits != null ->
                 setPinnedExits.run()
-            }
 
-            setAutoConnect != null -> {
+            setAutoConnect != null ->
                 setAutoConnect.run()
-            }
 
-            else -> {
+            else ->
                 throw NotImplementedError("JsonFfiCommand not implemented")
-            }
         }
     }
 }

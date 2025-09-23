@@ -16,11 +16,12 @@
 
         craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
 
+        rustDeps = [ pkgs.cmake ];
         rustDepsArgs = {
           src = ./rustlib;
 
           strictDeps = true;
-          nativeBuildInputs = [ pkgs.cmake ];
+          nativeBuildInputs = rustDeps;
         };
 
         rustArgs = rustDepsArgs // { cargoArtifacts = craneLib.buildDepsOnly rustDepsArgs; };
@@ -105,7 +106,7 @@
               pkgs.shellcheck
               pkgs.swiftformat
               rustToolchain.passthru.availableComponents.rustfmt # Just rustfmt, nothing else
-            ] ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.create-dmg ];
+            ] ++ rustDeps ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.create-dmg ];
 
             shellHook = ''
               export OBSCURA_MAGIC_IN_NIX_SHELL=1

@@ -3,29 +3,18 @@ import UserNotifications
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "Notifications")
 
-enum NotificationId: String {
-    case autoConnectFailed = "obscura-auto-connect-failed"
-    case connectFailed = "obscura-connect-failed"
-    case debuggingBundleFailed = "obscura-debugging-bundle-failed"
-}
-
 func displayNotification(
     _ identifier: NotificationId,
     _ content: UNMutableNotificationContent
 ) {
     Task {
         do {
-            let center = UNUserNotificationCenter.current()
-            let granted = try await center.requestAuthorization(
-                options: [.alert, .badge, .sound]
-            )
-
+            let granted = await requestNotificationAuthorization()
             if !granted {
-                logger.warning("Notifications blocked.")
                 return
             }
 
-            try await center.add(
+            try await UNUserNotificationCenter.current().add(
                 UNNotificationRequest(
                     identifier: identifier.rawValue,
                     content: content,
@@ -36,6 +25,20 @@ func displayNotification(
             logger.error("Failed to display notification: \(error, privacy: .public)")
         }
     }
+}
+
+func requestNotificationAuthorization() async -> Bool {
+    do {
+        if try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) {
+            logger.info("Notifications authorization granted.")
+            return true
+        } else {
+            logger.warning("Notifications blocked.")
+        }
+    } catch {
+        logger.error("Notification authorization request failed: \(error)")
+    }
+    return false
 }
 
 func notifyConnectError(_ error: Error) {

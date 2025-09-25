@@ -27,12 +27,18 @@ enum NeManagerCmd: Codable {
     case refreshExitList(freshness: TimeInterval)
 }
 
+enum VersionedTunnelArgs: Codable {
+    case v1(TunnelArgs)
+}
+
 // See ../../rustlib/src/manager.rs
+// Reflect changes in VersionedTunnelArgs!
 struct TunnelArgs: Codable {
     var exit: ExitSelector
 }
 
 // See ../../rustlib/src/manager.rs
+// Reflect changes in VersionedTunnelArgs!
 enum ExitSelector: Codable {
     case any
     case exit(id: String)
@@ -54,10 +60,15 @@ struct NeStatus: Codable, Equatable {
     var apiUrl: String
     var account: AccountStatus?
     var autoConnect: Bool
+    var featureFlags: NeStatusFeatureFlags
 
     static func == (left: NeStatus, right: NeStatus) -> Bool {
         return left.version == right.version
     }
+}
+
+struct NeStatusFeatureFlags: Codable, Equatable {
+    var killSwitch: Bool?
 }
 
 struct PinnedLocation: Codable, Equatable {

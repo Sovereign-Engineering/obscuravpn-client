@@ -94,7 +94,9 @@ struct ObscuraToggle: View {
             self.isToggled = false
             // this returns faster than the UI could show "Disconnecting"
             self.toggleLabel = ToggleLabels.disconnecting
-            self.startupModel.appState?.disableTunnel()
+            Task {
+                await self.startupModel.appState?.disableTunnel()
+            }
             // since disconnect is fairly instant, we only need to delay the toggle sync for a bit
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                 // if for some reason the vpn is connected right after a disconnect,
@@ -115,6 +117,7 @@ struct ObscuraToggle: View {
                 }
                 self.allowToggleSync = true
             }
+            self.allowToggleSync = true
         }
     }
 

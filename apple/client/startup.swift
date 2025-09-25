@@ -2,6 +2,7 @@ import AVKit
 import NetworkExtension
 import OSLog
 import SwiftUI
+import UserNotifications
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "startup")
 

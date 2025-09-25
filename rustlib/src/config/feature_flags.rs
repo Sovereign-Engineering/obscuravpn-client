@@ -11,6 +11,8 @@ use strum::{EnumString, VariantNames};
 pub struct FeatureFlags {
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub quic_frame_padding: Option<bool>,
+    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
+    pub kill_switch: Option<bool>,
     #[serde(flatten)]
     other: Map<String, Value>,
 }
@@ -29,6 +31,7 @@ impl FeatureFlags {
         };
         match flag {
             FeatureFlagKey::QuicFramePadding => self.quic_frame_padding = value,
+            FeatureFlagKey::KillSwitch => self.kill_switch = value,
         }
     }
 }
@@ -37,6 +40,7 @@ impl FeatureFlags {
 #[strum(serialize_all = "camelCase")]
 enum FeatureFlagKey {
     QuicFramePadding,
+    KillSwitch,
 }
 
 #[cfg(test)]

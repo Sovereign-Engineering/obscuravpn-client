@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1799341F2E94117C0089B6EB /* NotificationIds.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1799341E2E9411770089B6EB /* NotificationIds.swift */; };
+		179934202E94117C0089B6EB /* NotificationIds.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1799341E2E9411770089B6EB /* NotificationIds.swift */; };
+		179934212E94117C0089B6EB /* NotificationIds.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1799341E2E9411770089B6EB /* NotificationIds.swift */; };
+		179934222E94117C0089B6EB /* NotificationIds.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1799341E2E9411770089B6EB /* NotificationIds.swift */; };
 		17B910022E0DB3E50073AAD7 /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17B910012E0DB3E00073AAD7 /* Keychain.swift */; };
 		17B910032E0DB3E50073AAD7 /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17B910012E0DB3E00073AAD7 /* Keychain.swift */; };
 		1D9F4FDE2E5BC912001C080B /* DebugBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9BCB05D2DC54AC0006C0133 /* DebugBundle.swift */; };
@@ -267,6 +271,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		1799341E2E9411770089B6EB /* NotificationIds.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationIds.swift; sourceTree = "<group>"; };
 		17B910012E0DB3E00073AAD7 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 		1D9F50072E6280FF001C080B /* MailDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailDelegate.swift; sourceTree = "<group>"; };
 		300452772C49BC90000B78F7 /* Json.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Json.swift; sourceTree = "<group>"; };
@@ -573,6 +578,7 @@
 		30EF74BF2BFFC2A90095439F /* shared */ = {
 			isa = PBXGroup;
 			children = (
+				1799341E2E9411770089B6EB /* NotificationIds.swift */,
 				30497E6D2D9ED57F008B22F9 /* Box.swift */,
 				968B02B82CFF5B7B0053D0EF /* Account.swift */,
 				A94BF4452E53BBE9007FDD1C /* Account+CustomStringConvertible.swift */,
@@ -1045,6 +1051,7 @@
 				3096E0462BF0F5870026DE7F /* app_state.swift in Sources */,
 				30C5320A2CC9558000936E1F /* WatchableValue.swift in Sources */,
 				A936D4962DD160750031B646 /* UpdateSystemExtensionView.swift in Sources */,
+				179934222E94117C0089B6EB /* NotificationIds.swift in Sources */,
 				3096E0402BEFC6770026DE7F /* command.swift in Sources */,
 				35230C192C764F0D007ECFEC /* Swift.swift in Sources */,
 				3096BFF92CECD50F003D062E /* NEVPNStatus.swift in Sources */,
@@ -1073,6 +1080,7 @@
 				A9963C5C2DB83FD600D10893 /* Swift.swift in Sources */,
 				A9963C5B2DB83FD200D10893 /* Json.swift in Sources */,
 				A9963C5A2DB83FCF00D10893 /* NetworkSettings.swift in Sources */,
+				179934202E94117C0089B6EB /* NotificationIds.swift in Sources */,
 				A9963C592DB83FCB00D10893 /* Debug.swift in Sources */,
 				A9963C582DB83FC600D10893 /* Box.swift in Sources */,
 				A9963C572DB83FC200D10893 /* Account.swift in Sources */,
@@ -1087,6 +1095,7 @@
 			files = (
 				35A6F2552C613366004E1A7C /* time.swift in Sources */,
 				30EF74CE2C02244C0095439F /* NetworkExtensionIpc.swift in Sources */,
+				1799341F2E94117C0089B6EB /* NotificationIds.swift in Sources */,
 				30497E6F2D9ED584008B22F9 /* Box.swift in Sources */,
 				309BA9142C45DFC8000A7428 /* Sleep.swift in Sources */,
 				35230C1A2C764F0D007ECFEC /* Swift.swift in Sources */,
@@ -1148,6 +1157,7 @@
 				A95A91332DF9910C005CB52A /* ObscuraUIIOSWrapperAndTabs.swift in Sources */,
 				A998711E2DBAF8790044D136 /* Concurrency.swift in Sources */,
 				A998711D2DBAF8740044D136 /* Box.swift in Sources */,
+				179934212E94117C0089B6EB /* NotificationIds.swift in Sources */,
 				A94B1DD42E28B16800E5F325 /* Product+Convenience.swift in Sources */,
 				A94B1DD62E28B16800E5F325 /* SubscriptionManageSheetView.swift in Sources */,
 				A94B1DD72E28B16800E5F325 /* PurchaseOptionsView.swift in Sources */,

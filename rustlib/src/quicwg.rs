@@ -39,7 +39,7 @@ const WG_FIRST_HANDSHAKE_RESENDS: usize = 25; // 2.5s per handshake.
 const WG_FIRST_HANDSHAKE_TIMEOUT: Duration = Duration::from_millis(100);
 
 /// Ideally we would have a shorter QUIC idle timeout at the beginning and no timeout once the connection starts but this is not supported by quinn.
-const QUIC_IDLE_TIMEOUT: Duration = Duration::from_secs(60);
+pub const QUIC_IDLE_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// How fast to call `update_timers`.
 ///

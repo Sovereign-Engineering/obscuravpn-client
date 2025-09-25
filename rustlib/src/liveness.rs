@@ -1,6 +1,6 @@
 use etherparse::{IcmpEchoHeader, Icmpv4Type, PacketBuilder, SlicedPacket, TransportSlice};
 use rand::{RngCore, thread_rng};
-use static_assertions::const_assert;
+use static_assertions::{const_assert, const_assert_ne};
 use std::cmp::min;
 use std::collections::VecDeque;
 use std::net::Ipv4Addr;
@@ -9,7 +9,14 @@ use std::time::{Duration, Instant};
 const MAX_ALLOWED_LOST_PROBES: usize = 4;
 const MAX_ALLOWED_LOST_PROBES_AFTER_SLEEP: usize = 1;
 const BUSY_PING_PERIOD: Duration = Duration::from_secs(1);
-const IDLE_PING_PERIOD: Duration = Duration::from_secs(5 * 60);
+const IDLE_PING_PERIOD: Duration = Duration::from_secs(55);
+const_assert_ne!(
+    0,
+    crate::quicwg::QUIC_IDLE_TIMEOUT
+        .saturating_sub(IDLE_PING_PERIOD)
+        .saturating_sub(Duration::from_millis(4999))
+        .as_millis()
+);
 const PROBE_LOST_PERIOD: Duration = Duration::from_secs(1);
 
 // Randomly generated value to reliably distinguish our probes from other pings

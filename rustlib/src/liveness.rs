@@ -231,7 +231,8 @@ mod tests {
 
     #[test]
     fn test_probe_packet_size() {
-        let mut checker = LivenessChecker::new(1234, Ipv4Addr::LOCALHOST, Ipv4Addr::LOCALHOST);
-        assert_eq!(checker.send_ping(Instant::now()).len(), usize::from(checker.mtu));
+        const MTU: u16 = 100;
+        let mut checker = LivenessChecker::new(MTU, Ipv4Addr::LOCALHOST, Ipv4Addr::LOCALHOST);
+        assert_eq!(checker.send_ping(Instant::now()).len(), usize::from(MTU));
     }
 }

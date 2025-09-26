@@ -203,10 +203,14 @@ impl LivenessChecker {
         let id = u16::from_be_bytes(id_seq[0..2].try_into().unwrap());
         let seq = u16::from_be_bytes(id_seq[2..4].try_into().unwrap());
         let builder = PacketBuilder::ipv4(self.src_ip.octets(), self.dst_ip.octets(), 255).icmpv4_echo_request(id, seq);
-        let mut payload: Vec<u8> = vec![0; self.mtu as usize - 28];
+        let overhead = builder.size(0);
+        debug_assert_eq!(overhead, 28);
+        let mut payload: Vec<u8> = vec![0; self.mtu as usize - overhead];
         payload[0..32].copy_from_slice(PROBE_PREFIX);
         thread_rng().fill_bytes(&mut payload[32..]);
-        let mut packet = Vec::<u8>::with_capacity(builder.size(payload.len()));
+        let total_size = builder.size(payload.len());
+        debug_assert_eq!(total_size, self.mtu as usize);
+        let mut packet = Vec::<u8>::with_capacity(total_size);
         builder.write(&mut packet, &payload).unwrap();
         self.outstanding_pongs.push_back(Ping { sent_at: now, payload });
 

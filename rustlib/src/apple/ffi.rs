@@ -141,6 +141,15 @@ pub unsafe extern "C" fn set_network_interface_index(index: u32) {
     global_manager().set_network_interface_index(NonZeroU32::new(index));
 }
 
+/// Call after wake.
+///
+/// SAFETY:
+/// - there is no other global function of this name
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn wake() {
+    global_manager().wake();
+}
+
 /// SAFETY:
 /// - there is no other global function of this name
 #[unsafe(no_mangle)]

@@ -169,14 +169,12 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
     override func sleep() async {
         logger.log("sleep entry \(self.providerId, privacy: .public)")
-        // TODO: eagerly stop tunnel that is going to die anyway
         logger.log("sleep exit \(self.providerId, privacy: .public)")
     }
 
     override func wake() {
         logger.log("wake entry \(self.providerId, privacy: .public)")
-        // TODO: start tunnel, see TODO in sleep, relying on quic connection keepalive for now
-        // TODO: Try to wait for network connection to come back. Otherwise first attempt is guaranteed to fail on wifi, which adds delay.
+        ffiWake()
         logger.log("wake exit \(self.providerId, privacy: .public)")
     }
 

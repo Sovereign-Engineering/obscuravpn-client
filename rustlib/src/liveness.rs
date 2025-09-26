@@ -79,7 +79,6 @@ impl LivenessChecker {
     }
 
     // Call after sleep. Reduces the number of lost probes needed to classify as dead until a probe succeeded. Returns a packet for sending.
-    #[allow(unused)] // TODO: Call on wake - https://linear.app/soveng/issue/OBS-2311/sleep-robust-tunnels-remove-quinn-keepalive-use-wake-aware-ping
     #[must_use = "the returned packet needs to be sent"]
     pub fn wake(&mut self) -> Vec<u8> {
         tracing::info!(message_id = "OsZ6HBJO", "liveness checker wake called");

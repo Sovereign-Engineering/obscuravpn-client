@@ -441,6 +441,12 @@ impl Manager {
         self.update_status_if_changed(None);
         Ok(())
     }
+
+    pub fn wake(&self) {
+        if let Some(conn) = self.tunnel_state.borrow().get_conn() {
+            conn.wake();
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

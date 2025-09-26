@@ -45,6 +45,10 @@ func ffiSetNetworkInterfaceIndex(_ index: Int?) {
     }
 }
 
+func ffiWake() {
+    libobscuravpn_client.wake()
+}
+
 private func keychainSetWgSecretKeyCallback(key: FfiBytes) -> Bool {
     logger.log("keychainSetWgSecretKeyCallback entry")
     let ret = keychainSetWgSecretKey(key.data())

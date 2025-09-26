@@ -301,6 +301,12 @@ impl QuicWgConn {
         }
     }
 
+    pub fn wake(&self) {
+        let mut wg_state = self.wg_state.lock().unwrap();
+        let packet = wg_state.liveness_checker.wake();
+        self.send_single_packet(&mut wg_state, &packet);
+    }
+
     fn send_single_packet(&self, wg_state: &mut WgState, packet: &[u8]) {
         match wg_state.wg.encapsulate(packet, &mut wg_state.buffer) {
             TunnResult::Done => tracing::error!(message_id = "10g8g1D1", "WG encapsulate did not yield a datagram to send"),

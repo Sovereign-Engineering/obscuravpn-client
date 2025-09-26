@@ -46,6 +46,7 @@ pub const QUIC_IDLE_TIMEOUT: Duration = Duration::from_secs(60);
 /// In the boringtun repo they call it at 4Hz, however we have traditionally called it at 1Hz and doesn't seem to have any problems.
 const WG_TIMER_TICK: Duration = Duration::from_secs(1);
 pub const TUNNEL_MTU: u16 = 1280;
+const LIVENESS_MTU: u16 = 100;
 
 #[derive(Debug, Error)]
 pub enum QuicWgReceiveError {
@@ -188,7 +189,7 @@ impl QuicWgConn {
             buffer: vec![0u8; u16::MAX as usize],
             next_wg_timers_tick: now + WG_TIMER_TICK,
             next_liveness_poll: now,
-            liveness_checker: LivenessChecker::new(TUNNEL_MTU, client_ip_v4, ping_target_ip_v4),
+            liveness_checker: LivenessChecker::new(LIVENESS_MTU, client_ip_v4, ping_target_ip_v4),
             tick_stats: Default::default(),
         });
         Ok(Self {

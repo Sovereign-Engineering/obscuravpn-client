@@ -268,13 +268,13 @@ private class DebugBundleBuilder {
             #endif
             let RAMPhysicalGiB = Double(ProcessInfo.processInfo.physicalMemory) / 1024.0 / 1024.0 / 1024.0
             let SourceID = sourceId()
-            let ThemralState: String
+            let ThermalState: String
             let UptimeHours = ProcessInfo.processInfo.systemUptime / 3600
 
             init(_ this: DebugBundleBuilder) {
                 self.BundleTimestamp = utcDateFormat.string(from: this.bundleTimestamp)
                 self.LogStartTimestamp = utcDateFormat.string(from: this.logStartTimestamp)
-                self.ThemralState = switch ProcessInfo.processInfo.thermalState {
+                self.ThermalState = switch ProcessInfo.processInfo.thermalState {
                 case .nominal: "nominal"
                 case .fair: "fair"
                 case .serious: "serious"

@@ -37,9 +37,7 @@ class CommandBridge(val eval: (js: String, callback: ValueCallback<String?>?) ->
 
                   window.obscuraAndroidPromises.accept(${id}, ${
                     json.encodeToString(
-                        json.encodeToString(
-                            invokeData.run()
-                        )
+                        invokeData.run(json)
                     )
                 }
                 })()
@@ -124,8 +122,6 @@ class CommandBridge(val eval: (js: String, callback: ValueCallback<String?>?) ->
                   })
                 })
               });
-
-              console.log('onload!!', JSON.stringify(window.webkit.messageHandlers.commandBridge));
             })();
         """.trimIndent(), null
         )

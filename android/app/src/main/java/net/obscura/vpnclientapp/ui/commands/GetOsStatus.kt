@@ -1,6 +1,5 @@
 package net.obscura.vpnclientapp.ui.commands
 
-import androidx.core.os.BuildCompat
 import kotlinx.serialization.Serializable
 
 @Serializable

@@ -17,7 +17,9 @@ const_assert_ne!(
         .saturating_sub(Duration::from_millis(4999))
         .as_millis()
 );
-const PROBE_LOST_PERIOD: Duration = Duration::from_secs(1);
+const MIN_PROBE_LOST_PERIOD: Duration = Duration::from_secs(1);
+const MAX_PROBE_LOST_PERIOD: Duration = Duration::from_secs(30);
+const SLOW_PONG_WINDOW: u32 = 100;
 
 // Randomly generated value to reliably distinguish our probes from other pings
 const PROBE_PREFIX: &[u8; 32] = b"obs-ping\x75\xf8\xb9\x47\x4b\xe1\x61\xeb\x1c\xb1\xeb\x5e\xc0\x6c\xde\xb7\xa1\x1b\x7b\xe5\x85\xca\x3a\x95";
@@ -29,12 +31,14 @@ pub struct LivenessChecker {
     dst_ip: Ipv4Addr,
     sent_user_traffic_since_last_ping: bool,
     is_waking: bool,
-    outstanding_pongs: VecDeque<Ping>,
+    outstanding_pongs: VecDeque<SentPing>,
     last_ping_sent_at: Option<Instant>,
+    slowest_pongs: VecDeque<ReceivedPong>,
 }
 
-struct Ping {
+struct SentPing {
     sent_at: Instant,
+    id_seq: u32,
     payload: Vec<u8>,
 }
 
@@ -49,17 +53,25 @@ impl LivenessChecker {
             is_waking: false,
             outstanding_pongs: Default::default(),
             last_ping_sent_at: None,
+            slowest_pongs: Default::default(),
         }
+    }
+
+    fn probe_lost_period(&self) -> Duration {
+        self.slowest_pongs
+            .front()
+            .map(|pong| pong.rtt * 2)
+            .unwrap_or(MIN_PROBE_LOST_PERIOD)
+            .clamp(MIN_PROBE_LOST_PERIOD, MAX_PROBE_LOST_PERIOD)
     }
 
     // returns the number of likely lost probes, as well as when the next one would be considered lost
     fn lost_probe_count_and_time_of_next_loss(&self, now: Instant) -> (usize, Option<Instant>) {
-        const_assert!(PROBE_LOST_PERIOD.as_nanos() <= BUSY_PING_PERIOD.as_nanos());
-        const_assert!(PROBE_LOST_PERIOD.as_nanos() <= IDLE_PING_PERIOD.as_nanos());
-        if let Some(last) = self.outstanding_pongs.back() {
-            let last_expires_at = last.sent_at + PROBE_LOST_PERIOD;
-            if last_expires_at > now {
-                return (self.outstanding_pongs.len() - 1, Some(last_expires_at));
+        let probe_lost_period = self.probe_lost_period();
+        for (i, outstanding_pong) in self.outstanding_pongs.iter().enumerate() {
+            let expires_at = outstanding_pong.sent_at + probe_lost_period;
+            if expires_at > now {
+                return (i, Some(expires_at));
             }
         }
         (self.outstanding_pongs.len(), None)
@@ -163,8 +175,8 @@ impl LivenessChecker {
         }
         let last_sent_id_seq = self.next_id_seq.wrapping_sub(1);
         let mut matched_pong_index = None;
-        for (i, Ping { payload, .. }) in self.outstanding_pongs.iter().enumerate() {
-            if payload == icmp.payload() {
+        for (i, SentPing { payload, id_seq, .. }) in self.outstanding_pongs.iter().enumerate() {
+            if payload == icmp.payload() && *id_seq == pong_id_seq {
                 matched_pong_index = Some(i);
                 break;
             }
@@ -172,14 +184,18 @@ impl LivenessChecker {
         if let Some(matched_pong_index) = matched_pong_index {
             let sent_at = self.outstanding_pongs[matched_pong_index].sent_at;
             let probe_rtt = now.checked_duration_since(sent_at).unwrap_or_default();
+            self.update_slowest_pongs_list(pong_id_seq, probe_rtt);
+            self.outstanding_pongs.drain(0..=matched_pong_index);
             tracing::info!(
                 message_id = "ETUFSKaF",
                 pong_id_seq,
                 last_sent_id_seq,
                 ?probe_rtt,
+                outstanding_pongs_len = self.outstanding_pongs.len(),
+                slowest_pongs_len = self.slowest_pongs.len(),
+                slowest_pong_rtt = ?self.slowest_pongs.front().map(|p|p.rtt),
                 "received liveness checker pong"
             );
-            self.outstanding_pongs.drain(0..=matched_pong_index);
             self.is_waking = false;
             Some(probe_rtt)
         } else {
@@ -193,14 +209,33 @@ impl LivenessChecker {
         }
     }
 
+    // Maintain list of the slow pongs (high rtt) with these requirements:
+    // - must correspond to any of the last SLOW_PONG_WINDOW sent pings
+    // - no more recent pong was slower
+    // - in order of respective sent ping (oldest first)
+    fn update_slowest_pongs_list(&mut self, id_seq: u32, rtt: Duration) {
+        while self
+            .slowest_pongs
+            .front()
+            .is_some_and(|oldest| id_seq.wrapping_sub(oldest.id_seq) > SLOW_PONG_WINDOW)
+        {
+            self.slowest_pongs.pop_front();
+        }
+        while self.slowest_pongs.back().is_some_and(|newest| newest.rtt <= rtt) {
+            self.slowest_pongs.pop_back();
+        }
+        self.slowest_pongs.push_back(ReceivedPong { id_seq, rtt });
+    }
+
     fn send_ping(&mut self, now: Instant) -> Vec<u8> {
         self.last_ping_sent_at = Some(now);
         self.sent_user_traffic_since_last_ping = false;
 
-        let id_seq = self.next_id_seq.to_be_bytes();
+        let id_seq = self.next_id_seq;
         self.next_id_seq += 1;
-        let id = u16::from_be_bytes(id_seq[0..2].try_into().unwrap());
-        let seq = u16::from_be_bytes(id_seq[2..4].try_into().unwrap());
+        let id_seq_bytes = id_seq.to_be_bytes();
+        let id = u16::from_be_bytes(id_seq_bytes[0..2].try_into().unwrap());
+        let seq = u16::from_be_bytes(id_seq_bytes[2..4].try_into().unwrap());
         let builder = PacketBuilder::ipv4(self.src_ip.octets(), self.dst_ip.octets(), 255).icmpv4_echo_request(id, seq);
         let overhead = builder.size(0);
         debug_assert_eq!(overhead, 28);
@@ -211,8 +246,8 @@ impl LivenessChecker {
         debug_assert_eq!(total_size, self.mtu as usize);
         let mut packet = Vec::<u8>::with_capacity(total_size);
         builder.write(&mut packet, &payload).unwrap();
-        self.outstanding_pongs.push_back(Ping { sent_at: now, payload });
 
+        self.outstanding_pongs.push_back(SentPing { sent_at: now, id_seq, payload });
         packet
     }
 }
@@ -223,6 +258,11 @@ pub enum LivenessCheckerPoll {
     Dead,
     AliveUntil(Instant),
     SendPacket(Vec<u8>),
+}
+
+struct ReceivedPong {
+    id_seq: u32,
+    rtt: Duration,
 }
 
 #[cfg(test)]

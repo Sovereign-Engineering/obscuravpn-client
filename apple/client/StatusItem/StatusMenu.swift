@@ -245,9 +245,9 @@ final class StatusItemManager: ObservableObject {
                                             logger.info("oldTrafficStats: tx \(oldTrafficStats.txBytes, privacy: .public), rx \(oldTrafficStats.rxBytes, privacy: .public), timestamp \(oldTrafficStats.connectedMs, privacy: .public)")
                                             logger.info("newTrafficStats: tx \(newTrafficStats.txBytes, privacy: .public), rx \(newTrafficStats.rxBytes, privacy: .public), timestamp \(newTrafficStats.connectedMs, privacy: .public)")
                                             #if DEBUG
-                                                fatalError("unexpected overflowed in bandwidth substractions. tx overflowed? \(overflowedTx), rx overflowed? \(overflowedRx), timestamp overflowed?  \(overflowedT)")
+                                                fatalError("unexpected overflowed in bandwidth subtractions. tx overflowed? \(overflowedTx), rx overflowed? \(overflowedRx), timestamp overflowed?  \(overflowedT)")
                                             #else
-                                                logger.error("unexpected overflowed in bandwidth substractions. tx overflowed? \(overflowedTx, privacy: .public), rx overflowed? \(overflowedRx, privacy: .public), timestamp overflowed?  \(overflowedT, privacy: .public)")
+                                                logger.error("unexpected overflowed in bandwidth subtractions. tx overflowed? \(overflowedTx, privacy: .public), rx overflowed? \(overflowedRx, privacy: .public), timestamp overflowed?  \(overflowedT, privacy: .public)")
                                             #endif
                                         } else {
                                             let secondsDelta = Double(msElapsed) / 1000
@@ -263,11 +263,11 @@ final class StatusItemManager: ObservableObject {
                                     continue
                                 }
                             }
+                            self?.bandwidthStatusModel.uploadBandwidth = BandwidthFmt.fromTransferRate(
+                                bytesPerSecond: 0)
+                            self?.bandwidthStatusModel.downloadBandwidth = BandwidthFmt.fromTransferRate(
+                                bytesPerSecond: 0)
                         }
-                        self?.bandwidthStatusModel.uploadBandwidth = BandwidthFmt.fromTransferRate(
-                            bytesPerSecond: 0)
-                        self?.bandwidthStatusModel.downloadBandwidth = BandwidthFmt.fromTransferRate(
-                            bytesPerSecond: 0)
                     }
                 }
             }.store(in: &self.cancellables)

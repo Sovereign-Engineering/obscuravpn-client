@@ -135,7 +135,7 @@ final class StatusItemManager: ObservableObject {
             self.accountMenuItemSeparator,
             self.accountMenuItem,
             .separator(),
-            Self.createSectionHeaderMenuItem(title: "Bandwidth Status"),
+            Self.createSectionHeaderMenuItem(title: "Live Usage"),
             bandwidthStatusItem,
             .separator(),
             self.debuggingMenuItem,

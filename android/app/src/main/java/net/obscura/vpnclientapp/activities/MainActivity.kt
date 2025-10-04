@@ -10,7 +10,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        setContentView(ObscuraWebView(this),
+        setContentView(
+            ObscuraWebView(this),
             ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT)
         )
     }

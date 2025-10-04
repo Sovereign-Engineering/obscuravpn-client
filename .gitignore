@@ -9,3 +9,6 @@ result-*
 
 # DMG
 *.dmg
+
+# Android
+/android/.kotlin/errors

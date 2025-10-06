@@ -52,8 +52,6 @@ export default function () {
   // keep track of how the connection was initiated to show correct transitioning UI
   const [initiatingExitSelector, setInitiatingExitSelector] = useState<commands.ExitSelector>();
   const [connectionInProgress, setConnectionInProgress] = useState<ConnectionInProgress>(ConnectionInProgress.UNSET);
-  const [warningNotices, setWarningNotices] = useState<string[]>([]);
-  const [importantNotices, setImportantNotices] = useState<string[]>([]);
   const [appStatus, setStatus] = useState<AppStatus | null>(null);
   const [osStatus, setOsStatus] = useState<OsStatus | null>(null);
   const ignoreConnectingErrors = useRef(false);
@@ -71,31 +69,6 @@ export default function () {
   const isLoggedIn = !!appStatus?.accountId;
   const showAccountCreation = appStatus?.inNewAccountFlow;
   const loading = appStatus === null || osStatus === null;
-
-  useEffect(() => {
-    // reminder: errors are auto logged
-    commands.notices().then(notices => {
-      const warnNotices: string[] = [];
-      const importantNotices: string[] = [];
-      notices.forEach(notice => {
-        const content = notice.content;
-        switch (notice.type) {
-          case 'Warn':
-            warnNotices.push(content);
-            break;
-          case 'Important':
-          // in case of a refactoring of the Error notice type
-          case 'Error':
-            importantNotices.push(content);
-            break;
-          default:
-            console.error(`unhandled notice type ${notice.type}`);
-        }
-      });
-      setWarningNotices(warnNotices);
-      setImportantNotices(importantNotices);
-    })
-  }, []);
 
   async function tryConnect(exit: commands.ExitSelector) {
     setInitiatingExitSelector(exit);
@@ -318,13 +291,7 @@ export default function () {
     initiatingExitSelector,
   }
 
-  // <> is an alias for <React.Fragment>
   return <>
-    {/* non-closable notice */}
-    <Modal size='100%' overlayProps={{ backgroundOpacity: 0.7 }} opened={importantNotices.length > 0} withCloseButton={false} onClose={() => { }}
-      title={<Title order={5} style={{ color: 'orangered', letterSpacing: 1.5, textDecoration: 'bold' }}>{t('IMPORTANT NOTICE', { count: importantNotices.length })}</Title>}>
-      {importantNotices.map(notice => <Text style={{ marginBottom: 10 }}><Trans i18nKey='importantNotice' values={{ notice, count: importantNotices.length }} /></Text>)}
-    </Modal>
     <AppShell
       header={{ height: 0 }}
       navbar={undefined}

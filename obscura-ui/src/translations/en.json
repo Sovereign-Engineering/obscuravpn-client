@@ -155,8 +155,6 @@
   "fundYourAccount": "Fund Your Account",
   "havingTrouble": "Having trouble?",
   "hide account number": "hide account number",
-  "importantNotice_one": "{{ notice }}",
-  "importantNotice_other": " - {{ notice }}",
   "installUpdate": "Install update",
   "installingUpdate": "Installing update v{{ v }}",
   "ipcError-apiError": "API request failed. Please make sure you are connected to the internet and no other VPN or firewall is running.",

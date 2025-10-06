@@ -21,7 +21,7 @@ async function WKWebViewInvoke(command: string, args: Object) {
     return JSON.parse(resultJson);
 }
 
-async function invoke(command: string, args: Object = {}) {
+async function invoke(command: string, args: Object = {}): Promise<unknown> {
     // all commands are logged for wkwebview according to ContentView.swift
     try {
         return await WKWebViewInvoke(command, args);
@@ -122,47 +122,21 @@ export type ExitSelector =
   | { country: ExitSelectorCountry }
 ;
 
-export function connect(exit: ExitSelector) {
+export async function connect(exit: ExitSelector): Promise<void> {
     let args: TunnelArgs = {
       exit,
     };
-    return invoke('startTunnel', {
+    await invoke('startTunnel', {
       tunnelArgs: JSON.stringify(args),
     });
 }
 
-export function disconnect() {
-    return invoke('stopTunnel');
-}
-
-export async function disconnectBlocking() {
-    await disconnect();
-    let knownStatusId = null;
-    // NEStatus
-    while (true) {
-        try {
-            const s = await status(knownStatusId);
-            if (s.vpnStatus.disconnected !== undefined) break;
-            knownStatusId = s.version;
-        } catch (e) {
-            console.error(fmt`failed to get status in disconnectThenConnect ${e}`);
-        }
-    }
-    // NEVPNStatus
-    knownStatusId = null;
-    while (true) {
-      try {
-          const s = await osStatus(knownStatusId);
-          if (s.osVpnStatus === NEVPNStatus.Disconnected) break;
-          knownStatusId = s.version;
-      } catch (e) {
-          console.error(fmt`failed to get osStatus in disconnectThenConnect ${e}`);
-      }
-  }
+export async function disconnect(): Promise<void> {
+    await invoke('stopTunnel');
 }
 
 export async function debuggingArchive(): Promise<String> {
-    return await invoke('debuggingArchive');
+    return (await invoke('debuggingArchive')) as String;
 }
 
 export function revealItemInDir(path: String) {
@@ -184,30 +158,24 @@ export interface Notice {
 }
 
 
-export async function notices(): Promise<Notice[]>  {
-    return [];
-    // TODO
-    return await invoke('notices');
+export async function registerAsLoginItem(): Promise<void> {
+  await invoke('registerAsLoginItem');
 }
 
-export function registerAsLoginItem() {
-    return invoke('registerAsLoginItem');
+export async function unregisterAsLoginItem(): Promise<void> {
+  await invoke('unregisterAsLoginItem');
 }
 
-export function unregisterAsLoginItem() {
-  return invoke('unregisterAsLoginItem');
+export async function developerResetUserDefaults(): Promise<void> {
+  await invoke('resetUserDefaults');
 }
 
-export function developerResetUserDefaults() {
-    return invoke('resetUserDefaults');
+export async function checkForUpdates(): Promise<void> {
+  await invoke('checkForUpdates');
 }
 
-export function checkForUpdates() {
-  return invoke('checkForUpdates');
-}
-
-export function installUpdate() {
-  return invoke('installUpdate');
+export async function installUpdate(): Promise<void> {
+  await invoke('installUpdate');
 }
 
 export interface TrafficStats {

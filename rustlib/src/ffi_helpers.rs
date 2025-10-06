@@ -7,13 +7,21 @@ pub struct FfiBytes<'a> {
     phantom: PhantomData<&'a [u8]>,
 }
 
-impl FfiBytes<'_> {
-    pub unsafe fn to_vec(&self) -> Vec<u8> {
+impl<'a> FfiBytes<'a> {
+    pub fn as_slice(&self) -> &'a [u8] {
         if self.len == 0 {
             // catch zero sized early, to allow empty null pointer buffers
-            return Vec::new();
+            &[]
+        } else {
+            // SAFETY: This type must be constructed such that this is safe
+            unsafe { std::slice::from_raw_parts(self.buffer as *const u8, self.len) }
         }
-        unsafe { core::slice::from_raw_parts(self.buffer as *const u8, self.len).to_vec() }
+    }
+}
+
+impl FfiBytes<'_> {
+    pub fn to_vec(&self) -> Vec<u8> {
+        self.as_slice().to_vec()
     }
 }
 
@@ -39,10 +47,15 @@ pub struct FfiStr<'a> {
     bytes: FfiBytes<'a>,
 }
 
-impl FfiStr<'_> {
-    pub unsafe fn to_string(&self) -> String {
-        let s = unsafe { self.bytes.to_vec() };
-        String::from_utf8(s).expect("ffi buffer does not contain valid utf8")
+impl<'a> FfiStr<'a> {
+    pub fn as_str(&self) -> &'a str {
+        std::str::from_utf8(self.bytes.as_slice()).expect("ffi buffer does not contain valid utf8")
+    }
+}
+
+impl std::fmt::Display for FfiStr<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.as_str().fmt(f)
     }
 }
 

@@ -1,9 +1,6 @@
 import Combine
 import libobscuravpn_client
 import NetworkExtension
-import OSLog
-
-private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "network extension")
 
 class PacketTunnelProvider: NEPacketTunnelProvider {
     weak static var shared: PacketTunnelProvider?
@@ -17,10 +14,11 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     var selfObservation: NSKeyValueObservation?
 
     override init() {
-        logger.log("init entry \(self.providerId, privacy: .public)")
+        let logFlushGuard = libobscuravpn_client.initialize_apple_system_logging()
+        ffiLog(.Info, "init entry \(self.providerId)")
 
         if let other = Self.shared {
-            logger.warning("Multiple live PacketTunnelProvider instances. me: \(self.providerId, privacy: .public) other: \(other.providerId, privacy: .public)")
+            ffiLog(.Warn, "Multiple live PacketTunnelProvider instances. me: \(self.providerId) other: \(other.providerId)")
         }
 
         let configDir = configDir()
@@ -30,22 +28,22 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             let userAgentPlatform = "ios"
         #endif
         let userAgent = "obscura.net/" + userAgentPlatform + "/" + sourceVersion()
-        logger.log("config dir \(configDir, privacy: .public)")
-        logger.log("user agent \(userAgent, privacy: .public)")
-        ffiInitialize(configDir: configDir, userAgent: userAgent, receiveCallback)
+        ffiLog(.Info, "config dir \(configDir)")
+        ffiLog(.Info, "user agent \(userAgent)")
+        ffiInitialize(configDir: configDir, userAgent: userAgent, logFlushGuard: logFlushGuard, receiveCallback)
 
         self.nwPathMonitor.pathUpdateHandler = { path in
             if path.status != .satisfied {
-                logger.log("network path not satisfied")
+                ffiLog(.Info, "network path not satisfied")
                 ffiSetNetworkInterfaceIndex(.none)
                 return
             }
             switch path.availableInterfaces.first {
             case .some(let preferredInterface):
-                logger.log("preferred network path interface name: \(preferredInterface.name, privacy: .public), index: \(preferredInterface.index, privacy: .public)")
+                ffiLog(.Info, "preferred network path interface name: \(preferredInterface.name), index: \(preferredInterface.index)")
                 ffiSetNetworkInterfaceIndex(.some(preferredInterface.index))
             case .none:
-                logger.log("no available network path interface")
+                ffiLog(.Info, "no available network path interface")
                 ffiSetNetworkInterfaceIndex(.none)
             }
         }
@@ -65,11 +63,11 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         Self.shared = self
         self.startSendLoop()
         self.startStatusLoop()
-        logger.log("init exit \(self.providerId, privacy: .public)")
+        ffiLog(.Info, "init exit \(self.providerId)")
     }
 
     deinit {
-        logger.log("PacketTunnelProvider.deinit \(self.providerId, privacy: .public)")
+        ffiLog(.Info, "PacketTunnelProvider.deinit \(self.providerId)")
         /*
          Hack to avoid macos bugs where handleAppMessage isn't called after deinit.
          One way to reproduce the issue:
@@ -84,10 +82,10 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     }
 
     override func startTunnel(options: [String: NSObject]?) async throws {
-        logger.log("startTunnel entry \(self.providerId, privacy: .public), includeAllNetworks: \(self.protocolConfiguration.includeAllNetworks, privacy: .public)")
+        ffiLog(.Info, "startTunnel entry \(self.providerId), includeAllNetworks: \(self.protocolConfiguration.includeAllNetworks)")
 
         if options?.keys.contains("dontStartTunnel") == .some(true) {
-            logger.critical("startTunnel \(self.providerId, privacy: .public) throws due to \"dontStartTunnel\" key in options")
+            ffiLog(.Error, "startTunnel \(self.providerId) throws due to \"dontStartTunnel\" key in options")
             throw "dummy start with \"dontStartTunnel\" flag"
         }
 
@@ -95,12 +93,12 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         switch options {
         case .some(let options):
             guard let args = options["tunnelArgs"] as? String else {
-                logger.critical("startTunnel \(self.providerId, privacy: .public) throws because \"tunnelArgs\" missing from options or not a string")
+                ffiLog(.Error, "startTunnel \(self.providerId) throws because \"tunnelArgs\" missing from options or not a string")
                 throw "\"tunnelArgs\" missing from options or not a string"
             }
             tunnelArgs = try TunnelArgs(json: args)
         case .none:
-            logger.info("startTunnel \(self.providerId, privacy: .public) called without options, using default tunnel args")
+            ffiLog(.Info, "startTunnel \(self.providerId) called without options, using default tunnel args")
             tunnelArgs = TunnelArgs(
                 exit: .any
             )
@@ -108,7 +106,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
         try await self.isActive.withLock { isActiveGuard in
             if isActiveGuard.value {
-                logger.error("startTunnel called on active tunnel \(self.providerId, privacy: .public)")
+                ffiLog(.Error, "startTunnel called on active tunnel \(self.providerId)")
                 throw "tunnel already active"
             }
 
@@ -116,38 +114,38 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             try await self.setTunnelNetworkSettings(NEPacketTunnelNetworkSettings.build(networkConfig))
             let _: Empty = try await runManagerCmd(.setTunnelArgs(args: tunnelArgs, allowActivation: true))
 
-            logger.log("set tunnel active flag \(self.providerId, privacy: .public)")
+            ffiLog(.Info, "set tunnel active flag \(self.providerId)")
             isActiveGuard.value = true
         }
 
         // macos 14 cancels the tunnel if it stays on connecting for too long
         if #available(macOS 15, *) {
-            logger.log("waiting for tunnel to start \(self.providerId, privacy: .public)")
+            ffiLog(.Info, "waiting for tunnel to start \(self.providerId)")
             _ = await self.isConnected.waitUntil { $0 == true }
         }
 
-        logger.log("startTunnel exit \(self.providerId, privacy: .public)")
+        ffiLog(.Info, "startTunnel exit \(self.providerId)")
     }
 
     override func stopTunnel(with reason: NEProviderStopReason) async {
-        logger.log("stopTunnel entry \(self.providerId, privacy: .public)")
+        ffiLog(.Info, "stopTunnel entry \(self.providerId)")
         await self.isActive.withLock { isActiveGuard in
             if !isActiveGuard.value {
-                logger.warning("stopTunnel called on inactive tunnel \(self.providerId, privacy: .public)")
+                ffiLog(.Warn, "stopTunnel called on inactive tunnel \(self.providerId)")
             }
-            logger.log("unset tunnel active flag \(self.providerId, privacy: .public)")
+            ffiLog(.Info, "unset tunnel active flag \(self.providerId)")
             isActiveGuard.value = false
 
-            logger.log("stopping tunnel \(self.providerId, privacy: .public)")
+            ffiLog(.Info, "stopping tunnel \(self.providerId)")
             do {
                 let _: Empty = try await runManagerCmd(.setTunnelArgs(args: .none, allowActivation: false))
             } catch {
-                logger.critical("setting empty tunnel args failed: \(error, privacy: .public)")
+                ffiLog(.Error, "setting empty tunnel args failed: \(error)")
             }
         }
-        logger.log("waiting for tunnel to stop \(self.providerId, privacy: .public)")
+        ffiLog(.Info, "waiting for tunnel to stop \(self.providerId)")
         _ = await self.isConnected.waitUntil { $0 == false }
-        logger.log("stopTunnel exit and abort \(self.providerId, privacy: .public)")
+        ffiLog(.Info, "stopTunnel exit and abort \(self.providerId)")
         /*
          Hack to avoid macos bugs where no methods of self are called after stopTunnel including deinit.
 
@@ -158,7 +156,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
     override func handleAppMessage(_ msg: Data, completionHandler: ((Data?) -> Void)?) {
         guard let completionHandler = completionHandler else {
-            logger.error("received app message without completion handler")
+            ffiLog(.Error, "received app message without completion handler")
             return
         }
         Task {
@@ -168,14 +166,14 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     }
 
     override func sleep() async {
-        logger.log("sleep entry \(self.providerId, privacy: .public)")
-        logger.log("sleep exit \(self.providerId, privacy: .public)")
+        ffiLog(.Info, "sleep entry \(self.providerId)")
+        ffiLog(.Info, "sleep exit \(self.providerId)")
     }
 
     override func wake() {
-        logger.log("wake entry \(self.providerId, privacy: .public)")
+        ffiLog(.Info, "wake entry \(self.providerId)")
         ffiWake()
-        logger.log("wake exit \(self.providerId, privacy: .public)")
+        ffiLog(.Info, "wake exit \(self.providerId)")
     }
 
     func startSendLoop() {
@@ -192,11 +190,11 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         var handle: (([Data], [NSNumber]) -> Void)?
         handle = { [weak self] (packets: [Data], _protocols: [NSNumber]) in
             guard let self = self else {
-                logger.error("Send task for deallocated PacketTunnelProvider \(providerId, privacy: .public) called")
+                ffiLog(.Error, "Send task for deallocated PacketTunnelProvider \(providerId) called")
                 return
             }
             if providerId != Self.shared?.providerId {
-                logger.error("Send task for obsolete PacketTunnelProvider \(providerId, privacy: .public) called")
+                ffiLog(.Error, "Send task for obsolete PacketTunnelProvider \(providerId) called")
                 return
             }
 
@@ -215,24 +213,24 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         let providerId = self.providerId
         Task { [weak self] in
             let taskId = genTaskId()
-            logger.log("status loop entry \(taskId, privacy: .public)")
+            ffiLog(.Info, "status loop entry \(taskId)")
 
             var knownVersion: UUID? = .none
             while true {
                 let status = await getRustStatus(knownVersion: knownVersion)
                 knownVersion = status.version
                 guard let self = self else {
-                    logger.error("status loop for deallocated PacketTunnelProvider \(providerId, privacy: .public) exiting")
+                    ffiLog(.Error, "status loop for deallocated PacketTunnelProvider \(providerId) exiting")
                     break
                 }
                 await self.processStatusUpdate(status)
             }
-            logger.log("status loop exit \(taskId, privacy: .public)")
+            ffiLog(.Info, "status loop exit \(taskId)")
         }
     }
 
     func processStatusUpdate(_ status: NeStatus) async {
-        logger.log("processing status update \(status.version, privacy: .public)")
+        ffiLog(.Info, "processing status update \(status.version)")
         _ = self.isConnected.update {
             $0 = switch status.vpnStatus {
             case .connected: true
@@ -256,32 +254,32 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
                         try await self.ensureNetworkConfig(newNetworkConfig: networkConfig)
                         self.reasserting = false
                     } catch {
-                        logger.critical("setting network config failed \(error, privacy: .public)")
+                        ffiLog(.Error, "setting network config failed \(error)")
                     }
                 }
             }
         }
-        logger.log("finished processing status update \(status.version, privacy: .public)")
+        ffiLog(.Info, "finished processing status update \(status.version)")
     }
 
     func ensureNetworkConfig(newNetworkConfig: NetworkConfig) async throws {
         try await self.networkConfig.withLock { networkConfigGuard in
             // This check isn't needed for correctness, but skipping unnecessary calls to `setTunnelNetworkSettings` does prevent brief periods with packet loss and lot of OS activity visible in the system log.
             if networkConfigGuard.value != newNetworkConfig {
-                logger.info("setting network config \(newNetworkConfig, privacy: .public)")
+                ffiLog(.Info, "setting network config \(newNetworkConfig)")
                 let networkSettings = NEPacketTunnelNetworkSettings.build(newNetworkConfig)
                 try await self.setTunnelNetworkSettings(networkSettings)
                 networkConfigGuard.value = newNetworkConfig
             } else {
-                logger.info("keeping existing network config \(newNetworkConfig, privacy: .public)")
+                ffiLog(.Info, "keeping existing network config \(newNetworkConfig)")
             }
         }
     }
 
     func handleProtocolConfigurationChange(change: NSKeyValueObservedChange<NEVPNProtocol>) async {
-        logger.info("handleProtocolConfigurationChange entry \(change.oldValue, privacy: .public) to \(change.newValue, privacy: .public)")
+        ffiLog(.Info, "handleProtocolConfigurationChange entry \(change.oldValue) to \(change.newValue)")
         defer {
-            logger.info("handleProtocolConfigurationChange exit")
+            ffiLog(.Info, "handleProtocolConfigurationChange exit")
         }
 
         guard let old = change.oldValue else {
@@ -290,34 +288,34 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         }
 
         guard let new = change.newValue else {
-            logger.warning("protocolConfiguration changed to (null)!")
+            ffiLog(.Warn, "protocolConfiguration changed to (null)!")
             return
         }
 
         guard !old.includeAllNetworks && new.includeAllNetworks else {
-            logger.info("No interesting changes.")
+            ffiLog(.Info, "No interesting changes.")
             return
         }
-        logger.info("includeAllNetorks has been enabled.")
+        ffiLog(.Info, "includeAllNetorks has been enabled.")
 
         await self.isActive.withLock { isActiveGuard in
             if !isActiveGuard.value {
-                logger.info("Not active, ignoring.")
+                ffiLog(.Info, "Not active, ignoring.")
                 return
             }
 
             await self.networkConfig.withLock { networkConfigGuard in
                 guard let networkConfig = networkConfigGuard.value else {
-                    logger.info("No existing network config, doing nothing.")
+                    ffiLog(.Info, "No existing network config, doing nothing.")
                     return
                 }
-                logger.info("re-setting network config.")
+                ffiLog(.Info, "re-setting network config.")
                 let networkSettings = NEPacketTunnelNetworkSettings.build(networkConfig)
                 do {
                     try await self.setTunnelNetworkSettings(networkSettings)
-                    logger.info("Network settings reconfigured.")
+                    ffiLog(.Info, "Network settings reconfigured.")
                 } catch {
-                    logger.error("Failed to apply network settings. User is probably offline \(error, privacy: .public)")
+                    ffiLog(.Error, "Failed to apply network settings. User is probably offline \(error)")
                 }
             }
         }
@@ -326,7 +324,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
 private func receiveCallback(packet: FfiBytes) {
     guard let inst = PacketTunnelProvider.shared else {
-        logger.error("Packet callback called with no active PacketTunnelProvider")
+        ffiLog(.Error, "Packet callback called with no active PacketTunnelProvider")
         return
     }
     let packet = packet.data()
@@ -344,7 +342,7 @@ func getRustStatus(knownVersion: UUID?) async -> NeStatus {
         do {
             return try await runManagerCmd(.getStatus(knownVersion: knownVersion))
         } catch {
-            logger.critical("error getting rust status \(error, privacy: .public)")
+            ffiLog(.Error, "error getting rust status \(error)")
         }
         try! await Task.sleep(seconds: 1)
     }

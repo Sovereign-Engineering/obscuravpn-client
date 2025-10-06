@@ -1,17 +1,37 @@
 import Foundation
 import libobscuravpn_client
 import Network
-import OSLog
 
-private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "Rust FFI")
-
-func ffiInitialize(configDir: String, userAgent: String, _ receiveCallback: (@convention(c) (FfiBytes) -> Void)!) {
-    let logFlushGuard = libobscuravpn_client.initialize_apple_system_logging()
+func ffiInitialize(configDir: String, userAgent: String, logFlushGuard: UnsafeMutableRawPointer?, _ receiveCallback: (@convention(c) (FfiBytes) -> Void)!) {
     let wgSecretKey = keychainGetWgSecretKey() ?? Data()
     configDir.withFfiStr { ffiConfigDir in
         userAgent.withFfiStr { ffiUserAgent in
             wgSecretKey.withFfiBytes { ffiWgSecretKey in
                 libobscuravpn_client.initialize(ffiConfigDir, ffiUserAgent, ffiWgSecretKey, receiveCallback, keychainSetWgSecretKeyCallback, logFlushGuard)
+            }
+        }
+    }
+}
+
+enum LogLevel: UInt8 {
+    case Trace
+    case Debug
+    case Info
+    case Warn
+    case Error
+}
+
+func ffiLog(
+    _ level: LogLevel,
+    _ message: String,
+    fileID: String = #fileID,
+    function: String = #function,
+    line: Int = #line
+) {
+    message.withFfiStr { ffiMessage in
+        fileID.withFfiStr { ffiFileID in
+            function.withFfiStr { ffiFunction in
+                libobscuravpn_client.forward_log(level.rawValue, ffiMessage, ffiFileID, ffiFunction, line)
             }
         }
     }
@@ -35,7 +55,7 @@ func ffiJsonManagerCmd(_ jsonCmd: Data) async -> NeManagerCmdResult {
 func ffiSetNetworkInterfaceIndex(_ index: Int?) {
     if let index: Int = index {
         if index <= 0 || Int64(index) > Int64(UInt32.max) {
-            logger.critical("network interface index out of range \(index, privacy: .public)")
+            ffiLog(.Error, "network interface index out of range \(index)")
             libobscuravpn_client.set_network_interface_index(0)
         } else {
             libobscuravpn_client.set_network_interface_index(UInt32(index))
@@ -50,12 +70,12 @@ func ffiWake() {
 }
 
 private func keychainSetWgSecretKeyCallback(key: FfiBytes) -> Bool {
-    logger.log("keychainSetWgSecretKeyCallback entry")
+    ffiLog(.Info, "keychainSetWgSecretKeyCallback entry")
     let ret = keychainSetWgSecretKey(key.data())
     if !ret {
-        logger.log("keychainSetWgSecretKey returned false")
+        ffiLog(.Info, "keychainSetWgSecretKey returned false")
     }
-    logger.log("keychainSetWgSecretKeyCallback exit")
+    ffiLog(.Info, "keychainSetWgSecretKeyCallback exit")
     return ret
 }
 

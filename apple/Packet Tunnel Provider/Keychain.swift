@@ -1,8 +1,6 @@
 import Foundation
-import OSLog
 import Security
 
-private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "keychain")
 private let wgSecretKeyquery: [String: Any] = [
     kSecClass as String: kSecClassGenericPassword,
     kSecAttrService as String: "obscura",
@@ -16,10 +14,10 @@ func keychainSetWgSecretKey(_ sk: Data) -> Bool {
     let insertStatus = SecItemAdd(insert as CFDictionary, nil)
     switch insertStatus {
     case errSecSuccess:
-        logger.log("keychain item inserted")
+        ffiLog(.Info, "keychain item inserted")
         return true
     default:
-        logger.error("error inserting keychain item: \(insertStatus, privacy: .public)")
+        ffiLog(.Error, "error inserting keychain item: \(insertStatus)")
         return false
     }
 }
@@ -33,16 +31,16 @@ func keychainGetWgSecretKey() -> Data? {
     let status = SecItemCopyMatching(get as CFDictionary, &item)
     switch status {
     case errSecSuccess:
-        logger.log("keychain item found")
+        ffiLog(.Info, "keychain item found")
     case errSecItemNotFound:
-        logger.log("keychain item not found")
+        ffiLog(.Info, "keychain item not found")
     default:
-        logger.error("error getting keychain item: \(status, privacy: .public)")
+        ffiLog(.Error, "error getting keychain item: \(status)")
         return .none
     }
 
     guard let data = item as? NSData else {
-        logger.error("got unexpected result format from keychain")
+        ffiLog(.Error, "got unexpected result format from keychain")
         return .none
     }
 

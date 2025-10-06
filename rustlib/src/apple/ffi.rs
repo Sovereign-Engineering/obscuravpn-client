@@ -90,9 +90,9 @@ pub unsafe extern "C" fn initialize(
             .install_default()
             .expect("Failed to install aws-lc crypto provider");
 
-        let config_dir = unsafe { config_dir.to_string() }.into();
-        let user_agent = unsafe { user_agent.to_string() };
-        let keychain_wg_sk = Some(unsafe { keychain_wg_secret_key.to_vec() }).filter(|v| !v.is_empty());
+        let config_dir = config_dir.to_string().into();
+        let user_agent = user_agent.to_string();
+        let keychain_wg_sk = Some(keychain_wg_secret_key.to_vec()).filter(|v| !v.is_empty());
         let keychain_set_wg_secret_key: KeychainSetSecretKeyFn = Box::new(move |sk: &[u8; 32]| keychain_set_wg_secret_key(sk.ffi()));
         let log_flush_guard = std::ptr::NonNull::new(log_flush_guard).map(|log_flush_guard|
             // SAFETY:
@@ -122,11 +122,36 @@ pub unsafe extern "C" fn initialize(
     }
 }
 
+#[allow(dead_code)]
+#[repr(u8)]
+pub enum LogLevel {
+    Trace,
+    Debug,
+    Info,
+    Warn,
+    Error,
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn forward_log(level: LogLevel, message: FfiStr, file_id: FfiStr, function: FfiStr, line: isize) {
+    let message = message.as_str();
+    let file_id = file_id.as_str();
+    let function = function.as_str();
+    // https://github.com/tokio-rs/tracing/issues/372
+    match level {
+        LogLevel::Trace => tracing::event!(tracing::Level::TRACE, message, file_id, function, line),
+        LogLevel::Debug => tracing::event!(tracing::Level::DEBUG, message, file_id, function, line),
+        LogLevel::Info => tracing::event!(tracing::Level::INFO, message, file_id, function, line),
+        LogLevel::Warn => tracing::event!(tracing::Level::WARN, message, file_id, function, line),
+        LogLevel::Error => tracing::event!(tracing::Level::ERROR, message, file_id, function, line),
+    }
+}
+
 /// SAFETY:
 /// - there is no other global function of this name
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn send_packet(packet: FfiBytes) {
-    let packet = unsafe { packet.to_vec() };
+    let packet = packet.to_vec();
     global_manager().send_packet(&packet);
 }
 
@@ -154,7 +179,7 @@ pub unsafe extern "C" fn wake() {
 /// - there is no other global function of this name
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn json_ffi_cmd(context: usize, json_cmd: FfiBytes, cb: extern "C" fn(context: usize, json_ret: FfiStr, json_err: FfiStr)) {
-    let json_cmd = unsafe { json_cmd.to_vec() };
+    let json_cmd = json_cmd.to_vec();
 
     let hash = ring::digest::digest(&ring::digest::SHA1_FOR_LEGACY_USE_ONLY, &json_cmd);
 

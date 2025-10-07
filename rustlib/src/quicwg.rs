@@ -41,6 +41,8 @@ const WG_FIRST_HANDSHAKE_TIMEOUT: Duration = Duration::from_millis(100);
 /// Ideally we would have a shorter QUIC idle timeout at the beginning and no timeout once the connection starts but this is not supported by quinn.
 pub const QUIC_IDLE_TIMEOUT: Duration = Duration::from_secs(60);
 
+const QUIC_STEP_TIMEOUT: Duration = Duration::from_secs(30);
+
 /// How fast to call `update_timers`.
 ///
 /// In the boringtun repo they call it at 4Hz, however we have traditionally called it at 1Hz and doesn't seem to have any problems.
@@ -78,6 +80,8 @@ pub enum QuicWgRelayHandshakeError {
     ControlStreamMessageReceiveError(io::Error),
     #[error("could not read protocol identifier from control stream: {0}")]
     ProtocolIdentifierReceiveFailed(io::Error),
+    #[error("timeout {0}")]
+    Timeout(&'static str),
     #[error("relay sent unexpected protocol indentifier: {0:#034x}")]
     UnexpectedProtocolIdentifierReceived(u128),
     #[error("could not write to control stream: {0}")]
@@ -598,6 +602,14 @@ impl QuicWgConnHandshaking {
     }
 
     async fn recv_ok_resp(&mut self) -> Result<(), QuicWgRelayHandshakeError> {
+        let inner = self.recv_ok_resp_no_timeout();
+        timeout(QUIC_STEP_TIMEOUT, inner)
+            .await
+            .map_err(|_| QuicWgRelayHandshakeError::Timeout("awaiting op response"))
+            .flatten()
+    }
+
+    async fn recv_ok_resp_no_timeout(&mut self) -> Result<(), QuicWgRelayHandshakeError> {
         loop {
             let (message_code, context_id, arg) = match &mut self.transport {
                 Transport::Quic { recv, .. } => recv_message(recv).await,
@@ -633,6 +645,14 @@ impl QuicWgConnHandshaking {
     }
 
     async fn send_op(&mut self, op: RelayOpCode, arg: &[u8]) -> Result<(), QuicWgRelayHandshakeError> {
+        let inner = self.send_op_no_timeout(op, arg);
+        timeout(QUIC_STEP_TIMEOUT, inner)
+            .await
+            .map_err(|_| QuicWgRelayHandshakeError::Timeout("sending op"))
+            .flatten()
+    }
+
+    async fn send_op_no_timeout(&mut self, op: RelayOpCode, arg: &[u8]) -> Result<(), QuicWgRelayHandshakeError> {
         let op = MessageCode::Op(op);
         let context_id = MessageContext::MIN_CLIENT_INITIATED;
         match &mut self.transport {

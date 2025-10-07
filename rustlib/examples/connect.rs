@@ -21,6 +21,10 @@ struct Args {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("Failed to install aws-lc crypto provider");
+
     let args = Args::parse();
 
     let client_state = ClientState::new(".".into(), None, "list-relays".into(), None)?;

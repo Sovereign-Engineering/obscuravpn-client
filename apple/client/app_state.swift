@@ -217,6 +217,24 @@ class AppState: ObservableObject {
     }
 
     func enableTunnel(_ tunnelArgs: TunnelArgs) async throws(String) {
+        let enableOnDemand = self.status.featureFlags.killSwitch ?? false
+        if enableOnDemand {
+            do {
+                guard let proto = self.manager.protocolConfiguration else {
+                    throw ("NEVPNManager has no protocolConfiguration")
+                }
+                proto.serverAddress = try VersionedTunnelArgs.v1(tunnelArgs).json()
+                try await self.manager.saveToPreferences()
+                try await self.manager.loadFromPreferences()
+            } catch {
+                Self.logger.error("failed to set tunnel args as server address: \(error)")
+            }
+        }
+        // TODO: move this into startup flow or post feature enablement flow (https://linear.app/soveng/issue/OBS-2428)
+        if enableOnDemand {
+            _ = await requestNotificationAuthorization()
+        }
+
         for _ in 1 ..< 3 {
             // Checking the status to decide whether to use `startVPNTunnel` or the `setTunnelArgs` command is not necessary for correct behavior. Handling of the `errorCodeTunnelInactive` error code is sufficient to always do the right thing eventually. However, this does require an app message round-trip to the NE, which can be a little slow at times.
             if self.manager.connection.status != .disconnected {
@@ -231,18 +249,24 @@ class AppState: ObservableObject {
                     throw error
                 }
             }
-            Self.logger.log("Starting tunnel")
+            Self.logger.log("Starting tunnel, enableOnDemand: \(enableOnDemand, privacy: .public)")
             do {
                 try await self.manager.loadFromPreferences()
+                self.manager.isOnDemandEnabled = enableOnDemand
                 if !self.manager.isEnabled {
                     Self.logger.info("NETunnelProviderManager is disabled, enabling")
                     self.manager.isEnabled = true
-                    try await self.manager.saveToPreferences()
-                    try await self.manager.loadFromPreferences()
                 }
+                try await self.manager.saveToPreferences()
+                try await self.manager.loadFromPreferences()
 
-                try self.manager.connection.startVPNTunnel(options: ["tunnelArgs": NSString(string: tunnelArgs.json())])
-                Self.logger.log("startVPNTunnel called without error")
+                if enableOnDemand {
+                    // TODO: We likely want to call startVPNTunnel or in some other way eagerly trigger tunnel start (https://linear.app/soveng/issue/OBS-2428). While this is hidden behind a feature flag we don't, to get a better feeling for how reliably and quickly traffic triggers the start anyway.
+                    Self.logger.log("skipping startVPNTunnel due to enableOnDemand==true")
+                } else {
+                    try self.manager.connection.startVPNTunnel(options: ["tunnelArgs": NSString(string: tunnelArgs.json())])
+                    Self.logger.log("startVPNTunnel called without error")
+                }
                 return
             } catch {
                 Self.logger.error("Could not start tunnel \(error, privacy: .public)")
@@ -253,8 +277,15 @@ class AppState: ObservableObject {
         throw errorCodeOther
     }
 
-    func disableTunnel() {
+    func disableTunnel() async {
         Self.logger.log("Stopping tunnel")
+        self.manager.isOnDemandEnabled = false
+        do {
+            try await self.manager.saveToPreferences()
+            try await self.manager.loadFromPreferences()
+        } catch {
+            Self.logger.critical("Could not save NETunnelProviderManager preferences before stopping tunnel \(error, privacy: .public)")
+        }
         self.manager.connection.stopVPNTunnel()
     }
 

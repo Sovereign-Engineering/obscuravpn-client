@@ -1,6 +1,7 @@
 import Combine
 import libobscuravpn_client
 import NetworkExtension
+import UserNotifications
 
 class PacketTunnelProvider: NEPacketTunnelProvider {
     weak static var shared: PacketTunnelProvider?
@@ -89,19 +90,33 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             throw "dummy start with \"dontStartTunnel\" flag"
         }
 
-        let tunnelArgs: TunnelArgs
+        // TODO: Consolidate source of TunnelArgs (https://linear.app/soveng/issue/OBS-2428)
+        var tunnelArgs = TunnelArgs(exit: .any)
         switch options {
         case .some(let options):
-            guard let args = options["tunnelArgs"] as? String else {
-                ffiLog(.Error, "startTunnel \(self.providerId) throws because \"tunnelArgs\" missing from options or not a string")
-                throw "\"tunnelArgs\" missing from options or not a string"
+            ffiLog(.Info, "tunnel options: \(options)")
+            if let args = options["tunnelArgs"] as? String {
+                ffiLog(.Info, "startTunnel called with \"tunnelArgs\"")
+                tunnelArgs = try TunnelArgs(json: args)
+            } else if options["is-on-demand"] as? Int == 1 {
+                ffiLog(.Info, "startTunnel called without \"tunnelArgs\", but with \"is-on-demand\" set to 1, using serverAddress as tunnel args")
+                do {
+                    guard let serverAddress = self.protocolConfiguration.serverAddress else {
+                        throw "serverAddress is nil"
+                    }
+                    ffiLog(.Info, "serverAddress: \(serverAddress)")
+                    switch try VersionedTunnelArgs(json: serverAddress) {
+                    case .v1(let tunnelArgsV1):
+                        tunnelArgs = tunnelArgsV1
+                    }
+                } catch {
+                    ffiLog(.Info, "failed to get tunnel args from serverAddress, using default tunnel args: \(error)")
+                }
+            } else {
+                ffiLog(.Info, "startTunnel called without \"tunnelArgs\" or \"is-on-demand\": \"1\", using default tunnel args")
             }
-            tunnelArgs = try TunnelArgs(json: args)
         case .none:
             ffiLog(.Info, "startTunnel \(self.providerId) called without options, using default tunnel args")
-            tunnelArgs = TunnelArgs(
-                exit: .any
-            )
         }
 
         try await self.isActive.withLock { isActiveGuard in
@@ -128,7 +143,46 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     }
 
     override func stopTunnel(with reason: NEProviderStopReason) async {
-        ffiLog(.Info, "stopTunnel entry \(self.providerId)")
+        ffiLog(.Info, "stopTunnel entry \(self.providerId), reason: \(providerStopReasonToString(reason))")
+
+        let (disableOndemand, notificationBody): (Bool, String?) = switch reason {
+        case .userInitiated: (true, .none)
+        case .providerDisabled, .superceded, .configurationDisabled: (false, "Tunnel was disabled by another VPN app.")
+        case .none, .noNetworkAvailable, .providerFailed, .unrecoverableNetworkChange, .authenticationCanceled, .configurationFailed, .idleTimeout, .configurationRemoved, .userLogout, .userSwitch, .appUpdate, .connectionFailed, .sleep, .internalError: (false, nil)
+        @unknown default: (false, nil)
+        }
+
+        if let notificationBody = notificationBody {
+            let content = UNMutableNotificationContent()
+            content.title = "Obscura VPN tunnel stopped"
+            content.body = notificationBody
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+            do {
+                try await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: NotificationId.onDemandTunnelStopped.rawValue, content: content, trigger: trigger))
+            } catch {
+                ffiLog(.Error, "notification error: \(error)")
+            }
+        }
+
+        if disableOndemand {
+            #if os(macOS)
+                ffiLog(.Info, "ignoring disableOndemand on macOS")
+            #else
+                do {
+                    let managers = try await NETunnelProviderManager.loadAllFromPreferences()
+                    if managers.isEmpty {
+                        throw ("no tunnel providers found")
+                    }
+                    for manager in managers {
+                        manager.isOnDemandEnabled = false
+                        try await manager.saveToPreferences()
+                    }
+                } catch {
+                    ffiLog(.Error, "disabling on-demand failed: \(error)")
+                }
+            #endif
+        }
+
         await self.isActive.withLock { isActiveGuard in
             if !isActiveGuard.value {
                 ffiLog(.Warn, "stopTunnel called on inactive tunnel \(self.providerId)")
@@ -355,5 +409,48 @@ func runManagerCmd<O: Codable>(_ cmd: NeManagerCmd) async throws -> O {
         return try O(json: ok)
     case .error(let err):
         throw err
+    }
+}
+
+func providerStopReasonToString(_ reason: NEProviderStopReason) -> String {
+    switch reason {
+    case .none:
+        return "none"
+    case .userInitiated:
+        return "userInitiated"
+    case .providerFailed:
+        return "providerFailed"
+    case .noNetworkAvailable:
+        return "noNetworkAvailable"
+    case .unrecoverableNetworkChange:
+        return "unrecoverableNetworkChange"
+    case .providerDisabled:
+        return "providerDisabled"
+    case .authenticationCanceled:
+        return "authenticationCanceled"
+    case .configurationFailed:
+        return "configurationFailed"
+    case .idleTimeout:
+        return "idleTimeout"
+    case .configurationDisabled:
+        return "configurationDisabled"
+    case .configurationRemoved:
+        return "configurationRemoved"
+    case .superceded:
+        return "superceded"
+    case .userLogout:
+        return "userLogout"
+    case .userSwitch:
+        return "userSwitch"
+    case .appUpdate:
+        return "appUpdate"
+    case .connectionFailed:
+        return "connectionFailed"
+    case .sleep:
+        return "sleep"
+    case .internalError:
+        return "internalError"
+    @unknown default:
+        return "unknown(\(reason))"
     }
 }

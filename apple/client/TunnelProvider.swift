@@ -76,9 +76,11 @@ class TunnelProviderInit {
             case .none: NETunnelProviderManager()
             }
 
+            manager.onDemandRules = [NEOnDemandRuleConnect()]
+
             let proto = NETunnelProviderProtocol()
             proto.providerBundleIdentifier = networkExtensionBundleID()
-            proto.serverAddress = "obscura.net"
+            proto.serverAddress = manager.protocolConfiguration?.serverAddress ?? "obscura.net"
             proto.includeAllNetworks = manager.protocolConfiguration?.includeAllNetworks ?? false
             manager.protocolConfiguration = proto
 

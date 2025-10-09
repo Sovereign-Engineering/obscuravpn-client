@@ -34,7 +34,7 @@ extension CommandHandler {
             let args = try TunnelArgs(json: jsonArgs)
             try await appState.enableTunnel(args)
         case .stopTunnel:
-            appState.disableTunnel()
+            await appState.disableTunnel()
         case .resetUserDefaults:
             // NOTE: only shown in the Developer View
             appState.resetUserDefaults()

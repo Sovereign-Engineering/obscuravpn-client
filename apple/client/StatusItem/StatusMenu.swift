@@ -301,9 +301,9 @@ final class StatusItemManager: ObservableObject {
         NSWorkspace.shared.open(URLs.AppLocationPage)
     }
 
-    @objc func disconnectAndQuit() {
-        StartupModel.shared.appState?.disableTunnel()
-        NSApp.terminate(nil)
+    @objc func disconnectAndQuit() async {
+        await StartupModel.shared.appState?.disableTunnel()
+        await NSApp.terminate(nil)
     }
 
     @objc func viewLatestDebugArchive() {

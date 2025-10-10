@@ -100,6 +100,20 @@ export interface AccountStatus {
     last_updated_sec: number
 }
 
+// See rustlib/src/config/feature_flags.rs
+export enum KnownFeatureFlagKey {
+  QuicFramePadding = "quicFramePadding",
+  KillSwitch = "killSwitch",
+}
+
+export type FeatureFlagKey = KnownFeatureFlagKey | string;
+
+export type FeatureFlagValue = boolean | null;
+
+export function featureFlagEnabled(value: FeatureFlagValue | undefined): boolean {
+  return value === true;
+}
+
 export interface AppStatus {
     version: string,
     vpnStatus: VpnStatus,
@@ -111,6 +125,8 @@ export interface AppStatus {
     account: AccountStatus | null,
     autoConnect: boolean,
     forceTcpTlsRelayTransport: boolean,
+    featureFlags: Record<FeatureFlagKey, FeatureFlagValue>,
+    featureFlagKeys: FeatureFlagKey[],
 }
 
 interface IAppContext {

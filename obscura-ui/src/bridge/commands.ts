@@ -1,11 +1,11 @@
+import { notifications } from '@mantine/notifications';
 import { TFunction } from 'i18next';
+import { useState } from 'react';
 import { AccountId } from '../common/accountUtils';
 import { AccountInfo, Exit } from '../common/api';
-import { AppStatus, NEVPNStatus, OsStatus, PinnedLocation } from '../common/appContext';
-import { fmt } from '../common/fmt';
-import { normalizeError } from '../common/utils';
+import { AppStatus, FeatureFlagKey, OsStatus, PinnedLocation } from '../common/appContext';
+import { errMsg, normalizeError } from '../common/utils';
 import { fmtErrorI18n } from '../translations/i18n';
-import { notifications } from '@mantine/notifications';
 
 async function WKWebViewInvoke(command: string, args: Object) {
     const commandJson = JSON.stringify({ [command]: args });
@@ -235,6 +235,10 @@ export function setAutoConnect(enable: boolean) {
   return jsonFfiCmd('setAutoConnect', { enable });
 }
 
+export async function setFeatureFlag(flag: FeatureFlagKey, active: boolean) {
+  await jsonFfiCmd('setFeatureFlag', { flag, active });
+}
+
 export function useHandleCommand(t: TFunction) {
   return async (command: () => Promise<void> | void) => {
     try {
@@ -250,4 +254,37 @@ export function useHandleCommand(t: TFunction) {
       });
     }
   };
+}
+
+/**
+ * Hook for calling bridge commands with no return values with loading and error state management.
+ *
+ * @returns Object containing:
+ *   - loading: boolean indicating if command is in progress
+ *   - error: string with error message if command failed
+ *   - execute: function that wraps the async command with loading/error handling
+ *
+ * @example
+ * const { loading, error, execute } = useAsyncCommand();
+ *
+ * const onChange = (checked: boolean) =>
+ *   execute(() => commands.setFeatureFlag(FeatureFlagKey.KillSwitch, checked));
+ */
+export function useAsyncCommand() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>();
+
+  const execute = async (command: () => Promise<unknown>) => {
+    try {
+      setLoading(true);
+      setError(undefined);
+      await command();
+    } catch (err) {
+      setError(errMsg(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { loading, error, execute };
 }

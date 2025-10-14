@@ -30,6 +30,16 @@ export default function Mantine({ children }: PropsWithChildren) {
             Anchor: { defaultProps: { target: '_blank' } },
             Burger: { styles: { burger: { color: '--mantine-color-grey-6' } } },
             CopyButton: { defaultProps: { timeout: 1100 } },
+            Switch: {
+                defaultProps: { labelPosition: 'left' },
+                styles: { body: { justifyContent: 'space-between' }, description: { fontSize: 'var(--mantine-font-size-sm)' } }
+            },
+            Alert: {
+              styles: {
+                message: { fontSize: 'var(--mantine-font-size-xs)'},
+                root: { padding: 'var(--mantine-spacing-xs)' }
+              }
+            },
             Button: {
                 defaultProps: {
                     radius: 'md',

@@ -20,6 +20,7 @@ data class JsonFfiCommand(
     val setPinnedExits: SetPinnedExits? = null,
     val rotateWgKey: RotateWgKey? = null,
     val setAutoConnect: SetAutoConnect? = null,
+    val setFeatureFlag: SetFeatureFlag? = null,
 ) {
     fun run(): Any {
         return when {
@@ -64,6 +65,9 @@ data class JsonFfiCommand(
 
             setAutoConnect != null ->
                 setAutoConnect.run()
+
+            setFeatureFlag != null ->
+                setFeatureFlag.run()
 
             else ->
                 throw NotImplementedError("JsonFfiCommand not implemented")

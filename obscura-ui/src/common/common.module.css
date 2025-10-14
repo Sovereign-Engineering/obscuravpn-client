@@ -32,7 +32,7 @@
 }
 
 .elevatedSurface {
-    background-color: light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-6)) !important;
+    background-color: light-dark(var(--mantine-color-body), var(--mantine-color-dark-6)) !important;
 }
 
 .svgThemed {

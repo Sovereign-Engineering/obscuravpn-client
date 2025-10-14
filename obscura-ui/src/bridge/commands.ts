@@ -1,3 +1,4 @@
+import { useThrottledValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { TFunction } from 'i18next';
 import { useState } from 'react';
@@ -261,6 +262,7 @@ export function useHandleCommand(t: TFunction) {
  *
  * @returns Object containing:
  *   - loading: boolean indicating if command is in progress
+ *   - showLoadingUI: boolean indicating whether caller should show loading UI
  *   - error: string with error message if command failed
  *   - execute: function that wraps the async command with loading/error handling
  *
@@ -273,18 +275,20 @@ export function useHandleCommand(t: TFunction) {
 export function useAsyncCommand() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
+  const showLoadingUI = useThrottledValue(loading, loading ? 200 : 0);
 
   const execute = async (command: () => Promise<unknown>) => {
+    if (loading) return;
+    setLoading(true);
+    setError(undefined);
     try {
-      setLoading(true);
-      setError(undefined);
       await command();
     } catch (err) {
       setError(errMsg(err));
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   };
 
-  return { loading, error, execute };
+  return { loading, showLoadingUI, error, execute };
 }

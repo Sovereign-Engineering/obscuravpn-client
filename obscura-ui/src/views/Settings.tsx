@@ -15,7 +15,7 @@ import classes from './Settings.module.css';
 
 export default function Settings() {
   return (
-    <Stack gap='lg' align='flex-start' className={classes.container}>
+    <Stack mb='xl' gap='lg' align='flex-start' className={classes.container}>
       <GeneralSettings />
       <ExperimentalSettings />
       <NetworkSettings />
@@ -142,10 +142,10 @@ function AppearanceSettings() {
   const resetMantineColorScheme = () => setColorScheme('auto');
 
   return (
-    <Card padding='md' radius='md' w='100%' shadow='xs'>
+    <Card padding='md' radius='md' w='100%' shadow='xs' pb='lg'>
       <Stack gap='lg'>
         <Title order={4}>{t('Appearance')}</Title>
-        <Group gap='md' w='100%' justify='space-around'>
+        <Group gap='0' maw='25em' justify='space-around'>
           {colorSchemeOptions.map(({ colorScheme, i18nKey, icon }) => (
             <ActionIcon
               key={colorScheme}
@@ -178,7 +178,7 @@ function StrictLeakPreventionSwitch() {
   const { t } = useTranslation();
   const { vpnConnected, osStatus } = useContext(AppContext);
   const { strictLeakPrevention } = osStatus;
-  const { loading, error, execute } = commands.useAsyncCommand();
+  const { showLoadingUI, error, execute } = commands.useAsyncCommand();
 
   const onChange = (checked: boolean) =>
     execute(() => commands.setStrictLeakPrevention(checked));
@@ -191,7 +191,7 @@ function StrictLeakPreventionSwitch() {
         error={error}
         checked={strictLeakPrevention}
         onChange={(event) => onChange(event.currentTarget.checked)}
-        disabled={disabled || loading}
+        disabled={disabled || showLoadingUI}
         label={t('strictLeakPreventionLabel')}
         description={t('strictLeakPreventionDescription')}
       />
@@ -213,7 +213,7 @@ function StrictLeakPreventionSwitch() {
 function FeatureFlagToggle({ featureFlagKey }: { featureFlagKey: FeatureFlagKey }) {
   const { t, i18n } = useTranslation();
   const { appStatus } = useContext(AppContext);
-  const { loading, error, execute } = commands.useAsyncCommand();
+  const { showLoadingUI, error, execute } = commands.useAsyncCommand();
 
   const onChange = (checked: boolean) =>
     execute(() => commands.setFeatureFlag(featureFlagKey, checked));
@@ -232,7 +232,7 @@ function FeatureFlagToggle({ featureFlagKey }: { featureFlagKey: FeatureFlagKey 
         error={error}
         checked={featureFlagEnabled(appStatus.featureFlags[featureFlagKey])}
         onChange={(event) => onChange(event.currentTarget.checked)}
-        disabled={loading}
+        disabled={showLoadingUI}
         label={label}
         description={description}
       />

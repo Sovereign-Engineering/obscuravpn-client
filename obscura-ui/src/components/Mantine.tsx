@@ -31,13 +31,18 @@ export default function Mantine({ children }: PropsWithChildren) {
             Burger: { styles: { burger: { color: '--mantine-color-grey-6' } } },
             CopyButton: { defaultProps: { timeout: 1100 } },
             Switch: {
-                defaultProps: { labelPosition: 'left' },
+                defaultProps: { labelPosition: 'left', size: IS_HANDHELD_DEVICE ? 'lg' : undefined },
                 styles: { body: { justifyContent: 'space-between' }, description: { fontSize: 'var(--mantine-font-size-sm)' } }
             },
             Alert: {
               styles: {
-                message: { fontSize: 'var(--mantine-font-size-xs)'},
-                root: { padding: 'var(--mantine-spacing-xs)' }
+                message: { fontSize: 'var(--mantine-font-size-xs)' },
+                root: { padding: IS_HANDHELD_DEVICE ? undefined : 'var(--mantine-spacing-xs)' },
+                icon: {
+                  width: IS_HANDHELD_DEVICE ? '1.5rem' : undefined,
+                  height: IS_HANDHELD_DEVICE ? '1.5rem' : undefined,
+                  marginRight: 'var(--mantine-spacing-xs)',
+                }
               }
             },
             Button: {
@@ -55,6 +60,11 @@ export default function Mantine({ children }: PropsWithChildren) {
             Accordion: {
               defaultProps: {
                 radius: 'md'
+              },
+              styles: {
+                item: { transition: 'none' },
+                control: { transition: 'none' },
+                panel: { transition: 'none' }
               }
             }
         },

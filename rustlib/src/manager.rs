@@ -64,7 +64,6 @@ pub struct Status {
     pub api_url: String,
     pub account: Option<AccountStatus>,
     pub auto_connect: bool,
-    pub force_tcp_tls_relay_transport: bool,
     pub feature_flags: FeatureFlags,
     pub feature_flag_keys: &'static [&'static str],
 }
@@ -79,7 +78,6 @@ impl Status {
             last_exit_selector,
             cached_account_status,
             auto_connect,
-            force_tcp_tls_relay_transport,
             feature_flags,
             ..
         } = config;
@@ -94,7 +92,6 @@ impl Status {
             api_url,
             account: cached_account_status,
             auto_connect,
-            force_tcp_tls_relay_transport,
             feature_flags,
             feature_flag_keys: FeatureFlags::KEYS,
         }
@@ -431,13 +428,6 @@ impl Manager {
 
     pub fn set_auto_connect(&self, enable: bool) -> Result<(), ConfigSaveError> {
         self.client_state.set_auto_connect(enable)?;
-        self.update_status_if_changed(None);
-        Ok(())
-    }
-
-    pub fn toggle_force_tcp_tls_relay_transport(&self) -> Result<(), ConfigSaveError> {
-        let current = self.client_state.get_config().force_tcp_tls_relay_transport;
-        self.client_state.set_force_tcp_tls_relay_transport(!current)?;
         self.update_status_if_changed(None);
         Ok(())
     }

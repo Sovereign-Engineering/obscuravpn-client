@@ -3,7 +3,7 @@ use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use serde_with::skip_serializing_none;
-use strum::{EnumString, VariantNames};
+use strum::{EnumString, IntoStaticStr, VariantNames};
 
 #[derive(Serialize, Deserialize, Default, Clone, PartialEq, Eq, Debug)]
 #[skip_serializing_none]
@@ -13,6 +13,8 @@ pub struct FeatureFlags {
     pub quic_frame_padding: Option<bool>,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub kill_switch: Option<bool>,
+    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
+    pub tcp_tls_tunnel: Option<bool>,
     #[serde(flatten)]
     other: Map<String, Value>,
 }
@@ -32,15 +34,17 @@ impl FeatureFlags {
         match flag {
             FeatureFlagKey::QuicFramePadding => self.quic_frame_padding = value,
             FeatureFlagKey::KillSwitch => self.kill_switch = value,
+            FeatureFlagKey::TcpTlsTunnel => self.tcp_tls_tunnel = value,
         }
     }
 }
 
-#[derive(VariantNames, Clone, Copy, EnumString)]
+#[derive(VariantNames, Clone, Copy, EnumString, IntoStaticStr)]
 #[strum(serialize_all = "camelCase")]
-enum FeatureFlagKey {
+pub enum FeatureFlagKey {
     QuicFramePadding,
     KillSwitch,
+    TcpTlsTunnel,
 }
 
 #[cfg(test)]

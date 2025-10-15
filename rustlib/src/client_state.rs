@@ -210,12 +210,6 @@ impl ClientState {
         Ok(())
     }
 
-    pub fn set_force_tcp_tls_relay_transport(&self, enable: bool) -> Result<(), ConfigSaveError> {
-        let mut inner = self.lock();
-        Self::change_config(&mut inner, move |config, _| config.force_tcp_tls_relay_transport = enable)?;
-        Ok(())
-    }
-
     pub async fn connect(
         &self,
         exit_selector: &ExitSelector,
@@ -385,8 +379,13 @@ impl ClientState {
             sni = sni,
             "Racing relays",
         );
-        let use_tcp_tls = self.get_config().force_tcp_tls_relay_transport;
-        let pad_to_mtu = self.get_config().feature_flags.quic_frame_padding.unwrap_or(false);
+        let (use_tcp_tls, pad_to_mtu) = {
+            let feature_flags = &self.get_config().feature_flags;
+            (
+                feature_flags.tcp_tls_tunnel.unwrap_or(false),
+                feature_flags.quic_frame_padding.unwrap_or(false),
+            )
+        };
         let racing_handshakes = race_relay_handshakes(network_interface_index, relays, sni, use_tcp_tls, pad_to_mtu)?;
 
         let start = Instant::now();

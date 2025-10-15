@@ -104,6 +104,7 @@ export interface AccountStatus {
 export enum KnownFeatureFlagKey {
   QuicFramePadding = "quicFramePadding",
   KillSwitch = "killSwitch",
+  TcpTlsTunnel = "tcpTlsTunnel",
 }
 
 export type FeatureFlagKey = KnownFeatureFlagKey | string;
@@ -124,7 +125,6 @@ export interface AppStatus {
     apiUrl: string,
     account: AccountStatus | null,
     autoConnect: boolean,
-    forceTcpTlsRelayTransport: boolean,
     featureFlags: Record<FeatureFlagKey, FeatureFlagValue>,
     featureFlagKeys: FeatureFlagKey[],
 }

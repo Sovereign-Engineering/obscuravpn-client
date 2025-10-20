@@ -559,7 +559,7 @@ private class DebugBundleBuilder {
             return
         }
         do {
-            let logDir: String = try await runNeCommand(manager, NeManagerCmd.getLogDir, attemptTimeout: .seconds(5), maxAttempts: 1)
+            let logDir: String = try await runNeCommand(manager, NeManagerCmd.getLogDir, attemptTimeout: .seconds(10), maxAttempts: 5)
             try self.copyFile(source: URL(fileURLWithPath: logDir), name: "rust-logs")
         } catch {
             self.writeError(name: "rust-log", error: error)

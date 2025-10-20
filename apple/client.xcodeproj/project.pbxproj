@@ -16,6 +16,7 @@
 		1D9F4FDE2E5BC912001C080B /* DebugBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9BCB05D2DC54AC0006C0133 /* DebugBundle.swift */; };
 		1D9F4FE02E5BCDED001C080B /* time.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35A6F2532C6121C2004E1A7C /* time.swift */; };
 		1D9F50082E6280FF001C080B /* MailDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D9F50072E6280FF001C080B /* MailDelegate.swift */; };
+		1DB5666B2EA565E7009CEB08 /* String.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C920682CD91D94002C85EA /* String.swift */; };
 		300452782C49BC90000B78F7 /* Json.swift in Sources */ = {isa = PBXBuildFile; fileRef = 300452772C49BC90000B78F7 /* Json.swift */; };
 		300452792C49BC90000B78F7 /* Json.swift in Sources */ = {isa = PBXBuildFile; fileRef = 300452772C49BC90000B78F7 /* Json.swift */; };
 		30497E662D9EC09E008B22F9 /* ConcurrencyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30497E652D9EC09E008B22F9 /* ConcurrencyTests.swift */; };
@@ -1122,6 +1123,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1DB5666B2EA565E7009CEB08 /* String.swift in Sources */,
 				1D9F4FE02E5BCDED001C080B /* time.swift in Sources */,
 				1D9F4FDE2E5BC912001C080B /* DebugBundle.swift in Sources */,
 				A952CE0A2E1B87B8007E25AC /* SubscriptionManageSheet.swift in Sources */,

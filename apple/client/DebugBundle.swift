@@ -541,7 +541,7 @@ private class DebugBundleBuilder {
             return
         }
         do {
-            let neDebugInfoJsonString = try await runNeJsonCommand(manager, NeManagerCmd.getDebugInfo.json(), attemptTimeout: .seconds(10))
+            let neDebugInfoJsonString = try await runNeJsonCommand(manager, NeManagerCmd.getDebugInfo.json(), name: "getDebugInfo", attemptTimeout: .seconds(10))
             let value = try JSONSerialization.jsonObject(with: Data(neDebugInfoJsonString.utf8))
             let json = try JSONSerialization.data(
                 withJSONObject: value,

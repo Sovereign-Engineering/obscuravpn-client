@@ -197,7 +197,7 @@ func neLogin(_ manager: NETunnelProviderManager,
              attemptTimeout: Duration? = nil,
              maxAttempts: UInt = 10) async throws
 {
-    _ = try await runNeJsonCommand(manager, NeManagerCmd.login(accountId: accountId, validate: false).json(), attemptTimeout: attemptTimeout, maxAttempts: maxAttempts)
+    _ = try await runNeJsonCommand(manager, NeManagerCmd.login(accountId: accountId, validate: false).json(), name: "login", attemptTimeout: attemptTimeout, maxAttempts: maxAttempts)
 }
 
 // TODO: Move to manager. https://linear.app/soveng/issue/OBS-2131/apple-store-code-shouldnt-use-netunnelprovidermanager-directly
@@ -225,7 +225,7 @@ func neApiApplePollSubscription(
     attemptTimeout: Duration? = nil,
     maxAttempts: UInt = 10
 ) async throws {
-    _ = try await runNeJsonCommand(manager, NeManagerCmd.apiApplePollSubscription(originalTransactionId: originalTransactionId).json(), attemptTimeout: attemptTimeout, maxAttempts: maxAttempts)
+    _ = try await runNeJsonCommand(manager, NeManagerCmd.apiApplePollSubscription(originalTransactionId: originalTransactionId).json(), name: "apiApplePollSubscription", attemptTimeout: attemptTimeout, maxAttempts: maxAttempts)
 }
 
 func getNeStatus(
@@ -304,12 +304,13 @@ func runNeCommand<T: Codable>(
     attemptTimeout: Duration? = .seconds(10),
     maxAttempts: UInt = 10
 ) async throws(String) -> T {
-    return try T(json: await runNeJsonCommand(manager, cmd.json(), attemptTimeout: attemptTimeout, maxAttempts: maxAttempts))
+    return try T(json: await runNeJsonCommand(manager, cmd.json(), name: getEnumCaseName(for: cmd), attemptTimeout: attemptTimeout, maxAttempts: maxAttempts))
 }
 
 func runNeJsonCommand(
     _ manager: NETunnelProviderManager,
     _ jsonCmd: String,
+    name: String?,
     attemptTimeout: Duration?,
     maxAttempts: UInt = 10
 ) async throws(String) -> String {
@@ -321,15 +322,15 @@ func runNeJsonCommand(
         )
         result = try NeManagerCmdResult(json: resultJson)
     } catch {
-        logger.error("could not run ne command: \(error, privacy: .public)")
+        logger.error("could not run ne command \(name, privacy: .public): \(error, privacy: .public)")
         result = .error(errorCodeOther)
     }
     switch result {
     case .ok_json(let ok):
-        logger.debug("ne command success")
+        logger.debug("ne command \(name, privacy: .public) success")
         return ok
     case .error(let error):
-        logger.debug("ne command error: \(error, privacy: .public)")
+        logger.debug("ne command \(name, privacy: .public) error: \(error, privacy: .public)")
         throw error
     }
 }

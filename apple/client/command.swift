@@ -67,6 +67,7 @@ extension CommandHandler {
             return try await runNeJsonCommand(
                 appState.manager,
                 jsonCmd,
+                name: getEnumCaseName(for: jsonCmd),
                 attemptTimeout: attemptTimeout
             )
         case .getOsStatus(knownVersion: let version):

@@ -255,8 +255,8 @@ struct AccountInfoOverviewView: View {
         ))
 
         if self.viewModel.storeKitPurchasedAwaitingServerAck {
-            if !(accountInfo.hasTopUp || accountInfo.hasStripeSubscription) {
-                let hasStorekit = self.storeKitModel.hasActiveMonthlySubscription
+            let hasStorekit = self.storeKitModel.hasActiveMonthlySubscription
+            if !accountInfo.active || hasStorekit {
                 build.append(Row(
                     title: "Subscription Status",
                     importance: .low,

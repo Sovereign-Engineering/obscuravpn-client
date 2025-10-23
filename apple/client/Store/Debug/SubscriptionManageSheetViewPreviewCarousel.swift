@@ -29,7 +29,9 @@ struct SubscriptionManageSheetViewPreviewCarousel: View {
                 active: false,
                 topUp: nil,
                 stripeSubscription: nil,
-                appleSubscription: nil
+                appleSubscription: nil,
+                _autoRenews: nil,
+                currentExpiry: nil
             )
         )
     }
@@ -43,7 +45,9 @@ struct SubscriptionManageSheetViewPreviewCarousel: View {
                 active: true,
                 topUp: TopUpInfo(creditExpiresAt: futureDate),
                 stripeSubscription: nil,
-                appleSubscription: nil
+                appleSubscription: nil,
+                _autoRenews: nil,
+                currentExpiry: futureDate
             )
         )
     }
@@ -63,7 +67,9 @@ struct SubscriptionManageSheetViewPreviewCarousel: View {
                     currentPeriodEnd: futureDate,
                     cancelAtPeriodEnd: false
                 ),
-                appleSubscription: nil
+                appleSubscription: nil,
+                _autoRenews: futureDate,
+                currentExpiry: nil
             )
         )
     }
@@ -81,7 +87,9 @@ struct SubscriptionManageSheetViewPreviewCarousel: View {
                     status: 1, // Active status
                     autoRenewalStatus: true,
                     renewalTime: futureDate
-                )
+                ),
+                _autoRenews: futureDate,
+                currentExpiry: nil
             )
         )
     }

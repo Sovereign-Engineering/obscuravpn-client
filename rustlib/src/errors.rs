@@ -49,7 +49,10 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
                         AlreadyExists {}
                         | BadRequest {}
                         | InternalError {}
+                        | InvalidReferralCode {}
+                        | MiscUnauthorized {}
                         | MissingOrInvalidAuthToken {}
+                        | MoneroTopUpNotFound {}
                         | NoApiRoute {}
                         | NoMatchingExit {}
                         | SaleNotFound {}

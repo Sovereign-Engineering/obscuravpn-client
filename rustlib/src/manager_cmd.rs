@@ -64,7 +64,10 @@ impl From<&ApiError> for ManagerCmdErrorCode {
                     | ApiErrorKind::AlreadyExists {}
                     | ApiErrorKind::BadRequest {}
                     | ApiErrorKind::InternalError {}
+                    | ApiErrorKind::InvalidReferralCode {}
+                    | ApiErrorKind::MiscUnauthorized {}
                     | ApiErrorKind::MissingOrInvalidAuthToken {}
+                    | ApiErrorKind::MoneroTopUpNotFound {}
                     | ApiErrorKind::NoApiRoute {}
                     | ApiErrorKind::NoMatchingExit {}
                     | ApiErrorKind::SaleNotFound {}

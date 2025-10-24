@@ -186,7 +186,7 @@ function StrictLeakPreventionSwitch() {
   const disabled = strictLeakPrevention && vpnConnected;
 
   return (
-    <Stack gap='xs'>
+    <Stack gap='xs' w='100%'>
       <Switch
         error={error}
         checked={strictLeakPrevention}
@@ -227,7 +227,7 @@ function FeatureFlagToggle({ featureFlagKey }: { featureFlagKey: FeatureFlagKey 
   const additionalComponents = FEATURE_FLAG_CUSTOM_UI[featureFlagKey]?.(t);
 
   return (
-    <Stack gap='xs'>
+    <Stack gap='xs' w='100%'>
       <Switch
         error={error}
         checked={featureFlagEnabled(appStatus.featureFlags[featureFlagKey])}

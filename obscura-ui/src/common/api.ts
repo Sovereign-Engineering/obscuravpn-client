@@ -42,6 +42,11 @@ export interface TopUpInfo {
     credit_expires_at: number,
 }
 
+export function hasCredit(accountInfo: AccountInfo | undefined): boolean {
+    const expires = accountInfo?.top_up?.credit_expires_at || 0;
+    return new Date(expires * 1000).getTime() > new Date().getTime();
+}
+
 export interface SubscriptionInfo {
     status: SubscriptionStatus,
     current_period_start: number,
@@ -140,6 +145,12 @@ export interface AppleSubscriptionInfo {
     status: AppleSubscriptionStatus,
     auto_renew_status: boolean,
     renewal_date: number,
+}
+
+export function hasAppleSubscription(accountInfo: AccountInfo | undefined): boolean {
+    const status = accountInfo?.apple_subscription?.status;
+    return status === AppleSubscriptionStatus.ACTIVE
+      || status === AppleSubscriptionStatus.GRACE_PERIOD;
 }
 
 /**

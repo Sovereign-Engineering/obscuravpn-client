@@ -1,20 +1,22 @@
 import { Anchor, Box, Button, Center, Code, Group, Loader, Paper, Stack, Text, ThemeIcon, useMantineTheme } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import React, { useContext, useEffect } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { BsQuestionSquareFill } from 'react-icons/bs';
 import { FaRotateRight } from 'react-icons/fa6';
-import { IoLogOutOutline } from 'react-icons/io5';
+import { IoLogOutOutline, IoNuclear } from 'react-icons/io5';
 import { MdOutlineWifiOff } from 'react-icons/md';
 import * as commands from '../bridge/commands';
 import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
 import * as ObscuraAccount from '../common/accountUtils';
-import { AccountInfo, accountIsExpired, hasActiveSubscription, isRenewing, paidUntil, paidUntilDays, useReRenderWhenExpired } from '../common/api';
+import { AccountInfo, accountIsExpired, hasActiveSubscription, hasAppleSubscription, hasCredit, isRenewing, paidUntil, paidUntilDays, useReRenderWhenExpired } from '../common/api';
 import { AppContext } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { normalizeError } from '../common/utils';
 import { AccountNumberSection } from '../components/AccountNumberSection';
 import { ButtonLink } from '../components/ButtonLink';
+import { ConfirmationDialog } from '../components/ConfirmationDialog';
 import AccountExpiredBadge from '../res/account-expired.svg?react';
 import PaidUpExpiringSoonBadge from '../res/paid-up-expiring-soon.svg?react';
 import PaidUpExpiringVerySoonBadge from '../res/paid-up-expiring-very-soon.svg?react';
@@ -28,6 +30,7 @@ import classes from './AccountView.module.css';
 export default function Account() {
   const { t } = useTranslation();
   const { appStatus, pollAccount } = useContext(AppContext);
+  const [confirmDeleteAccount, { open, close }] = useDisclosure(false);
 
   useEffect(() => {
     // Ensure account info is up-to-date when the user is viewing the account page.
@@ -43,16 +46,37 @@ export default function Account() {
     }
   }
 
+  const deleteAccount = async () => {
+    try {
+      await commands.deleteAccount();
+      await logOut();
+    } catch (e) {
+      const error = normalizeError(e);
+      notifications.show({ title: t('deleteAccountFailed'), message: <Text>{t('pleaseReportError')}<br /><Code>{error.message}</Code></Text>, color: 'red' });
+    }
+  }
+
   // vpnStatus is used because accountInfo will be null if pollAccount fails
   const accountId = appStatus.accountId;
-  return (
+  const accountInfo = appStatus.account?.account_info;
+  return <>
+    <ConfirmationDialog opened={confirmDeleteAccount} onClose={close} drawerSize='md'>
+      <Stack p={IS_HANDHELD_DEVICE ? 'xl' : undefined} ta={IS_HANDHELD_DEVICE ? 'center' : undefined}>
+        <Text>{t('deleteAccountConfirmationStart')}</Text>
+        {hasCredit(accountInfo) && <Text>{t('deleteAccountConfirmationCredit')}</Text>}
+        {hasAppleSubscription(accountInfo) && <Text>{t('deleteAccountConfirmationAppleSubscription')}</Text>}
+        <Text>{t('deleteAccountConfirmationEnd')}</Text>
+        <DeleteAccount onClick={deleteAccount} />
+      </Stack>
+    </ConfirmationDialog>
     <Stack align='center' className={classes.container}>
       <AccountStatusCard />
       <AccountNumberSection accountId={accountId} logOut={logOut} />
       <WGConfigurations />
+      <DeleteAccount onClick={open} />
       <MobileLogOut logOut={logOut} />
     </Stack>
-  );
+  </>;
 }
 
 interface AccountStatusProps {
@@ -286,6 +310,18 @@ function WGConfigurations() {
       </Group>
     </Stack>
   </>
+}
+
+function DeleteAccount({ onClick }: { onClick: () => void }) {
+  const { t } = useTranslation();
+  return <Group align='start' w='100%'>
+    <Button onClick={onClick} variant='light' color='red.7' w={{ base: '100%', xs: 'auto' }}>
+      <Group gap={5} ml={0}>
+        <IoNuclear size={19} />
+        <Text fw={550}>{t('deleteAccount')}</Text>
+      </Group>
+    </Button>
+  </Group>;
 }
 
 function MobileLogOut({ logOut }: { logOut: () => Promise<void> }) {

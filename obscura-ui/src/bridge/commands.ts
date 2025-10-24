@@ -215,6 +215,10 @@ export async function refreshExitList(freshnessS: number): Promise<void> {
   });
 }
 
+export async function deleteAccount(): Promise<void> {
+    await jsonFfiCmd('apiDeleteAccount');
+}
+
 export async function getAccount(): Promise<AccountInfo> {
     /* see obscuravpn-api/src/types.rs:AccountInfo */
     return await jsonFfiCmd('apiGetAccountInfo') as AccountInfo;

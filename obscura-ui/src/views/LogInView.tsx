@@ -1,8 +1,8 @@
-import { Anchor, Button, Card, Code, CopyButton, Drawer, Group, Image, Loader, Modal, Space, Stack, Text, TextInput, Title, Transition } from '@mantine/core';
+import { Anchor, Button, Card, Code, CopyButton, Group, Image, Loader, Space, Stack, Text, TextInput, Title, Transition } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { motion, MotionValue, useSpring, useTransform } from 'framer-motion';
-import { ChangeEvent, FormEvent, ForwardedRef, forwardRef, PropsWithChildren, ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { ChangeEvent, FormEvent, ForwardedRef, forwardRef, ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
 import { IoIosCard, IoIosCopy } from 'react-icons/io';
@@ -11,8 +11,8 @@ import AppIcon from '../../../apple/client/Assets.xcassets/AppIcon.appiconset/ic
 import * as commands from '../bridge/commands';
 import { IS_HANDHELD_DEVICE, PLATFORM } from '../bridge/SystemProvider';
 import * as ObscuraAccount from '../common/accountUtils';
-import commonClasses from '../common/common.module.css';
 import { HEADER_TITLE, multiRef, normalizeError } from '../common/utils';
+import { ConfirmationDialog } from '../components/ConfirmationDialog';
 import DecoOrangeTop from '../res/deco/deco-orange-top.svg';
 import DecoOrangeBottom from '../res/deco/deco-signup-mobile.svg';
 import { fmtErrorI18n, TranslationKey } from '../translations/i18n';
@@ -359,22 +359,3 @@ const AccountNumberInput = forwardRef(function AccountNumberInput(props: {}, ref
 
   return <TextInput autoComplete='username' name='username' inputMode='numeric' ref={multiRef(internalRef, ref)} value={value} onChange={onChange} error={error} required miw={270} label={t('Obscura Account Number')} placeholder='XXXX - XXXX - XXXX - XXXX - XXXX' />;
 });
-
-interface ConfirmationDialogProps extends PropsWithChildren {
-  opened: boolean,
-  onClose: () => void,
-}
-
-
-function ConfirmationDialog({ opened, onClose, children }: ConfirmationDialogProps) {
-  const { t } = useTranslation();
-  return (
-    IS_HANDHELD_DEVICE ?
-      <Drawer classNames={{ content: commonClasses.bottomSheet }} size='xs' position='bottom' opened={opened} onClose={onClose} title={t('Confirmation')}>
-        {children}
-      </Drawer> :
-      <Modal opened={opened} onClose={onClose} title={t('Confirmation')} centered>
-        {children}
-      </Modal>
-  );
-}

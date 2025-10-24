@@ -9,7 +9,7 @@ use std::{
 use obscuravpn_api::{
     cmd::{
         AppleAssociateAccount, AppleAssociateAccountOutput, AppleCreateAppAccountToken, AppleCreateAppAccountTokenOutput, ApplePollSubscription,
-        ApplePollSubscriptionOutput, Cmd, ExitList, GetAccountInfo,
+        ApplePollSubscriptionOutput, Cmd, DeleteAccount, DeleteAccountOutput, ExitList, GetAccountInfo,
     },
     types::{AccountId, AccountInfo, OneExit, OneRelay, WgPubkey},
 };
@@ -336,6 +336,10 @@ impl Manager {
     #[cfg(not(target_os = "ios"))]
     pub fn get_log_dir(&self) -> anyhow::Result<String> {
         Err(anyhow::format_err!("tried to get log dir on non-iOS platform"))
+    }
+
+    pub async fn delete_account(&self) -> Result<DeleteAccountOutput, ApiError> {
+        self.api_request(DeleteAccount {}).await
     }
 
     pub async fn get_account_info(&self) -> Result<AccountInfo, ApiError> {

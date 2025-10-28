@@ -1,7 +1,7 @@
 import { Anchor, Button, Card, Group, Loader, Stack, Text, Title } from '@mantine/core';
 import { Trans, useTranslation } from 'react-i18next';
 import { IoIosMail, IoIosShare } from 'react-icons/io';
-import { emailArchive, revealItemInDir, shareFile } from '../bridge/commands';
+import { emailDebugArchive, revealItemInDir, shareDebugArchive } from '../bridge/commands';
 import { IS_HANDHELD_DEVICE, systemName } from '../bridge/SystemProvider';
 import { OsStatus } from '../common/appContext';
 import { useDebuggingArchive } from '../common/debuggingArchiveHook';
@@ -38,10 +38,10 @@ export default function DebuggingArchive({ osStatus }: { osStatus: OsStatus }) {
             {archiveAvailable &&
               <>
                 <Stack gap='sm' w='100%'>
-                  <Button variant='light' onClick={() => shareFile(osStatus.debugBundleStatus.latestPath!)} data-disabled={!!osStatus.debugBundleStatus.inProgress} leftSection={<IoIosShare size={iconSize} />}>
+                  <Button variant='light' onClick={() => shareDebugArchive(osStatus.debugBundleStatus.latestPath!)} data-disabled={!!osStatus.debugBundleStatus.inProgress} leftSection={<IoIosShare size={iconSize} />}>
                     {t('shareLatestDebugArchive')}
                   </Button>
-                  <Button variant='light' onClick={() => emailArchive(osStatus.debugBundleStatus.latestPath!, t('emailSubject', { platform: systemName(), version: osStatus.srcVersion }), t('emailBodyIntro'))} disabled={!!osStatus.debugBundleStatus.inProgress || !osStatus.canSendMail} leftSection={<IoIosMail size={iconSize} />}>
+                  <Button variant='light' onClick={() => emailDebugArchive(osStatus.debugBundleStatus.latestPath!, t('emailSubject', { platform: systemName(), version: osStatus.srcVersion }), t('emailBodyIntro'))} disabled={!!osStatus.debugBundleStatus.inProgress || !osStatus.canSendMail} leftSection={<IoIosMail size={iconSize} />}>
                     {t('emailLatestDebugArchive')}
                   </Button>
                 </Stack>

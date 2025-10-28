@@ -405,7 +405,7 @@ class AppState: ObservableObject {
             rvc?.present(viewController, animated: true, completion: nil)
         }
 
-        func emailArchive(path: String, subject: String, body: String) throws(String) {
+        func emailDebugArchive(path: String, subject: String, body: String) throws(String) {
             if !MFMailComposeViewController.canSendMail() {
                 Self.logger.info("Mail services are not available")
                 return

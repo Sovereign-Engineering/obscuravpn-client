@@ -13,8 +13,8 @@ enum Command: Codable {
     case setColorScheme(value: AppAppearance)
     case debuggingArchive
     case revealItemInDir(path: String)
-    case emailArchive(path: String, subject: String, body: String)
-    case shareFile(path: String)
+    case emailDebugArchive(path: String, subject: String, body: String)
+    case shareDebugArchive(path: String)
     case registerAsLoginItem
     case unregisterAsLoginItem
     case resetUserDefaults
@@ -82,7 +82,7 @@ extension CommandHandler {
             }
             return try path.json()
         #if os(macOS)
-            case .emailArchive, .shareFile:
+            case .emailDebugArchive, .shareDebugArchive:
                 throw errorUnsupportedOnOS
             case .revealItemInDir(let path):
                 NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
@@ -98,9 +98,9 @@ extension CommandHandler {
                 }
                 appState.updater.showUpdaterIfNeeded()
         #else
-            case .emailArchive(let path, let subject, let body):
-                try appState.emailArchive(path: path, subject: subject, body: body)
-            case .shareFile(let path):
+            case .emailDebugArchive(let path, let subject, let body):
+                try appState.emailDebugArchive(path: path, subject: subject, body: body)
+            case .shareDebugArchive(let path):
                 appState.shareFile(path: path)
             case .revealItemInDir, .registerAsLoginItem, .unregisterAsLoginItem, .checkForUpdates, .installUpdate:
                 throw errorUnsupportedOnOS

@@ -4,7 +4,7 @@ import { TFunction } from 'i18next';
 import { useState } from 'react';
 import { AccountId } from '../common/accountUtils';
 import { AccountInfo, Exit } from '../common/api';
-import { AppStatus, FeatureFlagKey, OsStatus, PinnedLocation } from '../common/appContext';
+import { AppStatus, FeatureFlagKey, NEVPNStatus, OsStatus, PinnedLocation } from '../common/appContext';
 import { errMsg, normalizeError } from '../common/utils';
 import { fmtErrorI18n } from '../translations/i18n';
 

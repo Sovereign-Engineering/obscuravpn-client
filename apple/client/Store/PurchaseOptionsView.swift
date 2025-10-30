@@ -57,13 +57,11 @@ struct PurchaseOptionsView: View {
     }
 
     var body: some View {
-        if let accountInfo = viewModel.accountInfo {
+        if let accountInfo = viewModel.accountInfo, let product = self.monthlySubscriptionProduct {
             if !accountInfo.active {
                 VStack(alignment: .center, spacing: 18) {
                     VStack(alignment: .center, spacing: 14) {
-                        if self.monthlySubscriptionProduct != nil {
-                            self.inAppSubscriptionManageButton(accountInfo: accountInfo)
-                        }
+                        self.inAppSubscriptionManageButton(accountInfo: accountInfo, product: product)
 
                         // Beware!!! redeemCodeButton are given 10pts of padding for their hit target to account for small text
                         // Make sure they are not spaced any closer than that
@@ -84,7 +82,7 @@ struct PurchaseOptionsView: View {
                 }
             } else if accountInfo.hasActiveAppleSubscription {
                 VStack(alignment: .center, spacing: 14) {
-                    self.inAppSubscriptionManageButton(accountInfo: accountInfo)
+                    self.inAppSubscriptionManageButton(accountInfo: accountInfo, product: product)
                     self.redeemCodeButton
                         .font(.footnote)
                 }
@@ -94,38 +92,60 @@ struct PurchaseOptionsView: View {
         }
     }
 
-    func inAppSubscriptionManageButton(accountInfo: AccountInfo) -> some View {
+    func inAppSubscriptionManageButton(accountInfo: AccountInfo, product: Product) -> some View {
         let alreadyStripeSubscribed = "You're already subscribed through Stripe! You can't subscribe through the App Store until your subscription expires."
         let alreadyToppedUp = "You're already topped-up! You can't subscribe through the App Store until your top-up expires."
-        return Button {
-            if self.storeKitModel.hasActiveMonthlySubscription {
-                self.manageSubscriptionsPopover = true
-            } else {
-                Task {
-                    try await self.viewModel.purchaseSubscription()
+        return VStack {
+            VStack(alignment: .leading) {
+                Text(product.displayName)
+                    .font(.headline)
+                    .foregroundColor(.primary)
+
+                Text(product.description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                product.subscriptionPeriodFormatted().map { period in
+                    Text(period).font(.caption)
+                }
+
+                Text(product.displayPrice)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+            }
+            .padding()
+
+            Button {
+                if self.storeKitModel.hasActiveMonthlySubscription {
+                    self.manageSubscriptionsPopover = true
+                } else {
+                    Task {
+                        try await self.viewModel.purchaseSubscription()
+                    }
+                }
+            } label: {
+                if self.storeKitModel.hasActiveMonthlySubscription {
+                    Text("Manage Subscription")
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Text("Subscribe In App")
+                        .frame(maxWidth: .infinity)
                 }
             }
-        } label: {
-            if self.storeKitModel.hasActiveMonthlySubscription {
-                Text("Manage Subscription")
-                    .frame(maxWidth: .infinity)
-            } else {
-                Text("Subscribe In App")
-                    .frame(maxWidth: .infinity)
-            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .padding(.horizontal, 30)
+            .bold()
+            .tint(Color.obscuraOrange)
+            .manageSubscriptionsSheet(
+                isPresented: self.$manageSubscriptionsPopover
+            )
+            .conditionallyDisabled(
+                when: accountInfo.hasActiveExternalPaymentPlan,
+                explanation: accountInfo.hasStripeSubscription ? alreadyStripeSubscribed : alreadyToppedUp
+            )
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .padding(.horizontal, 30)
-        .bold()
-        .tint(Color.obscuraOrange)
-        .manageSubscriptionsSheet(
-            isPresented: self.$manageSubscriptionsPopover
-        )
-        .conditionallyDisabled(
-            when: accountInfo.hasActiveExternalPaymentPlan,
-            explanation: accountInfo.hasStripeSubscription ? alreadyStripeSubscribed : alreadyToppedUp
-        )
     }
 
     var restorePurchasesButton: some View {

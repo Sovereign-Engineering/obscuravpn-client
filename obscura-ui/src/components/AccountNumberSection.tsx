@@ -1,9 +1,8 @@
 import { ActionIcon, Button, CopyButton, Group, Stack, Text, useMantineTheme } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BsClipboardFill } from 'react-icons/bs';
 import { FaCopy } from 'react-icons/fa6';
-import { IoLogOutOutline } from 'react-icons/io5';
+import { IoCopy, IoLogOutOutline } from 'react-icons/io5';
 import * as ObscuraAccount from '../common/accountUtils';
 import commonClasses from '../common/common.module.css';
 import { usePrimaryColorResolved } from '../common/utils';
@@ -31,7 +30,7 @@ export function AccountNumberSection({ accountId, logOut }: { accountId: Obscura
             <CopyButton value={ObscuraAccount.accountIdToString(accountId)}>
               {({ copied, copy }) => (
                 <ActionIcon c={copied ? 'green' : undefined} variant='subtle' title={t('copy account number')} onClick={copy}>
-                  <BsClipboardFill size='1em' />
+                  <IoCopy size='1em' />
                 </ActionIcon>
               )}
             </CopyButton>

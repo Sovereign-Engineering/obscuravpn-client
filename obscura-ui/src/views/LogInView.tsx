@@ -4,9 +4,8 @@ import { notifications } from '@mantine/notifications';
 import { motion, MotionValue, useSpring, useTransform } from 'framer-motion';
 import { ChangeEvent, FormEvent, ForwardedRef, forwardRef, ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
+import { IoArrowForward, IoCard, IoCopy } from 'react-icons/io5';
 
-import { IoIosCard, IoIosCopy } from 'react-icons/io';
-import { IoArrowForward } from 'react-icons/io5';
 import AppIcon from '../../../apple/client/Assets.xcassets/AppIcon.appiconset/icon_128x128.png';
 import * as commands from '../bridge/commands';
 import { IS_HANDHELD_DEVICE, PLATFORM } from '../bridge/SystemProvider';
@@ -210,7 +209,7 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
                   onClick={() => {
                     setAccountNumberCopied(true);
                     copy();
-                  }} leftSection={<IoIosCopy size='1em' />}>
+                  }} leftSection={<IoCopy size='1em' />}>
                   {copied ? t('Copied Account Number') : t('Copy Account Number')}
                 </Button>
               )}
@@ -227,7 +226,7 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
                   variant={(!showDoneButton && IS_HANDHELD_DEVICE) ? 'outline' : undefined}
                   disabled={!accountNumberCopied}
                   onClick={open}
-                  leftSection={showDoneButton ? <IoIosCard /> : <IoArrowForward />}
+                  leftSection={showDoneButton ? <IoCard /> : <IoArrowForward />}
                 >
                   {showDoneButton ? t('Payment') : t('proceedToPayment')}
                 </Button>

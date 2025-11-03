@@ -7,10 +7,7 @@ use std::{
 };
 
 use obscuravpn_api::{
-    cmd::{
-        AppleAssociateAccount, AppleAssociateAccountOutput, AppleCreateAppAccountToken, AppleCreateAppAccountTokenOutput, ApplePollSubscription,
-        ApplePollSubscriptionOutput, Cmd, DeleteAccount, DeleteAccountOutput, ExitList, GetAccountInfo,
-    },
+    cmd::{AppleAssociateAccount, AppleAssociateAccountOutput, Cmd, DeleteAccount, DeleteAccountOutput, ExitList, GetAccountInfo},
     types::{AccountId, AccountInfo, OneExit, OneRelay, WgPubkey},
 };
 use serde::{Deserialize, Serialize};
@@ -318,14 +315,6 @@ impl Manager {
 
     pub async fn apple_associate_account(&self, app_transaction_jws: String) -> Result<AppleAssociateAccountOutput, ApiError> {
         self.api_request(AppleAssociateAccount { app_transaction_jws }).await
-    }
-
-    pub async fn apple_create_app_account_token(&self) -> Result<AppleCreateAppAccountTokenOutput, ApiError> {
-        self.api_request(AppleCreateAppAccountToken).await
-    }
-
-    pub async fn apple_poll_subscription(&self, original_transaction_id: String) -> Result<ApplePollSubscriptionOutput, ApiError> {
-        self.api_request(ApplePollSubscription { original_transaction_id }).await
     }
 
     #[cfg(target_os = "ios")]

@@ -5,7 +5,7 @@ use std::{sync::Arc, thread::sleep, time::Duration};
 use base64::prelude::*;
 use obscuravpn_api::{
     ClientError,
-    cmd::{ApiErrorKind, AppleAssociateAccountOutput, AppleCreateAppAccountTokenOutput, ApplePollSubscriptionOutput, DeleteAccountOutput, ExitList},
+    cmd::{ApiErrorKind, AppleAssociateAccountOutput, DeleteAccountOutput, ExitList},
     types::{AccountId, AccountInfo},
 };
 use serde::{Deserialize, Serialize};
@@ -91,10 +91,6 @@ pub enum ManagerCmd {
     ApiAppleAssociateAccount {
         app_transaction_jws: String,
     },
-    ApiAppleCreateAppAccountToken {},
-    ApiApplePollSubscription {
-        original_transaction_id: String,
-    },
     ApiDeleteAccount {},
     ApiGetAccountInfo {},
     GetDebugInfo {},
@@ -154,10 +150,6 @@ pub enum ManagerCmdOk {
     #[from]
     ApiAppleAssociateAccount(AppleAssociateAccountOutput),
     #[from]
-    ApiAppleCreateAppAccountToken(AppleCreateAppAccountTokenOutput),
-    #[from]
-    ApiApplePollSubscription(ApplePollSubscriptionOutput),
-    #[from]
     ApiDeleteAccount(DeleteAccountOutput),
     #[from]
     ApiGetAccountInfo(AccountInfo),
@@ -187,8 +179,6 @@ impl ManagerCmd {
     pub(super) async fn run(self, manager: &Manager) -> Result<ManagerCmdOk, ManagerCmdErrorCode> {
         match self {
             Self::ApiAppleAssociateAccount { app_transaction_jws } => map_result(manager.apple_associate_account(app_transaction_jws).await),
-            Self::ApiAppleCreateAppAccountToken {} => map_result(manager.apple_create_app_account_token().await),
-            Self::ApiApplePollSubscription { original_transaction_id } => map_result(manager.apple_poll_subscription(original_transaction_id).await),
             Self::ApiDeleteAccount {} => map_result(manager.delete_account().await),
             Self::ApiGetAccountInfo {} => map_result(manager.get_account_info().await),
             Self::SetFeatureFlag { flag, active } => map_result(manager.set_feature_flag(&flag, active)),

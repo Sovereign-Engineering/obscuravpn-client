@@ -127,24 +127,11 @@ final class SubscriptionManageViewModel: ObservableObject {
             // Do one simple load to see if we can get a match between client and server state
             await self.loadAccountInfo(showLoading: userOriginated)
 
-            // Attempt to fetch and save the app account token locally if we havent fetched it before and weve made a purchase
-            if self.storeKitModel.hasActiveMonthlySubscription {
-                if let accountId = self.accountInfo?.id {
-                    do {
-                        _ = try await self.storeKitModel
-                            .appAccountToken(accountId: accountId)
-                    } catch {
-                        logger.error("Could not get or generate app account token \(error.localizedDescription)")
-                    }
-                }
-            }
-
             if self.storeKitPurchasedAwaitingServerAck {
                 if repeatWithBinaryBackoffAllowed {
                     try await self.pollCheckingForServerAcknoledgementOfSubscription()
                 } else {
-                    // Just do it once
-                    await self.askBackendToCheckTransactionId()
+                    await self.loadAccountInfo(showLoading: false)
                 }
             }
 
@@ -176,7 +163,7 @@ final class SubscriptionManageViewModel: ObservableObject {
             if !self.storeKitPurchasedAwaitingServerAck {
                 return
             }
-            await self.askBackendToCheckTransactionId()
+            await self.loadAccountInfo(showLoading: false)
 
             // Schedule a loadAccount info 3 seconds after poll subscription always so we hear of a change without waiting for next backoff
             Task {
@@ -194,43 +181,7 @@ final class SubscriptionManageViewModel: ObservableObject {
         self.showErrorAlert = true
     }
 
-    // Attempt to force backend to match storekit subscription state with its own
-    // by providing the transaction ID of the Transaction the client paid with
-    private func askBackendToCheckTransactionId() async {
-        guard let manager, let monthlySubscriptionProduct, let accountId = self.accountInfo?.id,
-              // Only accounts with an app account token can be polled
-              let appAccountToken = try? await storeKitModel.appAccountToken(accountId: accountId),
-              let originalTransactionId = await storeKitModel.originalTransactionId(
-                  product: monthlySubscriptionProduct)
-        else {
-            return
-        }
-
-        logger.info(
-            "Polling subscription with app account token \(appAccountToken, privacy: .public) and original transaction ID \(originalTransactionId, privacy: .public)"
-        )
-
-        try? await neApiApplePollSubscription(
-            manager,
-            originalTransactionId: String(originalTransactionId)
-        )
-        await self.loadAccountInfo(showLoading: false)
-    }
-
     private func logCurrentStatus(context: String) async {
-        let appAccountTokenString: String
-        if let accountInfo {
-            if let appAccountToken = try? await storeKitModel.appAccountToken(
-                accountId: accountInfo.id)
-            {
-                appAccountTokenString = appAccountToken.uuidString
-            } else {
-                appAccountTokenString = "(nil))"
-            }
-        } else {
-            appAccountTokenString = "(nil we dont have an account id)"
-        }
-
         let originalTransactionIdString: String
         if let monthlySubscriptionProduct {
             if let originalTransactionId = await storeKitModel.originalTransactionId(
@@ -244,6 +195,6 @@ final class SubscriptionManageViewModel: ObservableObject {
             originalTransactionIdString = "(nil PROBLEM we do not have monthlySubscriptionProduct)"
         }
 
-        logger.log("SubscriptionViewModel Status Update: \"\(context)\" accountId: \(self.accountInfo?.id ?? "(nil)"), appAccountToken: \(appAccountTokenString), purchasedSubscription: \(self.storeKitModel.hasActiveMonthlySubscription), originalTransactionId: \(originalTransactionIdString), accountInfo: \(self.accountInfo?.description ?? "(nil)") ")
+        logger.log("SubscriptionViewModel Status Update: \"\(context)\" accountId: \(self.accountInfo?.id ?? "(nil)"), purchasedSubscription: \(self.storeKitModel.hasActiveMonthlySubscription), originalTransactionId: \(originalTransactionIdString), accountInfo: \(self.accountInfo?.description ?? "(nil)") ")
     }
 }

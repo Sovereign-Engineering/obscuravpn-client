@@ -210,24 +210,6 @@ func neApiAppleAssociateAccount(
     return try await runNeCommand(manager, NeManagerCmd.apiAppleAssociateAccount(appTransactionJws: appTransactionJws), attemptTimeout: attemptTimeout, maxAttempts: maxAttempts)
 }
 
-// TODO: Move to manager. https://linear.app/soveng/issue/OBS-2131/apple-store-code-shouldnt-use-netunnelprovidermanager-directly
-func neApiAppleCreateAppAccountToken(
-    _ manager: NETunnelProviderManager,
-    attemptTimeout: Duration? = nil,
-    maxAttempts: UInt = 10
-) async throws -> AppleCreateAppAccountTokenOutput {
-    return try await runNeCommand(manager, NeManagerCmd.apiAppleCreateAppAccountToken, attemptTimeout: attemptTimeout, maxAttempts: maxAttempts)
-}
-
-func neApiApplePollSubscription(
-    _ manager: NETunnelProviderManager,
-    originalTransactionId: String,
-    attemptTimeout: Duration? = nil,
-    maxAttempts: UInt = 10
-) async throws {
-    _ = try await runNeJsonCommand(manager, NeManagerCmd.apiApplePollSubscription(originalTransactionId: originalTransactionId).json(), name: "apiApplePollSubscription", attemptTimeout: attemptTimeout, maxAttempts: maxAttempts)
-}
-
 func getNeStatus(
     _ manager: NETunnelProviderManager,
     knownVersion: UUID?,

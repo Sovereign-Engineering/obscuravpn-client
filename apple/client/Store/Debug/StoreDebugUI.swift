@@ -34,27 +34,6 @@ struct StoreDebugUI: View {
                             .font(.subheadline)
                     }
                     .frame(maxWidth: .infinity)
-
-                    VStack {
-                        Text("App Account Token")
-                            .fontWeight(.bold)
-                            .task {
-                                // Load app account token on view open
-                                if let accountId {
-                                    appAccountToken = try? await self.storeKitModel.appAccountToken(accountId: accountId)
-                                } else {
-                                    appAccountToken = nil
-                                }
-                            }
-                        if let appAccountToken {
-                            Text(appAccountToken.uuidString.lowercased())
-                                .textSelection(.enabled)
-                                .font(.subheadline)
-                        } else {
-                            ProgressView()
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
                 }
                 .padding(.vertical)
 

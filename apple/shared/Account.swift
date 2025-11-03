@@ -183,26 +183,3 @@ struct AppleSubscriptionInfo: Codable {
 
 // https://github.com/Sovereign-Engineering/obscuravpn-api/blob/main/src/cmd/apple/associate_account.rs
 struct AppleAssociateAccountOutput: Codable {}
-
-// Output types for Apple subscription management
-struct AppleCreateAppAccountTokenOutput: Codable {
-    let appAccountToken: UUID
-
-    enum CodingKeys: String, CodingKey {
-        case appAccountToken = "app_account_token"
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        let tokenString = try container.decode(String.self, forKey: .appAccountToken)
-        guard let uuid = UUID(uuidString: tokenString) else {
-            throw DecodingError.dataCorruptedError(forKey: .appAccountToken, in: container, debugDescription: "Could not parse UUID string")
-        }
-        self.appAccountToken = uuid
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(self.appAccountToken.uuidString, forKey: .appAccountToken)
-    }
-}

@@ -53,9 +53,7 @@ class StoreKitModel: ObservableObject {
     func purchase(_ product: Product, accountId: String) async throws -> Bool {
         do {
             try await self.associateAccount()
-            let appAccountToken = try await appAccountToken(accountId: accountId)
-            let options: Set<Product.PurchaseOption> = [.appAccountToken(appAccountToken)]
-            let result = try await product.purchase(options: options)
+            let result = try await product.purchase()
 
             switch result {
             case .success(let verification):
@@ -179,18 +177,6 @@ class StoreKitModel: ObservableObject {
                 "updateStoreKitSubscriptionStatus read all of Transaction.currentEntitlements and got (\(currentProductsPurchased.count)) \(currentProductsPurchased.map(\.displayName).joined(separator: ","))"
             )
         self.purchasedProducts = currentProductsPurchased
-    }
-
-    func appAccountToken(accountId: String) async throws -> UUID {
-        guard let manager else {
-            throw "No known token. Cant generate app account token without a manager"
-        }
-
-        let appAccountToken = try await neApiAppleCreateAppAccountToken(
-            manager
-        ).appAccountToken
-
-        return appAccountToken
     }
 
     func associateAccount() async throws {

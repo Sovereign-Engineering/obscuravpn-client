@@ -1,11 +1,3 @@
-.simpleBar {
-    max-height: 100vh;
-}
-
-.simpleBar :global(.simplebar-scrollbar)::before {
-    background-color: light-dark(black, white) !important;
-}
-
 .navLink {
     display: block;
     width: 100%;
@@ -38,7 +30,7 @@
     margin-left: auto;
 }
 
-.appShell main {
+body {
     background-color: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-8));
 }
 

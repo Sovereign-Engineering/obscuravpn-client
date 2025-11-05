@@ -38,7 +38,7 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
     }
   }, [apiError]);
 
-  const loginErrorTimeout = useRef<number>();
+  const loginErrorTimeout = useRef<number>(undefined);
   // clear timeout on component dismount
   useEffect(() => {
     return () => clearTimeout(loginErrorTimeout.current);
@@ -150,7 +150,7 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
   const [confirmAccountSecured, { open, close }] = useDisclosure(false);
   const [paymentPressed, userPressOnPayment] = useState(false);
   const [accountNumberCopied, setAccountNumberCopied] = useState(false);
-  const timeoutRef = useRef<number>();
+  const timeoutRef = useRef<number>(undefined);
 
   const rollAccountValue = (tries: number) => {
     if (tries === 0) return setValue(generatedAccountId);

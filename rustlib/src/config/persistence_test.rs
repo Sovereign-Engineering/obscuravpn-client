@@ -113,25 +113,7 @@ fn load_no_permission() {
     permissions.set_mode(0o0);
     fs::set_permissions(&file, permissions).unwrap();
 
-    // Load returns a default config.
-    assert_eq!(load(dir.as_ref(), None).unwrap(), Default::default());
-
-    let backup_files = fs::read_dir(&dir)
-        .unwrap()
-        .map(|entry| entry.unwrap())
-        .filter(|entry| entry.file_name().to_string_lossy().starts_with("config-backup-"))
-        .collect::<Vec<_>>();
-
-    assert_eq!(backup_files.len(), 1);
-    let backup = &backup_files[0];
-    let backup_path = backup.path();
-
-    // Fix permissions to check that the backed up file is pristine.
-    fs::set_permissions(&backup_path, original_permissions).unwrap();
-    fs::rename(backup_path, file).unwrap();
-
-    // The backup file contained the original config.
-    assert_eq!(load(dir.as_ref(), None).unwrap(), config);
+    assert!(load(dir.as_ref(), None).is_err());
 }
 
 #[test]

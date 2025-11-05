@@ -1,0 +1,14 @@
+.scrollbar {
+  &[data-orientation='vertical'] .thumb {
+    background-color: light-dark(var(--mantine-color-dark-3), var(--mantine-color-dark-2));
+  }
+}
+
+.corner {
+  background-color: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+  opacity: 1;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: light-dark(var(--mantine-color-dark-3), var(--mantine-color-dark-2));
+}

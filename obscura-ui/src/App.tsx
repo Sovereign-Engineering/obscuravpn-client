@@ -1,12 +1,11 @@
-import { AppShell, AppShellMain, Modal, Text, Title } from '@mantine/core';
+import { AppShell, AppShellMain } from '@mantine/core';
 import { useHotkeys, useThrottledValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { ReactNode, useContext, useEffect, useRef, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
-import SimpleBar from 'simplebar-react';
-import 'simplebar-react/dist/simplebar.min.css';
+
 import classes from './App.module.css';
 import * as commands from './bridge/commands';
 import { IS_HANDHELD_DEVICE, logReactError, PLATFORM, Platform, useSystemChecks } from './bridge/SystemProvider';
@@ -17,7 +16,7 @@ import { useAsync } from './common/useAsync';
 import { useLoadable } from './common/useLoadable';
 import { MIN_LOAD_MS, normalizeError } from './common/utils';
 import { CColorSchemeContext } from './components/CachedColorScheme';
-import { ScrollToTop } from './components/ScrollToTop';
+import { ScrollableView } from './components/ScrollableView';
 import { VpnError } from './components/VpnErrorFmt';
 import { About, Account, Connection, DeveloperView, FallbackAppRender, Help, Location, LogIn, Settings, SplashScreen } from './views';
 
@@ -62,7 +61,7 @@ export default function () {
     { component: Location, path: '/location', name: t('Location'), needsScroll: true },
     { component: Account, path: '/account', name: t('Account'), needsScroll: false },
     { component: Help, path: '/help', name: t('Help'), needsScroll: false },
-    { component: About, path: '/about', name: t('About'), needsScroll: true },
+    { component: About, path: '/about', name: t('About'), needsScroll: false },
     { component: Settings, path: '/settings', name: t('Settings'), needsScroll: true },
   ];
 
@@ -311,13 +310,11 @@ export default function () {
 }
 
 function RenderView({ view }: { view: View }) {
-  const [scroller, setScroller] = useState<HTMLElement | null>(null);
   return (
     view.needsScroll ?
-      <SimpleBar scrollableNodeProps={{ ref: setScroller }} autoHide={false} className={classes.simpleBar}>
+      <ScrollableView>
         <view.component />
-        <ScrollToTop scroller={scroller} bottom={20} />
-      </SimpleBar>
-      : <view.component />
+      </ScrollableView> :
+      <view.component />
   );
 }

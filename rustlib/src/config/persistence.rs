@@ -78,13 +78,25 @@ pub fn load(config_dir: &Path, keychain_wg_sk: Option<&[u8]>) -> Result<Config, 
             config.wireguard_key_cache.try_set_secret_key_from_keychain(keychain_wg_sk);
             return Ok(config);
         }
-        Err(error) => {
-            tracing::error!(
-                config.path =? path,
-                ?error,
-                "Failed to load config, resetting.");
-            error
-        }
+        Err(error) => match error {
+            ConfigLoadError::ReadError(_) => return Err(error),
+            ConfigLoadError::DeserializeError(_) => {
+                tracing::error!(
+                    ?error,
+                    config.path =? path,
+                    message_id = "Voosh7sa",
+                    "Failed to parse config, resetting.");
+                error
+            }
+            ConfigLoadError::SaveEror(_) => {
+                tracing::warn!(
+                    ?error,
+                    config.path =? path,
+                    message_id = "Voosh7sa",
+                    "Reading config file returned save error.");
+                return Err(error);
+            }
+        },
     };
 
     // This may collide if failing in a tight loop, that is fine. Possibly even a feature.
@@ -118,9 +130,10 @@ pub fn save(config_dir: &Path, config: &Config) -> Result<(), ConfigSaveError> {
         Ok(json) => json,
         Err(error) => {
             tracing::error!(
-                    config.dir =? config_dir,
-                    ?error,
-                    "config::save could not encode config"
+                ?error,
+                config.dir =? config_dir,
+                message_id = "Chuzoe3k",
+                "config::save could not encode config"
             );
             return Err(ConfigSaveError::SerializeError(error));
         }
@@ -128,8 +141,9 @@ pub fn save(config_dir: &Path, config: &Config) -> Result<(), ConfigSaveError> {
 
     if let Err(error) = create_dir_all(config_dir) {
         tracing::error!(
-                config.dir =? config_dir,
                 ?error,
+                config.dir =? config_dir,
+                message_id = "kohLaih0",
                 "config::save could not create config directory"
         );
         return Err(ConfigSaveError::CreateDirError(error));
@@ -139,9 +153,10 @@ pub fn save(config_dir: &Path, config: &Config) -> Result<(), ConfigSaveError> {
         Ok(f) => f,
         Err(error) => {
             tracing::error!(
-                    config.dir =? config_dir,
-                    ?error,
-                    "config::save could not create temporary file"
+                ?error,
+                config.dir =? config_dir,
+                message_id = "oPie5quu",
+                "config::save could not create temporary file"
             );
             return Err(ConfigSaveError::CreateTempFileError(error));
         }
@@ -149,8 +164,9 @@ pub fn save(config_dir: &Path, config: &Config) -> Result<(), ConfigSaveError> {
 
     if let Err(error) = file.write_all(&json).and_then(|_| file.flush()) {
         tracing::error!(
-            config.dir =? config_dir,
             ?error,
+            config.dir =? config_dir,
+            message_id = "Ua7oosei",
             "config::save could not write to temporary file"
         );
         return Err(ConfigSaveError::TempFileWriteError(error));
@@ -158,8 +174,9 @@ pub fn save(config_dir: &Path, config: &Config) -> Result<(), ConfigSaveError> {
 
     if let Err(error) = file.as_file_mut().sync_data() {
         tracing::error!(
-            config.dir =? config_dir,
             ?error,
+            config.dir =? config_dir,
+            message_id = "Mahd5hei",
             "config::save could not sync the temporary file"
         );
         return Err(ConfigSaveError::TempFileWriteError(error));
@@ -168,12 +185,19 @@ pub fn save(config_dir: &Path, config: &Config) -> Result<(), ConfigSaveError> {
     let path = config_dir.join(CONFIG_FILE);
     if let Err(error) = file.persist(path) {
         tracing::error!(
-            config.dir =? config_dir,
             ?error,
+            config.dir =? config_dir,
+            message_id = "Ohquahj4",
             "config::save could not persist the temporary file"
         );
         return Err(ConfigSaveError::TempFilePersistError(error));
     }
+
+    tracing::info!(
+        config.dir =? config_dir,
+        message_id = "QFVysa6j",
+        "config::save successfully wrote the config",
+    );
 
     Ok(())
 }

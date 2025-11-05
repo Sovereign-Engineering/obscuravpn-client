@@ -18,7 +18,7 @@ extension AccountInfo {
         return expirationDate > .now
     }
 
-    var hasActiveExternalPaymentPlan: Bool {
+    var activeNotApple: Bool {
         return self.currentExpiry != nil && !self.hasActiveAppleSubscription
     }
 

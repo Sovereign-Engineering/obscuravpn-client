@@ -61,7 +61,7 @@ struct PurchaseOptionsView: View {
             if !accountInfo.active {
                 VStack(alignment: .center, spacing: 18) {
                     VStack(alignment: .center, spacing: 14) {
-                        self.inAppSubscriptionManageButton(accountInfo: accountInfo, product: product)
+                        self.inAppSubscriptionManageButton(product: product)
 
                         // Beware!!! redeemCodeButton are given 10pts of padding for their hit target to account for small text
                         // Make sure they are not spaced any closer than that
@@ -82,19 +82,18 @@ struct PurchaseOptionsView: View {
                 }
             } else if accountInfo.hasActiveAppleSubscription {
                 VStack(alignment: .center, spacing: 14) {
-                    self.inAppSubscriptionManageButton(accountInfo: accountInfo, product: product)
+                    self.inAppSubscriptionManageButton(product: product)
                     self.redeemCodeButton
                         .font(.footnote)
                 }
-            } else if accountInfo.hasActiveExternalPaymentPlan {
+            }
+            if accountInfo.activeNotApple {
                 self.externalPaymentManageButton(accountInfo: accountInfo)
             }
         }
     }
 
-    func inAppSubscriptionManageButton(accountInfo: AccountInfo, product: Product) -> some View {
-        let alreadyStripeSubscribed = "You're already subscribed through Stripe! You can't subscribe through the App Store until your subscription expires."
-        let alreadyToppedUp = "You're already topped-up! You can't subscribe through the App Store until your top-up expires."
+    func inAppSubscriptionManageButton(product: Product) -> some View {
         return VStack {
             VStack(alignment: .leading) {
                 Text(product.displayName)
@@ -129,21 +128,17 @@ struct PurchaseOptionsView: View {
                     Text("Manage Subscription")
                         .frame(maxWidth: .infinity)
                 } else {
-                    Text("Subscribe In App")
+                    Text("Subscribe In-app")
                         .frame(maxWidth: .infinity)
                 }
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .padding(.horizontal, 30)
+            .padding(.horizontal, self.storeKitModel.hasActiveMonthlySubscription ? 35 : 45)
             .bold()
             .tint(Color.obscuraOrange)
             .manageSubscriptionsSheet(
                 isPresented: self.$manageSubscriptionsPopover
-            )
-            .conditionallyDisabled(
-                when: accountInfo.hasActiveExternalPaymentPlan,
-                explanation: accountInfo.hasStripeSubscription ? alreadyStripeSubscribed : alreadyToppedUp
             )
         }
     }
@@ -189,7 +184,7 @@ struct PurchaseOptionsView: View {
         } label: {
             HStack {
                 Text(
-                    accountInfo.hasActiveExternalPaymentPlan ? "Manage Payment on obscura.net" : "Pay on obscura.net"
+                    accountInfo.active ? "Manage Payment on obscura.net" : "Pay on obscura.net"
                 )
 
                 Image(systemName: "arrow.up.right")
@@ -198,7 +193,7 @@ struct PurchaseOptionsView: View {
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
-        .padding(.horizontal, accountInfo.hasActiveExternalPaymentPlan ? 10 : 30)
+        .padding(.horizontal, accountInfo.active ? 10 : 30)
         .bold()
         .tint(Color.obscuraOrange)
         .conditionallyDisabled(

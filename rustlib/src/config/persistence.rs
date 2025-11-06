@@ -76,6 +76,11 @@ pub fn load(config_dir: &Path, keychain_wg_sk: Option<&[u8]>) -> Result<Config, 
         Ok(config) => {
             let mut config = config.unwrap_or_default();
             config.wireguard_key_cache.try_set_secret_key_from_keychain(keychain_wg_sk);
+            tracing::info!(
+                config.dir =? config_dir,
+                message_id = "q9XZcBvj",
+                "config::load successfully loaded the config",
+            );
             return Ok(config);
         }
         Err(error) => match error {

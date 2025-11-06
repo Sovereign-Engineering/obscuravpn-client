@@ -94,7 +94,7 @@ if __name__ == "__main__":
         for line in f:
             entry = json.loads(line)
 
-            if entry["eventType"] != "logEvent":
+            if entry.get("eventType") != "logEvent":
                 continue
 
             subsystem = entry["subsystem"]

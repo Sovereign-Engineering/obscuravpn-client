@@ -68,10 +68,7 @@ tracing-oslog = "0.3.0"
 aws-lc-rs = { version = "*", features = ["bindgen"] } # We don't use directly, but need to enable this feature.
 
 [target.'cfg(target_os = "ios")'.dependencies]
-camino = "1.1.12"
 logroller = { version = "0.1.10", features = ["xz"] }
-objc2 = "0.6.2"
-objc2-foundation = "0.3.1"
 
 [build-dependencies]
 cbindgen = "0.28.0"

@@ -31,7 +31,6 @@ use crate::{
     quicwg::TransportKind,
     tunnel_state::{TargetState, TunnelState},
 };
-
 use crate::{client_state::ClientState, errors::ConnectErrorCode, network_config::NetworkConfig};
 
 use super::ffi_helpers::*;
@@ -319,7 +318,8 @@ impl Manager {
 
     #[cfg(target_os = "ios")]
     pub fn get_log_dir(&self) -> anyhow::Result<String> {
-        crate::apple::ios::log_dir().map(Into::into)
+        use anyhow::Context;
+        crate::apple::ios::IOS_LOG_DIR.get().cloned().context("iOS log dir not set")
     }
 
     #[cfg(not(target_os = "ios"))]

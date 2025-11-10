@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import UniformTypeIdentifiers
 
 // The unique build ID.
@@ -56,5 +57,25 @@ func configDir() -> String {
         return "/Library/Application Support/obscura-vpn/system-network-extension/"
     #else
         return URL.libraryDirectory.appendingPathComponent("obscura", conformingTo: UTType.folder).path(percentEncoded: false)
+    #endif
+}
+
+func groupContainerDir() -> String? {
+    #if os(macOS)
+        return nil
+    #else
+        return FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.net.obscura.vpn-client-app-ios")?.path
+    #endif
+}
+
+func logDir() -> String? {
+    #if os(macOS)
+        return nil
+    #else
+        guard let containerDir = groupContainerDir() else {
+            Logger(subsystem: "net.obscura.sys-ext", category: "pre-log-init").error("no container url for group")
+            return nil
+        }
+        return URL(filePath: containerDir).appending(path: "rust-log").path
     #endif
 }

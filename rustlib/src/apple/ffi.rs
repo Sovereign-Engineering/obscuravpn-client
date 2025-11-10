@@ -20,7 +20,7 @@ static APPLE_LOG_INIT: std::sync::Once = std::sync::Once::new();
 /// SAFETY:
 /// - there is no other global function of this name
 #[unsafe(no_mangle)]
-pub extern "C" fn initialize_apple_system_logging() -> *mut c_void {
+pub extern "C" fn initialize_apple_system_logging(log_dir: FfiStr) -> *mut c_void {
     use tracing_oslog::OsLogger;
     use tracing_subscriber::{
         Layer as _,
@@ -32,6 +32,8 @@ pub extern "C" fn initialize_apple_system_logging() -> *mut c_void {
     fn filter() -> EnvFilter {
         EnvFilter::from_default_env().add_directive(LevelFilter::INFO.into())
     }
+    #[cfg(not(target_os = "ios"))]
+    let _ = log_dir;
     #[cfg_attr(not(target_os = "ios"), allow(unused_mut))]
     let mut guard_ptr = std::ptr::null_mut();
     APPLE_LOG_INIT.call_once(|| {
@@ -40,7 +42,7 @@ pub extern "C" fn initialize_apple_system_logging() -> *mut c_void {
         #[cfg(not(target_os = "ios"))]
         tracing::subscriber::set_global_default(registry).expect("failed to set global subscriber");
         #[cfg(target_os = "ios")]
-        match super::ios::build_log_roller() {
+        match super::ios::build_log_roller(&log_dir) {
             Ok(roller) => {
                 use tracing_appender::non_blocking::NonBlocking;
                 let (writer, guard) = NonBlocking::new(roller);

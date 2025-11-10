@@ -11,6 +11,7 @@ func keychainSetWgSecretKey(_ sk: Data) -> Bool {
     SecItemDelete(wgSecretKeyquery as CFDictionary)
     var insert = wgSecretKeyquery
     insert[kSecValueData as String] = sk
+    insert[kSecAttrAccessible as String] = kSecAttrAccessibleAlwaysThisDeviceOnly
     let insertStatus = SecItemAdd(insert as CFDictionary, nil)
     switch insertStatus {
     case errSecSuccess:

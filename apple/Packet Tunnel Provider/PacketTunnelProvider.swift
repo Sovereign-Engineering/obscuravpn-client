@@ -1,6 +1,8 @@
 import Combine
 import libobscuravpn_client
 import NetworkExtension
+import OSLog
+import UniformTypeIdentifiers
 import UserNotifications
 
 class PacketTunnelProvider: NEPacketTunnelProvider {
@@ -15,7 +17,16 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     var selfObservation: NSKeyValueObservation?
 
     override init() {
-        let logFlushGuard = libobscuravpn_client.initialize_apple_system_logging()
+        let logDir = logDir()
+        if let logDir = logDir {
+            let logger = Logger(subsystem: "net.obscura.sys-ext", category: "pre-log-init")
+            do {
+                try ensureDirWithMinimalProtection(dir: logDir)
+            } catch {
+                logger.error("failed to ensure log dir protection level: \(error)")
+            }
+        }
+        let logFlushGuard = ffiInitializeSystemLogging(logDir)
         ffiLog(.Info, "init entry \(self.providerId)")
 
         if let other = Self.shared {
@@ -23,6 +34,12 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         }
 
         let configDir = configDir()
+        do {
+            try ensureDirWithMinimalProtection(dir: configDir)
+        } catch {
+            ffiLog(.Error, "failed to ensure config directory protection level: \(error)")
+        }
+
         #if os(macOS)
             let userAgentPlatform = "macos"
         #else
@@ -453,4 +470,43 @@ func providerStopReasonToString(_ reason: NEProviderStopReason) -> String {
     @unknown default:
         return "unknown(\(reason))"
     }
+}
+
+func ensureDirWithMinimalProtection(dir: String) throws {
+    #if os(macOS)
+        // Lower protection levels are not available on macOS: https://support.apple.com/en-gb/guide/security/secb010e978a/web
+        let protectionLevel = FileProtectionType.completeUntilFirstUserAuthentication
+    #else
+        let protectionLevel = FileProtectionType.none
+    #endif
+    if FileManager.default.fileExists(atPath: dir) {
+        ffiLog(.Info, "\(dir) already exists, ensuring correct protection level")
+        try ensureProtectionLevel(dir, protectionLevel)
+    } else {
+        ffiLog(.Info, "creating \(dir)")
+        try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true, attributes: [.protectionKey: protectionLevel])
+    }
+}
+
+func ensureProtectionLevel(_ path: String, _ protectionLevel: FileProtectionType) throws {
+    ffiLog(.Info, "checking protection level of \(path)")
+    var currentProtectionLevel: FileProtectionType? = Optional.none
+    do {
+        currentProtectionLevel = try getProtectionLevel(path)
+        ffiLog(.Info, "current protection level: \(currentProtectionLevel.debugDescription)")
+    } catch {
+        ffiLog(.Warn, "could not get protection level of \(path)")
+    }
+    if currentProtectionLevel != protectionLevel {
+        ffiLog(.Info, "changing protection level to \(protectionLevel.rawValue)")
+        try FileManager.default.setAttributes([.protectionKey: protectionLevel], ofItemAtPath: path)
+        try ffiLog(.Info, "new protection level: \(getProtectionLevel(path).debugDescription)")
+    } else {
+        ffiLog(.Info, "protection level already correct")
+    }
+}
+
+func getProtectionLevel(_ path: String) throws -> FileProtectionType? {
+    let attributes = try FileManager.default.attributesOfItem(atPath: path)
+    return attributes[.protectionKey] as? FileProtectionType
 }

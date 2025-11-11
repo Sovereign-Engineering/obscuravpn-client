@@ -2,6 +2,14 @@ import Foundation
 import libobscuravpn_client
 import Network
 
+func ffiInitializeSystemLogging(_ logDir: String?) -> UnsafeMutableRawPointer? {
+    let logDir: String = logDir ?? ""
+    let logFlushGuard = logDir.withFfiStr { ffiLogDir in
+        libobscuravpn_client.initialize_apple_system_logging(ffiLogDir)
+    }
+    return logFlushGuard
+}
+
 func ffiInitialize(configDir: String, userAgent: String, logFlushGuard: UnsafeMutableRawPointer?, _ receiveCallback: (@convention(c) (FfiBytes) -> Void)!) {
     let wgSecretKey = keychainGetWgSecretKey() ?? Data()
     configDir.withFfiStr { ffiConfigDir in

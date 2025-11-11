@@ -35,6 +35,7 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
         with:
+          determinate: false
           mac-volume-label: obscuravpn-client
 
       - name: Build Nix
@@ -70,6 +71,7 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
         with:
+          determinate: false
           mac-volume-label: obscuravpn-client
 
       - name: Build macOS client
@@ -104,6 +106,7 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
         with:
+          determinate: false
           mac-volume-label: obscuravpn-client
 
       - name: Build iOS client

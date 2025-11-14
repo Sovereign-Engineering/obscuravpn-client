@@ -117,6 +117,40 @@ jobs:
             -scheme 'Obscura VPN iOS' \
             CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_ENTITLEMENTS="" CODE_SIGNING_ALLOWED="NO"
 
+  android_build:
+    name: Android Build
+    runs-on:
+      # https://namespace.so/docs/features/faster-github-actions#using-runner-labels
+      - nscloud-macos-sequoia-arm64-12x28-with-cache
+      - nscloud-cache-tag-obscuravpn-client
+      - nscloud-cache-size-50gb
+    steps:
+      - name: git checkout
+        uses: actions/checkout@v3
+
+      - name: unshallow and fetch git tags
+        shell: bash
+        run: |
+          git fetch --prune --unshallow --tags
+
+      - uses: namespacelabs/nscloud-cache-action@v1
+        with:
+          # The action fails to mount at `/nix` and we want to let the Nix installer handle that anyways.
+          path: /tmp/nix
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Build Android web bundle
+        shell: bash
+        run: |
+          OBS_WEB_PLATFORM="android" nix develop .#web --print-build-logs -c just web-bundle-build
+
+      - name: Build and check Android
+        shell: bash
+        run: |
+          nix develop .#android --command bash -c contrib/bin/android-apk.sh
+
   sync:
     name: Sync
     if: |

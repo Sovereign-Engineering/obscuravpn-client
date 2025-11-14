@@ -7,6 +7,8 @@ plugins {
 }
 
 android {
+    buildToolsVersion = "36.0.0"
+
     namespace = "net.obscura.vpnclientapp"
     compileSdk = 36
 
@@ -53,11 +55,21 @@ dependencies {
 
 spotless {
     java {
+        target("**/*.java")
+
         googleJavaFormat()
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        endWithNewline()
     }
 
+    // TODO: https://linear.app/soveng/issue/OBS-2642/move-spotless-format-check-to-nix-flake-check Don't fail build and check in CI.
     kotlin {
-        ktfmt()
+        target("**/*.kt")
+
         ktlint()
+        ktfmt()
+        trimTrailingWhitespace()
+        endWithNewline()
     }
 }

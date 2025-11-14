@@ -20,6 +20,8 @@ pub mod virt;
 #[cfg(test)]
 mod backoff_test;
 
+#[cfg(target_os = "android")]
+pub mod android;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 pub mod apple;
 mod cached_value;

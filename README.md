@@ -36,6 +36,8 @@ The network extension manages the virtual device and maintains the tunnel using 
 
 ## Building and Running
 
+### For macOS and iOS
+
 1. Open the main Xcode project:
     ```bash
     nix develop --print-build-logs --command just xcode-open
@@ -88,6 +90,24 @@ The network extension manages the virtual device and maintains the tunnel using 
     1. Once the app's icon appears on the macOS Dock, `⌘-Click` the app icon to reveal it in the finder.
 
 💡 **TIP**: It is highly recommended to read through various sections in [Development Tips](#development-tips) to better understand the various ways we've configured the Xcode build system to work with our development process.
+
+### For Android
+
+The Android app requires a special build of the Rust library and Obscura UI. These are built using Nix, while the Android app itself can be built using [Android Studio](https://developer.android.com/studio) for local development, or the Gradle build system to create an official build.
+
+1. Build the Obscura UI
+   ```bash
+   OBS_WEB_PLATFORM="android" nix develop .#web --print-build-logs -c just web-bundle-build
+   ```
+2. Build the Rust library
+   ```bash
+   nix develop .#android --command bash -c 'cd rustlib && cargo ndk -t arm64-v8a build --release'
+   ```
+3. Open Android Studio and point it at the `android` directory, or
+4. Use Gradle to build everything
+    ```bash
+    nix develop .#android --command bash -c 'cd android && ./gradlew --no-daemon build'
+    ```
 
 ## Swift unit tests
 

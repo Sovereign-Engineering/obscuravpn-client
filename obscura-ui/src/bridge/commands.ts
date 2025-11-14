@@ -7,6 +7,7 @@ import { AccountInfo, Exit } from '../common/api';
 import { AppStatus, FeatureFlagKey, NEVPNStatus, OsStatus, PinnedLocation } from '../common/appContext';
 import { errMsg, normalizeError } from '../common/utils';
 import { fmtErrorI18n } from '../translations/i18n';
+import './android';
 
 async function WKWebViewInvoke(command: string, args: Object) {
     const commandJson = JSON.stringify({ [command]: args });

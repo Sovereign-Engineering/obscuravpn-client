@@ -1,3 +1,5 @@
+#![cfg_attr(target_os = "android", allow(dead_code))]
+
 use std::{ffi::c_void, marker::PhantomData};
 
 #[repr(C)]

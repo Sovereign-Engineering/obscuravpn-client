@@ -10,7 +10,15 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         overlays = [ (import rust-overlay) ];
-        pkgs = import nixpkgs { inherit overlays system; };
+        pkgs = import nixpkgs {
+          inherit overlays system;
+
+          config = {
+            allowUnfree = true; # sadly, for Android
+            android_sdk.accept_license = true;
+          };
+        };
+
         lib = pkgs.lib;
         rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./rustlib/rust-toolchain.toml;
 
@@ -57,6 +65,27 @@
           root = ./.;
           fileset = lib.fileset.unions [ ./.swiftformat apple/client ];
         }) [ ".swift" ".swiftformat" ];
+
+        android = pkgs.androidenv.composeAndroidPackages {
+          toolsVersion = "26.1.1"; # frozen legacy version
+          platformToolsVersion = "36.0.0";
+
+          platformVersions = [ "36" ];
+          buildToolsVersions = [ "36.0.0" ];
+
+          includeEmulator = false;
+          includeSources = false;
+
+          cmakeVersions = [ "3.31.6" ];
+
+          includeNDK = true;
+          ndkVersion = "26.3.11579264";
+
+          useGoogleAPIs = true;
+          useGoogleTVAddOns = false;
+
+          includeExtras = [ "extras;google;google_play_services" ];
+        };
       in rec {
         checks = {
           inherit (packages) licenses rust;
@@ -119,6 +148,38 @@
             # This only changes when our dependencies or license config changes and is relatively slow.
             # So build it once and cache it.
             LICENSE_JSON = packages.licenses;
+          };
+
+          android = pkgs.mkShellNoCC {
+            buildInputs = [
+              android.androidsdk
+              pkgs.cargo-ndk
+              pkgs.clang
+              pkgs.cmake
+              pkgs.gradle
+              pkgs.jdk21
+              pkgs.just
+              pkgs.libiconv
+              pkgs.ninja
+              pkgs.nodejs_20
+              pkgs.pkg-config
+              pkgs.pnpm
+              pkgs.rustup
+            ] ++ rustDeps;
+
+            ANDROID_HOME = "${android.androidsdk}/libexec/android-sdk";
+            ANDROID_SDK_ROOT = "${android.androidsdk}/libexec/android-sdk";
+            JAVA_HOME = pkgs.jdk21.home;
+            shellHook = ''
+              export ANDROID_NDK_HOME="$(ls -d "$ANDROID_SDK_ROOT"/ndk/* | head -n1)"
+              export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME" # used by CMake
+
+              export PATH="$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/cmake/3.31.6/bin:$ANDROID_SDK_ROOT/emulator:$ANDROID_SDK_ROOT/build-tools/35.0.0:$PATH"
+
+              # TODO: figure out how to build Rust for this target
+              rustup target add \
+                aarch64-linux-android
+            '';
           };
         };
 

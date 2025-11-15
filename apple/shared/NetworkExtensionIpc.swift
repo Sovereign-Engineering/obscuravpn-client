@@ -61,6 +61,7 @@ struct NeStatus: Codable, Equatable {
     var account: AccountStatus?
     var autoConnect: Bool
     var featureFlags: NeStatusFeatureFlags
+    var useSystemDns: Bool
 
     static func == (left: NeStatus, right: NeStatus) -> Bool {
         return left.version == right.version
@@ -79,7 +80,7 @@ struct PinnedLocation: Codable, Equatable {
 
 enum NeVpnStatus: Codable {
     case connecting(tunnelArgs: TunnelArgs, connectError: String?, reconnecting: Bool)
-    case connected(tunnelArgs: TunnelArgs, exit: ExitInfo, networkConfig: NetworkConfig, exitPublicKey: String, clientPublicKey: String, transport: TransportKind)
+    case connected(tunnelArgs: TunnelArgs, exit: ExitInfo, networkConfig: TunnelNetworkConfig, exitPublicKey: String, clientPublicKey: String, transport: TransportKind)
     case disconnected
 }
 
@@ -95,8 +96,17 @@ enum TransportKind: String, Codable, Equatable {
     case tcpTls
 }
 
+struct OsNetworkConfig: Codable, CustomStringConvertible, Equatable {
+    var description: String {
+        return "tunnelNetworkConfig: \(self.tunnelNetworkConfig.description), useSystemDns: \(self.useSystemDns)"
+    }
+
+    var tunnelNetworkConfig: TunnelNetworkConfig
+    var useSystemDns: Bool
+}
+
 // Keep synchronized with rustlib/src/apple/network_config.rs
-struct NetworkConfig: Codable, CustomStringConvertible, Equatable {
+struct TunnelNetworkConfig: Codable, CustomStringConvertible, Equatable {
     var description: String {
         return "ipv4: \(self.ipv4), dns: \(self.dns), ipv6: \(self.ipv6)"
     }

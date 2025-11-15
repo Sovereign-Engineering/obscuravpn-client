@@ -129,6 +129,8 @@ function ExperimentalSettings() {
               </React.Fragment>
             ))}
             <StrictLeakPreventionSwitch />
+            <Divider w='100%' />
+            <Switch checked={appStatus.useSystemDns} onChange={event => commands.setUseSystemDns(event.currentTarget.checked)} label={t('useSystemDns')} description={t('useSystemDns-behavior')} />
           </Stack>
         </Accordion.Panel>
       </Accordion.Item>

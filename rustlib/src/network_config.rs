@@ -7,14 +7,15 @@ use thiserror::Error;
 // Keep synchronized with ../apple/system-network-extension/RustFfi.swift
 // Avoid adding information with high-frequency of change to this type, to prevent triggering frequent changes OS network configuration, which can't be deduplicated by checking for changes.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-pub struct NetworkConfig {
+#[serde(rename_all = "camelCase")]
+pub struct TunnelNetworkConfig {
     pub dns: Vec<IpAddr>,
     pub ipv4: Ipv4Addr,
     pub ipv6: Ipv6Network,
     pub mtu: u16,
 }
 
-impl NetworkConfig {
+impl TunnelNetworkConfig {
     pub fn new(tunnel_config: &ObfuscatedTunnelConfig, mtu: u16) -> Result<Self, NetworkConfigError> {
         let dns = tunnel_config.dns.clone();
         if dns.is_empty() {

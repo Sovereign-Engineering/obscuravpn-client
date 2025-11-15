@@ -149,6 +149,7 @@ fn test_ignore_invalid_fields() {
         last_exit_selector: ExitSelector::City { city_code: CityCode { country_code: CountryCode("ca".into()), city_code: "yyz".into() } },
         sni_relay: Some("relay.obscura.net".into()),
         wireguard_key_cache: Default::default(),
+        use_system_dns: Default::default(),
         use_wireguard_key_cache: (),
         cached_account_status: Default::default(),
         auto_connect: true,

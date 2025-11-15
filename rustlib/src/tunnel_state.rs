@@ -16,7 +16,7 @@ use crate::errors::{ErrorAt, TunnelConnectError};
 use crate::exit_selection::ExitSelectionState;
 use crate::ffi_helpers::{FfiBytes, FfiBytesExt};
 use crate::manager::ManagerTrafficStats;
-use crate::network_config::NetworkConfig;
+use crate::network_config::TunnelNetworkConfig;
 use crate::quicwg::{QuicWgReceiveError, QuicWgTrafficStats};
 use crate::{client_state::ClientState, manager::TunnelArgs, quicwg::QuicWgConn};
 
@@ -40,7 +40,7 @@ pub enum TunnelState {
         args: TunnelArgs,
         #[debug(skip)]
         conn: Arc<QuicWgConn>,
-        network_config: NetworkConfig,
+        network_config: TunnelNetworkConfig,
         relay: OneRelay,
         exit: OneExit,
         offset_traffic_stats: ManagerTrafficStats,
@@ -109,7 +109,7 @@ impl TunnelState {
         args: &TunnelArgs,
         network_interface_index: NonZeroU32,
         conn: Arc<QuicWgConn>,
-        network_config: NetworkConfig,
+        network_config: TunnelNetworkConfig,
         relay: OneRelay,
         exit: OneExit,
     ) {

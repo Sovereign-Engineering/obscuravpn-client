@@ -11,7 +11,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     private let providerId = genTaskId()
     private let isActive = AsyncMutex(false)
     private let isConnected = WatchableValue(false)
-    private let networkConfig: AsyncMutex<NetworkConfig?> = AsyncMutex(.none)
+    private let networkConfig: AsyncMutex<OsNetworkConfig?> = AsyncMutex(.none)
     private let nwPathMonitor: NWPathMonitor = .init()
 
     var selfObservation: NSKeyValueObservation?
@@ -142,7 +142,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
                 throw "tunnel already active"
             }
 
-            let networkConfig = NetworkConfig(ipv4: "10.75.76.77", dns: ["10.64.0.99"], ipv6: "fc00:bbbb:bbbb:bb01::c:4c4d/128", mtu: 1280)
+            let networkConfig = OsNetworkConfig(tunnelNetworkConfig: TunnelNetworkConfig(ipv4: "10.75.76.77", dns: ["10.64.0.99"], ipv6: "fc00:bbbb:bbbb:bb01::c:4c4d/128", mtu: 1280), useSystemDns: false)
             try await self.setTunnelNetworkSettings(NEPacketTunnelNetworkSettings.build(networkConfig))
             let _: Empty = try await runManagerCmd(.setTunnelArgs(args: tunnelArgs, allowActivation: true))
 
@@ -322,7 +322,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             case .connected(_, _, let networkConfig, _, _, _):
                 if isActiveGuard.value {
                     do {
-                        try await self.ensureNetworkConfig(newNetworkConfig: networkConfig)
+                        try await self.ensureNetworkConfig(newNetworkConfig: OsNetworkConfig(tunnelNetworkConfig: networkConfig, useSystemDns: status.useSystemDns))
                         self.reasserting = false
                     } catch {
                         ffiLog(.Error, "setting network config failed \(error)")
@@ -333,7 +333,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         ffiLog(.Info, "finished processing status update \(status.version)")
     }
 
-    func ensureNetworkConfig(newNetworkConfig: NetworkConfig) async throws {
+    func ensureNetworkConfig(newNetworkConfig: OsNetworkConfig) async throws {
         try await self.networkConfig.withLock { networkConfigGuard in
             // This check isn't needed for correctness, but skipping unnecessary calls to `setTunnelNetworkSettings` does prevent brief periods with packet loss and lot of OS activity visible in the system log.
             if networkConfigGuard.value != newNetworkConfig {

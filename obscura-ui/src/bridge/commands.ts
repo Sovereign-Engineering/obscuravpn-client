@@ -136,8 +136,8 @@ export async function disconnect(): Promise<void> {
     await invoke('stopTunnel');
 }
 
-export async function debuggingArchive(): Promise<String> {
-    return (await invoke('debuggingArchive')) as String;
+export async function debuggingArchive(userFeedback: string): Promise<String> {
+    return (await invoke('debuggingArchive', { userFeedback })) as String;
 }
 
 export function revealItemInDir(path: String) {

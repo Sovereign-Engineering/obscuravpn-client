@@ -319,7 +319,7 @@ final class StatusItemManager: ObservableObject {
         }
         Task {
             do {
-                let _ = try await createDebuggingArchive(appState: StartupModel.shared.appState)
+                let _ = try await createDebuggingArchive(appState: StartupModel.shared.appState, userFeedback: nil)
             } catch {
                 logger.error("Error creating debug bundle: \(error, privacy: .public)")
 

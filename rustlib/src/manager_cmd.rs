@@ -142,6 +142,9 @@ pub enum ManagerCmd {
         args: Option<TunnelArgs>,
         allow_activation: bool,
     },
+    SetUseSystemDns {
+        enable: bool,
+    },
 }
 
 #[derive(Debug, derive_more::From, Serialize)]
@@ -238,6 +241,7 @@ impl ManagerCmd {
                 .set_target_state(args, allow_activation)
                 .map(Into::into)
                 .map_err(|()| ManagerCmdErrorCode::TunnelInactive),
+            Self::SetUseSystemDns { enable } => map_result(manager.set_use_system_dns(enable)),
         }
     }
 }

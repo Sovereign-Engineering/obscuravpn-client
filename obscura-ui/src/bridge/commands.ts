@@ -241,6 +241,10 @@ export function setAutoConnect(enable: boolean) {
   return jsonFfiCmd('setAutoConnect', { enable });
 }
 
+export function setUseSystemDns(enable: boolean) {
+  return jsonFfiCmd('setUseSystemDns', { enable });
+}
+
 export async function setFeatureFlag(flag: FeatureFlagKey, active: boolean) {
   await jsonFfiCmd('setFeatureFlag', { flag, active });
 }

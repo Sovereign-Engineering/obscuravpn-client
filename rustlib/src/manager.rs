@@ -21,17 +21,17 @@ use uuid::Uuid;
 
 use crate::{
     backoff::Backoff,
-    client_state::AccountStatus,
+    client_state::{AccountStatus, ClientState},
     config::{
         Config, ConfigDebug, ConfigLoadError, ConfigSaveError, KeychainSetSecretKeyFn, PinnedLocation, cached::ConfigCached,
         feature_flags::FeatureFlags,
     },
-    errors::ApiError,
+    errors::{ApiError, ConnectErrorCode},
     exit_selection::ExitSelector,
+    network_config::TunnelNetworkConfig,
     quicwg::TransportKind,
     tunnel_state::{TargetState, TunnelState},
 };
-use crate::{client_state::ClientState, errors::ConnectErrorCode, network_config::NetworkConfig};
 
 use super::ffi_helpers::*;
 
@@ -62,6 +62,7 @@ pub struct Status {
     pub auto_connect: bool,
     pub feature_flags: FeatureFlags,
     pub feature_flag_keys: &'static [&'static str],
+    pub use_system_dns: bool,
 }
 
 impl Status {
@@ -75,6 +76,7 @@ impl Status {
             cached_account_status,
             auto_connect,
             feature_flags,
+            use_system_dns,
             ..
         } = config;
         Self {
@@ -90,6 +92,7 @@ impl Status {
             auto_connect,
             feature_flags,
             feature_flag_keys: FeatureFlags::KEYS,
+            use_system_dns,
         }
     }
 }
@@ -107,7 +110,7 @@ pub enum VpnStatus {
         tunnel_args: TunnelArgs,
         exit: OneExit,
         relay: OneRelay,
-        network_config: NetworkConfig,
+        network_config: TunnelNetworkConfig,
         client_public_key: WgPubkey,
         exit_public_key: WgPubkey,
         transport: TransportKind,
@@ -224,6 +227,12 @@ impl Manager {
 
     pub fn set_feature_flag(&self, flag: &str, active: bool) -> Result<(), ConfigSaveError> {
         let ret = self.client_state.set_feature_flag(flag, active);
+        self.update_status_if_changed(None);
+        ret
+    }
+
+    pub fn set_use_system_dns(&self, enable: bool) -> Result<(), ConfigSaveError> {
+        let ret = self.client_state.set_use_system_dns(enable);
         self.update_status_if_changed(None);
         ret
     }

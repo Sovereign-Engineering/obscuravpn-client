@@ -1,6 +1,6 @@
 use super::{
     errors::{ApiError, TunnelConnectError},
-    network_config::NetworkConfig,
+    network_config::TunnelNetworkConfig,
 };
 use crate::{config::KeychainSetSecretKeyFn, quicwg::QuicWgConnHandshaking};
 use crate::{config::PinnedLocation, exit_selection::ExitSelectionState};
@@ -210,15 +210,21 @@ impl ClientState {
         Ok(())
     }
 
+    pub fn set_use_system_dns(&self, enable: bool) -> Result<(), ConfigSaveError> {
+        let mut inner = self.lock();
+        Self::change_config(&mut inner, move |config, _| config.use_system_dns = enable)?;
+        Ok(())
+    }
+
     pub async fn connect(
         &self,
         exit_selector: &ExitSelector,
         network_interface_index: Option<NonZeroU32>,
         selection_state: &mut ExitSelectionState,
-    ) -> Result<(QuicWgConn, NetworkConfig, OneExit, OneRelay), TunnelConnectError> {
+    ) -> Result<(QuicWgConn, TunnelNetworkConfig, OneExit, OneRelay), TunnelConnectError> {
         let (token, tunnel_config, wg_sk, exit, relay, handshaking) =
             self.new_tunnel(exit_selector, network_interface_index, selection_state).await?;
-        let network_config = NetworkConfig::new(&tunnel_config, TUNNEL_MTU)?;
+        let network_config = TunnelNetworkConfig::new(&tunnel_config, TUNNEL_MTU)?;
         let client_ip_v4 = network_config.ipv4;
         tracing::info!(
             tunnel.id =% token,

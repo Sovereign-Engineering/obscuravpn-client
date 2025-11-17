@@ -127,6 +127,7 @@ export interface AppStatus {
     autoConnect: boolean,
     featureFlags: Record<FeatureFlagKey, FeatureFlagValue>,
     featureFlagKeys: FeatureFlagKey[],
+    useSystemDns: boolean,
 }
 
 interface IAppContext {

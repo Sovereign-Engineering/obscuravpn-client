@@ -242,6 +242,8 @@
   "unresponsiveDaemonError": "Daemon is Unresponsive ({{ timeStamp }})",
   "updateAvailable": "update available: v{{ version }}",
   "usedBy": "Used by",
+  "useSystemDns": "Use system DNS",
+  "useSystemDns-behavior": "Use system DNS instead of the tunnel's DNS server. This requires installing a DNS device profile.",
   "validatingAccount": "Validating Account...",
   "viewLatestDebugArchive": "View Latest Debug Archive",
   "viewServerInfo": "View server info",

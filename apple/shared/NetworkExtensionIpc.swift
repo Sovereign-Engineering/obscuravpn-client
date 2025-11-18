@@ -17,7 +17,6 @@ enum NeManagerCmd: Codable {
     case apiAppleCreateAppAccountToken
     case apiApplePollSubscription(originalTransactionId: String)
     case apiGetAccountInfo
-    case getLogDir
     case getStatus(knownVersion: UUID?)
     case getTrafficStats
     case ping

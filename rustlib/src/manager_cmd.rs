@@ -99,7 +99,6 @@ pub enum ManagerCmd {
         #[serde_as(as = "Option<serde_with::base64::Base64>")]
         known_version: Option<Vec<u8>>,
     },
-    GetLogDir {},
     GetStatus {
         known_version: Option<Uuid>,
     },
@@ -159,7 +158,6 @@ pub enum ManagerCmdOk {
     Empty,
     GetDebugInfo(DebugInfo),
     GetExitList(CachedValue<Arc<ExitList>>),
-    GetLogDir(String),
     GetStatus(Status),
     GetTrafficStats(ManagerTrafficStats),
 }
@@ -202,10 +200,6 @@ impl ManagerCmd {
                     value: res.value.clone(),
                 }))
             }
-            Self::GetLogDir {} => manager.get_log_dir().map(ManagerCmdOk::GetLogDir).map_err(|error| {
-                tracing::error!(?error, message_id = "VtC1zLGx", "failed to get log dir");
-                ManagerCmdErrorCode::Other
-            }),
             Self::GetStatus { known_version } => manager
                 .subscribe()
                 .wait_for(|s| Some(s.version) != known_version)

@@ -325,17 +325,6 @@ impl Manager {
         self.api_request(AppleAssociateAccount { app_transaction_jws }).await
     }
 
-    #[cfg(target_os = "ios")]
-    pub fn get_log_dir(&self) -> anyhow::Result<String> {
-        use anyhow::Context;
-        crate::apple::ios::IOS_LOG_DIR.get().cloned().context("iOS log dir not set")
-    }
-
-    #[cfg(not(target_os = "ios"))]
-    pub fn get_log_dir(&self) -> anyhow::Result<String> {
-        Err(anyhow::format_err!("tried to get log dir on non-iOS platform"))
-    }
-
     pub async fn delete_account(&self) -> Result<DeleteAccountOutput, ApiError> {
         self.api_request(DeleteAccount {}).await
     }

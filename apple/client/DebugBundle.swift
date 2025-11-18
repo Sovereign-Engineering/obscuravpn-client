@@ -554,12 +554,11 @@ private class DebugBundleBuilder {
     }
 
     func bundleRustLog() async {
-        guard let manager = self.appState?.manager else {
-            self.writeError(name: "rust-log", error: "appState or manager is nil")
+        guard let logDir = logDir() else {
+            self.writeError(name: "rust-log", error: "logDir is nil")
             return
         }
         do {
-            let logDir: String = try await runNeCommand(manager, NeManagerCmd.getLogDir, attemptTimeout: .seconds(10), maxAttempts: 5)
             try self.copyFile(source: URL(fileURLWithPath: logDir), name: "rust-logs")
         } catch {
             self.writeError(name: "rust-log", error: error)

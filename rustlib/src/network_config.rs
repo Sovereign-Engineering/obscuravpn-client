@@ -1,7 +1,8 @@
 use ipnetwork::Ipv6Network;
 use obscuravpn_api::types::ObfuscatedTunnelConfig;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, Ipv4Addr};
+use strum::EnumIs;
 use thiserror::Error;
 
 // Keep synchronized with ../apple/system-network-extension/RustFfi.swift
@@ -42,4 +43,11 @@ pub enum NetworkConfigError {
     NoIpv6Ip,
     #[error("no dns")]
     NoDns,
+}
+
+#[derive(Clone, Copy, Debug, Default, EnumIs, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DnsConfig {
+    #[default]
+    Default,
+    System,
 }

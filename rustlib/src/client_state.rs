@@ -2,7 +2,7 @@ use super::{
     errors::{ApiError, TunnelConnectError},
     network_config::TunnelNetworkConfig,
 };
-use crate::{config::KeychainSetSecretKeyFn, quicwg::QuicWgConnHandshaking};
+use crate::{config::KeychainSetSecretKeyFn, network_config::DnsConfig, quicwg::QuicWgConnHandshaking};
 use crate::{config::PinnedLocation, exit_selection::ExitSelectionState};
 use crate::{
     config::{self, Config, ConfigLoadError},
@@ -212,7 +212,9 @@ impl ClientState {
 
     pub fn set_use_system_dns(&self, enable: bool) -> Result<(), ConfigSaveError> {
         let mut inner = self.lock();
-        Self::change_config(&mut inner, move |config, _| config.use_system_dns = enable)?;
+        Self::change_config(&mut inner, move |config, _| {
+            config.dns = if enable { DnsConfig::System } else { DnsConfig::Default }
+        })?;
         Ok(())
     }
 

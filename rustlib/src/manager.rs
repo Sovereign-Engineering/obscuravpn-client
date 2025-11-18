@@ -76,7 +76,7 @@ impl Status {
             cached_account_status,
             auto_connect,
             feature_flags,
-            use_system_dns,
+            dns,
             ..
         } = config;
         Self {
@@ -92,7 +92,7 @@ impl Status {
             auto_connect,
             feature_flags,
             feature_flag_keys: FeatureFlags::KEYS,
-            use_system_dns,
+            use_system_dns: dns.is_system(),
         }
     }
 }

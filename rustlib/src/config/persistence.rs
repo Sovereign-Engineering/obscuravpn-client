@@ -22,6 +22,7 @@ use crate::client_state::AccountStatus;
 use crate::config::cached::ConfigCached;
 use crate::config::feature_flags::FeatureFlags;
 use crate::exit_selection::ExitSelector;
+use crate::network_config::DnsConfig;
 
 pub(super) const CONFIG_FILE: &str = "config.json";
 
@@ -261,7 +262,7 @@ pub struct Config {
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub wireguard_key_cache: WireGuardKeyCache,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
-    pub use_system_dns: bool,
+    pub dns: DnsConfig,
     #[serde(skip)]
     pub use_wireguard_key_cache: (), // Removed
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
@@ -294,7 +295,7 @@ pub struct ConfigDebug {
     pub last_chosen_exit_selector: ExitSelector,
     pub last_exit_selector: ExitSelector,
     pub sni_relay: Option<String>,
-    pub use_system_dns: bool,
+    pub dns: DnsConfig,
     pub has_account_id: bool,
     pub has_cached_auth_token: bool,
     pub auto_connect: bool,
@@ -319,7 +320,7 @@ impl From<Config> for ConfigDebug {
             last_exit_selector,
             sni_relay,
             wireguard_key_cache: _,
-            use_system_dns,
+            dns,
             use_wireguard_key_cache: (),
             cached_account_status: _,
             auto_connect,
@@ -337,7 +338,7 @@ impl From<Config> for ConfigDebug {
             last_exit_selector,
             api_host_alternate,
             sni_relay,
-            use_system_dns,
+            dns,
             has_account_id: account_id.is_some(),
             has_cached_auth_token: cached_auth_token.is_some(),
             auto_connect,

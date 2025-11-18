@@ -9,14 +9,14 @@ import { normalizeError } from './utils';
 
 type ArchiveState = { inProgress: boolean, error?: Error };
 
-export function useDebuggingArchive(): () => Promise<void> {
+export function useDebuggingArchive(): (userFeedback: string) => Promise<void> {
     const { t } = useTranslation();
     const [_, setArchiveState] = useState<ArchiveState>({ inProgress: false });
 
-    const startCreatingArchive = async () => {
+    const startCreatingArchive = async (userFeedback: string) => {
         setArchiveState({ inProgress: true });
         try {
-            const path = await debuggingArchive();
+            const path = await debuggingArchive(userFeedback);
             if (!IS_HANDHELD_DEVICE) {
               notifications.show({
                   title: t('Debugging Archive Created'),

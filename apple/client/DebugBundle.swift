@@ -116,14 +116,16 @@ private class DebugBundleBuilder {
     let jsonEncoder = JSONEncoder()
     let logStartTimestamp: Date
     let appState: AppState?
+    let userFeedback: String?
 
     let dispatchQueue = DispatchQueue.global(qos: .userInitiated)
     var lock = NSLock()
     var pendingTasks = PendingTasks()
     var tasks: [String: TaskResult] = [:]
 
-    init(appState: AppState?) throws {
+    init(appState: AppState?, userFeedback: String?) throws {
         self.appState = appState
+        self.userFeedback = userFeedback
         self.tmpFolder = try FileManager.default.url(
             for: FileManager.SearchPathDirectory.itemReplacementDirectory,
             in: FileManager.SearchPathDomainMask.userDomainMask,
@@ -623,6 +625,10 @@ private class DebugBundleBuilder {
     func bundleAll() async {
         self.bundleLogs()
 
+        self.bundleTask("user-feedback") { _task in
+            try self.writeFile(name: "user-feedback.txt", string: self.userFeedback ?? "")
+        }
+
         self.bundleTask("app-provisionprofile") { _task in
             #if os(macOS)
                 let path = "Contents/embedded.provisionprofile"
@@ -787,7 +793,7 @@ public class DebugBundleRC {
     }
 }
 
-func _createDebuggingArchive(appState: AppState?) async throws -> String {
+func _createDebuggingArchive(appState: AppState?, userFeedback: String?) async throws -> String {
     let _ = ProcessInfo.processInfo.beginActivity(
         options: [
             .automaticTerminationDisabled,
@@ -800,7 +806,7 @@ func _createDebuggingArchive(appState: AppState?) async throws -> String {
 
     let start = SuspendingClock.now
 
-    let builder = try DebugBundleBuilder(appState: appState)
+    let builder = try DebugBundleBuilder(appState: appState, userFeedback: userFeedback)
     await builder.bundleAll()
     let zipPath = try builder.createArchive()
 
@@ -813,7 +819,7 @@ func _createDebuggingArchive(appState: AppState?) async throws -> String {
     return zipPath.path
 }
 
-func createDebuggingArchive(appState: AppState?) async throws -> String {
+func createDebuggingArchive(appState: AppState?, userFeedback: String?) async throws -> String {
     // ensure deinit occurs at the end of the method
     var _debugBundleRc: DebugBundleRC?
     defer { withExtendedLifetime(_debugBundleRc) {}}
@@ -821,7 +827,7 @@ func createDebuggingArchive(appState: AppState?) async throws -> String {
         _debugBundleRc = DebugBundleRC(appState)
     }
     do {
-        let path = try await _createDebuggingArchive(appState: appState)
+        let path = try await _createDebuggingArchive(appState: appState, userFeedback: userFeedback)
         _ = appState?.osStatus.update { value in
             value.debugBundleStatus.setPath(path)
         }

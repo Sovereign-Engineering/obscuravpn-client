@@ -11,7 +11,7 @@ enum Command: Codable {
     case stopTunnel
     case setStrictLeakPrevention(enable: Bool)
     case setColorScheme(value: AppAppearance)
-    case debuggingArchive
+    case debuggingArchive(userFeedback: String?)
     case revealItemInDir(path: String)
     case emailDebugArchive(path: String, subject: String, body: String)
     case shareDebugArchive(path: String)
@@ -72,10 +72,10 @@ extension CommandHandler {
             )
         case .getOsStatus(knownVersion: let version):
             return try await appState.getOsStatus(knownVersion: version).json()
-        case .debuggingArchive:
+        case .debuggingArchive(let userFeedback):
             let path: String
             do {
-                path = try await createDebuggingArchive(appState: appState)
+                path = try await createDebuggingArchive(appState: appState, userFeedback: userFeedback)
             } catch {
                 logger.error("could not create debugging archive \(error, privacy: .public)")
                 throw errorCodeOther

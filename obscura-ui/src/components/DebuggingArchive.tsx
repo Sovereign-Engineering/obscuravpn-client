@@ -36,45 +36,45 @@ export default function DebuggingArchive({ osStatus }: { osStatus: OsStatus }) {
 
   const modal = (
     <ConfirmationDialog title={t('Debugging Archive')} opened={modalOpen} onClose={close}>
-      {
-        osStatus.osVpnStatus !== NEVPNStatus.Disconnected
-        && <>
-          <Text>{t('debugArchiveDisconnectPrompt')}</Text>
-          <Space />
-        </>
-      }
-      <Textarea
-        data-autofocus
-        label={t('debugArchiveFeedbackLabel')}
-        placeholder={t('debugArchiveFeedbackPrompt')}
-        value={userFeedback}
-        onChange={(event) => setUserFeedback(event.currentTarget.value)}
-        minRows={3}
-        maxRows={6}
-      />
-      <Space />
-      <Group w='100%' grow>
-        <Button disabled={disconnectInProgress} miw={130} onClick={onContinue} variant='light'>{
-          osStatus.osVpnStatus === NEVPNStatus.Disconnected ?
-            t('Continue') : t('Stay Connected')
-        }</Button>
+      <Stack h='100%' justify='space-between' gap='xs'>
         {
-          osStatus.osVpnStatus !== NEVPNStatus.Disconnected &&
-          <Button disabled={disconnectInProgress} miw={130} onClick={async () => {
-            setDisableButtons(true);
-            await commandHandler(commands.disconnect);
-            let knownOsStatusId = null;
-            while (true) {
-              const newOsStatus = commands.osStatus(knownOsStatusId);
-              if ((await newOsStatus).osVpnStatus === NEVPNStatus.Disconnected) {
-                break;
-              }
-            }
-            onContinue();
-          }}>{
-            disconnectInProgress ? <Loader size={ICON_SIZE} /> : t('Disconnect')}</Button>
+          osStatus.osVpnStatus !== NEVPNStatus.Disconnected
+          && <>
+            <Text>{t('debugArchiveDisconnectPrompt')}</Text>
+          </>
         }
-      </Group>
+        <Textarea
+          data-autofocus
+          label={t('debugArchiveFeedbackLabel')}
+          placeholder={t('debugArchiveFeedbackPrompt')}
+          value={userFeedback}
+          onChange={(event) => setUserFeedback(event.currentTarget.value)}
+          minRows={3}
+          maxRows={6}
+        />
+        <Group w='100%' grow>
+          <Button disabled={disconnectInProgress} miw={130} onClick={onContinue} variant='light'>{
+            osStatus.osVpnStatus === NEVPNStatus.Disconnected ?
+              t('Continue') : t('Stay Connected')
+          }</Button>
+          {
+            osStatus.osVpnStatus !== NEVPNStatus.Disconnected &&
+            <Button disabled={disconnectInProgress} miw={130} onClick={async () => {
+              setDisableButtons(true);
+              await commandHandler(commands.disconnect);
+              let knownOsStatusId = null;
+              while (true) {
+                const newOsStatus = commands.osStatus(knownOsStatusId);
+                if ((await newOsStatus).osVpnStatus === NEVPNStatus.Disconnected) {
+                  break;
+                }
+              }
+              onContinue();
+            }}>{
+                disconnectInProgress ? <Loader size={ICON_SIZE} /> : t('Disconnect')}</Button>
+          }
+        </Group>
+      </Stack>
     </ConfirmationDialog>
   );
 

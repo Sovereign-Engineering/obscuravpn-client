@@ -1,4 +1,4 @@
-import { Accordion, ActionIcon, Anchor, Button, Card, Divider, Drawer, Flex, Grid, Group, Loader, Space, Stack, Text, ThemeIcon, Title, useMantineTheme } from '@mantine/core';
+import { Accordion, ActionIcon, Anchor, Button, Card, Divider, Flex, Grid, Group, Loader, Space, Stack, Text, ThemeIcon, Title, useMantineTheme } from '@mantine/core';
 import { useInterval } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { t } from 'i18next';
@@ -17,6 +17,7 @@ import { useAsync } from '../common/useAsync';
 import { useExitList } from '../common/useExitList';
 import { fmtTime } from '../common/utils';
 import BoltBadgeAuto from '../components/BoltBadgeAuto';
+import { MobileDrawer } from '../components/ConfirmationDialog';
 import ExternalLinkIcon from '../components/ExternalLinkIcon';
 import ObscuraChip from '../components/ObscuraChip';
 import { SecondaryButton } from '../components/SecondaryButton';
@@ -439,8 +440,8 @@ function ExitInfoDrawer({ exitProviderId, exitPubKey, connectedExit, provider, p
   const [showExitInfo, setShowExitInfo] = useState(false);
   return <>
     <SecondaryButton onClick={() => setShowExitInfo(true)}>{t('viewServerInfo')}</SecondaryButton>
-    <Drawer classNames={{ content: commonClasses.bottomSheet }} title={t('networkInformation')} size='sm' position='bottom' opened={showExitInfo} onClose={() => setShowExitInfo(false)} withCloseButton={false}>
-      <Stack justify='space-between' h={300}>
+    <MobileDrawer size='sm' title={t('networkInformation')} opened={showExitInfo} onClose={() => setShowExitInfo(false)} withCloseButton={false}>
+      <Stack justify='space-between' h='100%'>
         <Stack gap='md'>
           <Group justify='space-between'>
             <Text c='dimmed'>{t('VPN')}</Text>
@@ -463,7 +464,7 @@ function ExitInfoDrawer({ exitProviderId, exitPubKey, connectedExit, provider, p
         </Stack>
         <SecondaryButton onClick={() => setShowExitInfo(false)}>{t('Dismiss')}</SecondaryButton>
       </Stack>
-    </Drawer>
+    </MobileDrawer>
   </>;
 }
 

@@ -11,7 +11,7 @@ import * as commands from '../bridge/commands';
 import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
 import * as ObscuraAccount from '../common/accountUtils';
 import { AccountInfo, accountIsExpired, hasActiveSubscription, hasAppleSubscription, hasCredit, isRenewing, paidUntil, paidUntilDays, useReRenderWhenExpired } from '../common/api';
-import { AppContext } from '../common/appContext';
+import { AppContext, NEVPNStatus } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { normalizeError } from '../common/utils';
 import { AccountNumberSection } from '../components/AccountNumberSection';
@@ -29,8 +29,10 @@ import classes from './AccountView.module.css';
 
 export default function Account() {
   const { t } = useTranslation();
-  const { appStatus, pollAccount } = useContext(AppContext);
-  const [confirmDeleteAccount, { open, close }] = useDisclosure(false);
+  const { appStatus, pollAccount, osStatus } = useContext(AppContext);
+  const [confirmDeleteAccount, { open: openDeleteAccount, close: closeDeleteAccount }] = useDisclosure(false);
+  const [confirmLogOut, { open: openLogOutConfirm, close: closeLogOutConfirm }] = useDisclosure(false);
+  const osVpnConnected = osStatus.osVpnStatus === NEVPNStatus.Connected;
 
   useEffect(() => {
     // Ensure account info is up-to-date when the user is viewing the account page.
@@ -39,10 +41,13 @@ export default function Account() {
 
   const logOut = async () => {
     try {
+      await commands.disconnect();
       await commands.logout();
     } catch (e) {
       const error = normalizeError(e);
       notifications.show({ title: t('logOutFailed'), message: <Text>{t('pleaseReportError')}<br /><Code>{error.message}</Code></Text> });
+    } finally {
+      closeLogOutConfirm();
     }
   }
 
@@ -60,21 +65,37 @@ export default function Account() {
   const accountId = appStatus.accountId;
   const accountInfo = appStatus.account?.account_info;
   return <>
-    <ConfirmationDialog opened={confirmDeleteAccount} onClose={close} drawerSize='md'>
-      <Stack p={IS_HANDHELD_DEVICE ? 'xl' : undefined} ta={IS_HANDHELD_DEVICE ? 'center' : undefined}>
-        <Text>{t('deleteAccountConfirmationStart')}</Text>
-        {hasCredit(accountInfo) && <Text>{t('deleteAccountConfirmationCredit')}</Text>}
-        {hasAppleSubscription(accountInfo) && <Text>{t('deleteAccountConfirmationAppleSubscription')}</Text>}
-        <Text>{t('deleteAccountConfirmationEnd')}</Text>
+    <ConfirmationDialog opened={confirmDeleteAccount} onClose={closeDeleteAccount} drawerSize='md'>
+      <Stack h='100%' justify='space-between'>
+        <Stack p={IS_HANDHELD_DEVICE ? 'xl' : undefined} ta={IS_HANDHELD_DEVICE ? 'center' : undefined}>
+          <Text>{t('deleteAccountConfirmationStart')}</Text>
+          {hasCredit(accountInfo) && <Text>{t('deleteAccountConfirmationCredit')}</Text>}
+          {hasAppleSubscription(accountInfo) && <Text>{t('deleteAccountConfirmationAppleSubscription')}</Text>}
+          <Text>{t('deleteAccountConfirmationEnd')}</Text>
+        </Stack>
         <DeleteAccount onClick={deleteAccount} />
+      </Stack>
+    </ConfirmationDialog>
+    <ConfirmationDialog opened={confirmLogOut} onClose={closeLogOutConfirm} title={t('logOut')} drawerCloseButton={false}>
+      <Stack h='100%' justify='space-between'>
+        <Text><Trans i18nKey='logOutPrompt' context={osStatus.osVpnStatus === NEVPNStatus.Connected ? 'connected' : 'disconnected'} components={{ b: <b /> }} /></Text>
+        <Group justify='flex-end' gap='sm' w='100%' grow={IS_HANDHELD_DEVICE}>
+          <Button variant='default' onClick={closeLogOutConfirm}>{t('Cancel')}</Button>
+          <Button color='red.7' onClick={logOut}>
+            <Group gap={5} ml={0}>
+              <IoLogOutOutline size={19} />
+              <Text fw={550}>{t('logOut')}</Text>
+            </Group>
+          </Button>
+        </Group>
       </Stack>
     </ConfirmationDialog>
     <Stack align='center' className={classes.container}>
       <AccountStatusCard />
-      <AccountNumberSection accountId={accountId} logOut={logOut} />
+      <AccountNumberSection accountId={accountId} logOut={openLogOutConfirm} />
       <WGConfigurations />
-      <DeleteAccount onClick={open} />
-      <MobileLogOut logOut={logOut} />
+      <DeleteAccount onClick={openDeleteAccount} />
+      <MobileLogOut logOut={openLogOutConfirm} />
     </Stack>
   </>;
 }
@@ -324,7 +345,7 @@ function DeleteAccount({ onClick }: { onClick: () => void }) {
   </Group>;
 }
 
-function MobileLogOut({ logOut }: { logOut: () => Promise<void> }) {
+function MobileLogOut({ logOut }: { logOut: () => void }) {
   const { t } = useTranslation();
   return <>
     <Button className={commonClasses.mobileOnly} fw='bolder' onClick={logOut} color='red.7' variant='outline' w='100%'>

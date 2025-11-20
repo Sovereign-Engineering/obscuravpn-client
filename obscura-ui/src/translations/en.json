@@ -190,6 +190,8 @@
   "licensesOverview": "Overview of Licenses",
   "locatePrefs": "Locate preferences file",
   "logOut": "Log out",
+  "logOutPrompt_connected": "You are currently connected to Obscura VPN. Logging out will <b>disconnect you</b> and <b>reset preferences</b>.",
+  "logOutPrompt_disconnected": "Logging out will <b>reset preferences</b>.",
   "logOutFailed": "Failed to log out",
   "loginError-unknown": "Failed to login; Reason is unknown",
   "mostRecent": "most recent",

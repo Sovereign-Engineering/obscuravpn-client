@@ -27,10 +27,6 @@
     }
 }
 
-.bottomSheet {
-    border-radius: var(--mantine-radius-lg) var(--mantine-radius-lg) 0 0 !important;
-}
-
 .elevatedSurface {
     background-color: light-dark(var(--mantine-color-body), var(--mantine-color-dark-6)) !important;
 }

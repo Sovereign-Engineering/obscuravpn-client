@@ -1,0 +1,10 @@
+.drawerContent {
+    display: flex;
+    flex-direction: column;
+    height: min-content !important;
+    border-radius: var(--mantine-radius-lg) var(--mantine-radius-lg) 0 0 !important;
+}
+
+.drawerBody {
+    flex-grow: 1;
+}

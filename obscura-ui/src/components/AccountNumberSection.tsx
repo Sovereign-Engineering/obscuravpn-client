@@ -10,7 +10,7 @@ import Eye from '../res/eye.fill.svg?react';
 import EyeSlash from '../res/eye.slash.fill.svg?react';
 import PersonBadgeKey from '../res/person.badge.key.svg?react';
 
-export function AccountNumberSection({ accountId, logOut }: { accountId: ObscuraAccount.AccountId, logOut: () => Promise<void> }) {
+export function AccountNumberSection({ accountId, logOut }: { accountId: ObscuraAccount.AccountId, logOut: () => void }) {
   const { t } = useTranslation();
   const theme = useMantineTheme();
   const primaryColorResolved = usePrimaryColorResolved();

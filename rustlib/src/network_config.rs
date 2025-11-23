@@ -1,7 +1,7 @@
 use ipnetwork::Ipv6Network;
 use obscuravpn_api::types::ObfuscatedTunnelConfig;
 use serde::{Deserialize, Serialize};
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use strum::EnumIs;
 use thiserror::Error;
 
@@ -32,6 +32,16 @@ impl TunnelNetworkConfig {
         };
 
         Ok(Self { dns, ipv4, ipv6, mtu })
+    }
+
+    /// Dummy network config. May be used if valid values are needed by an API before the real values are known. The values are picked from ranges we expect for our tunnels.
+    pub fn dummy() -> Self {
+        Self {
+            dns: vec![IpAddr::V4(Ipv4Addr::new(10, 64, 0, 99))],
+            ipv4: Ipv4Addr::new(10, 75, 76, 77),
+            ipv6: Ipv6Network::new(Ipv6Addr::new(0xfc00, 0xbbbb, 0xbbbb, 0xbb01, 0, 0, 0xc, 0x4c4d), 128).unwrap(),
+            mtu: 1280,
+        }
     }
 }
 

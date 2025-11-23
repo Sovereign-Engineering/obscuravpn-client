@@ -1,11 +1,11 @@
 #![allow(clippy::large_enum_variant, clippy::too_many_arguments)]
 
-mod backoff;
+pub mod backoff;
 pub mod client_state;
 pub mod config;
 pub mod errors;
 pub mod exit_selection;
-mod ffi_helpers;
+pub mod ffi_helpers;
 pub mod manager;
 pub mod manager_cmd;
 pub mod net;
@@ -13,9 +13,8 @@ pub mod network_config;
 pub mod quicwg;
 pub mod relay_selection;
 mod serde_safe;
-mod tokio;
+pub mod tokio;
 pub mod tunnel_state;
-pub mod virt;
 
 #[cfg(test)]
 mod backoff_test;

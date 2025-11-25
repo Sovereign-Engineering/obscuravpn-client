@@ -36,6 +36,8 @@ export interface AccountInfo {
     top_up: TopUpInfo | null,
     subscription: SubscriptionInfo | null,
     apple_subscription: AppleSubscriptionInfo | null,
+    auto_renews: number | null,
+    current_expiry: number | null,
 }
 
 export interface TopUpInfo {
@@ -54,7 +56,7 @@ export interface SubscriptionInfo {
     cancel_at_period_end: boolean,
 }
 
-// only check if a subscription is active, regardless about renewal status
+// returns if a subscription is active, regardless about renewal status
 export function hasActiveSubscription(account: AccountInfo): boolean {
     if (account.subscription?.status === SubscriptionStatus.ACTIVE
         || account.subscription?.status === SubscriptionStatus.TRIALING) {
@@ -68,56 +70,50 @@ export function hasActiveSubscription(account: AccountInfo): boolean {
 }
 
 export function isRenewing(account: AccountInfo): boolean {
-  return (!!account.subscription
-    && !account.subscription.cancel_at_period_end
-    && account.subscription.status !== SubscriptionStatus.UNPAID
-    && account.subscription.status !== SubscriptionStatus.CANCELED) ||
-    (!!account.apple_subscription
-      && account.apple_subscription.auto_renew_status
-      && account.apple_subscription.status !== AppleSubscriptionStatus.EXPIRED
-      && account.apple_subscription.status !== AppleSubscriptionStatus.REVOKED);
+  return account.auto_renews !== null;
 }
 
 /// Returns the end of the current payment period.
 ///
 /// Note that if the account has a renewing subscription it can stay active for longer.
-export function paidUntil(account: AccountInfo): Date | undefined {
-    const topupExpires = account.top_up?.credit_expires_at;
-    const subscriptionExpires = account.subscription?.current_period_end;
-    const appleExpires = account.apple_subscription?.renewal_date;
-
-    let maxExpiry = Math.max(
-      topupExpires || 0,
-      subscriptionExpires || 0,
-      appleExpires || 0
-    );
-
-    return maxExpiry > 0 ? new Date(maxExpiry * 1000) : undefined;
+export function paidUntil(account: AccountInfo): Date | null {
+  const autoRenewDate = account.auto_renews || 0;
+  const currentExpiry = account.current_expiry || 0;
+  const maxExpiry = Math.max(autoRenewDate, currentExpiry);
+  return maxExpiry > 0 ? new Date(maxExpiry * 1000) : null;
 }
 
 export function accountIsExpired(accountInfo: AccountInfo): boolean {
-  // If a subscription is auto-renewing, the active field can be relied upon
-  if (isRenewing(accountInfo)) {
-    return !accountInfo.active;
-  }
-  // Otherwise, we need to check whether the expiry date is in the past
-  const accountPaidUntil = paidUntil(accountInfo);
-  return !accountInfo.active || accountPaidUntil === undefined || accountPaidUntil.getTime() < new Date().getTime();
+  if (accountInfo.auto_renews) return false;
+  return (accountInfo.active && accountInfo.current_expiry) ?
+    new Date(accountInfo.current_expiry * 1000).getTime() < new Date().getTime() :
+    true;
 }
 
-/// Returns a human representation of the number of days left on an account.
+// TimeRemaining is represented in parts of a whole
+export interface TimeRemaining {
+    days: number;
+    hours: number;
+    minutes: number;
+}
+
+/// Returns a human representation of the time left on an account.
 ///
 /// Note that there is funny rounding on this number, it MUST NOT be used for computation.
-///
-/// TODO: Get a better representation, for example switching to hours and minutes as the expiry comes closer.
-export function paidUntilDays(account: AccountInfo): number {
-    let expiry = paidUntil(account);
-    if (!expiry) {
-        return 0;
-    }
-    let remainingMs = +expiry - Date.now();
-    let remainingD = remainingMs / 1000 / 3600 / 24;
-    return Math.floor(remainingD);
+export function accountTimeRemaining(account: AccountInfo): TimeRemaining {
+  const expiry = paidUntil(account);
+  const remainingMs = expiry !== null ? expiry.getTime() - Date.now() : 0;
+  let remainingSeconds = Math.floor(remainingMs / 1000);
+
+  const days = Math.floor(remainingMs / 1000 / 3600 / 24);
+  remainingSeconds -= days * 86400;
+
+  const hours = Math.floor(remainingSeconds / 3600);
+  remainingSeconds -= hours * 3600;
+
+  const minutes = Math.floor(remainingSeconds / 60);
+
+  return { days, hours, minutes };
 }
 
 /// https://docs.stripe.com/api/subscriptions/object#subscription_object-status
@@ -162,7 +158,7 @@ export function useReRenderWhenExpired(account: AccountStatus | null) {
   useEffect(() => {
     if (account !== null) {
       const expiryDate = paidUntil(account.account_info);
-      if (expiryDate !== undefined && !accountIsExpired(account.account_info)) {
+      if (expiryDate !== null && !accountIsExpired(account.account_info)) {
         const timeoutId = setTimeout(forceUpdate, expiryDate.getTime() - (new Date()).getTime());
         return () => clearTimeout(timeoutId);
       }

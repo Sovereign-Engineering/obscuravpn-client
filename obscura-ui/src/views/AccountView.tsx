@@ -10,7 +10,7 @@ import { MdOutlineWifiOff } from 'react-icons/md';
 import * as commands from '../bridge/commands';
 import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
 import * as ObscuraAccount from '../common/accountUtils';
-import { AccountInfo, accountIsExpired, hasActiveSubscription, hasAppleSubscription, hasCredit, isRenewing, paidUntil, paidUntilDays, useReRenderWhenExpired } from '../common/api';
+import { AccountInfo, accountIsExpired, accountTimeRemaining, hasActiveSubscription, hasAppleSubscription, hasCredit, isRenewing, paidUntil, useReRenderWhenExpired } from '../common/api';
 import { AppContext, NEVPNStatus } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { normalizeError } from '../common/utils';
@@ -125,8 +125,8 @@ function AccountStatusCard() {
   } else if (hasActiveSubscription(accountInfo)) {
     return <SubscriptionPaused accountInfo={accountInfo} />
   }
-  const expiryD = paidUntilDays(accountInfo);
-  if (expiryD < 10)
+  const { days: daysLeft } = accountTimeRemaining(accountInfo);
+  if (daysLeft < 10)
     return <AccountExpiringSoon accountInfo={accountInfo} />;
   return <AccountPaidUp accountInfo={accountInfo} />
 }
@@ -162,7 +162,7 @@ function AccountPaidUpSubscriptionActive({ accountInfo }: AccountStatusProps) {
 function SubscriptionActive({ accountInfo }: AccountStatusProps) {
   const { t } = useTranslation();
   const accountPaidUntil = paidUntil(accountInfo);
-  const daysLeft = paidUntilDays(accountInfo);
+  const { days: daysLeft } = accountTimeRemaining(accountInfo);
   const tOptions = {
     count: daysLeft,
     endDate: accountPaidUntil!.toLocaleDateString(),
@@ -204,7 +204,7 @@ function AccountExpired() {
 function AccountPaidUp({ accountInfo }: AccountStatusProps) {
   const { t } = useTranslation();
   const accountPaidUntil = paidUntil(accountInfo);
-  const daysLeft = paidUntilDays(accountInfo);
+  const { days: daysLeft } = accountTimeRemaining(accountInfo);
   const tOptions = {
     count: daysLeft,
     endDate: accountPaidUntil!.toLocaleDateString(),
@@ -222,24 +222,74 @@ function AccountPaidUp({ accountInfo }: AccountStatusProps) {
 function AccountExpiringSoon({ accountInfo }: AccountStatusProps) {
   const { t } = useTranslation();
   const accountPaidUntil = paidUntil(accountInfo);
-  const expiryInfo = {
-    count: paidUntilDays(accountInfo),
-    endDate: accountPaidUntil!.toLocaleDateString(),
-  };
-  const verySoon = expiryInfo.count < 5;
-  const i18nKey = verySoon ? 'account-ExpiresVerySoon' : 'account-ExpiresSoon';
+  const timeRemaining = accountTimeRemaining(accountInfo);
+  const { days, hours, minutes } = timeRemaining;
+
+  const { heading, subtitle } = useExpiryMessages(
+    days,
+    hours,
+    minutes,
+    accountPaidUntil!
+  );
+
   return (
     <AccountStatusCardTemplate
-      icon={expiryInfo.count < 5 ? <PaidUpExpiringVerySoonBadge /> : <PaidUpExpiringSoonBadge />}
-      heading={t('account-DaysUntilExpiry', expiryInfo)}
+      icon={days < 5 ? <PaidUpExpiringVerySoonBadge /> : <PaidUpExpiringSoonBadge />}
+      heading={heading}
       subtitle={
         <Stack gap={0}>
-          <Text size='sm'>{t(i18nKey, expiryInfo)}</Text>
+          <Text size='sm'>{subtitle}</Text>
           <Text size='sm' c='dimmed'>{t('continueUsingObscura')}</Text>
         </Stack>
       }
     />
   );
+}
+
+interface ExpiryMessages {
+  heading: string;
+  subtitle: string;
+}
+
+function useExpiryMessages(
+  days: number,
+  hours: number,
+  minutes: number,
+  accountPaidUntil: Date
+): ExpiryMessages {
+  const { t } = useTranslation();
+  let heading: string;
+  let subtitle: string;
+  let expiryInfo: { count: number; endDate: string };
+
+  if (days === 0 && hours === 0) {
+    // Show minutes when less than 1 hour remains
+    expiryInfo = {
+      count: minutes,
+      endDate: accountPaidUntil.toLocaleDateString(),
+    };
+    heading = t('account-MinutesUntilExpiry', expiryInfo);
+    subtitle = t('account-ExpiresInMinutes', expiryInfo);
+  } else if (days === 0) {
+    // Show hours when less than 1 day but at least 1 hour remains
+    expiryInfo = {
+      count: hours,
+      endDate: accountPaidUntil.toLocaleDateString(),
+    };
+    heading = t('account-HoursUntilExpiry', expiryInfo);
+    subtitle = t('account-ExpiresInHours', expiryInfo);
+  } else {
+    // Show days when 1 or more days remain
+    expiryInfo = {
+      count: days,
+      endDate: accountPaidUntil.toLocaleDateString(),
+    };
+    const verySoon = days < 5;
+    heading = t('account-DaysUntilExpiry', expiryInfo);
+    subtitle = t(verySoon ? 'account-ExpiresVerySoon' : 'account-ExpiresSoon', expiryInfo);
+  }
+
+  return { heading, subtitle };
 }
 
 interface AccountStatusCardTemplateProps {

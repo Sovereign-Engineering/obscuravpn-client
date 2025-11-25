@@ -13,24 +13,13 @@ struct AccountStatus: Codable, Equatable {
     //  subscription is active and renewing
     // returns zero when:
     //  never topped up
-    // returns a date in the paste when:
+    // returns a date in the past when:
     //  account is past its expiration date (or never funded)
     var expirationDate: Date? {
-        if self.accountInfo.hasRenewingStripeSubscription {
+        if self.accountInfo.autoRenews {
             return nil
         }
-        if let subscriptionApple = accountInfo.appleSubscription,
-           subscriptionApple.autoRenewalStatus,
-           subscriptionApple.subscriptionStatus != .expired,
-           subscriptionApple.subscriptionStatus != .revoked
-        {
-            return nil
-        }
-        let topUpExpires = self.accountInfo.topUp?.creditExpiresAt ?? 0
-        let subscriptionEnd = self.accountInfo.stripeSubscription?.currentPeriodEnd ?? 0
-        let appleEnd = self.accountInfo.appleSubscription?.renewalTime ?? 0
-        let end = max(topUpExpires, subscriptionEnd, appleEnd, 0)
-        return Date(timeIntervalSince1970: TimeInterval(end))
+        return Date(timeIntervalSince1970: TimeInterval(self.accountInfo.currentExpiry ?? 0))
     }
 
     func daysUntilExpiry() -> UInt64? {
@@ -45,6 +34,9 @@ struct AccountStatus: Codable, Equatable {
     }
 
     func isActive() -> Bool {
+        if self.accountInfo.autoRenews {
+            return true
+        }
         if let timestamp = self.expirationDate {
             return timestamp > Date()
         }
@@ -69,6 +61,8 @@ struct AccountInfo: Codable {
     let topUp: TopUpInfo?
     let stripeSubscription: StripeSubscriptionInfo?
     let appleSubscription: AppleSubscriptionInfo?
+    let _autoRenews: Int64?
+    let currentExpiry: Int64?
 
     var hasRenewingStripeSubscription: Bool {
         guard let stripeSubscription else { return false }
@@ -83,6 +77,26 @@ struct AccountInfo: Codable {
         case active
         case stripeSubscription = "subscription"
         case appleSubscription = "apple_subscription"
+        case _autoRenews = "auto_renews"
+        case currentExpiry = "current_expiry"
+    }
+
+    var autoRenews: Bool {
+        self._autoRenews != nil
+    }
+
+    /// returns the expected date when
+    ///   1) the account's subscription renews
+    ///   2) or the account will expire
+    /// this is used to determined when the account info should be refreshed
+    var periodEndDate: Date? {
+        if let currentExpiry = self.currentExpiry {
+            return Date(timeIntervalSince1970: TimeInterval(currentExpiry))
+        }
+        if let autoRenews = self._autoRenews {
+            return Date(timeIntervalSince1970: TimeInterval(autoRenews))
+        }
+        return nil
     }
 }
 

@@ -521,7 +521,7 @@ final class StatusItemManager: ObservableObject {
         if let account = appState.status.account {
             let secondsStamp = UInt64(Date().timeIntervalSince1970)
             var pollAccount = false
-            if (!account.isActive() || account.daysUntilExpiry() == 0)
+            if (account.accountInfo.periodEndDate == nil || account.accountInfo.periodEndDate! < Date())
                 && secondsStamp - account.lastUpdatedSec > 60 * 5
             {
                 pollAccount = true

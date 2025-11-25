@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import OSLog
 import SwiftUI
@@ -313,12 +314,33 @@ final class StatusItemManager: ObservableObject {
     }
 
     @objc func createDebuggingArchiveAction() {
+        guard let osVpnStatus = self.osStatusModel.osStatus?.osVpnStatus else { return }
+
+        let alert = NSAlert()
+        alert.messageText = "Disconnect to Create Debugging Archive?"
+        alert.informativeText = "For the best diagnostics, we recommend creating a debugging archive while disconnected. How do you want to create the debugging archive?"
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Disconnect")
+        alert.addButton(withTitle: "Stay Connected")
+        alert.addButton(withTitle: "Don't Create Debugging Archive")
+
         DispatchQueue.main.async {
             self.debuggingMenuItem.target = nil
             self.debuggingMenuItem.title = creatingDebuggingArchiveStr
         }
         Task {
             do {
+                if osVpnStatus == .connected {
+                    let response = await alert.runModal()
+                    if response == .alertFirstButtonReturn {
+                        try await self.waitForDisconnect()
+                    }
+                    if response == .alertThirdButtonReturn {
+                        self.updateDebugBundleMenuItem()
+                        return
+                    }
+                }
+
                 let _ = try await createDebuggingArchive(appState: StartupModel.shared.appState, userFeedback: nil)
             } catch {
                 logger.error("Error creating debug bundle: \(error, privacy: .public)")
@@ -329,6 +351,15 @@ final class StatusItemManager: ObservableObject {
                 content.interruptionLevel = .active
                 content.sound = UNNotificationSound.default
                 displayNotification(.debuggingBundleFailed, content)
+            }
+        }
+    }
+
+    private func waitForDisconnect(maxSeconds: Double = 30) async throws {
+        await StartupModel.shared.appState?.disableTunnel()
+        try await withTimeout(.seconds(maxSeconds)) {
+            while self.osStatusModel.osStatus?.osVpnStatus == .connected || self.osStatusModel.osStatus?.osVpnStatus == .disconnecting {
+                try await Task.sleep(for: .milliseconds(200))
             }
         }
     }

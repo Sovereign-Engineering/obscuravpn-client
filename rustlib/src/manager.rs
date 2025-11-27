@@ -1,6 +1,5 @@
 use std::{
     future::Future,
-    num::NonZeroU32,
     path::PathBuf,
     sync::{Arc, Weak},
     time::Duration,
@@ -28,6 +27,7 @@ use crate::{
     },
     errors::{ApiError, ConnectErrorCode},
     exit_selection::ExitSelector,
+    net::NetworkInterface,
     network_config::TunnelNetworkConfig,
     quicwg::TransportKind,
     tunnel_state::{TargetState, TunnelState},
@@ -128,14 +128,14 @@ impl VpnStatus {
     fn from_tunnel_state(tunnel_state: &TunnelState) -> Self {
         match tunnel_state {
             TunnelState::Disconnected => VpnStatus::Disconnected {},
-            TunnelState::Connecting { args, connect_error, disconnect_reason, offset_traffic_stats: _, network_interface_index: _ } => {
+            TunnelState::Connecting { args, connect_error, disconnect_reason, offset_traffic_stats: _, network_interface: _ } => {
                 VpnStatus::Connecting {
                     tunnel_args: args.clone(),
                     connect_error: connect_error.as_ref().map(|error_at| ConnectErrorCode::from(&error_at.error)),
                     reconnecting: disconnect_reason.is_some(),
                 }
             }
-            TunnelState::Connected { args, conn, relay, exit, network_config, offset_traffic_stats: _, network_interface_index: _ } => {
+            TunnelState::Connected { args, conn, relay, exit, network_config, offset_traffic_stats: _, network_interface: _ } => {
                 VpnStatus::Connected {
                     tunnel_args: args.clone(),
                     relay: relay.clone(),
@@ -215,14 +215,16 @@ impl Manager {
         ret
     }
 
-    pub fn set_network_interface_index(&self, new_index: Option<NonZeroU32>) {
-        _ = self.target_state.send_if_modified(move |target_state| {
-            if target_state.network_interface_index != new_index {
-                target_state.network_interface_index = new_index;
+    pub fn set_network_interface(&self, network_interface: Option<NetworkInterface>) {
+        tracing::info!(message_id = "Yqi8bHbi", ?network_interface, "setting network interface");
+        _ = self.target_state.send_if_modified(|target_state| {
+            if target_state.network_interface != network_interface {
+                target_state.network_interface = network_interface.clone();
                 return true;
             }
             false
-        })
+        });
+        self.client_state.set_network_interface(network_interface);
     }
 
     pub fn set_feature_flag(&self, flag: &str, active: bool) -> Result<(), ConfigSaveError> {

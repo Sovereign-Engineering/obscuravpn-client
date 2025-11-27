@@ -53,16 +53,16 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         self.nwPathMonitor.pathUpdateHandler = { path in
             if path.status != .satisfied {
                 ffiLog(.Info, "network path not satisfied")
-                ffiSetNetworkInterfaceIndex(.none)
+                ffiSetNetworkInterface(.none)
                 return
             }
             switch path.availableInterfaces.first {
             case .some(let preferredInterface):
                 ffiLog(.Info, "preferred network path interface name: \(preferredInterface.name), index: \(preferredInterface.index)")
-                ffiSetNetworkInterfaceIndex(.some(preferredInterface.index))
+                ffiSetNetworkInterface(.some((preferredInterface.index, preferredInterface.name)))
             case .none:
                 ffiLog(.Info, "no available network path interface")
-                ffiSetNetworkInterfaceIndex(.none)
+                ffiSetNetworkInterface(.none)
             }
         }
         self.nwPathMonitor.start(queue: .main)

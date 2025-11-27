@@ -47,7 +47,9 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
                         TunnelLimitExceeded {} => Self::NoSlotsLeft,
                         RateLimitExceeded {} => Self::ApiRateLimitExceeded,
                         AlreadyExists {}
+                        | AlreadyReferred {}
                         | BadRequest {}
+                        | IneligibleForReferral {}
                         | InternalError {}
                         | InvalidReferralCode {}
                         | MiscUnauthorized {}

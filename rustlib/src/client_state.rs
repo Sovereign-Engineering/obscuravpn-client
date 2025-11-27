@@ -2,7 +2,7 @@ use super::{
     errors::{ApiError, TunnelConnectError},
     network_config::TunnelNetworkConfig,
 };
-use crate::{config::KeychainSetSecretKeyFn, network_config::DnsConfig, quicwg::QuicWgConnHandshaking};
+use crate::{config::KeychainSetSecretKeyFn, net::NetworkInterface, network_config::DnsConfig, quicwg::QuicWgConnHandshaking};
 use crate::{config::PinnedLocation, exit_selection::ExitSelectionState};
 use crate::{
     config::{self, Config, ConfigLoadError},
@@ -25,9 +25,9 @@ use obscuravpn_api::{
 };
 use rand::{seq::SliceRandom, thread_rng};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::{cmp::min, path::PathBuf, time::Instant};
-use std::{collections::BTreeSet, num::NonZeroU32};
 use std::{
     mem,
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -50,6 +50,7 @@ struct ClientStateInner {
     config: Config,
     config_dir: PathBuf,
     set_keychain_wg_sk: Option<KeychainSetSecretKeyFn>,
+    network_interface: Option<NetworkInterface>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -82,7 +83,7 @@ impl ClientState {
         let mut config = config::load(&config_dir, keychain_wg_sk)?;
         config.migrate();
         let exit_list_watch = tokio::sync::watch::channel(config.cached_exits.clone()).0;
-        let inner = ClientStateInner { config_dir, config, cached_api_client: None, set_keychain_wg_sk };
+        let inner = ClientStateInner { config_dir, config, cached_api_client: None, set_keychain_wg_sk, network_interface: None };
         Ok(Self { exit_list_watch, exit_update_lock: Default::default(), inner: Mutex::new(inner), user_agent })
     }
 
@@ -204,6 +205,12 @@ impl ClientState {
         Ok(())
     }
 
+    pub fn set_network_interface(&self, network_interface: Option<NetworkInterface>) {
+        let mut inner = self.lock();
+        inner.network_interface = network_interface;
+        inner.cached_api_client = None;
+    }
+
     pub fn set_auto_connect(&self, enable: bool) -> Result<(), ConfigSaveError> {
         let mut inner = self.lock();
         Self::change_config(&mut inner, move |config, _| config.auto_connect = enable)?;
@@ -221,11 +228,10 @@ impl ClientState {
     pub async fn connect(
         &self,
         exit_selector: &ExitSelector,
-        network_interface_index: Option<NonZeroU32>,
+        network_interface: Option<&NetworkInterface>,
         selection_state: &mut ExitSelectionState,
     ) -> Result<(QuicWgConn, TunnelNetworkConfig, OneExit, OneRelay), TunnelConnectError> {
-        let (token, tunnel_config, wg_sk, exit, relay, handshaking) =
-            self.new_tunnel(exit_selector, network_interface_index, selection_state).await?;
+        let (token, tunnel_config, wg_sk, exit, relay, handshaking) = self.new_tunnel(exit_selector, network_interface, selection_state).await?;
         let network_config = TunnelNetworkConfig::new(&tunnel_config, TUNNEL_MTU)?;
         let client_ip_v4 = network_config.ipv4;
         tracing::info!(
@@ -260,15 +266,12 @@ impl ClientState {
     async fn new_tunnel(
         &self,
         exit_selector: &ExitSelector,
-        network_interface_index: Option<NonZeroU32>,
+        network_interface: Option<&NetworkInterface>,
         selection_state: &mut ExitSelectionState,
     ) -> anyhow::Result<(Uuid, ObfuscatedTunnelConfig, StaticSecret, OneExit, OneRelay, QuicWgConnHandshaking), TunnelConnectError> {
         // Ideally we would avoid return a failure immediately if the relay selection fails and continue the exit update in the background but we currently have no ability to execute tasks in the background for this type. The downside of a slight delay in the failure case is suboptimal but minor.
 
-        let (select_relay, update_exits) = tokio::join!(
-            self.select_relay(network_interface_index),
-            self.maybe_update_exits(Duration::from_secs(60)),
-        );
+        let (select_relay, update_exits) = tokio::join!(self.select_relay(network_interface), self.maybe_update_exits(Duration::from_secs(60)),);
         match update_exits {
             Ok(()) => {}
             Err(error) => {
@@ -377,7 +380,7 @@ impl ClientState {
         }
     }
 
-    pub async fn select_relay(&self, network_interface_index: Option<NonZeroU32>) -> Result<(OneRelay, QuicWgConnHandshaking), TunnelConnectError> {
+    pub async fn select_relay(&self, network_interface: Option<&NetworkInterface>) -> Result<(OneRelay, QuicWgConnHandshaking), TunnelConnectError> {
         let relays = self.api_request(ListRelays {}).await?;
         let sni = self.lock().config.sni_relay.clone().unwrap_or_else(|| DEFAULT_RELAY_SNI.into());
 
@@ -394,7 +397,7 @@ impl ClientState {
                 feature_flags.quic_frame_padding.unwrap_or(false),
             )
         };
-        let racing_handshakes = race_relay_handshakes(network_interface_index, relays, sni, use_tcp_tls, pad_to_mtu)?;
+        let racing_handshakes = race_relay_handshakes(network_interface, relays, sni, use_tcp_tls, pad_to_mtu)?;
 
         let start = Instant::now();
         let mut deadline = start + Duration::from_secs(30);
@@ -457,11 +460,13 @@ impl ClientState {
 
     fn make_api_client_inner(&self, inner: &mut ClientStateInner, account_id: AccountId) -> Result<Client, ApiError> {
         let base_url = inner.base_url();
+        tracing::info!(message_id = "By9iMtd5", network_interface = ?inner.network_interface, ?base_url, "creating new API client");
         Client::new(
             base_url,
             vec![inner.config.api_host_alternate.clone().unwrap_or_else(|| DEFAULT_API_BACKUP.into())],
             account_id,
             &self.user_agent,
+            inner.network_interface.as_ref().map(|i| i.name.as_str()),
         )
         .map_err(ClientError::from)
         .map_err(ApiError::from)

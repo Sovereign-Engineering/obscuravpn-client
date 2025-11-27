@@ -60,16 +60,22 @@ func ffiJsonManagerCmd(_ jsonCmd: Data) async -> NeManagerCmdResult {
     }
 }
 
-func ffiSetNetworkInterfaceIndex(_ index: Int?) {
-    if let index: Int = index {
+func ffiSetNetworkInterface(_ network_interface: (Int, String)?) {
+    if let (index, name): (Int, String) = network_interface {
         if index <= 0 || Int64(index) > Int64(UInt32.max) {
             ffiLog(.Error, "network interface index out of range \(index)")
-            libobscuravpn_client.set_network_interface_index(0)
+            "".withFfiStr { ffiEmptyName in
+                libobscuravpn_client.set_network_interface(0, ffiEmptyName)
+            }
         } else {
-            libobscuravpn_client.set_network_interface_index(UInt32(index))
+            name.withFfiStr { ffiName in
+                libobscuravpn_client.set_network_interface(UInt32(index), ffiName)
+            }
         }
     } else {
-        libobscuravpn_client.set_network_interface_index(0)
+        "".withFfiStr { ffiEmptyName in
+            libobscuravpn_client.set_network_interface(0, ffiEmptyName)
+        }
     }
 }
 

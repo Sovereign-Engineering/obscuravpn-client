@@ -62,11 +62,13 @@ impl From<&ApiError> for ManagerCmdErrorCode {
                     ApiErrorKind::SignupLimitExceeded {} => Self::ApiSignupLimitExceeded,
                     ApiErrorKind::AccountExpired {}
                     | ApiErrorKind::AlreadyExists {}
+                    | ApiErrorKind::AlreadyReferred {}
                     | ApiErrorKind::BadRequest {}
+                    | ApiErrorKind::IneligibleForReferral {}
                     | ApiErrorKind::InternalError {}
                     | ApiErrorKind::InvalidReferralCode {}
-                    | ApiErrorKind::MiscUnauthorized {}
                     | ApiErrorKind::MissingOrInvalidAuthToken {}
+                    | ApiErrorKind::MiscUnauthorized {}
                     | ApiErrorKind::MoneroTopUpNotFound {}
                     | ApiErrorKind::NoApiRoute {}
                     | ApiErrorKind::NoMatchingExit {}

@@ -8,6 +8,7 @@ use crate::ffi_helpers::*;
 use crate::manager::Manager;
 use crate::manager_cmd::ManagerCmd;
 use crate::manager_cmd::ManagerCmdErrorCode;
+use crate::net::NetworkInterface;
 
 /// cbindgen:ignore
 static APPLE_LOG_INIT: std::sync::Once = std::sync::Once::new();
@@ -157,15 +158,17 @@ pub unsafe extern "C" fn send_packet(packet: FfiBytes) {
     global_manager().send_packet(&packet);
 }
 
-/// Set the network interface to use by index.
+/// Set the network interface to use by index and name.
 ///
-/// 0 means no interface (do not try connecting).
+/// Index 0 means no interface (do not try connecting).
+/// Name is ignored if index is 0.
 ///
 /// SAFETY:
 /// - there is no other global function of this name
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn set_network_interface_index(index: u32) {
-    global_manager().set_network_interface_index(NonZeroU32::new(index));
+pub unsafe extern "C" fn set_network_interface(index: u32, name: FfiStr) {
+    let network_interface = NonZeroU32::new(index).map(|index| NetworkInterface { index, name: name.as_str().to_string() });
+    global_manager().set_network_interface(network_interface);
 }
 
 /// Call after wake.

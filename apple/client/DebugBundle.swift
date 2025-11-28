@@ -570,25 +570,14 @@ private class DebugBundleBuilder {
     #if os(iOS)
         @MainActor func bundleStoreKitInfo() async {
             guard let storeKitModel = self.appState?.storeKitModel else {
-                self.writeError(name: "storekit-info", error: "appState or storeKitModel is nil")
+                self.writeError(name: "storekit-info", error: "appState is nil")
                 return
             }
             var products: [Any] = []
             var transactionsVerified: [Any] = []
             var transactionsUnverified: [[String: Any]] = []
             do {
-                for product in storeKitModel.products {
-                    var subscriptionStatus: [[String: String]] = []
-                    if let subscription = product.subscription {
-                        for status in try await subscription.status {
-                            subscriptionStatus.append(["state": status.state.localizedDescription])
-                        }
-                    }
-                    try products.append([
-                        "product": JSONSerialization.jsonObject(with: product.jsonRepresentation),
-                        "subscriptionStatus": subscriptionStatus,
-                    ])
-                }
+                var products = try await storeKitModel.collectDebugData()
                 for await verificationResult in Transaction.all {
                     switch verificationResult {
                     case .verified(let transaction):

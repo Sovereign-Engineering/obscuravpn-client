@@ -200,16 +200,6 @@ func neLogin(_ manager: NETunnelProviderManager,
     _ = try await runNeJsonCommand(manager, NeManagerCmd.login(accountId: accountId, validate: false).json(), name: "login", attemptTimeout: attemptTimeout, maxAttempts: maxAttempts)
 }
 
-// TODO: Move to manager. https://linear.app/soveng/issue/OBS-2131/apple-store-code-shouldnt-use-netunnelprovidermanager-directly
-func neApiAppleAssociateAccount(
-    _ manager: NETunnelProviderManager,
-    appTransactionJws: String,
-    attemptTimeout: Duration? = nil,
-    maxAttempts: UInt = 10
-) async throws -> AppleAssociateAccountOutput {
-    return try await runNeCommand(manager, NeManagerCmd.apiAppleAssociateAccount(appTransactionJws: appTransactionJws), attemptTimeout: attemptTimeout, maxAttempts: maxAttempts)
-}
-
 func getNeStatus(
     _ manager: NETunnelProviderManager,
     knownVersion: UUID?,

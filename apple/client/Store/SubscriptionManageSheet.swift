@@ -5,22 +5,12 @@ import SwiftUI
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "SubscriptionManageSheet")
 
-private enum SheetType: Identifiable {
-    case storeKitDebug
-    case previewCarousel
-
-    var id: Self { self }
-}
-
 struct SubscriptionManageSheet: View {
     @Environment(\.scenePhase) private var scenePhase
 
     let openUrl: ((URL) -> Void)?
 
     @StateObject private var viewModel: SubscriptionManageViewModel
-
-    @State private var activeSheet: SheetType?
-    @State private var showingDebugOptions = false
 
     @State private var longLoadDetected: Bool = false
     @State private var longLoadingTask: Task<Void, Error>? = nil
@@ -31,16 +21,9 @@ struct SubscriptionManageSheet: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    // Initializer for production use with manager
-    init(manager: NETunnelProviderManager, storeKitModel: StoreKitModel, openUrl: @escaping (URL) -> Void) {
+    init(appState: AppState, openUrl: @escaping (URL) -> Void) {
         self.openUrl = openUrl
-        self._viewModel = StateObject(wrappedValue: SubscriptionManageViewModel(manager: manager, storeKitModel: storeKitModel))
-    }
-
-    // Initializer for testing
-    init(accountInfo: AccountInfo) {
-        self.openUrl = nil
-        self._viewModel = StateObject(wrappedValue: SubscriptionManageViewModel(manager: nil, accountInfo: accountInfo))
+        self._viewModel = StateObject(wrappedValue: SubscriptionManageViewModel(appState: appState))
     }
 
     var body: some View {
@@ -78,27 +61,6 @@ struct SubscriptionManageSheet: View {
                     }
                 }
 
-                if self.canSeeDebugItems {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button {
-                            self.showingDebugOptions = true
-                        } label: {
-                            Image(systemName: "storefront.circle.fill")
-                                .foregroundColor(.blue)
-                                .font(.title2)
-                        }
-                        .confirmationDialog("Select Debug View", isPresented: self.$showingDebugOptions, titleVisibility: .visible) {
-                            Button("StoreKit Debug") {
-                                self.activeSheet = .storeKitDebug
-                            }
-                            Button("Preview Carousel") {
-                                self.activeSheet = .previewCarousel
-                            }
-                            Button("Cancel", role: .cancel) {}
-                        }
-                    }
-                }
-
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         Task {
@@ -126,14 +88,6 @@ struct SubscriptionManageSheet: View {
         } message: {
             Text("Something went wrong")
         }
-        .sheet(item: self.$activeSheet) { sheetType in
-            switch sheetType {
-            case .storeKitDebug:
-                StoreDebugUI(storeKitModel: self.viewModel.storeKitModel, accountId: self.viewModel.accountInfo?.id)
-            case .previewCarousel:
-                SubscriptionManageSheetViewPreviewCarousel()
-            }
-        }
         .onChange(of: self.viewModel.isLoading) { _, newValue in
             self.longLoadingTask?.cancel()
             if !newValue {
@@ -146,9 +100,5 @@ struct SubscriptionManageSheet: View {
                 }
             }
         }
-    }
-
-    var canSeeDebugItems: Bool {
-        return self.viewModel.debugGestureActivated
     }
 }

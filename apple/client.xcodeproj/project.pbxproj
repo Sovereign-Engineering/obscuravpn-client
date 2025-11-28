@@ -16,6 +16,8 @@
 		1D9F4FDE2E5BC912001C080B /* DebugBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9BCB05D2DC54AC0006C0133 /* DebugBundle.swift */; };
 		1D9F4FE02E5BCDED001C080B /* time.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35A6F2532C6121C2004E1A7C /* time.swift */; };
 		1D9F50082E6280FF001C080B /* MailDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D9F50072E6280FF001C080B /* MailDelegate.swift */; };
+		1DAD5D622ED7F27800DDB469 /* StoreKitListener.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DAD5D612ED7F27500DDB469 /* StoreKitListener.swift */; };
+		1DAD5D662ED8FAA100DDB469 /* StoreKitModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DAD5D652ED8FAA100DDB469 /* StoreKitModel.swift */; };
 		1DB5666B2EA565E7009CEB08 /* String.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C920682CD91D94002C85EA /* String.swift */; };
 		300452782C49BC90000B78F7 /* Json.swift in Sources */ = {isa = PBXBuildFile; fileRef = 300452772C49BC90000B78F7 /* Json.swift */; };
 		300452792C49BC90000B78F7 /* Json.swift in Sources */ = {isa = PBXBuildFile; fileRef = 300452772C49BC90000B78F7 /* Json.swift */; };
@@ -124,7 +126,6 @@
 		A94B1DD62E28B16800E5F325 /* SubscriptionManageSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B1DD32E28B16800E5F325 /* SubscriptionManageSheetView.swift */; };
 		A94B1DD72E28B16800E5F325 /* PurchaseOptionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B1DD12E28B16800E5F325 /* PurchaseOptionsView.swift */; };
 		A94B1DE02E28B2D000E5F325 /* AccountInfoOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B1DDE2E28B2D000E5F325 /* AccountInfoOverviewView.swift */; };
-		A94B1DE22E28B4E100E5F325 /* SubscriptionManageSheetViewPreviewCarousel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B1DE12E28B4E100E5F325 /* SubscriptionManageSheetViewPreviewCarousel.swift */; };
 		A94B1E242E2B03B900E5F325 /* ConditionallyDisabled.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B1D9B2E286B3900E5F325 /* ConditionallyDisabled.swift */; };
 		A94B1E3D2E2B236800E5F325 /* Obscura VPN Local.storekit in Resources */ = {isa = PBXBuildFile; fileRef = A94B1E3C2E2B236800E5F325 /* Obscura VPN Local.storekit */; };
 		A94BF4462E53BBEF007FDD1C /* Account+CustomStringConvertible.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94BF4452E53BBE9007FDD1C /* Account+CustomStringConvertible.swift */; };
@@ -191,9 +192,7 @@
 		A9BCB0612DC54B68006C0133 /* UpdaterDriver+XP.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9BCB0602DC54B68006C0133 /* UpdaterDriver+XP.swift */; };
 		A9BCB0622DC54B68006C0133 /* UpdaterDriver+XP.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9BCB0602DC54B68006C0133 /* UpdaterDriver+XP.swift */; };
 		A9E44A782E093DA7006B4616 /* Obscura VPN.storekit in Resources */ = {isa = PBXBuildFile; fileRef = A9E44A762E093DA7006B4616 /* Obscura VPN.storekit */; };
-		A9E44A7A2E093E79006B4616 /* StoreKitModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9E44A792E093E79006B4616 /* StoreKitModel.swift */; };
 		A9E44A7C2E0947EA006B4616 /* Product+Convenience.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9E44A7B2E0947EA006B4616 /* Product+Convenience.swift */; };
-		A9E44A802E0950ED006B4616 /* StoreDebugUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9E44A7E2E0950ED006B4616 /* StoreDebugUI.swift */; };
 		C90161572BE011B2005B14AF /* libobscuravpn-client.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C90161542BE01159005B14AF /* libobscuravpn-client.a */; };
 /* End PBXBuildFile section */
 
@@ -275,6 +274,8 @@
 		1799341E2E9411770089B6EB /* NotificationIds.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationIds.swift; sourceTree = "<group>"; };
 		17B910012E0DB3E00073AAD7 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 		1D9F50072E6280FF001C080B /* MailDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailDelegate.swift; sourceTree = "<group>"; };
+		1DAD5D612ED7F27500DDB469 /* StoreKitListener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitListener.swift; sourceTree = "<group>"; };
+		1DAD5D652ED8FAA100DDB469 /* StoreKitModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitModel.swift; sourceTree = "<group>"; };
 		300452772C49BC90000B78F7 /* Json.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Json.swift; sourceTree = "<group>"; };
 		30497E5E2D9EC038008B22F9 /* Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		30497E652D9EC09E008B22F9 /* ConcurrencyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcurrencyTests.swift; sourceTree = "<group>"; };
@@ -352,7 +353,6 @@
 		A94B1DD12E28B16800E5F325 /* PurchaseOptionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseOptionsView.swift; sourceTree = "<group>"; };
 		A94B1DD32E28B16800E5F325 /* SubscriptionManageSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManageSheetView.swift; sourceTree = "<group>"; };
 		A94B1DDE2E28B2D000E5F325 /* AccountInfoOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountInfoOverviewView.swift; sourceTree = "<group>"; };
-		A94B1DE12E28B4E100E5F325 /* SubscriptionManageSheetViewPreviewCarousel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManageSheetViewPreviewCarousel.swift; sourceTree = "<group>"; };
 		A94B1E3C2E2B236800E5F325 /* Obscura VPN Local.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Obscura VPN Local.storekit"; sourceTree = "<group>"; };
 		A94BF4452E53BBE9007FDD1C /* Account+CustomStringConvertible.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Account+CustomStringConvertible.swift"; sourceTree = "<group>"; };
 		A952CE082E1B87B8007E25AC /* SubscriptionManageSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManageSheet.swift; sourceTree = "<group>"; };
@@ -369,9 +369,7 @@
 		A9BCB05D2DC54AC0006C0133 /* DebugBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugBundle.swift; sourceTree = "<group>"; };
 		A9BCB0602DC54B68006C0133 /* UpdaterDriver+XP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UpdaterDriver+XP.swift"; sourceTree = "<group>"; };
 		A9E44A762E093DA7006B4616 /* Obscura VPN.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Obscura VPN.storekit"; sourceTree = "<group>"; };
-		A9E44A792E093E79006B4616 /* StoreKitModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitModel.swift; sourceTree = "<group>"; };
 		A9E44A7B2E0947EA006B4616 /* Product+Convenience.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Product+Convenience.swift"; sourceTree = "<group>"; };
-		A9E44A7E2E0950ED006B4616 /* StoreDebugUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreDebugUI.swift; sourceTree = "<group>"; };
 		C901614E2BE01159005B14AF /* obscuravpn-client.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "obscuravpn-client.xcodeproj"; sourceTree = "<group>"; };
 		C90161A62BE01A8E005B14AF /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		C90161A72BE01A8E005B14AF /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
@@ -500,7 +498,6 @@
 			children = (
 				A9E44A752E093D3F006B4616 /* Store */,
 				A983D8002DF276DF007306C5 /* Webviews */,
-				A9843F5B2DD7DBF600988B2D /* SwiftUI Hacks */,
 				A94743F62DD170E8002ACD85 /* iOS */,
 				A936D4972DD161630031B646 /* UXKit */,
 				A99871102DBAF8080044D136 /* Style */,
@@ -641,15 +638,6 @@
 			path = iOS;
 			sourceTree = "<group>";
 		};
-		A94B1DE42E28B56800E5F325 /* Debug */ = {
-			isa = PBXGroup;
-			children = (
-				A94B1DE12E28B4E100E5F325 /* SubscriptionManageSheetViewPreviewCarousel.swift */,
-				A9E44A7E2E0950ED006B4616 /* StoreDebugUI.swift */,
-			);
-			path = Debug;
-			sourceTree = "<group>";
-		};
 		A983D8002DF276DF007306C5 /* Webviews */ = {
 			isa = PBXGroup;
 			children = (
@@ -660,13 +648,6 @@
 				A983D7E22DF261BB007306C5 /* ExternalWebView.swift */,
 			);
 			path = Webviews;
-			sourceTree = "<group>";
-		};
-		A9843F5B2DD7DBF600988B2D /* SwiftUI Hacks */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = "SwiftUI Hacks";
 			sourceTree = "<group>";
 		};
 		A9963C552DB83E4100D10893 /* Packet Tunnel Provider */ = {
@@ -709,14 +690,14 @@
 		A9E44A752E093D3F006B4616 /* Store */ = {
 			isa = PBXGroup;
 			children = (
-				A94B1DE42E28B56800E5F325 /* Debug */,
+				1DAD5D652ED8FAA100DDB469 /* StoreKitModel.swift */,
+				1DAD5D612ED7F27500DDB469 /* StoreKitListener.swift */,
 				A94B1DD02E28B16800E5F325 /* Product+Convenience.swift */,
 				A94B1DD12E28B16800E5F325 /* PurchaseOptionsView.swift */,
 				A94B1DD32E28B16800E5F325 /* SubscriptionManageSheetView.swift */,
 				A952CE082E1B87B8007E25AC /* SubscriptionManageSheet.swift */,
 				A94B1E3C2E2B236800E5F325 /* Obscura VPN Local.storekit */,
 				A9E44A762E093DA7006B4616 /* Obscura VPN.storekit */,
-				A9E44A792E093E79006B4616 /* StoreKitModel.swift */,
 				A9E44A7B2E0947EA006B4616 /* Product+Convenience.swift */,
 				A94B1DDE2E28B2D000E5F325 /* AccountInfoOverviewView.swift */,
 				A91CEF112E386B0300454518 /* SubscriptionManageViewModel.swift */,
@@ -1132,6 +1113,7 @@
 				A936D49A2DD161B00031B646 /* UXImage.swift in Sources */,
 				A936D4902DD15B6B0031B646 /* startup.swift in Sources */,
 				A936D4732DD14E470031B646 /* command.swift in Sources */,
+				1DAD5D662ED8FAA100DDB469 /* StoreKitModel.swift in Sources */,
 				A936D4722DD14E040031B646 /* ScriptMessageHandlers.swift in Sources */,
 				A94BF4472E53BBEF007FDD1C /* Account+CustomStringConvertible.swift in Sources */,
 				A936D4712DD14DC30031B646 /* ObscuraUIWebView.swift in Sources */,
@@ -1146,7 +1128,6 @@
 				A9E44A7C2E0947EA006B4616 /* Product+Convenience.swift in Sources */,
 				A99871242DBAF8940044D136 /* Account.swift in Sources */,
 				A94B1D9C2E286B3900E5F325 /* ConditionallyDisabled.swift in Sources */,
-				A9E44A802E0950ED006B4616 /* StoreDebugUI.swift in Sources */,
 				A99871232DBAF88F0044D136 /* NEVPNStatus.swift in Sources */,
 				96DB3D552E60F01B005B4D1B /* Appearance.swift in Sources */,
 				A99871222DBAF8890044D136 /* OSLogEntryEncodable.swift in Sources */,
@@ -1175,10 +1156,9 @@
 				A99871182DBAF8590044D136 /* WatchableValue.swift in Sources */,
 				A94B1DCD2E28B13E00E5F325 /* AccountInfo+Util.swift in Sources */,
 				A99871162DBAF8510044D136 /* OsStatus.swift in Sources */,
-				A9E44A7A2E093E79006B4616 /* StoreKitModel.swift in Sources */,
-				A94B1DE22E28B4E100E5F325 /* SubscriptionManageSheetViewPreviewCarousel.swift in Sources */,
 				A99871152DBAF84D0044D136 /* app_state.swift in Sources */,
 				A99871122DBAF8080044D136 /* NoFadeButtonStyle.swift in Sources */,
+				1DAD5D622ED7F27800DDB469 /* StoreKitListener.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

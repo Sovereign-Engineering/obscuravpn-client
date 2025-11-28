@@ -1,6 +1,7 @@
 import Foundation
 #if os(iOS)
     import MessageUI
+    import StoreKit
 #endif
 import NetworkExtension
 import OSLog
@@ -23,7 +24,8 @@ class AppState: ObservableObject {
         let updater: SparkleUpdater
     #else
         let mailDelegate = MailDelegate()
-        let storeKitModel: StoreKitModel
+        @Published var storeKitModel: StoreKitModel = .init()
+        private var storeKitListener: StoreKitListener?
     #endif
     @Published var webviewsController: WebviewsController
 
@@ -36,8 +38,6 @@ class AppState: ObservableObject {
         self.osStatus = OsStatus.watchable(manager: manager)
         #if os(macOS)
             self.updater = SparkleUpdater(osStatus: self.osStatus)
-        #else
-            self.storeKitModel = StoreKitModel(manager: manager)
         #endif
 
         self.webviewsController = WebviewsController()
@@ -47,6 +47,7 @@ class AppState: ObservableObject {
             self.didBecomeActiveObserver = NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
                 self?.updateNeedIsEnabledFix()
             }
+            self.storeKitListener = StoreKitListener(appState: self)
         #endif
 
         if initialStatus.autoConnect {
@@ -299,6 +300,10 @@ class AppState: ObservableObject {
         let _: Empty = try await runNeCommand(self.manager, .ping, attemptTimeout: Duration.seconds(5), maxAttempts: 1)
     }
 
+    func getAccountInfo() async throws(String) -> AccountInfo {
+        return try await runNeCommand(self.manager, .apiGetAccountInfo)
+    }
+
     func getTrafficStats() async throws(String) -> TrafficStats {
         return try await runNeCommand(self.manager, .getTrafficStats)
     }
@@ -390,6 +395,32 @@ class AppState: ObservableObject {
     }
 
     #if os(iOS)
+        func associateAccount() async throws -> AppleAssociateAccountOutput {
+            return try await runNeCommand(self.manager, .apiAppleAssociateAccount(appTransactionJws: AppTransaction.shared.jwsRepresentation))
+        }
+
+        // TODO: Test interrupted purchase
+        // https://developer.apple.com/documentation/storekit/testing-an-interrupted-purchase
+        func purchase(product: Product) async throws -> Bool {
+            _ = try await self.associateAccount()
+            let result = try await product.purchase()
+            if case .success(let verification) = result {
+                if case .verified(let transaction) = verification {
+                    await transaction.finish()
+                    return true
+                }
+            }
+            return false
+        }
+
+        func purchaseSubscription() async throws -> Bool {
+            guard let subscriptionProduct = await self.storeKitModel.subscriptionProduct else {
+                Self.logger.error("subscription product missing")
+                return false
+            }
+            return try await self.purchase(product: subscriptionProduct)
+        }
+
         private func rootViewController() -> UIViewController? {
             UIApplication.shared.connectedScenes
                 .compactMap { $0 as? UIWindowScene }

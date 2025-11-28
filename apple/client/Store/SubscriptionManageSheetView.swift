@@ -3,7 +3,6 @@ import SwiftUI
 
 struct SubscriptionManageSheetView: View {
     @ObservedObject var viewModel: SubscriptionManageViewModel
-    @ObservedObject var storeKitModel: StoreKitModel
     let openUrl: ((URL) -> Void)?
 
     init(
@@ -11,7 +10,6 @@ struct SubscriptionManageSheetView: View {
         openUrl: ((URL) -> Void)?
     ) {
         self.viewModel = viewModel
-        self.storeKitModel = viewModel.storeKitModel
         self.openUrl = openUrl
     }
 
@@ -33,9 +31,6 @@ struct SubscriptionManageSheetView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 AccountInfoOverviewView(viewModel: self.viewModel)
-                    .onTapGesture(count: 5) {
-                        self.viewModel.debugGestureActivated = true
-                    }
 
                 if self.viewModel.storeKitPurchasedAwaitingServerAck {
                     ProgressView()

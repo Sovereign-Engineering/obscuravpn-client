@@ -32,7 +32,6 @@ struct LabelledDivider: View {
 struct PurchaseOptionsView: View {
     let openUrl: (URL) -> Void
     @ObservedObject var viewModel: SubscriptionManageViewModel
-    @ObservedObject var storeKitModel: StoreKitModel
 
     @State private var manageSubscriptionsPopover: Bool = false
     @State private var restorePurchasesInProgress: Bool = false
@@ -49,15 +48,10 @@ struct PurchaseOptionsView: View {
     ) {
         self.openUrl = openUrl
         self.viewModel = viewModel
-        self.storeKitModel = viewModel.storeKitModel
-    }
-
-    private var monthlySubscriptionProduct: Product? {
-        return self.storeKitModel.product(for: .monthlySubscription)
     }
 
     var body: some View {
-        if let accountInfo = viewModel.accountInfo, let product = self.monthlySubscriptionProduct {
+        if let accountInfo = self.viewModel.accountInfo, let product = self.viewModel.appState.storeKitModel.subscriptionProduct {
             if !accountInfo.active {
                 VStack(alignment: .center, spacing: 18) {
                     VStack(alignment: .center, spacing: 14) {
@@ -73,8 +67,7 @@ struct PurchaseOptionsView: View {
                     // Account for padding coming out of nested v stack
                     .padding(-14)
 
-                    // External payments are currently only straightforward in the US
-                    if self.storeKitModel.storefront?.countryCode == "USA" {
+                    if self.viewModel.appState.storeKitModel.externalPaymentsAllowed {
                         LabelledDivider(label: "or")
                             .padding(.horizontal, 30)
                         self.externalPaymentManageButton(accountInfo: accountInfo)
@@ -116,7 +109,7 @@ struct PurchaseOptionsView: View {
             .padding()
 
             Button {
-                if self.storeKitModel.hasActiveMonthlySubscription {
+                if self.viewModel.appState.storeKitModel.subscribed {
                     self.manageSubscriptionsPopover = true
                 } else {
                     Task {
@@ -124,7 +117,7 @@ struct PurchaseOptionsView: View {
                     }
                 }
             } label: {
-                if self.storeKitModel.hasActiveMonthlySubscription {
+                if self.viewModel.appState.storeKitModel.subscribed {
                     Text("Manage Subscription")
                         .frame(maxWidth: .infinity)
                 } else {
@@ -134,7 +127,7 @@ struct PurchaseOptionsView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .padding(.horizontal, self.storeKitModel.hasActiveMonthlySubscription ? 35 : 45)
+            .padding(.horizontal, self.viewModel.appState.storeKitModel.subscribed ? 35 : 45)
             .bold()
             .tint(Color.obscuraOrange)
             .manageSubscriptionsSheet(
@@ -153,7 +146,7 @@ struct PurchaseOptionsView: View {
         .onTapGesture {
             Task { @MainActor in
                 self.restorePurchasesInProgress = true
-                await self.storeKitModel.restorePurchases()
+                await self.viewModel.appState.storeKitModel.restorePurchases()
                 self.restorePurchasesInProgress = false
             }
 
@@ -197,7 +190,7 @@ struct PurchaseOptionsView: View {
         .bold()
         .tint(Color.obscuraOrange)
         .conditionallyDisabled(
-            when: accountInfo.hasActiveAppleSubscription || self.storeKitModel.hasActiveMonthlySubscription,
+            when: accountInfo.hasActiveAppleSubscription || self.viewModel.appState.storeKitModel.subscribed,
             explanation: "You're already subscribed through the App Store! You can't pay externally until your subscription expires."
         )
     }
@@ -214,7 +207,7 @@ struct PurchaseOptionsView: View {
 
                     Task { @MainActor in
                         do {
-                            try await self.storeKitModel.associateAccount()
+                            try await self.viewModel.appState.associateAccount()
                             self.isPromoCodeSheetPresented = true
                         } catch {
                             logger.error("Failed to Associate Apple account: \(error, privacy: .public)")
@@ -242,7 +235,7 @@ struct PurchaseOptionsView: View {
             switch result {
             case .success:
                 Task {
-                    await self.viewModel.onOfferCodeRedemption()
+                    await self.viewModel.afterPurchase()
                 }
                 logger.info("Promo code redemption flow completed successfully. (errors only show up if a valid code fails to redeem. So invalid codes and not entering a code land you here)")
             case .failure(let error):

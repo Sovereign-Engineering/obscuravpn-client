@@ -136,13 +136,11 @@ struct AccountInfoOverviewView: View {
     typealias Section = SectionedTableInfoView.Configuration.Section
 
     @ObservedObject var viewModel: SubscriptionManageViewModel
-    @ObservedObject var storeKitModel: StoreKitModel
 
     init(
         viewModel: SubscriptionManageViewModel
     ) {
         self.viewModel = viewModel
-        self.storeKitModel = viewModel.storeKitModel
     }
 
     var body: some View {
@@ -255,7 +253,7 @@ struct AccountInfoOverviewView: View {
         ))
 
         if self.viewModel.storeKitPurchasedAwaitingServerAck {
-            let hasStorekit = self.storeKitModel.hasActiveMonthlySubscription
+            let hasStorekit = self.viewModel.appState.storeKitModel.subscribed
             if !accountInfo.active || hasStorekit {
                 build.append(Row(
                     title: "Subscription Status",

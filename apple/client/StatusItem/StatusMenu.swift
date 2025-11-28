@@ -534,7 +534,7 @@ final class StatusItemManager: ObservableObject {
             if pollAccount {
                 Task {
                     // updateAccountItem task will restart upon appState.status.account change
-                    try? await getAccountInfo(appState.manager)
+                    try? await appState.getAccountInfo()
                 }
                 return
             }

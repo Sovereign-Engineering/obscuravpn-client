@@ -7,14 +7,12 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
 
 @MainActor
 final class SubscriptionManageViewModel: ObservableObject {
-    private let manager: NETunnelProviderManager?
-    @ObservedObject var storeKitModel: StoreKitModel
+    @ObservedObject var appState: AppState
 
     @Published var accountInfo: AccountInfo?
     @Published var isLoading = false
     @Published var initialLoad = true
     @Published var showErrorAlert = false
-    @Published var debugGestureActivated = false
 
     // Bool is canRepeat
     private var refreshTaskPerCanRepeat: [Bool: Task<Void, Error>?] = [:]
@@ -22,16 +20,15 @@ final class SubscriptionManageViewModel: ObservableObject {
     // If true StoreKit thinks the subscription is owned but server does not show it as owned
     // If you want to observe this property you must have both storeKitModel and SubscriptionManageViewModel as observed
     var storeKitPurchasedAwaitingServerAck: Bool {
-        let hasStoreKitSubscription = self.storeKitModel.hasActiveMonthlySubscription
+        let hasStoreKitSubscription = self.appState.storeKitModel.subscribed
         let hasServerSubscription = self.accountInfo?.appleSubscription?.subscriptionStatus == .active
 
         // Return true if StoreKit shows active but server doesn't yet
         return hasStoreKitSubscription && !hasServerSubscription
     }
 
-    init(manager: NETunnelProviderManager?, storeKitModel: StoreKitModel? = nil, accountInfo: AccountInfo? = nil) {
-        self.manager = manager
-        self.storeKitModel = storeKitModel ?? StoreKitModel(manager: manager)
+    init(appState: AppState, accountInfo: AccountInfo? = nil) {
+        self.appState = appState
         self.accountInfo = accountInfo
         self.initialLoad = accountInfo == nil
 
@@ -40,28 +37,22 @@ final class SubscriptionManageViewModel: ObservableObject {
         }
     }
 
-    var monthlySubscriptionProduct: Product? {
-        self.storeKitModel.product(for: .monthlySubscription)
-    }
-
     var displayPrice: String? {
-        if let monthlySubscriptionProduct, let subscriptionPeriodFormatted = monthlySubscriptionProduct.subscriptionPeriodFormatted() {
-            return "\(monthlySubscriptionProduct.displayPrice)/\n\(subscriptionPeriodFormatted)"
+        guard let subscriptionProduct = self.appState.storeKitModel.subscriptionProduct else {
+            return nil
         }
-        return nil
+        guard let period = subscriptionProduct.subscriptionPeriodFormatted() else {
+            return nil
+        }
+        return "\(subscriptionProduct.displayPrice)/\n\(period)"
     }
 
     func loadAccountInfo(showLoading: Bool = true) async {
-        guard let manager = manager else {
-            logger.warning("Attempted to load account info without manager")
-            return
-        }
-
         if showLoading {
             self.isLoading = true
         }
         do {
-            let accountInfo = try await getAccountInfo(manager)
+            let accountInfo = try await appState.getAccountInfo()
             self.accountInfo = accountInfo
             if showLoading {
                 self.isLoading = false
@@ -77,37 +68,24 @@ final class SubscriptionManageViewModel: ObservableObject {
         }
     }
 
-    func restorePurchases() async {
-        await self.storeKitModel.restorePurchases()
-    }
-
     func purchaseSubscription() async throws {
-        guard let id = self.accountInfo?.id else {
-            logger.error("Cannot purchaseSubscription without a manager or id")
+        guard self.accountInfo != nil else {
+            logger.error("can't purchase unless logged in")
             return
         }
 
-        // Purchase
         do {
-            let purchased = try await self.storeKitModel
-                .purchase(
-                    obscuraProduct: .monthlySubscription,
-                    accountId: id
-                )
+            let purchased = try await self.appState.purchaseSubscription()
             if purchased {
-                await self.afterAnyPurchase()
+                await self.afterPurchase()
             }
         } catch {
-            logger.error("Purchase failed: \(error)")
+            logger.error("purchase failed: \(error, privacy: .public)")
             throw error
         }
     }
 
-    func onOfferCodeRedemption() async {
-        await self.afterAnyPurchase()
-    }
-
-    private func afterAnyPurchase() async {
+    func afterPurchase() async {
         await self.refresh(
             repeatWithBinaryBackoffAllowed: true,
             userOriginated: false
@@ -115,14 +93,9 @@ final class SubscriptionManageViewModel: ObservableObject {
     }
 
     func refresh(repeatWithBinaryBackoffAllowed: Bool = false, userOriginated: Bool = false) async {
-        if userOriginated {
-            Task {
-                await self.logCurrentStatus(context: "User originated refresh")
-            }
-        }
         self.refreshTaskPerCanRepeat[repeatWithBinaryBackoffAllowed]??.cancel()
         self.refreshTaskPerCanRepeat[repeatWithBinaryBackoffAllowed] = Task {
-            await self.storeKitModel.updateStoreKitSubscriptionStatus()
+            await self.appState.storeKitModel.updatePurchases()
 
             // Do one simple load to see if we can get a match between client and server state
             await self.loadAccountInfo(showLoading: userOriginated)
@@ -136,7 +109,7 @@ final class SubscriptionManageViewModel: ObservableObject {
             }
 
             do {
-                try await self.storeKitModel.associateAccount()
+                let _ = try await self.appState.associateAccount()
             } catch {
                 logger.warning("Failed to associate Apple account on refresh: \(error, privacy: .public)")
             }
@@ -150,10 +123,6 @@ final class SubscriptionManageViewModel: ObservableObject {
     // match it up
     private func pollCheckingForServerAcknoledgementOfSubscription() async throws {
         let delays = [1, 2, 4, 8, 16, 32, 64]
-
-        Task {
-            await self.logCurrentStatus(context: "Starting to poll in pollCheckingForServerAcknoledgementOfSubscription")
-        }
 
         for delay in delays {
             logger.debug("Polling loadAccountInfo, then send backend transaction id, then wait \(delay)")
@@ -175,26 +144,6 @@ final class SubscriptionManageViewModel: ObservableObject {
         }
 
         logger.error("Server failed to acknowledge subscription after all retries")
-        Task {
-            await self.logCurrentStatus(context: "polling pollCheckingForServerAcknoledgementOfSubscription failed")
-        }
         self.showErrorAlert = true
-    }
-
-    private func logCurrentStatus(context: String) async {
-        let originalTransactionIdString: String
-        if let monthlySubscriptionProduct {
-            if let originalTransactionId = await storeKitModel.originalTransactionId(
-                product: monthlySubscriptionProduct)
-            {
-                originalTransactionIdString = String(originalTransactionId)
-            } else {
-                originalTransactionIdString = "(nil)"
-            }
-        } else {
-            originalTransactionIdString = "(nil PROBLEM we do not have monthlySubscriptionProduct)"
-        }
-
-        logger.log("SubscriptionViewModel Status Update: \"\(context)\" accountId: \(self.accountInfo?.id ?? "(nil)"), purchasedSubscription: \(self.storeKitModel.hasActiveMonthlySubscription), originalTransactionId: \(originalTransactionIdString), accountInfo: \(self.accountInfo?.description ?? "(nil)") ")
     }
 }

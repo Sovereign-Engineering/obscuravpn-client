@@ -300,7 +300,7 @@ struct ContentView: View {
                 .sheet(
                     isPresented: self.$webviewsController.showSubscriptionManageSheet)
                 {
-                    SubscriptionManageSheet(manager: self.appState.manager, storeKitModel: self.appState.storeKitModel, openUrl: { url in
+                    SubscriptionManageSheet(appState: self.appState, openUrl: { url in
                         self.webviewsController.handleWebsiteLinkiOS(url: url)
                     })
                     .presentationDetents([.large])

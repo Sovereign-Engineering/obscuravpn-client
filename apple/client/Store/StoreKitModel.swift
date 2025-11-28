@@ -1,266 +1,80 @@
-import Foundation
-import NetworkExtension
 import os
 import StoreKit
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "StoreKitModel")
 
-// Important per https://developer.apple.com/documentation/storekit/transaction/updates
-// "If your app has unfinished transactions, the updates listener receives them once, immediately after the app launches. Without the Task to listen for these transactions, your app may miss them."
-// IE Get this object created ASAP!!!!!!
-class StoreKitModel: ObservableObject {
-    @Published @MainActor private(set) var products: [Product] = []
-    @Published @MainActor private(set) var purchasedProducts: [Product] = []
-    private var updateListenerTask: Task<Void, Error>?
-    private var purchaseIntentListenerTask: Task<Void, Error>?
-    private let manager: NETunnelProviderManager?
-    var storefront: Storefront?
+@MainActor class StoreKitModel: ObservableObject {
+    @Published private var products: [Product] = []
+    @Published private var purchasedProducts: [Product] = []
 
-    init(manager: NETunnelProviderManager?) {
-        self.manager = manager
-        self.purchaseIntentListenerTask = self.listenForPurchaseIntents()
-        self.updateListenerTask = self.listenForTransactions()
-
-        if manager == nil {
-            logger.info("Warning!! Without a NE Manager there is no way to complete purchases")
-        }
-        Task {
-            try? await self.reloadProductsAvailable()
-            await self.updateStoreKitSubscriptionStatus()
-            self.storefront = await Storefront.current
-        }
+    private let subscriptionProductId = "subscriptions.monthly"
+    var subscriptionProduct: Product? {
+        return self.products.first { $0.id == self.subscriptionProductId }
     }
 
-    deinit {
-        updateListenerTask?.cancel()
-        purchaseIntentListenerTask?.cancel()
+    var subscribed: Bool {
+        return self.purchasedProducts.contains(where: { $0.id == self.subscriptionProductId })
     }
 
-    func reloadProductsAvailable() async throws {
-        logger.info("Attempting to reload products reloadProductsAvailable")
+    @Published private var storefront: Storefront?
+    var externalPaymentsAllowed: Bool {
+        // External payments are currently only straightforward in the US.
+        return self.storefront?.countryCode == "USA"
+    }
 
+    nonisolated init() {
         Task { @MainActor in
-            do {
-                self.products = try await Product
-                    .products(for: ObscuraProduct.allProductIds)
-                logger.info("Loaded \(self.products.count) products")
-            } catch {
-                logger.error("Failed to load products: \(error)")
-            }
+            await self.updateStorefront(await Storefront.current)
         }
     }
 
-    func purchase(_ product: Product, accountId: String) async throws -> Bool {
+    func updateStorefront(_ storefront: Storefront?) async {
+        self.storefront = storefront
         do {
-            try await self.associateAccount()
-            let result = try await product.purchase()
-
-            switch result {
-            case .success(let verification):
-                // Always finish a transaction.
-                if case .verified(let transaction) = verification {
-                    await transaction.finish()
-                    if self.isTransactionRelevant(transaction) {
-                        return true
-                    } else {
-                        logger.error("Verification of successful purchase failed")
-                    }
-                }
-            case .userCancelled:
-                logger.info("Purchase canceled by user")
-            case .pending:
-                // may succeed in the future get updates via Transaction.updates
-                logger.info("Purchase is pending")
-            @unknown default:
-                logger.error("Purchase encountered unknown error")
-            }
+            self.products = try await Product.products(for: [self.subscriptionProductId])
         } catch {
-            logger.error("Purchase failed: \(error.localizedDescription)")
-            throw error
+            logger.error("failed to load products: \(error, privacy: .public)")
         }
-        return false
-        // TODO: Interrupted purchase? https://developer.apple.com/documentation/storekit/testing-an-interrupted-purchase
+        await self.updatePurchases()
+    }
+
+    func updatePurchases() async {
+        self.purchasedProducts.removeAll()
+        // For auto-renewable subscriptions, `currentEntitlements` only contains
+        // the latest non-expired transaction.
+        for await result in Transaction.currentEntitlements {
+            if case .verified(let transaction) = result {
+                if let product = products.first(where: { $0.id == transaction.productID }) {
+                    self.purchasedProducts.append(product)
+                }
+            }
+        }
     }
 
     func restorePurchases() async {
         do {
             try await AppStore.sync()
-            await self.updateStoreKitSubscriptionStatus()
+            await self.updatePurchases()
         } catch {
-            logger.error("Failed to restore purchases")
+            logger.error("failed to restore purchases: \(error, privacy: .public)")
         }
     }
 
-    // MARK: - Private
-
-    private func isTransactionRelevant(_ transaction: Transaction) -> Bool {
-        if let revocationDate = transaction.revocationDate {
-            logger.error("Transaction verification failed: Transaction was revoked on \(revocationDate)")
-            return false
-        }
-        if let expirationDate = transaction.expirationDate,
-           expirationDate < Date()
-        {
-            logger.error("Transaction verification failed: Transaction expired on \(expirationDate)")
-            return false
-        }
-        if transaction.isUpgraded {
-            logger.error("Transaction verification failed: Transaction was upgraded")
-            return false
-        }
-        logger.info("Transaction verification succeeded")
-        return true
-    }
-
-    private func listenForPurchaseIntents() -> Task<Void, Error>? {
-        guard let manager else {
-            logger.error("Cannot listen for purchase intents without a NE Manager")
-            return nil
-        }
-        logger.info("Began listening for Purchase Intents")
-        return Task.detached {
-            for await purchaseIntent in PurchaseIntent.intents {
-                do {
-                    logger
-                        .info(
-                            "Received purchase intent for \(purchaseIntent.product.displayName) need to fetch accountID"
-                        )
-                    let accountId = try await getAccountInfo(
-                        manager
-                    ).id
-                    _ = try await self.purchase(
-                        purchaseIntent.product,
-                        accountId: accountId
-                    )
-                } catch {
-                    assertionFailure()
-                    logger.error("Purchase intent purchase failed")
+    // This is here just so we can keep `products` completely private.
+    func collectDebugData() async throws -> [Any] {
+        var debugData: [Any] = []
+        for product in self.products {
+            var subscriptionStatus: [[String: String]] = []
+            if let subscription = product.subscription {
+                for status in try await subscription.status {
+                    subscriptionStatus.append(["state": status.state.localizedDescription])
                 }
             }
+            try debugData.append([
+                "product": JSONSerialization.jsonObject(with: product.jsonRepresentation),
+                "subscriptionStatus": subscriptionStatus,
+            ])
         }
-    }
-
-    private func listenForTransactions() -> Task<Void, Error> {
-        logger.info("Began listening for Transaction.updates")
-        return Task.detached {
-            for await result in Transaction.updates {
-                await self.updateStoreKitSubscriptionStatus()
-
-                // Always finish a transaction.
-                if case .verified(let transaction) = result {
-                    await transaction.finish()
-                }
-            }
-        }
-    }
-
-    @MainActor func updateStoreKitSubscriptionStatus() async {
-        var currentProductsPurchased: [Product] = []
-
-        for await result in Transaction.currentEntitlements {
-            if case .verified(let transaction) = result {
-                if self.isTransactionRelevant(transaction) {
-                    if let product = products.first(
-                        where: { $0.id == transaction.productID
-                        })
-                    {
-                        currentProductsPurchased.append(product)
-                    }
-                }
-
-                await transaction.finish()
-            }
-        }
-
-        logger
-            .info(
-                "updateStoreKitSubscriptionStatus read all of Transaction.currentEntitlements and got (\(currentProductsPurchased.count)) \(currentProductsPurchased.map(\.displayName).joined(separator: ","))"
-            )
-        self.purchasedProducts = currentProductsPurchased
-    }
-
-    func associateAccount() async throws {
-        guard let manager else {
-            throw "network extension manager not active"
-        }
-
-        _ = try await neApiAppleAssociateAccount(
-            manager,
-            appTransactionJws: AppTransaction.shared.jwsRepresentation
-        )
-    }
-
-    @MainActor func isPurchased(product: Product) async -> Bool {
-        guard let state = await product.currentEntitlement else {
-            return false
-        }
-
-        switch state {
-        case .unverified:
-            return false
-        case .verified(let transaction):
-            await transaction.finish()
-            return self.isTransactionRelevant(transaction)
-        }
-    }
-
-    // In theory this should always match isPurchased
-    // However by computing based on published purchased products this makes cachedIsPurchased observable
-    @MainActor func cachedIsPurchased(product: Product) -> Bool {
-        return self.purchasedProducts.contains(where: { $0.id == product.id })
-    }
-
-    @MainActor func originalTransactionId(product: Product) async -> UInt64? {
-        guard let state = await product.currentEntitlement else {
-            return nil
-        }
-
-        switch state {
-        case .unverified:
-            return nil
-        case .verified(let transaction):
-            await transaction.finish()
-            return self.isTransactionRelevant(
-                transaction
-            ) ? transaction.originalID : nil
-        }
-    }
-}
-
-// MARK: - Convenience
-
-extension StoreKitModel {
-    enum ObscuraProduct: String, CaseIterable {
-        case monthlySubscription = "subscriptions.monthly"
-
-        static var allProductIds: [String] {
-            ObscuraProduct.allCases.map(\.rawValue)
-        }
-    }
-
-    @MainActor func product(for product: ObscuraProduct) -> Product? {
-        self.products.first { $0.id == product.rawValue }
-    }
-
-    @MainActor func availableStoreKitProductObject(_ product: ObscuraProduct) -> Product? {
-        self.products.first { $0.id == product.rawValue }
-    }
-
-    func purchase(obscuraProduct: ObscuraProduct, accountId: String) async throws -> Bool {
-        guard let availableProduct = await availableStoreKitProductObject(
-            obscuraProduct
-        ) else {
-            throw "Cannot purchase \(obscuraProduct) as it is not in the list of StoreKit available products"
-        }
-        return try await self.purchase(availableProduct, accountId: accountId)
-    }
-
-    @MainActor var hasActiveMonthlySubscription: Bool {
-        guard let subscriptionProduct = product(for: .monthlySubscription) else {
-            logger.error("Could not get subscription product")
-            return false
-        }
-        return self.purchasedProducts
-            .contains(where: { $0.id == subscriptionProduct.id })
+        return debugData
     }
 }

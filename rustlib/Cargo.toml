@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2024"
 license = "PolyForm-Noncommercial-1.0.0"
 
+[[bin]]
+name = "obscuravpn"
+
 [lib]
 crate-type = ["cdylib", "lib", "staticlib"]
 
@@ -18,11 +21,10 @@ panic = "abort"
 
 [dependencies]
 anyhow = { version = "1.0.98", features = ["backtrace"] }
-async-trait = "0.1.77"
 base64 = "0.21.7"
 bytes = "1"
 chrono = "0.4.37"
-clap = { version = "4.4.10", features = ["derive"] }
+clap = { version = "4.5.53", features = ["derive"] }
 derive_more = {  version = "2.0.1", features = ["full"] }
 etherparse = "0.17.0"
 flume = { version = "0.11.1", features = ["async"] }
@@ -42,10 +44,10 @@ thiserror = "1.0.56"
 tokio = { version = "1.44", features = ["full"] }
 tokio-rustls = "0.26.2"
 tokio-util = "0.7.13"
+tun-rs = {  version = "2.7.5", features = ["async"]}
 tracing = "0.1.40"
 tracing-appender = "0.2.3"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter", "fmt", "json"] }
-tun = { version = "0.6.1", features = ["async"] }
 uuid = { version = "1.11.0", features = ["v4", "serde"] }
 x25519-dalek = { version = "2.0.1" }
 
@@ -66,6 +68,9 @@ rev = "8f690a22535dcf2d76c369cadd3f0bec93667a4d"
 oslog = "0.2.0"
 tracing-oslog = "0.3.0"
 aws-lc-rs = { version = "*", features = ["bindgen"] } # We don't use directly, but need to enable this feature.
+
+[target.'cfg(not(any(target_os = "macos", target_os = "ios")))'.dependencies]
+rtnetlink = "0.18.1"
 
 [target.'cfg(target_os = "ios")'.dependencies]
 logroller = { version = "0.1.10", features = ["xz"] }

@@ -106,7 +106,7 @@ The Android app requires a special build of the Rust library and Obscura UI. The
 3. Open Android Studio and point it at the `android` directory, or
 4. Use Gradle to build everything
     ```bash
-    nix develop .#android --command bash -c 'cd android && ./gradlew --no-daemon build'
+    nix develop '.#android' --command bash -c 'cd android && gradle --no-daemon $GRADLE_OPTS build'
     ```
 
 ## Swift unit tests

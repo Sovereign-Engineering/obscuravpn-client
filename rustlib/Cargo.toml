@@ -69,7 +69,7 @@ oslog = "0.2.0"
 tracing-oslog = "0.3.0"
 aws-lc-rs = { version = "*", features = ["bindgen"] } # We don't use directly, but need to enable this feature.
 
-[target.'cfg(not(any(target_os = "macos", target_os = "ios")))'.dependencies]
+[target.'cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android")))'.dependencies]
 rtnetlink = "0.18.1"
 
 [target.'cfg(target_os = "ios")'.dependencies]
@@ -77,6 +77,7 @@ logroller = { version = "0.1.10", features = ["xz"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
 jni = { version = "0.21.1", default-features = false }
+nix = "0.30.1"
 tracing-android = "0.2.0"
 
 [build-dependencies]

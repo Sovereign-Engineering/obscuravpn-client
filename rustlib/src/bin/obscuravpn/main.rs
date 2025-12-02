@@ -1,7 +1,7 @@
 use clap::{Args, Parser, Subcommand};
 use std::convert::Infallible;
 
-#[cfg(not(any(target_os = "macos", target_os = "ios")))]
+#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android")))]
 mod service;
 
 #[derive(Args, Debug)]
@@ -38,12 +38,12 @@ fn main() -> anyhow::Result<Infallible> {
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "ios")))]
+#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android")))]
 fn run_service(args: ServiceArgs) -> anyhow::Result<Infallible> {
     service::run(args)
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios"))]
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
 fn run_service(_args: ServiceArgs) -> anyhow::Result<Infallible> {
     anyhow::bail!("unsupported OS");
 }

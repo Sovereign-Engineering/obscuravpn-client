@@ -25,7 +25,11 @@ class DebugBundleFileProvider : FileProvider(R.xml.debug_bundle_file_provider) {
               val sharedFile = File(File(context.cacheDir, "debug_bundle"), originalFile.name)
 
               sharedFile.mkdirs()
-              move(originalFile.toPath(), sharedFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
+              move(
+                  originalFile.toPath(),
+                  sharedFile.toPath(),
+                  StandardCopyOption.REPLACE_EXISTING,
+              )
 
               getUriForFile(
                   context,

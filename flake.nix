@@ -66,17 +66,19 @@
           fileset = lib.fileset.unions [ ./.swiftformat apple/client ];
         }) [ ".swift" ".swiftformat" ];
 
+        androidBuildToolsVersion = "36.0.0";
+        androidCmakeVersion = "3.31.6";
         android = pkgs.androidenv.composeAndroidPackages {
           toolsVersion = "26.1.1"; # frozen legacy version
           platformToolsVersion = "36.0.0";
 
           platformVersions = [ "36" ];
-          buildToolsVersions = [ "36.0.0" ];
+          buildToolsVersions = [ androidBuildToolsVersion ];
 
           includeEmulator = false;
           includeSources = false;
 
-          cmakeVersions = [ "3.31.6" ];
+          cmakeVersions = [ androidCmakeVersion ];
 
           includeNDK = true;
           ndkVersion = "26.3.11579264";
@@ -86,6 +88,8 @@
 
           includeExtras = [ "extras;google;google_play_services" ];
         };
+        androidBuildTools = "${android.androidsdk}/libexec/android-sdk/build-tools/${androidBuildToolsVersion}";
+        androidCmake = "${android.androidsdk}/libexec/android-sdk/cmake/${androidCmakeVersion}";
       in rec {
         checks = {
           inherit (packages) licenses rust;
@@ -169,12 +173,14 @@
 
             ANDROID_HOME = "${android.androidsdk}/libexec/android-sdk";
             ANDROID_SDK_ROOT = "${android.androidsdk}/libexec/android-sdk";
+            GRADLE_OPTS = "-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidBuildTools}/aapt2";
             JAVA_HOME = pkgs.jdk21.home;
+
             shellHook = ''
               export ANDROID_NDK_HOME="$(ls -d "$ANDROID_SDK_ROOT"/ndk/* | head -n1)"
               export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME" # used by CMake
 
-              export PATH="$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/cmake/3.31.6/bin:$ANDROID_SDK_ROOT/emulator:$ANDROID_SDK_ROOT/build-tools/35.0.0:$PATH"
+              export PATH="$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:${androidCmake}/bin:$ANDROID_SDK_ROOT/emulator:${androidBuildTools}:$PATH"
 
               # TODO: figure out how to build Rust for this target
               rustup target add \

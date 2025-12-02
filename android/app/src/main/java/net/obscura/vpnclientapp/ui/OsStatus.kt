@@ -21,6 +21,8 @@ class OsStatus(
 
   private var current: Pair<String, GetOsStatus.Result>? = null
 
+  var vpnStatus: GetOsStatus.Result.NEVPNStatus = GetOsStatus.Result.NEVPNStatus.Disconnected
+
   private val networkCallback =
       object : ConnectivityManager.NetworkCallback() {
         override fun onCapabilitiesChanged(
@@ -73,7 +75,7 @@ class OsStatus(
           GetOsStatus.Result(
               version = version,
               internetAvailable = hasInternet(),
-              osVpnStatus = GetOsStatus.Result.NEVPNStatus.Invalid,
+              osVpnStatus = vpnStatus,
               srcVersion = "TODO",
               strictLeakPrevention = preferences.strictLeakPrevention,
               updaterStatus =

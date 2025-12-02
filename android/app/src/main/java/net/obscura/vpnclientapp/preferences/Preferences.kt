@@ -20,7 +20,12 @@ class Preferences(
             )!!,
         )
     set(value) {
-      preferences.edit(commit = true) { putString("color-scheme", Json.encodeToString(value)) }
+      preferences.edit(commit = true) {
+        putString(
+            "color-scheme",
+            Json.encodeToString(value),
+        )
+      }
     }
 
   // TODO: https://linear.app/soveng/issue/OBS-2639/store-strict-leak-prevention-in-core Should be
@@ -28,6 +33,10 @@ class Preferences(
   var strictLeakPrevention: Boolean
     get() = preferences.getBoolean("strict-leak-prevention", false)
     set(value) = preferences.edit { putBoolean("strict-leak-prevention", value) }
+
+  var permissionGiven: Boolean
+    get() = preferences.getBoolean("permission-given", false)
+    set(value) = preferences.edit { putBoolean("permission-given", value) }
 
   fun registerListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
     preferences.registerOnSharedPreferenceChangeListener(listener)

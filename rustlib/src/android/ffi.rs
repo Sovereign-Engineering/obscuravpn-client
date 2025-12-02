@@ -2,28 +2,104 @@ use crate::ffi_helpers::FfiBytes;
 use crate::manager::Manager;
 use crate::manager_cmd::ManagerCmd;
 use crate::manager_cmd::ManagerCmdErrorCode;
+use crate::net::NetworkInterface;
 use jni::JNIEnv;
 use jni::objects::{JClass, JObject, JString, JValue};
+use jni::sys::jint;
+use nix::errno::Errno;
+use nix::net::if_::if_indextoname;
+use nix::unistd;
 use std::ffi::c_void;
+use std::num::NonZeroU32;
+use std::os::fd::BorrowedFd;
+use std::os::fd::RawFd;
 use std::path::PathBuf;
-use std::sync::{Arc, LazyLock, OnceLock};
+use std::sync::{Arc, LazyLock, Mutex, OnceLock};
+use tokio::io::unix::AsyncFd;
 use tokio::runtime::Runtime;
+use tokio::task::JoinHandle;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
 use tracing_subscriber::{EnvFilter, Registry};
 
+struct TunnelRxTx {
+    pub fd: RawFd,
+    pub handle_tx: JoinHandle<()>,
+}
+
 static RUNTIME: LazyLock<Runtime> = LazyLock::new(|| Runtime::new().unwrap());
 static GLOBAL: OnceLock<Arc<Manager>> = OnceLock::new();
+static TUNNEL_RX_TX: OnceLock<Mutex<Option<TunnelRxTx>>> = OnceLock::new();
+
+impl TunnelRxTx {
+    pub fn spawn(fd: RawFd) -> Self {
+        let bfd = unsafe { BorrowedFd::borrow_raw(fd) };
+        let afd = Arc::new(AsyncFd::new(bfd).expect("failed to register fd"));
+
+        let rafd = afd.clone();
+        let handle_tx = RUNTIME.spawn(async move {
+            let manager = GLOBAL.get().expect("ffi manager not initialized").clone();
+
+            // technically can't be bigger than MTU but just in case
+            let mut buf: Box<[u8; 4096]> = Box::new([0; 4096]);
+
+            loop {
+                match rafd.readable().await {
+                    Ok(mut guard) => match unistd::read(bfd, &mut buf[..]) {
+                        Ok(n) => {
+                            if n > 0 {
+                                manager.send_packet(&mut buf[..n]);
+                            }
+                        }
+
+                        Err(Errno::EAGAIN) => {
+                            guard.clear_ready();
+                        }
+
+                        Err(e) => {
+                            tracing::error!("read from tunnel failed {e}");
+                            break;
+                        }
+                    },
+
+                    Err(e) => {
+                        tracing::error!("readable wait failed {e}");
+                        break;
+                    }
+                }
+            }
+        });
+
+        Self { handle_tx, fd }
+    }
+
+    pub fn stop(self) {
+        self.handle_tx.abort();
+
+        if let Err(e) = unistd::close(self.fd) {
+            tracing::error!("closing fd failed {e}");
+        }
+    }
+}
 
 /// cbindgen:ignore
-extern "C" fn receive_cb(_ffi_bytes: FfiBytes) -> () {
-    // TODO
-    tracing::info!("receive_cb")
+extern "C" fn receive_cb(ffi_bytes: FfiBytes) -> () {
+    let guard = TUNNEL_RX_TX.get().expect("tunnel global not initialized").lock().unwrap();
+
+    if let Some(ref tun) = *guard {
+        let bfd = unsafe { BorrowedFd::borrow_raw(tun.fd) };
+
+        if let Err(e) = unistd::write(bfd, &ffi_bytes.as_slice()) {
+            tracing::error!("writing packet failed {e}");
+        }
+    }
 }
 
 /// cbindgen:ignore
 #[unsafe(no_mangle)]
 pub extern "C" fn JNI_OnLoad(_vm: *mut jni::sys::JavaVM, _reserved: *mut c_void) -> jni::sys::jint {
+    TUNNEL_RX_TX.set(Mutex::new(None)).ok();
+
     let android_layer = tracing_android::layer("ObscuraNative").expect("failed to create tracing-android layer");
 
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
@@ -158,4 +234,62 @@ pub unsafe extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_jso
             }
         }
     });
+}
+
+/// cbindgen:ignore
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_setNetworkInterfaceIndex(
+    _env: JNIEnv,
+    _: JClass,
+    java_index: jint,
+) -> () {
+    if java_index <= 0 {
+        GLOBAL.get().expect("global manager not initialized").set_network_interface(None);
+    } else {
+        let index = u32::try_from(java_index)
+            .ok()
+            .and_then(NonZeroU32::new)
+            .expect("network interface index must be non-zero u32");
+        let name = if_indextoname(index.into())
+            .expect("network interface index must convert to name")
+            .into_string()
+            .expect("network interface name must convert to a string");
+        let ni = NetworkInterface { name, index };
+
+        GLOBAL.get().expect("global manager not initialized").set_network_interface(Some(ni));
+    }
+}
+
+/// cbindgen:ignore
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_startTunnel(_env: JNIEnv, _: JClass, java_fd: jint) -> () {
+    let tun = {
+        let mut guard = TUNNEL_RX_TX.get().expect("tunnel global not initialized").lock().unwrap();
+        let tun = guard.take();
+
+        *guard = Some(TunnelRxTx::spawn(java_fd));
+
+        tun
+    };
+
+    if let Some(tun) = tun {
+        tun.stop();
+    }
+}
+
+/// cbindgen:ignore
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_stopTunnel(_env: JNIEnv, _: JClass) -> () {
+    let tun = {
+        let mut guard = TUNNEL_RX_TX.get().expect("tunnel global not initialized").lock().unwrap();
+        let tun = guard.take();
+
+        *guard = None;
+
+        tun
+    };
+
+    if let Some(tun) = tun {
+        tun.stop();
+    }
 }

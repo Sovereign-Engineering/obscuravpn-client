@@ -1,3 +1,13 @@
 <resources>
-    <string name="app_name">Obscura VPN</string>
+    <string name="app_name" translatable="false">Obscura VPN</string>
+    <string name="notification_channel_vpn_name" translatable="false">Obscura VPN</string>
+
+    <string name="vpn_dialog_message_grant_permission_after_revoke">Obscura\'s permission to be a VPN app was revoked. Please allow it once again to continue using the app.</string>
+    <string name="vpn_dialog_message_grant_permission">Allow Obscura to route your device\'s Internet via our VPN servers.</string>
+    <string name="vpn_dialog_title_grant_permission">Allow Obscura as a VPN app?</string>
+
+    <string name="notification_vpn_text">Status: %1$s</string>
+    <string name="notification_vpn_status_connecting">Connecting…</string>
+    <string name="notification_vpn_status_connected">Connected</string>
+    <string name="notification_vpn_status_disconnected">Disconnected</string>
 </resources>

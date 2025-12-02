@@ -7,6 +7,15 @@ import net.obscura.vpnclientapp.client.ObscuraLibrary
 import net.obscura.vpnclientapp.ui.OsStatus
 
 class App : Application() {
+  companion object {
+    private lateinit var _app: App
+
+    val app: App
+      get() = _app
+
+    fun currentApp(): App = _app
+  }
+
   private lateinit var _osStatus: OsStatus
 
   val osStatus: OsStatus
@@ -20,6 +29,7 @@ class App : Application() {
   override fun onCreate() {
     super.onCreate()
 
+    _app = this
     _osStatus = OsStatus(this)
     _ioExecutor = Executors.newCachedThreadPool()
 

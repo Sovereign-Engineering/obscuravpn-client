@@ -17,7 +17,7 @@ pub fn race_relay_handshakes(
 ) -> Result<Receiver<(OneRelay, u16, Duration, QuicWgConnHandshaking)>, RelaySelectionError> {
     let sni = Arc::new(sni);
     let mut tasks = JoinSet::new();
-    let udp = new_udp(None, network_interface).map_err(RelaySelectionError::UdpSetup)?;
+    let udp = new_udp(network_interface).map_err(RelaySelectionError::UdpSetup)?;
     let quic_endpoint = new_quic(udp).map_err(RelaySelectionError::QuicSetup)?;
 
     // Maximum number of relays to probe. This limit should be high enough that a non-malicious API server won't exceed it.

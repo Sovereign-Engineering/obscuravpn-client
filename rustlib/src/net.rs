@@ -10,20 +10,13 @@ pub struct NetworkInterface {
     pub index: NonZeroU32,
 }
 
-pub fn new_udp(fw_mark: Option<u32>, network_interface: Option<&NetworkInterface>) -> io::Result<std::net::UdpSocket> {
+pub fn new_udp(network_interface: Option<&NetworkInterface>) -> io::Result<std::net::UdpSocket> {
     let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP))?;
     if let Some(network_interface) = network_interface {
         socket.bind_device_by_index_v4(Some(network_interface.index))?;
     }
     let bind_addr = SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 0).into();
     socket.bind(&bind_addr)?;
-    if let Some(fw_mark) = fw_mark {
-        _ = fw_mark;
-        #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
-        socket.set_mark(fw_mark)?;
-        #[cfg(not(any(target_os = "android", target_os = "fuchsia", target_os = "linux")))]
-        return Err(io::Error::other("fw_mark only supported on android, linux and fuchsia"));
-    }
     Ok(socket.into())
 }
 

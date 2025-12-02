@@ -11,4 +11,10 @@ public class ObscuraLibrary {
   public static native void initialize(String configDir, String userAgent);
 
   public static native void jsonFfi(String json, CompletableFuture<String> future);
+
+  public static native void setNetworkInterfaceIndex(int index);
+
+  public static native void startTunnel(int fd);
+
+  public static native void stopTunnel();
 }

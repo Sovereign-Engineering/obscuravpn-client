@@ -1,3 +1,4 @@
+use crate::service::os::linux::positive_u31::PositiveU31;
 use anyhow::{Context, anyhow, bail};
 use futures::{StreamExt, TryStreamExt};
 use obscuravpn_client::net::NetworkInterface;
@@ -30,7 +31,7 @@ pub async fn netlink_connect() -> Result<rtnetlink::Handle, ()> {
     Ok(handle)
 }
 
-pub async fn add_routes(tun_idx: u32) -> Result<(), ()> {
+pub async fn add_routes(tun_idx: PositiveU31) -> Result<(), ()> {
     let handle = netlink_connect().await?;
     let route_messages = build_route_messages(tun_idx)?;
     for route_message in route_messages {
@@ -41,7 +42,7 @@ pub async fn add_routes(tun_idx: u32) -> Result<(), ()> {
     Ok(())
 }
 
-pub async fn del_routes(tun_idx: u32) -> Result<(), ()> {
+pub async fn del_routes(tun_idx: PositiveU31) -> Result<(), ()> {
     let handle = netlink_connect().await?;
     let route_messages = build_route_messages(tun_idx)?;
     for route_message in route_messages {
@@ -70,7 +71,7 @@ pub async fn del_routes(tun_idx: u32) -> Result<(), ()> {
 /// - We use the default route for preferred network interface discovery
 /// - We wouldn't know what the set it to when the tunnel is disabled
 /// - Network management services like network manager tend to overwrite it.
-pub fn build_route_messages(tun_idx: u32) -> Result<Vec<RouteMessage>, ()> {
+pub fn build_route_messages(tun_idx: PositiveU31) -> Result<Vec<RouteMessage>, ()> {
     [
         IpAddr::V4(Ipv4Addr::new(000, 0, 0, 0)),
         IpAddr::V4(Ipv4Addr::new(128, 0, 0, 0)),
@@ -81,7 +82,7 @@ pub fn build_route_messages(tun_idx: u32) -> Result<Vec<RouteMessage>, ()> {
         Ok(RouteMessageBuilder::<IpAddr>::new()
             .destination_prefix(destination, 1)
             .map_err(|error| tracing::error!(message_id = "wtAo1gKj", ?error, "failed to build route message"))?
-            .output_interface(tun_idx)
+            .output_interface(tun_idx.into())
             .build())
     })
     .into_iter()

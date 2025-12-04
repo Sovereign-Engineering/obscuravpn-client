@@ -69,8 +69,10 @@ oslog = "0.2.0"
 tracing-oslog = "0.3.0"
 aws-lc-rs = { version = "*", features = ["bindgen"] } # We don't use directly, but need to enable this feature.
 
-[target.'cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android")))'.dependencies]
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2.178"
 rtnetlink = "0.18.1"
+zbus_systemd = {  version="0.25800.0", features = ["resolve1"] }
 
 [target.'cfg(target_os = "ios")'.dependencies]
 logroller = { version = "0.1.10", features = ["xz"] }

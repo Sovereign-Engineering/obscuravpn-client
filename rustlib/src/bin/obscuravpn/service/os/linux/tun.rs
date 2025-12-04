@@ -1,7 +1,9 @@
 use crate::service::os::PutIncomingPacketFn;
+use crate::service::os::linux::positive_u31::PositiveU31;
 use crate::service::os::packet_buffer::PacketBuffer;
-use obscuravpn_client::network_config::TunnelNetworkConfig;
+use ipnetwork::Ipv6Network;
 use std::io::ErrorKind::WouldBlock;
+use std::net::Ipv4Addr;
 use std::sync::{Arc, Mutex, Weak};
 use std::time::{Duration, Instant};
 use tokio::runtime::Handle;
@@ -11,9 +13,8 @@ const TUN_NAME: &str = "obscuravpn";
 
 pub struct Tun {
     dev: Arc<tun_rs::AsyncDevice>,
-    interface_index: u32,
+    interface_index: PositiveU31,
     last_error_log_at: Mutex<Option<Instant>>,
-    current_network_config: Option<TunnelNetworkConfig>,
 }
 
 pub struct TunWriter {
@@ -24,11 +25,11 @@ pub struct TunWriter {
 impl Tun {
     pub fn create(runtime: &Handle) -> anyhow::Result<Self> {
         let dev = Arc::new(runtime.block_on(async { tun_rs::DeviceBuilder::new().name(TUN_NAME.to_string()).build_async() })?);
-        let interface_index = dev.if_index()?;
-        Ok(Self { dev, interface_index, last_error_log_at: Mutex::new(None), current_network_config: None })
+        let interface_index = dev.if_index()?.try_into()?;
+        Ok(Self { dev, interface_index, last_error_log_at: Mutex::new(None) })
     }
 
-    pub fn interface_index(&self) -> u32 {
+    pub fn interface_index(&self) -> PositiveU31 {
         self.interface_index
     }
 
@@ -64,37 +65,34 @@ impl Tun {
         }
     }
 
-    pub fn set_network_config(&mut self, network_config: TunnelNetworkConfig) -> Result<(), ()> {
-        // TODO: DNS
+    pub fn set_config(&mut self, mtu: u16, ipv4: Ipv4Addr, ipv6: Ipv6Network) -> Result<(), ()> {
         let mut result = Ok(());
 
-        if self.current_network_config.as_ref() != Some(&network_config) {
-            match self.dev.addresses() {
-                Ok(addresses) => {
-                    for address in addresses {
-                        if let Err(error) = self.dev.remove_address(address) {
-                            tracing::error!(message_id = "qPppmh83", ?error, ?address, "failed to remove tun address");
-                            result = Err(());
-                        }
+        match self.dev.addresses() {
+            Ok(addresses) => {
+                for address in addresses {
+                    if let Err(error) = self.dev.remove_address(address) {
+                        tracing::error!(message_id = "qPppmh83", ?error, ?address, "failed to remove tun address");
+                        result = Err(());
                     }
                 }
-                Err(error) => {
-                    tracing::error!(message_id = "1SDywPMm", ?error, "failed to retrieve tun addresses");
-                    result = Err(());
-                }
             }
-            if let Err(error) = self.dev.set_mtu(network_config.mtu) {
-                tracing::error!(message_id = "qPppmh83", ?error, "failed to set tun mtu");
+            Err(error) => {
+                tracing::error!(message_id = "1SDywPMm", ?error, "failed to retrieve tun addresses");
                 result = Err(());
             }
-            if let Err(error) = self.dev.add_address_v4(network_config.ipv4, 32u8) {
-                tracing::error!(message_id = "cY11X3I6", ?error, address = ?network_config.ipv4, "failed to add IPv4 tun address");
-                result = Err(());
-            }
-            if let Err(error) = self.dev.add_address_v6(network_config.ipv6.network(), network_config.ipv6.prefix()) {
-                tracing::error!(message_id = "wHod6P2h", ?error, address = ?network_config.ipv6, "failed to add IPv6 tun address");
-                result = Err(());
-            }
+        }
+        if let Err(error) = self.dev.set_mtu(mtu) {
+            tracing::error!(message_id = "qPppmh83", ?error, "failed to set tun mtu");
+            result = Err(());
+        }
+        if let Err(error) = self.dev.add_address_v4(ipv4, 32u8) {
+            tracing::error!(message_id = "cY11X3I6", ?error, address = ?ipv4, "failed to add IPv4 tun address");
+            result = Err(());
+        }
+        if let Err(error) = self.dev.add_address_v6(ipv6.network(), ipv6.prefix()) {
+            tracing::error!(message_id = "wHod6P2h", ?error, address = ?ipv6, "failed to add IPv6 tun address");
+            result = Err(());
         }
         result
     }

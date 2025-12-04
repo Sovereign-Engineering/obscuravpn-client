@@ -98,6 +98,10 @@ async fn process_status_update(status: &Status, os_impl: &mut impl Os) {
                 tracing::error!(message_id = "SisqqS5i", ?error, "set_tunnel_network_config failed");
             }
         }
-        None => os_impl.unset_tunnel_network_config(),
+        None => {
+            if let Err(error) = os_impl.unset_tunnel_network_config().await {
+                tracing::error!(message_id = "NYCr11HH", ?error, "unset_tunnel_network_config failed");
+            }
+        }
     }
 }

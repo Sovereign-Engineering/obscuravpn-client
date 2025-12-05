@@ -3,6 +3,7 @@ import localforage from 'localforage';
 import { Dispatch, ForwardedRef, RefCallback, SetStateAction, useEffect, useLayoutEffect, useState } from 'react';
 import { fmt } from './fmt';
 import { useMantineTheme } from '@mantine/core';
+import { CASE_FOLDING_MAP } from './casefolding';
 export { localforage };
 
 export const HEADER_TITLE = 'Obscura VPN';
@@ -167,4 +168,19 @@ function zeroPad(num: number, width: number) {
 export function usePrimaryColorResolved() {
   const theme = useMantineTheme();
   return theme.variantColorResolver({color: theme.primaryColor, theme, variant: 'subtle'}).color;
+}
+
+// https://claritydev.net/blog/diacritic-insensitive-string-comparison-javascript
+export function normalizeString(str: string): string {
+  return str
+  // canonical decomposition
+  .normalize('NFD')
+  // remove diacritic marks from string
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase();
+};
+
+// case-insensitive and diacritic-insensitive search
+export function normalizedIncludes(needle: string, haystack: string) {
+  return normalizeString(haystack).includes(normalizeString(needle));
 }

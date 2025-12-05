@@ -19,7 +19,7 @@ pub trait Os {
 
     /// Reset the network state. Returning `Ok()` implies that the OS will stop routing traffic to the tunnel soon.
     // TODO: Merge with `set_tunnel_network_config` if allowing this to block turns out to be sensible (especially on Apple platforms) or delete this comment.
-    fn unset_tunnel_network_config(&mut self);
+    async fn unset_tunnel_network_config(&mut self) -> Result<(), ()>;
 
     /// Use returned function to pass incoming IP packets, which should be emitted by the tunnel device.
     fn put_incoming_packet_fn(&self) -> Self::PutIncomingPacketFn;

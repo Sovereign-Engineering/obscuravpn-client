@@ -1,9 +1,8 @@
+import { useMantineTheme } from '@mantine/core';
 import Cookies from 'js-cookie';
 import localforage from 'localforage';
 import { Dispatch, ForwardedRef, RefCallback, SetStateAction, useEffect, useLayoutEffect, useState } from 'react';
 import { fmt } from './fmt';
-import { useMantineTheme } from '@mantine/core';
-import { CASE_FOLDING_MAP } from './casefolding';
 export { localforage };
 
 export const HEADER_TITLE = 'Obscura VPN';

@@ -2,6 +2,7 @@ use super::{
     errors::{ApiError, TunnelConnectError},
     network_config::TunnelNetworkConfig,
 };
+use crate::network_config::DnsContentBlock;
 use crate::{config::KeychainSetSecretKeyFn, net::NetworkInterface, network_config::DnsConfig, quicwg::QuicWgConnHandshaking};
 use crate::{config::PinnedLocation, exit_selection::ExitSelectionState};
 use crate::{
@@ -202,6 +203,12 @@ impl ClientState {
         let mut inner = self.lock();
         Self::change_config(&mut inner, move |config, _| config.api_url = url)?;
         inner.cached_api_client = None;
+        Ok(())
+    }
+
+    pub fn set_dns_content_block(&self, value: DnsContentBlock) -> Result<(), ConfigSaveError> {
+        let mut inner = self.lock();
+        Self::change_config(&mut inner, move |config, _| config.dns_content_block = value)?;
         Ok(())
     }
 

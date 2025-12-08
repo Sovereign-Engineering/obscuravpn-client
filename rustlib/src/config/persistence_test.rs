@@ -155,6 +155,7 @@ fn test_ignore_invalid_fields() {
         auto_connect: true,
         feature_flags: Default::default(),
         force_tcp_tls_relay_transport: (),
+        dns_content_block: Default::default(),
     };
     let example_json = match serde_json::to_value(&example_config).unwrap() {
         serde_json::Value::Object(m) => m,

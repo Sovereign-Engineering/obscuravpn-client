@@ -14,6 +14,7 @@ use strum::IntoStaticStr;
 use tokio::spawn;
 use uuid::Uuid;
 
+use crate::network_config::DnsContentBlock;
 use crate::{
     cached_value::CachedValue,
     manager::{DebugInfo, Manager, ManagerTrafficStats, Status},
@@ -129,6 +130,9 @@ pub enum ManagerCmd {
     SetAutoConnect {
         enable: bool,
     },
+    SetDnsContentBlock {
+        value: DnsContentBlock,
+    },
     SetFeatureFlag {
         flag: String,
         active: bool,
@@ -233,6 +237,7 @@ impl ManagerCmd {
             Self::SetAutoConnect { enable } => map_result(manager.set_auto_connect(enable)),
             Self::SetApiHostAlternate { host } => map_result(manager.set_api_host_alternate(host)),
             Self::SetApiUrl { url } => map_result(manager.set_api_url(url)),
+            Self::SetDnsContentBlock { value } => map_result(manager.set_dns_content_block(value)),
             Self::SetInNewAccountFlow { value } => map_result(manager.set_in_new_account_flow(value)),
             Self::SetPinnedExits { exits } => map_result(manager.set_pinned_exits(exits)),
             Self::SetSniRelay { host } => map_result(manager.set_sni_relay(host)),

@@ -18,6 +18,8 @@ use tokio_util::sync::{CancellationToken, DropGuard};
 use tracing_appender::non_blocking::WorkerGuard;
 use uuid::Uuid;
 
+use super::ffi_helpers::*;
+use crate::network_config::DnsContentBlock;
 use crate::{
     backoff::Backoff,
     client_state::{AccountStatus, ClientState},
@@ -32,8 +34,6 @@ use crate::{
     quicwg::TransportKind,
     tunnel_state::{TargetState, TunnelState},
 };
-
-use super::ffi_helpers::*;
 
 pub struct Manager {
     background_taks_cancellation_token: CancellationToken,
@@ -63,6 +63,7 @@ pub struct Status {
     pub feature_flags: FeatureFlags,
     pub feature_flag_keys: &'static [&'static str],
     pub use_system_dns: bool,
+    pub dns_content_block: DnsContentBlock,
 }
 
 impl Status {
@@ -77,6 +78,7 @@ impl Status {
             auto_connect,
             feature_flags,
             dns,
+            dns_content_block,
             ..
         } = config;
         Self {
@@ -93,6 +95,7 @@ impl Status {
             feature_flags,
             feature_flag_keys: FeatureFlags::KEYS,
             use_system_dns: dns.is_system(),
+            dns_content_block,
         }
     }
 }
@@ -135,17 +138,24 @@ impl VpnStatus {
                     reconnecting: disconnect_reason.is_some(),
                 }
             }
-            TunnelState::Connected { args, conn, relay, exit, network_config, offset_traffic_stats: _, network_interface: _ } => {
-                VpnStatus::Connected {
-                    tunnel_args: args.clone(),
-                    relay: relay.clone(),
-                    exit: exit.clone(),
-                    network_config: network_config.clone(),
-                    client_public_key: WgPubkey(conn.client_public_key().to_bytes()),
-                    exit_public_key: WgPubkey(conn.exit_public_key().to_bytes()),
-                    transport: conn.transport(),
-                }
-            }
+            TunnelState::Connected {
+                args,
+                conn,
+                relay,
+                exit,
+                network_config,
+                offset_traffic_stats: _,
+                network_interface: _,
+                dns_content_block: _,
+            } => VpnStatus::Connected {
+                tunnel_args: args.clone(),
+                relay: relay.clone(),
+                exit: exit.clone(),
+                network_config: network_config.clone(),
+                client_public_key: WgPubkey(conn.client_public_key().to_bytes()),
+                exit_public_key: WgPubkey(conn.exit_public_key().to_bytes()),
+                transport: conn.transport(),
+            },
         }
     }
 }
@@ -316,6 +326,23 @@ impl Manager {
     pub fn set_api_url(&self, value: Option<String>) -> Result<(), ConfigSaveError> {
         let ret = self.client_state.set_api_url(value);
         self.update_status_if_changed(None);
+        ret
+    }
+
+    pub fn set_dns_content_block(&self, value: DnsContentBlock) -> Result<(), ConfigSaveError> {
+        let ret = self.client_state.set_dns_content_block(value);
+        self.update_status_if_changed(None);
+        _ = self.target_state.send_if_modified(|target_state| {
+            if target_state.dns_content_block == value {
+                tracing::info!(
+                    message_id = "oNnPYAjD",
+                    "not sending new target state, because dns content block did not change"
+                );
+                return false;
+            }
+            target_state.dns_content_block = value;
+            true
+        });
         ret
     }
 

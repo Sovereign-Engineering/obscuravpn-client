@@ -16,7 +16,7 @@ use crate::exit_selection::ExitSelectionState;
 use crate::ffi_helpers::{FfiBytes, FfiBytesExt};
 use crate::manager::ManagerTrafficStats;
 use crate::net::NetworkInterface;
-use crate::network_config::TunnelNetworkConfig;
+use crate::network_config::{DnsContentBlock, TunnelNetworkConfig};
 use crate::quicwg::{QuicWgReceiveError, QuicWgTrafficStats};
 use crate::{client_state::ClientState, manager::TunnelArgs, quicwg::QuicWgConn};
 
@@ -24,6 +24,7 @@ use crate::{client_state::ClientState, manager::TunnelArgs, quicwg::QuicWgConn};
 pub struct TargetState {
     pub tunnel_args: Option<TunnelArgs>,
     pub network_interface: Option<NetworkInterface>,
+    pub dns_content_block: DnsContentBlock,
 }
 
 #[derive(derive_more::Debug, EnumIs)]
@@ -45,6 +46,7 @@ pub enum TunnelState {
         exit: OneExit,
         offset_traffic_stats: ManagerTrafficStats,
         network_interface: NetworkInterface,
+        dns_content_block: DnsContentBlock,
     },
 }
 
@@ -55,7 +57,8 @@ impl TunnelState {
         receive_cb: extern "C" fn(FfiBytes),
         cancel: CancellationToken,
     ) -> (Sender<TargetState>, Receiver<TunnelState>) {
-        let (target_state_send, target_state_recv) = channel(TargetState { tunnel_args: None, network_interface: None });
+        let dns_content_block = client_state.get_config().dns_content_block;
+        let (target_state_send, target_state_recv) = channel(TargetState { tunnel_args: None, network_interface: None, dns_content_block });
         let (tunnel_state_send, tunnel_state_recv) = channel(TunnelState::Disconnected);
         runtime.spawn(async move {
             cancel
@@ -112,6 +115,7 @@ impl TunnelState {
         network_config: TunnelNetworkConfig,
         relay: OneRelay,
         exit: OneExit,
+        dns_content_block: DnsContentBlock,
     ) {
         *self = Self::Connected {
             args: args.clone(),
@@ -121,6 +125,7 @@ impl TunnelState {
             relay,
             exit,
             offset_traffic_stats: self.traffic_stats(),
+            dns_content_block,
         };
     }
 
@@ -144,13 +149,15 @@ impl TunnelState {
     }
 
     fn is_target(&self, target_state: &TargetState) -> bool {
-        let TargetState { tunnel_args: target_tunnel_args, network_interface: target_network } = target_state;
-        let (current_args, current_network_interface) = match self {
-            Self::Disconnected => (None, None),
+        let TargetState { tunnel_args: target_tunnel_args, network_interface: target_network, dns_content_block } = target_state;
+        let (current_args, current_network_interface, current_dns_content_block) = match self {
+            Self::Disconnected => (None, None, None),
             Self::Connecting { .. } => return false,
-            Self::Connected { args, network_interface, .. } => (Some(args), Some(network_interface)),
+            Self::Connected { args, network_interface, dns_content_block, .. } => (Some(args), Some(network_interface), Some(dns_content_block)),
         };
-        current_args == target_tunnel_args.as_ref() && current_network_interface == target_network.as_ref()
+        current_args == target_tunnel_args.as_ref()
+            && current_network_interface == target_network.as_ref()
+            && current_dns_content_block.is_none_or(|current| current == dns_content_block)
     }
 
     async fn maintain(
@@ -188,15 +195,15 @@ impl TunnelState {
 
                 // Drop tunnel if args changed and change to connecting or disconnected as desired
                 tunnel_state.send_modify(|tunnel_state| match &target_state {
-                    TargetState { tunnel_args: None, network_interface: _ } => tunnel_state.set_disconnected(),
-                    TargetState { tunnel_args: Some(target_args), network_interface } => {
+                    TargetState { tunnel_args: None, network_interface: _, dns_content_block: _ } => tunnel_state.set_disconnected(),
+                    TargetState { tunnel_args: Some(target_args), network_interface, dns_content_block: _ } => {
                         tunnel_state.set_connecting(target_args, network_interface, disconnect_reason.take())
                     }
                 });
 
                 // Connect if desired and possible. If target state is reached maintain it until the target changes.
                 match &target_state {
-                    TargetState { tunnel_args: Some(target_args), network_interface: Some(target_network_interface) } => {
+                    TargetState { tunnel_args: Some(target_args), network_interface: Some(target_network_interface), dns_content_block } => {
                         match poll_until_change(
                             &mut target_state_recv,
                             client_state.connect(&target_args.exit, Some(target_network_interface), &mut selection_state),
@@ -213,12 +220,21 @@ impl TunnelState {
                                 tracing::info!(message_id = "OfLfwKhf", ?error, "failed to connect");
                                 tunnel_state.send_modify(|tunnel_state| tunnel_state.set_connect_error(error));
                             }
-                            Some(Ok((conn, network_config, exit, relay))) => {
+                            Some(Ok((conn, mut network_config, exit, relay))) => {
                                 tracing::info!(message_id = "icGquatl", "connected successfully, setting connected state");
                                 selection_state = ExitSelectionState::default();
+                                network_config.apply_dns_content_block(&exit.provider_name, *dns_content_block);
                                 let conn = Arc::new(conn);
                                 tunnel_state.send_modify(|tunnel_state| {
-                                    tunnel_state.set_connected(target_args, target_network_interface, conn.clone(), network_config, relay, exit)
+                                    tunnel_state.set_connected(
+                                        target_args,
+                                        target_network_interface,
+                                        conn.clone(),
+                                        network_config,
+                                        relay,
+                                        exit,
+                                        *dns_content_block,
+                                    )
                                 });
                                 // reached connected target state forward traffic until target state changes or the tunnel fails
                                 disconnect_reason = poll_until_change(&mut target_state_recv, async {
@@ -236,13 +252,13 @@ impl TunnelState {
                             }
                         }
                     }
-                    TargetState { tunnel_args: None, network_interface: _ } => {
+                    TargetState { tunnel_args: None, network_interface: _, dns_content_block: _ } => {
                         tracing::info!(message_id = "axfILRQy", "reached disconnected target state");
                         selection_state = ExitSelectionState::default();
                         // nothing to do until target args change
                         poll_until_change(&mut target_state_recv, pending::<()>()).await;
                     }
-                    TargetState { tunnel_args: Some(_), network_interface: None } => {
+                    TargetState { tunnel_args: Some(_), network_interface: None, dns_content_block: _ } => {
                         tracing::warn!(message_id = "0K9Nep8g", "stuck in connecting state without target interface");
                         selection_state = ExitSelectionState::default();
                         tunnel_state.send_modify(|tunnel_state| tunnel_state.set_connect_error(TunnelConnectError::NoInternet));

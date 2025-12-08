@@ -76,6 +76,9 @@
           OBSCURA_CLIENT_RUSTLIB_CBINDGEN_OUTPUT_HEADER_PATH = "${placeholder "dev"}/include/libobscuravpn_client.h";
         };
 
+        rust = craneLib.buildPackage (rustArgs // rustlibBindgenArgs);
+        rust-android = craneLib.buildPackage (rustArgs-android // rustlibBindgenArgs);
+
         nodeModules = pkgs.importNpmLock.buildNodeModules {
           npmRoot = ./obscura-ui;
           nodejs = pkgs.nodejs;
@@ -94,15 +97,83 @@
             '';
           });
 
+        licenses = pkgs.runCommand "licenses.json" {
+          nativeBuildInputs = [ pkgs.nodejs ];
+
+          LICENSES_NODE = licenses-node;
+          LICENSES_RUST = licenses-rust;
+        } ''
+          node ${contrib/licenses.mjs} >"$out"
+        '';
+
+        licenses-node = nodeDerivation {
+          name = "licenses-node.json";
+
+          nativeBuildInputs = [ pkgs.pnpm ];
+
+          src = (lib.fileset.toSource {
+            root = ./obscura-ui;
+            fileset = lib.fileset.unions [ ./obscura-ui/package.json ./obscura-ui/package-lock.json ];
+          });
+
+          buildPhase = ''
+            license-checker \
+              --start ${nodeModules} \
+              --onlyAllow '0BSD;Apache-2.0;BSD-2-Clause;BSD-3-Clause;CC0-1.0;CC-BY-3.0;CC-BY-4.0;ISC;MIT;OFL-1.1;Python-2.0' \
+              --excludePrivatePackages \
+              --unknown \
+              --json \
+              >"$out"
+          '';
+        };
+
+        licenses-rust = craneLib.mkCargoDerivation (rustArgs // {
+          name = "licenses-rust.json";
+          nativeBuildInputs = [ pkgs.cargo-about ];
+          src = ./rustlib;
+          buildPhaseCargoCommand = ''
+            cargo-about generate --format=json --fail >"$out"
+          '';
+          installPhase = " ";
+        });
+
+        mkWeb = platform:
+          nodeDerivation {
+            name = "web-${platform}";
+
+            src = lib.fileset.toSource {
+              root = ./.;
+              fileset = lib.fileset.unions [ ./apple/client/Assets.xcassets ./obscura-ui ];
+            };
+
+            LICENSE_JSON = licenses;
+
+            buildPhase = ''
+              pushd obscura-ui
+
+              npm run build
+
+              popd
+            '';
+
+            installPhase = ''
+              mv obscura-ui/build $out
+            '';
+          };
+
+        web-android = mkWeb "android";
+        web-ios = mkWeb "iphoneos";
+        web-macos = mkWeb "macosx";
+
         shellFiles = lib.sources.sourceFilesBySuffices ./. [ ".bash" ".sh" ".shellcheckrc" ];
 
         swiftFiles = lib.sources.sourceFilesBySuffices (lib.fileset.toSource {
           root = ./.;
           fileset = lib.fileset.unions [ ./.swiftformat apple/client ];
         }) [ ".swift" ".swiftformat" ];
-      in rec {
+      in {
         checks = {
-          inherit (packages) licenses rust rust-android;
+          inherit licenses rust rust-android web-android web-ios web-macos;
 
           shellcheck = pkgs.runCommand "shellcheck" { nativeBuildInputs = [ pkgs.shellcheck ]; } ''
             shopt -s globstar
@@ -161,7 +232,7 @@
 
             # This only changes when our dependencies or license config changes and is relatively slow.
             # So build it once and cache it.
-            LICENSE_JSON = packages.licenses;
+            LICENSE_JSON = licenses;
           };
 
           android = pkgs.mkShellNoCC (androidEnv // {
@@ -183,6 +254,7 @@
             ANDROID_HOME = "${android.androidsdk}/libexec/android-sdk";
             GRADLE_OPTS = "-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidBuildTools}/aapt2";
             JAVA_HOME = pkgs.jdk21.home;
+            OBSCURA_UI = web-android;
 
             shellHook = ''
               export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:${androidBuildTools}:$PATH"
@@ -190,49 +262,6 @@
           });
         };
 
-        packages = rec {
-          licenses = pkgs.runCommand "licenses.json" {
-            nativeBuildInputs = [ pkgs.nodejs ];
-
-            LICENSES_NODE = licenses-node;
-            LICENSES_RUST = licenses-rust;
-          } ''
-            node ${contrib/licenses.mjs} >"$out"
-          '';
-
-          licenses-node = nodeDerivation {
-            name = "licenses-node.json";
-
-            nativeBuildInputs = [ pkgs.pnpm ];
-
-            src = (lib.fileset.toSource {
-              root = ./obscura-ui;
-              fileset = lib.fileset.unions [ ./obscura-ui/package.json ./obscura-ui/package-lock.json ];
-            });
-
-            buildPhase = ''
-              license-checker \
-                --start ${nodeModules} \
-                --onlyAllow '0BSD;Apache-2.0;BSD-2-Clause;BSD-3-Clause;CC0-1.0;CC-BY-3.0;CC-BY-4.0;ISC;MIT;OFL-1.1;Python-2.0' \
-                --excludePrivatePackages \
-                --unknown \
-                --json \
-                >"$out"
-            '';
-          };
-
-          licenses-rust = craneLib.mkCargoDerivation (rustArgs // {
-            name = "licenses-rust.json";
-            nativeBuildInputs = [ pkgs.cargo-about ];
-            src = ./rustlib;
-            buildPhaseCargoCommand = ''
-              cargo-about generate --format=json --fail >"$out"
-            '';
-            installPhase = " ";
-          });
-
-          rust = craneLib.buildPackage (rustArgs // rustlibBindgenArgs);
-          rust-android = craneLib.buildPackage (rustArgs-android // rustlibBindgenArgs);
-        };
+        packages = { inherit licenses licenses-node licenses-rust rust web-android web-ios web-macos; };
       });
 }

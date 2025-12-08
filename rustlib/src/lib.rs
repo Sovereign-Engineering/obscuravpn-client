@@ -1,5 +1,3 @@
-#![allow(clippy::large_enum_variant, clippy::too_many_arguments)]
-
 pub mod backoff;
 pub mod client_state;
 pub mod config;
@@ -25,5 +23,6 @@ pub mod android;
 pub mod apple;
 mod cached_value;
 mod liveness;
+pub mod positive_u31;
 
 pub const DEFAULT_API_URL: &str = "https://v1.api.prod.obscura.net/api";

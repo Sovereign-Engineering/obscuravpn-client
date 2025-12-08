@@ -77,7 +77,6 @@ pub fn run(args: ServiceArgs) -> anyhow::Result<Infallible> {
 
                 // TODO: remove in favor of calling appropriate `os_impl` methods in the right places
                 _ = status.changed() => {
-                    _ = dbg!(status.has_changed());
                     process_status_update(&status.borrow(), &mut os_impl).await;
                 }
             }
@@ -93,14 +92,14 @@ async fn process_status_update(status: &Status, os_impl: &mut impl Os) {
     };
     match network_config {
         Some(network_config) => {
-            if let Err(error) = os_impl.set_tunnel_network_config(network_config).await {
+            if let Err(()) = os_impl.set_tunnel_network_config(network_config).await {
                 // TODO: should become tunnel connect error published in status
-                tracing::error!(message_id = "SisqqS5i", ?error, "set_tunnel_network_config failed");
+                tracing::error!(message_id = "SisqqS5i", "set_tunnel_network_config failed");
             }
         }
         None => {
-            if let Err(error) = os_impl.unset_tunnel_network_config().await {
-                tracing::error!(message_id = "NYCr11HH", ?error, "unset_tunnel_network_config failed");
+            if let Err(()) = os_impl.unset_tunnel_network_config().await {
+                tracing::error!(message_id = "NYCr11HH", "unset_tunnel_network_config failed");
             }
         }
     }

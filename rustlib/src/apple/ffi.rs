@@ -1,5 +1,4 @@
 use std::ffi::c_void;
-use std::num::NonZeroU32;
 use std::sync::{Arc, LazyLock, OnceLock};
 use tokio::runtime::Runtime;
 
@@ -9,6 +8,7 @@ use crate::manager::Manager;
 use crate::manager_cmd::ManagerCmd;
 use crate::manager_cmd::ManagerCmdErrorCode;
 use crate::net::NetworkInterface;
+use crate::positive_u31::PositiveU31;
 
 /// cbindgen:ignore
 static APPLE_LOG_INIT: std::sync::Once = std::sync::Once::new();
@@ -167,7 +167,13 @@ pub unsafe extern "C" fn send_packet(packet: FfiBytes) {
 /// - there is no other global function of this name
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn set_network_interface(index: u32, name: FfiStr) {
-    let network_interface = NonZeroU32::new(index).map(|index| NetworkInterface { index, name: name.as_str().to_string() });
+    let network_interface = match index {
+        0 => None,
+        index => PositiveU31::try_from(index)
+            .map_err(|_| tracing::error!(message_id = "Y8aRUbjp", index, "network interface index out of range"))
+            .ok(),
+    }
+    .map(|index| NetworkInterface { index, name: name.as_str().to_string() });
     global_manager().set_network_interface(network_interface);
 }
 

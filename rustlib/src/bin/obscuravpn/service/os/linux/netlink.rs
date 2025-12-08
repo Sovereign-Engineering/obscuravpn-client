@@ -1,7 +1,7 @@
-use crate::service::os::linux::positive_u31::PositiveU31;
 use anyhow::{Context, anyhow, bail};
 use futures::{StreamExt, TryStreamExt};
 use obscuravpn_client::net::NetworkInterface;
+use obscuravpn_client::positive_u31::PositiveU31;
 use obscuravpn_client::tokio::AbortOnDrop;
 use rtnetlink::RouteMessageBuilder;
 use rtnetlink::constants::RTMGRP_IPV4_ROUTE;
@@ -10,7 +10,7 @@ use rtnetlink::packet_route::route::{RouteAttribute, RouteHeader, RouteMessage};
 use rtnetlink::sys::{AsyncSocket, SocketAddr};
 use std::convert::Infallible;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-use std::num::{NonZeroI32, NonZeroU32};
+use std::num::NonZeroI32;
 use std::time::Duration;
 use tokio;
 use tokio::select;
@@ -31,9 +31,9 @@ pub async fn netlink_connect() -> Result<rtnetlink::Handle, ()> {
     Ok(handle)
 }
 
-pub async fn add_routes(tun_idx: PositiveU31) -> Result<(), ()> {
+pub async fn add_routes(tun: &NetworkInterface) -> Result<(), ()> {
     let handle = netlink_connect().await?;
-    let route_messages = build_route_messages(tun_idx)?;
+    let route_messages = build_route_messages(tun)?;
     for route_message in route_messages {
         handle.route().add(route_message.clone()).replace().execute().await.map_err(|error| {
             tracing::error!(message_id = "a1Uk0dKX", ?error, ?route_message, "failed to add route");
@@ -42,9 +42,9 @@ pub async fn add_routes(tun_idx: PositiveU31) -> Result<(), ()> {
     Ok(())
 }
 
-pub async fn del_routes(tun_idx: PositiveU31) -> Result<(), ()> {
+pub async fn del_routes(tun: &NetworkInterface) -> Result<(), ()> {
     let handle = netlink_connect().await?;
-    let route_messages = build_route_messages(tun_idx)?;
+    let route_messages = build_route_messages(tun)?;
     for route_message in route_messages {
         handle
             .route()
@@ -71,7 +71,7 @@ pub async fn del_routes(tun_idx: PositiveU31) -> Result<(), ()> {
 /// - We use the default route for preferred network interface discovery
 /// - We wouldn't know what the set it to when the tunnel is disabled
 /// - Network management services like network manager tend to overwrite it.
-pub fn build_route_messages(tun_idx: PositiveU31) -> Result<Vec<RouteMessage>, ()> {
+pub fn build_route_messages(tun: &NetworkInterface) -> Result<Vec<RouteMessage>, ()> {
     [
         IpAddr::V4(Ipv4Addr::new(000, 0, 0, 0)),
         IpAddr::V4(Ipv4Addr::new(128, 0, 0, 0)),
@@ -82,7 +82,7 @@ pub fn build_route_messages(tun_idx: PositiveU31) -> Result<Vec<RouteMessage>, (
         Ok(RouteMessageBuilder::<IpAddr>::new()
             .destination_prefix(destination, 1)
             .map_err(|error| tracing::error!(message_id = "wtAo1gKj", ?error, "failed to build route message"))?
-            .output_interface(tun_idx.into())
+            .output_interface(tun.index.into())
             .build())
     })
     .into_iter()
@@ -148,7 +148,7 @@ async fn get_preferred_network_interface(handle: &rtnetlink::Handle) -> anyhow::
         let (mut interface_index, mut metric) = (None, None);
         for attr in route.attributes {
             match attr {
-                RouteAttribute::Oif(v) => interface_index = Some(NonZeroU32::new(v).context("interface index can't be 0")?),
+                RouteAttribute::Oif(v) => interface_index = Some(PositiveU31::try_from(v).context("interface index out of range")?),
                 RouteAttribute::Priority(v) => metric = Some(v),
                 _ => {}
             }
@@ -159,7 +159,7 @@ async fn get_preferred_network_interface(handle: &rtnetlink::Handle) -> anyhow::
         let link_message: LinkMessage = handle
             .link()
             .get()
-            .match_index(interface_index.get())
+            .match_index(interface_index.into())
             .execute()
             .try_next()
             .await?

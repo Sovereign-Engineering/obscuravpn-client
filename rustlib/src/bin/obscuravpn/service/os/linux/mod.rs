@@ -1,13 +1,13 @@
+pub mod dns;
 pub mod netlink;
-mod positive_u31;
-mod resolve_d;
 pub mod tun;
 
 use crate::service::os::Os;
+use crate::service::os::linux::dns::detect_dns_manager;
 use crate::service::os::linux::netlink::{add_routes, del_routes, watch_preferred_network_interface};
-use crate::service::os::linux::resolve_d::{revert_dns, set_dns};
 use crate::service::os::linux::tun::{Tun, TunWriter};
 use crate::service::os::packet_buffer::PacketBuffer;
+use dns::{reset_dns, set_dns};
 use obscuravpn_client::manager_cmd::{ManagerCmd, ManagerCmdErrorCode, ManagerCmdOk};
 use obscuravpn_client::net::NetworkInterface;
 use obscuravpn_client::network_config::TunnelNetworkConfig;
@@ -24,6 +24,9 @@ pub struct LinuxOsImpl {
 
 impl LinuxOsImpl {
     pub fn new(runtime: &tokio::runtime::Handle, init_commands: Vec<ManagerCmd>) -> anyhow::Result<Self> {
+        runtime
+            .block_on(detect_dns_manager())
+            .ok_or_else(|| anyhow::anyhow!("failed to detect compatible dns management service"))?;
         Ok(Self {
             tun: Tun::create(runtime)?,
             preferred_network_interface: watch_preferred_network_interface(runtime),
@@ -41,21 +44,21 @@ impl Os for LinuxOsImpl {
     }
 
     async fn set_tunnel_network_config(&mut self, network_config: TunnelNetworkConfig) -> Result<(), ()> {
-        let tun_idx = self.tun.interface_index();
+        let tun = self.tun.interface();
         let mut result = Ok(());
-        // Attempt all config steps regardless of individual failures to minimize leaks until intentionally disconnecting. E.g. DNS queries shouldn't because route setup failed.
+        // Attempt all config steps regardless of individual failures to minimize leaks until intentionally disconnecting. E.g. DNS queries shouldn't leak because route setup failed.
         result = result.and(self.tun.set_config(network_config.mtu, network_config.ipv4, network_config.ipv6));
-        result = result.and(add_routes(tun_idx).await);
-        result = result.and(set_dns(tun_idx, &network_config.dns).await);
+        result = result.and(add_routes(&tun).await);
+        result = result.and(set_dns(&tun, &network_config.dns).await);
         self.current_network_config = result.map(|_| Some(network_config));
         result
     }
 
     async fn unset_tunnel_network_config(&mut self) -> Result<(), ()> {
-        let tun_idx = self.tun.interface_index();
+        let tun = self.tun.interface();
         let mut result = Ok(());
-        result = result.and(del_routes(tun_idx).await);
-        result = result.and(revert_dns(tun_idx).await);
+        result = result.and(del_routes(&tun).await);
+        result = result.and(reset_dns(&tun).await);
         self.current_network_config = result.map(|_| None);
         result
     }

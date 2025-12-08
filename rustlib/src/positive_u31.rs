@@ -1,7 +1,7 @@
 use std::num::{NonZeroI32, NonZeroU32, TryFromIntError};
 
 // Non-zero, positive integer below `1<<31`: [1..i32::MAX].
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct PositiveU31 {
     value: u32,
 }

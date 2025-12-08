@@ -3,6 +3,7 @@ use crate::manager::Manager;
 use crate::manager_cmd::ManagerCmd;
 use crate::manager_cmd::ManagerCmdErrorCode;
 use crate::net::NetworkInterface;
+use crate::positive_u31::PositiveU31;
 use jni::JNIEnv;
 use jni::objects::{JClass, JObject, JString, JValue};
 use jni::sys::jint;
@@ -10,7 +11,6 @@ use nix::errno::Errno;
 use nix::net::if_::if_indextoname;
 use nix::unistd;
 use std::ffi::c_void;
-use std::num::NonZeroU32;
 use std::os::fd::BorrowedFd;
 use std::os::fd::RawFd;
 use std::path::PathBuf;
@@ -247,9 +247,8 @@ pub unsafe extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_set
         GLOBAL.get().expect("global manager not initialized").set_network_interface(None);
     } else {
         let index = u32::try_from(java_index)
-            .ok()
-            .and_then(NonZeroU32::new)
-            .expect("network interface index must be non-zero u32");
+            .and_then(PositiveU31::try_from)
+            .expect("network interface index must be positive u32");
         let name = if_indextoname(index.into())
             .expect("network interface index must convert to name")
             .into_string()

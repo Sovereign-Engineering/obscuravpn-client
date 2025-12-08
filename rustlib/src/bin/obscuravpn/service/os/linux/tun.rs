@@ -1,9 +1,10 @@
 use crate::service::os::PutIncomingPacketFn;
-use crate::service::os::linux::positive_u31::PositiveU31;
 use crate::service::os::packet_buffer::PacketBuffer;
 use ipnetwork::Ipv6Network;
-use std::io::ErrorKind::WouldBlock;
-use std::net::Ipv4Addr;
+use obscuravpn_client::net::NetworkInterface;
+use obscuravpn_client::positive_u31::PositiveU31;
+use std::io::ErrorKind::{AlreadyExists, WouldBlock};
+use std::net::{IpAddr, Ipv4Addr};
 use std::sync::{Arc, Mutex, Weak};
 use std::time::{Duration, Instant};
 use tokio::runtime::Handle;
@@ -29,8 +30,8 @@ impl Tun {
         Ok(Self { dev, interface_index, last_error_log_at: Mutex::new(None) })
     }
 
-    pub fn interface_index(&self) -> PositiveU31 {
-        self.interface_index
+    pub fn interface(&self) -> NetworkInterface {
+        NetworkInterface { name: TUN_NAME.to_string(), index: self.interface_index }
     }
 
     pub fn writer(&self) -> TunWriter {
@@ -68,9 +69,35 @@ impl Tun {
     pub fn set_config(&mut self, mtu: u16, ipv4: Ipv4Addr, ipv6: Ipv6Network) -> Result<(), ()> {
         let mut result = Ok(());
 
+        // Add new IPs before removing the current ones. This prevents having no addresses on the device temporarily, which may trigger automatic network manager device state changes with unintended side effects on DNS and routes.
+
+        if let Err(error) = self.dev.set_mtu(mtu) {
+            tracing::error!(message_id = "qPppmh83", ?error, "failed to set tun mtu");
+            result = Err(());
+        }
+        if let Err(error) = self.dev.add_address_v4(ipv4, 32u8)
+            && error.kind() != AlreadyExists
+        {
+            tracing::error!(message_id = "cY11X3I6", ?error, address = ?ipv4, "failed to add IPv4 tun address");
+            result = Err(());
+        }
+        if let Err(error) = self.dev.add_address_v6(ipv6.network(), ipv6.prefix())
+            && error.kind() != AlreadyExists
+        {
+            tracing::error!(message_id = "wHod6P2h", ?error, address = ?ipv6, "failed to add IPv6 tun address");
+            result = Err(());
+        }
+
         match self.dev.addresses() {
             Ok(addresses) => {
                 for address in addresses {
+                    let keep = match address {
+                        IpAddr::V4(address) => address == ipv4,
+                        IpAddr::V6(address) => ipv6.contains(address),
+                    };
+                    if keep {
+                        continue;
+                    }
                     if let Err(error) = self.dev.remove_address(address) {
                         tracing::error!(message_id = "qPppmh83", ?error, ?address, "failed to remove tun address");
                         result = Err(());
@@ -81,18 +108,6 @@ impl Tun {
                 tracing::error!(message_id = "1SDywPMm", ?error, "failed to retrieve tun addresses");
                 result = Err(());
             }
-        }
-        if let Err(error) = self.dev.set_mtu(mtu) {
-            tracing::error!(message_id = "qPppmh83", ?error, "failed to set tun mtu");
-            result = Err(());
-        }
-        if let Err(error) = self.dev.add_address_v4(ipv4, 32u8) {
-            tracing::error!(message_id = "cY11X3I6", ?error, address = ?ipv4, "failed to add IPv4 tun address");
-            result = Err(());
-        }
-        if let Err(error) = self.dev.add_address_v6(ipv6.network(), ipv6.prefix()) {
-            tracing::error!(message_id = "wHod6P2h", ?error, address = ?ipv6, "failed to add IPv6 tun address");
-            result = Err(());
         }
         result
     }

@@ -11,3 +11,9 @@ impl From<tokio::task::AbortHandle> for AbortOnDrop {
         AbortOnDrop(handle)
     }
 }
+
+impl From<tokio::task::JoinHandle<()>> for AbortOnDrop {
+    fn from(handle: tokio::task::JoinHandle<()>) -> Self {
+        handle.abort_handle().into()
+    }
+}

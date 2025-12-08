@@ -4,6 +4,7 @@ use crate::manager_cmd::ManagerCmd;
 use crate::manager_cmd::ManagerCmdErrorCode;
 use crate::net::NetworkInterface;
 use crate::positive_u31::PositiveU31;
+use crate::tokio::AbortOnDrop;
 use jni::JNIEnv;
 use jni::objects::{JClass, JObject, JString, JValue};
 use jni::sys::jint;
@@ -11,86 +12,67 @@ use nix::errno::Errno;
 use nix::net::if_::if_indextoname;
 use nix::unistd;
 use std::ffi::c_void;
-use std::os::fd::BorrowedFd;
-use std::os::fd::RawFd;
+use std::os::fd::{AsRawFd as _, FromRawFd as _, OwnedFd};
 use std::path::PathBuf;
 use std::sync::{Arc, LazyLock, Mutex, OnceLock};
 use tokio::io::unix::AsyncFd;
 use tokio::runtime::Runtime;
-use tokio::task::JoinHandle;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
 use tracing_subscriber::{EnvFilter, Registry};
 
-struct TunnelRxTx {
-    pub fd: RawFd,
-    pub handle_tx: JoinHandle<()>,
-}
-
 static RUNTIME: LazyLock<Runtime> = LazyLock::new(|| Runtime::new().unwrap());
 static GLOBAL: OnceLock<Arc<Manager>> = OnceLock::new();
-static TUNNEL_RX_TX: OnceLock<Mutex<Option<TunnelRxTx>>> = OnceLock::new();
+static TUNNEL: Mutex<Option<Tunnel>> = Mutex::new(None);
 
-impl TunnelRxTx {
-    pub fn spawn(fd: RawFd) -> Self {
-        let bfd = unsafe { BorrowedFd::borrow_raw(fd) };
-        let afd = Arc::new(AsyncFd::new(bfd).expect("failed to register fd"));
+struct Tunnel {
+    fd: OwnedFd,
+    _read_loop_task: AbortOnDrop,
+}
 
-        let rafd = afd.clone();
-        let handle_tx = RUNTIME.spawn(async move {
+impl Tunnel {
+    fn spawn(fd: OwnedFd) -> Self {
+        let fd_watcher = AsyncFd::new(fd.as_raw_fd()).expect("failed to watch tun");
+
+        let read_loop_task = RUNTIME.spawn(async move {
             let manager = GLOBAL.get().expect("ffi manager not initialized").clone();
 
             // technically can't be bigger than MTU but just in case
-            let mut buf: Box<[u8; 4096]> = Box::new([0; 4096]);
+            let mut buf = Box::new([0; 4096]);
 
             loop {
-                match rafd.readable().await {
-                    Ok(mut guard) => match unistd::read(bfd, &mut buf[..]) {
+                match fd_watcher.readable().await {
+                    Ok(mut guard) => match unistd::read(&fd_watcher, &mut buf[..]) {
                         Ok(n) => {
                             if n > 0 {
                                 manager.send_packet(&mut buf[..n]);
                             }
                         }
-
                         Err(Errno::EAGAIN) => {
                             guard.clear_ready();
                         }
-
-                        Err(e) => {
-                            tracing::error!("read from tunnel failed {e}");
+                        Err(error) => {
+                            tracing::error!(message_id = "eagh6Noh", ?error, "failed to read from tun");
                             break;
                         }
                     },
-
-                    Err(e) => {
-                        tracing::error!("readable wait failed {e}");
+                    Err(error) => {
+                        tracing::error!(message_id = "r5N6izcO", ?error, "failed to wait for tun to become readable");
                         break;
                     }
                 }
             }
         });
 
-        Self { handle_tx, fd }
-    }
-
-    pub fn stop(self) {
-        self.handle_tx.abort();
-
-        if let Err(e) = unistd::close(self.fd) {
-            tracing::error!("closing fd failed {e}");
-        }
+        Self { fd, _read_loop_task: read_loop_task.into() }
     }
 }
 
 /// cbindgen:ignore
 extern "C" fn receive_cb(ffi_bytes: FfiBytes) -> () {
-    let guard = TUNNEL_RX_TX.get().expect("tunnel global not initialized").lock().unwrap();
-
-    if let Some(ref tun) = *guard {
-        let bfd = unsafe { BorrowedFd::borrow_raw(tun.fd) };
-
-        if let Err(e) = unistd::write(bfd, &ffi_bytes.as_slice()) {
-            tracing::error!("writing packet failed {e}");
+    if let Some(tun) = &*TUNNEL.lock().unwrap() {
+        if let Err(error) = unistd::write(&tun.fd, &ffi_bytes.as_slice()) {
+            tracing::error!(message_id = "W0sOhigq", ?error, "writing packet to tun failed");
         }
     }
 }
@@ -98,9 +80,7 @@ extern "C" fn receive_cb(ffi_bytes: FfiBytes) -> () {
 /// cbindgen:ignore
 #[unsafe(no_mangle)]
 pub extern "C" fn JNI_OnLoad(_vm: *mut jni::sys::JavaVM, _reserved: *mut c_void) -> jni::sys::jint {
-    TUNNEL_RX_TX.set(Mutex::new(None)).ok();
-
-    let android_layer = tracing_android::layer("ObscuraNative").expect("failed to create tracing-android layer");
+    let android_layer = tracing_android::layer("ObscuraNative").expect("failed to create `tracing-android` layer");
 
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
@@ -118,7 +98,7 @@ pub extern "C" fn JNI_OnLoad(_vm: *mut jni::sys::JavaVM, _reserved: *mut c_void)
             .or_else(|| info.payload().downcast_ref::<String>().map(|s| s.as_str()))
             .unwrap_or("panic payload not str");
         let bt = std::backtrace::Backtrace::force_capture();
-        tracing::error!("panic at {loc}: {msg}\n{bt}");
+        tracing::error!(message_id = "W6fhvnSf", "panic at {loc}: {msg}\n{bt}");
     }));
 
     jni::sys::JNI_VERSION_1_6
@@ -138,8 +118,8 @@ pub unsafe extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_ini
             .install_default()
             .expect("Failed to install aws-lc crypto provider");
 
-        let config_dir: String = env.get_string(&java_config_dir).expect("first argument must be a string").into();
-        let user_agent = env.get_string(&java_user_agent).expect("second argument must be a string");
+        let config_dir: String = env.get_string(&java_config_dir).expect("`java_config_dir` wasn't a string").into();
+        let user_agent = env.get_string(&java_user_agent).expect("`java_user_agent` wasn't a string");
 
         match Manager::new(
             PathBuf::from(config_dir),
@@ -160,7 +140,7 @@ pub unsafe extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_ini
 
     if !first_init {
         env.throw_new("java/lang/RuntimeException", "already initialized")
-            .expect("must throw an already initialized exception");
+            .expect("failed to throw exception");
     }
 }
 
@@ -172,15 +152,15 @@ pub unsafe extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_jso
     java_json: JString,
     java_future: JObject,
 ) {
-    let json_cmd: String = env.get_string(&java_json).expect("first argument must be a string").into();
-    let future_global = env.new_global_ref(&java_future).expect("global ref to second argument must be available");
-    let jvm = env.get_java_vm().expect("jvm must be available");
+    let json_cmd: String = env.get_string(&java_json).expect("`java_json` wasn't a string").into();
+    let future_global = env.new_global_ref(&java_future).expect("global ref to `java_future` wasn't available");
+    let jvm = env.get_java_vm().expect("jvm wasn't available");
 
     let cmd: ManagerCmd = match serde_json::from_str(&json_cmd) {
         Ok(cmd) => cmd,
         Err(error) => {
             env.throw_new("java/lang/RuntimeException", error.to_string())
-                .expect("must throw a java exception on manager error");
+                .expect("failed to throw exception");
             return;
         }
     };
@@ -195,8 +175,8 @@ pub unsafe extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_jso
         let future = future_global.as_obj();
 
         let json_result = result.and_then(|ok| {
-            serde_json::to_string(&ok).map_err(|err| {
-                tracing::error!("failed to serialize manager result to json {err}");
+            serde_json::to_string(&ok).map_err(|error| {
+                tracing::error!(message_id = "hP0R8zXa", ?error, "could not serialize successful json cmd result");
                 return ManagerCmdErrorCode::Other;
             })
         });
@@ -207,9 +187,11 @@ pub unsafe extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_jso
                     future,
                     "complete",
                     "(Ljava/lang/Object;)Z",
-                    &[JValue::Object(&JObject::from(env.new_string(ok).expect("must become java string")))],
+                    &[JValue::Object(&JObject::from(
+                        env.new_string(ok).expect("failed to convert serailized json to java string"),
+                    ))],
                 )
-                .expect("must have called complete");
+                .expect("failed to call `complete`");
             }
             Err(err) => {
                 let exception = env
@@ -217,11 +199,11 @@ pub unsafe extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_jso
                         "net/obscura/vpnclientapp/client/JsonFfiException",
                         "(Ljava/lang/String;)V",
                         &[JValue::Object(&JObject::from(
-                            env.new_string(serde_json::to_string(&err).expect("must be convertible to JSON"))
-                                .expect("must become java string"),
+                            env.new_string(serde_json::to_string(&err).expect("could not serialize failed json cmd result"))
+                                .expect("failed to convert serialized json to java string"),
                         ))],
                     )
-                    .expect("must create exception");
+                    .expect("failed to construct exception");
 
                 // TODO figure out error codes and things
                 env.call_method(
@@ -230,7 +212,7 @@ pub unsafe extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_jso
                     "(Ljava/lang/Throwable;)V",
                     &[JValue::Object(&JObject::from(exception))],
                 )
-                .expect("must have called completeExceptionally");
+                .expect("failed to call `completeExceptionally`");
             }
         }
     });
@@ -248,11 +230,11 @@ pub unsafe extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_set
     } else {
         let index = u32::try_from(java_index)
             .and_then(PositiveU31::try_from)
-            .expect("network interface index must be positive u32");
+            .expect("network interface index wasn't a positive u32");
         let name = if_indextoname(index.into())
-            .expect("network interface index must convert to name")
+            .expect("failed to get network interface name for index")
             .into_string()
-            .expect("network interface name must convert to a string");
+            .expect("failed to convert network interface name to string");
         let ni = NetworkInterface { name, index };
 
         GLOBAL.get().expect("global manager not initialized").set_network_interface(Some(ni));
@@ -262,33 +244,15 @@ pub unsafe extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_set
 /// cbindgen:ignore
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_startTunnel(_env: JNIEnv, _: JClass, java_fd: jint) -> () {
-    let tun = {
-        let mut guard = TUNNEL_RX_TX.get().expect("tunnel global not initialized").lock().unwrap();
-        let tun = guard.take();
-
-        *guard = Some(TunnelRxTx::spawn(java_fd));
-
-        tun
-    };
-
-    if let Some(tun) = tun {
-        tun.stop();
-    }
+    // SAFETY:
+    // - `detachFd` surrenders ownership of the FD on the Kotlin side
+    // - No cleanup required besides `close`
+    let fd = unsafe { OwnedFd::from_raw_fd(java_fd) };
+    TUNNEL.lock().unwrap().replace(Tunnel::spawn(fd));
 }
 
 /// cbindgen:ignore
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_stopTunnel(_env: JNIEnv, _: JClass) -> () {
-    let tun = {
-        let mut guard = TUNNEL_RX_TX.get().expect("tunnel global not initialized").lock().unwrap();
-        let tun = guard.take();
-
-        *guard = None;
-
-        tun
-    };
-
-    if let Some(tun) = tun {
-        tun.stop();
-    }
+    TUNNEL.lock().unwrap().take();
 }

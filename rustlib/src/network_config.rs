@@ -43,6 +43,14 @@ impl TunnelNetworkConfig {
             mtu: 1280,
         }
     }
+
+    pub fn apply_dns_content_block(&mut self, exit_provider_name: &str, dns_content_block: DnsContentBlock) {
+        if let Some(dns) = dns_content_block.mullvad_dns_ip()
+            && exit_provider_name == "Mullvad VPN"
+        {
+            self.dns = vec![dns.into()];
+        }
+    }
 }
 
 #[derive(Clone, Debug, Error)]
@@ -60,4 +68,27 @@ pub enum DnsConfig {
     #[default]
     Default,
     System,
+}
+
+#[derive(Default, Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DnsContentBlock {
+    ad: bool,
+    tracker: bool,
+    malware: bool,
+    adult: bool,
+    gambling: bool,
+    social_media: bool,
+}
+
+impl DnsContentBlock {
+    pub fn mullvad_dns_ip(self) -> Option<Ipv4Addr> {
+        let bitset = u8::from(self.ad)
+            | (u8::from(self.tracker) << 1)
+            | (u8::from(self.malware) << 2)
+            | (u8::from(self.adult) << 3)
+            | (u8::from(self.gambling) << 4)
+            | (u8::from(self.social_media) << 5);
+        (bitset != 0).then_some(Ipv4Addr::new(100, 64, 0, bitset))
+    }
 }

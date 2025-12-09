@@ -22,7 +22,7 @@ use crate::client_state::AccountStatus;
 use crate::config::cached::ConfigCached;
 use crate::config::feature_flags::FeatureFlags;
 use crate::exit_selection::ExitSelector;
-use crate::network_config::DnsConfig;
+use crate::network_config::{DnsConfig, DnsContentBlock};
 
 pub(super) const CONFIG_FILE: &str = "config.json";
 
@@ -233,6 +233,8 @@ pub struct Config {
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub auto_connect: bool,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
+    pub dns_content_block: DnsContentBlock,
+    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub old_account_ids: Vec<AccountId>,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub local_tunnels_ids: Vec<String>,
@@ -287,6 +289,7 @@ pub struct ConfigDebug {
     pub api_host_alternate: Option<String>,
     pub api_url: Option<String>,
     pub cached_exits: Option<ConfigCached<Arc<ExitList>>>,
+    pub dns_content_block: DnsContentBlock,
     pub local_tunnels_ids: Vec<String>,
     pub feature_flags: FeatureFlags,
     pub in_new_account_flow: bool,
@@ -307,6 +310,7 @@ impl From<Config> for ConfigDebug {
             api_host_alternate,
             api_url,
             account_id,
+            dns_content_block,
             old_account_ids: _,
             local_tunnels_ids,
             exit: (),
@@ -329,6 +333,7 @@ impl From<Config> for ConfigDebug {
         Self {
             api_url,
             cached_exits,
+            dns_content_block,
             local_tunnels_ids,
             feature_flags,
             in_new_account_flow,

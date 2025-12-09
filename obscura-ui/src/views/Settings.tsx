@@ -1,12 +1,12 @@
-import { Accordion, ActionIcon, Alert, Button, Card, Divider, Group, Stack, Switch, Text, Title, useMantineColorScheme } from '@mantine/core';
+import { Accordion, ActionIcon, Alert, Button, Card, Checkbox, Divider, Group, Radio, Stack, Switch, Text, Title, useMantineColorScheme } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import React, { ReactNode, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsCircleHalf } from 'react-icons/bs';
 import { IoInformationCircleOutline, IoMoon, IoSunnySharp } from 'react-icons/io5';
-import { MdWarning } from 'react-icons/md';
+import { MdBlock, MdWarning } from 'react-icons/md';
 import * as commands from '../bridge/commands';
-import { AppContext, featureFlagEnabled, FeatureFlagKey, KnownFeatureFlagKey } from '../common/appContext';
+import { AppContext, DNSContentBlock, featureFlagEnabled, FeatureFlagKey, KnownFeatureFlagKey } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { NotificationId } from '../common/notifIds';
 import { normalizeError } from '../common/utils';
@@ -17,10 +17,55 @@ export default function Settings() {
   return (
     <Stack mb='xl' gap='lg' align='flex-start' className={classes.container}>
       <GeneralSettings />
+      <DnsSettings />
       <ExperimentalSettings />
       <NetworkSettings />
       <AppearanceSettings />
     </Stack>
+  );
+}
+
+function DnsSettings() {
+  const { t } = useTranslation();
+  const { appStatus } = useContext(AppContext);
+  const { dnsContentBlock, useSystemDns } = appStatus;
+
+  const handleModeChange = (val: string) => {
+    commands.setUseSystemDns(val === 'system');
+  };
+
+  const onBlockChange = (key: keyof DNSContentBlock, e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.currentTarget.checked;
+    const newBlock = { ...dnsContentBlock, [key]: checked };
+    commands.setDnsContentBlock(newBlock);
+  };
+
+  return (
+    <Card padding='md' radius='md' w='100%' shadow='xs'>
+      <Stack gap='xs'>
+        <Group gap='xs'>
+          <MdBlock size='1.5em' style={{ color: 'var(--mantine-color-dimmed)' }} />
+          <Title order={4}>{t('dnsSetting')}</Title>
+        </Group>
+
+        <Radio.Group value={useSystemDns ? 'system' : 'obscura'} onChange={handleModeChange}>
+          <Stack gap='sm'>
+            <Radio value="obscura" label={t('dnsModeObscura')} />
+
+            <Stack gap='xs' ml='xl'>
+              <Checkbox disabled={useSystemDns} checked={dnsContentBlock.ad} onChange={(e) => onBlockChange('ad', e)} label={t('dnsBlockAds')} />
+              <Checkbox disabled={useSystemDns} checked={dnsContentBlock.tracker} onChange={(e) => onBlockChange('tracker', e)} label={t('dnsBlockTrackers')} />
+              <Checkbox disabled={useSystemDns} checked={dnsContentBlock.malware} onChange={(e) => onBlockChange('malware', e)} label={t('dnsBlockMalware')} />
+              <Checkbox disabled={useSystemDns} checked={dnsContentBlock.gambling} onChange={(e) => onBlockChange('gambling', e)} label={t('dnsBlockGambling')} />
+              <Checkbox disabled={useSystemDns} checked={dnsContentBlock.adult} onChange={(e) => onBlockChange('adult', e)} label={t('dnsBlockAdult')} />
+              <Checkbox disabled={useSystemDns} checked={dnsContentBlock.socialMedia} onChange={(e) => onBlockChange('socialMedia', e)} label={t('dnsBlockSocialMedia')} />
+            </Stack>
+
+            <Radio value="system" label={t('dnsModeSystem')} description={t('dnsModeSystemDescription')} />
+          </Stack>
+        </Radio.Group>
+      </Stack>
+    </Card>
   );
 }
 
@@ -129,8 +174,6 @@ function ExperimentalSettings() {
               </React.Fragment>
             ))}
             <StrictLeakPreventionSwitch />
-            <Divider w='100%' />
-            <Switch checked={appStatus.useSystemDns} onChange={event => commands.setUseSystemDns(event.currentTarget.checked)} label={t('useSystemDns')} description={t('useSystemDns-behavior')} />
           </Stack>
         </Accordion.Panel>
       </Accordion.Item>

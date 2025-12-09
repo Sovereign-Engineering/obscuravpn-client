@@ -1,3 +1,6 @@
 [toolchain]
 channel = "1.89.0"
 components = [ "rustfmt" ]
+targets = [
+    "aarch64-linux-android",
+]

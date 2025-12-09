@@ -20,19 +20,54 @@
         };
 
         lib = pkgs.lib;
-        rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./rustlib/rust-toolchain.toml;
 
+        androidBuildToolsVersion = "36.0.0";
+        androidCmakeVersion = "3.31.6";
+        android = pkgs.androidenv.composeAndroidPackages {
+          toolsVersion = "26.1.1"; # frozen legacy version
+          platformToolsVersion = "36.0.0";
+
+          platformVersions = [ "36" ];
+          buildToolsVersions = [ androidBuildToolsVersion ];
+
+          includeEmulator = false;
+          includeSources = false;
+
+          cmakeVersions = [ androidCmakeVersion ];
+
+          includeNDK = true;
+          ndkVersion = "26.3.11579264";
+
+          useGoogleAPIs = true;
+          useGoogleTVAddOns = false;
+
+          includeExtras = [ "extras;google;google_play_services" ];
+        };
+        androidBuildTools = "${android.androidsdk}/libexec/android-sdk/build-tools/${androidBuildToolsVersion}";
+        androidEnv = { ANDROID_NDK_ROOT = "${android.ndk-bundle}/libexec/android-sdk/ndk-bundle"; };
+
+        rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./rustlib/rust-toolchain.toml;
         craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
 
-        rustDeps = [ pkgs.cmake ];
         rustDepsArgs = {
           src = ./rustlib;
 
           strictDeps = true;
-          nativeBuildInputs = rustDeps;
+          nativeBuildInputs = [ pkgs.cmake ];
+        };
+        rustDepsArgs-android = rustDepsArgs // androidEnv // {
+          buildInputs = [ android.androidsdk ];
+          nativeBuildInputs = rustDepsArgs.nativeBuildInputs ++ [ pkgs.cargo-ndk ];
+          CARGO_BUILD_TARGET = "aarch64-linux-android";
+          doCheck = false;
+
+          # TODO: Long-term it is probably better to just configure the environment ourselves using nixpkgs's standard cross-compilation framework. Right now this is a weird state where we are "secretly" cross-compiling.
+          cargoBuildCommand = "cargo ndk -t arm64-v8a build --release";
+          cargoCheckCommand = "cargo ndk -t arm64-v8a check --release";
         };
 
         rustArgs = rustDepsArgs // { cargoArtifacts = craneLib.buildDepsOnly rustDepsArgs; };
+        rustArgs-android = rustDepsArgs-android // { cargoArtifacts = craneLib.buildDepsOnly rustDepsArgs-android; };
 
         rustlibBindgenArgs = {
           # Environment variables for cbindgen, see rustlib/build.rs
@@ -65,34 +100,9 @@
           root = ./.;
           fileset = lib.fileset.unions [ ./.swiftformat apple/client ];
         }) [ ".swift" ".swiftformat" ];
-
-        androidBuildToolsVersion = "36.0.0";
-        androidCmakeVersion = "3.31.6";
-        android = pkgs.androidenv.composeAndroidPackages {
-          toolsVersion = "26.1.1"; # frozen legacy version
-          platformToolsVersion = "36.0.0";
-
-          platformVersions = [ "36" ];
-          buildToolsVersions = [ androidBuildToolsVersion ];
-
-          includeEmulator = false;
-          includeSources = false;
-
-          cmakeVersions = [ androidCmakeVersion ];
-
-          includeNDK = true;
-          ndkVersion = "26.3.11579264";
-
-          useGoogleAPIs = true;
-          useGoogleTVAddOns = false;
-
-          includeExtras = [ "extras;google;google_play_services" ];
-        };
-        androidBuildTools = "${android.androidsdk}/libexec/android-sdk/build-tools/${androidBuildToolsVersion}";
-        androidCmake = "${android.androidsdk}/libexec/android-sdk/cmake/${androidCmakeVersion}";
       in rec {
         checks = {
-          inherit (packages) licenses rust;
+          inherit (packages) licenses rust rust-android;
 
           shellcheck = pkgs.runCommand "shellcheck" { nativeBuildInputs = [ pkgs.shellcheck ]; } ''
             shopt -s globstar
@@ -139,7 +149,7 @@
               pkgs.shellcheck
               pkgs.swiftformat
               rustToolchain.passthru.availableComponents.rustfmt # Just rustfmt, nothing else
-            ] ++ rustDeps ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.create-dmg ];
+            ] ++ rustArgs.nativeBuildInputs ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.create-dmg ];
 
             shellHook = ''
               export OBSCURA_MAGIC_IN_NIX_SHELL=1
@@ -154,39 +164,30 @@
             LICENSE_JSON = packages.licenses;
           };
 
-          android = pkgs.mkShellNoCC {
-            buildInputs = [
-              android.androidsdk
-              pkgs.cargo-ndk
-              pkgs.clang
-              pkgs.cmake
+          android = pkgs.mkShellNoCC (androidEnv // {
+            buildInputs = [ pkgs.libiconv ] ++ rustArgs-android.buildInputs;
+            nativeBuildInputs = [
+              android.cmake
+              android.emulator
+              android.platform-tools
+              rustToolchain
               pkgs.gradle
               pkgs.jdk21
               pkgs.just
-              pkgs.libiconv
               pkgs.ninja
               pkgs.nodejs_20
               pkgs.pkg-config
               pkgs.pnpm
-              pkgs.rustup
-            ] ++ rustDeps;
+            ] ++ rustArgs-android.nativeBuildInputs;
 
             ANDROID_HOME = "${android.androidsdk}/libexec/android-sdk";
-            ANDROID_SDK_ROOT = "${android.androidsdk}/libexec/android-sdk";
             GRADLE_OPTS = "-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidBuildTools}/aapt2";
             JAVA_HOME = pkgs.jdk21.home;
 
             shellHook = ''
-              export ANDROID_NDK_HOME="$(ls -d "$ANDROID_SDK_ROOT"/ndk/* | head -n1)"
-              export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME" # used by CMake
-
-              export PATH="$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:${androidCmake}/bin:$ANDROID_SDK_ROOT/emulator:${androidBuildTools}:$PATH"
-
-              # TODO: figure out how to build Rust for this target
-              rustup target add \
-                aarch64-linux-android
+              export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:${androidBuildTools}:$PATH"
             '';
-          };
+          });
         };
 
         packages = rec {
@@ -231,6 +232,7 @@
           });
 
           rust = craneLib.buildPackage (rustArgs // rustlibBindgenArgs);
+          rust-android = craneLib.buildPackage (rustArgs-android // rustlibBindgenArgs);
         };
       });
 }

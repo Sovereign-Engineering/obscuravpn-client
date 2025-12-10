@@ -198,7 +198,7 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
           </Anchor>
         </Stack>
       </ConfirmationDialog>
-      <Stack maw={400} mx='auto' justify='center' align='center'>
+      <Stack maw={400} mx='auto' justify='center' align='center' style={{ overflow: 'hidden' }}>
         <Image src={AppIcon} w={64} />
         <AccountId accountId={value} />
         <Transition mounted={value === generatedAccountId} transition='fade-up' duration={600}>

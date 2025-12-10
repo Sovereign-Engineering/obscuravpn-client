@@ -1,0 +1,167 @@
+#cloud-config
+write_files:
+  - path: /config.json
+    owner: root:root
+    permissions: '0644'
+    content: |
+      {
+          "app_config": {},
+          "archinstall-language": "English",
+          "auth_config": {},
+          "bootloader_config": {
+              "bootloader": "Grub",
+              "removable": false,
+              "uki": false
+          },
+          "custom_commands": [],
+          "disk_config": {
+              "btrfs_options": {
+                  "snapshot_config": null
+              },
+              "config_type": "default_layout",
+              "device_modifications": [
+                  {
+                      "device": "/dev/vda",
+                      "partitions": [
+                          {
+                              "btrfs": [],
+                              "dev_path": null,
+                              "flags": [
+                                  "boot"
+                              ],
+                              "fs_type": "fat32",
+                              "mount_options": [],
+                              "mountpoint": "/boot",
+                              "obj_id": "8bef294b-98c6-40e1-a5c1-1db9e2bafe0a",
+                              "size": {
+                                  "sector_size": {
+                                      "unit": "B",
+                                      "value": 512
+                                  },
+                                  "unit": "GiB",
+                                  "value": 1
+                              },
+                              "start": {
+                                  "sector_size": {
+                                      "unit": "B",
+                                      "value": 512
+                                  },
+                                  "unit": "MiB",
+                                  "value": 1
+                              },
+                              "status": "create",
+                              "type": "primary"
+                          },
+                          {
+                              "btrfs": [],
+                              "dev_path": null,
+                              "flags": [],
+                              "fs_type": "btrfs",
+                              "mount_options": [
+                                  "compress=zstd"
+                              ],
+                              "mountpoint": "/",
+                              "obj_id": "dc3f91a8-c069-47c8-9ea6-542ec8a09eab",
+                              "size": {
+                                  "sector_size": {
+                                      "unit": "B",
+                                      "value": 512
+                                  },
+                                  "unit": "B",
+                                  "value": 20400046080
+                              },
+                              "start": {
+                                  "sector_size": {
+                                      "unit": "B",
+                                      "value": 512
+                                  },
+                                  "unit": "B",
+                                  "value": 1074790400
+                              },
+                              "status": "create",
+                              "type": "primary"
+                          }
+                      ],
+                      "wipe": true
+                  }
+              ]
+          },
+          "hostname": "unassigned-hostname",
+          "kernels": [
+              "linux"
+          ],
+          "locale_config": {
+              "kb_layout": "us",
+              "sys_enc": "UTF-8",
+              "sys_lang": "en_US.UTF-8"
+          },
+          "network_config": {
+              "type": "nm"
+          },
+          "ntp": true,
+          "packages": [
+              "curl",
+              "net-tools",
+              "firefox"
+          ],
+          "parallel_downloads": 0,
+          "profile_config": {
+              "gfx_driver": "All open-source",
+              "greeter": "gdm",
+              "profile": {
+                  "custom_settings": {
+                      "GNOME": {}
+                  },
+                  "details": [
+                      "GNOME"
+                  ],
+                  "main": "Desktop"
+              }
+          },
+          "script": null,
+          "services": [],
+          "swap": false,
+          "timezone": "UTC",
+          "version": "3.0.14"
+      }
+  - path: /creds.json
+    owner: root:root
+    permissions: '0644'
+    content: |
+      {
+          "users": [
+              {
+                  "enc_password": "$y$j9T$LBDvFqutcqkzsap08YCvv/$e4rn0cAHlrz/Bl1IL3ED5t4fmebsi6L68C.9pHo2rQC",
+                  "groups": [],
+                  "sudo": true,
+                  "username": "user"
+              }
+          ]
+      }
+  - path: /etc/systemd/system/auto-install.service
+    owner: root:root
+    permissions: '0644'
+    content: |
+      [Unit]
+      After=network-online.target
+      Wants=network-online.target
+      Conflicts=getty@tty1.service
+      Before=getty@tty1.service
+
+      [Service]
+      Type=oneshot
+      TTYPath=/dev/tty1
+      StandardOutput=tty
+      Environment=TERM=dumb
+      Environment=LANG=C
+      ExecStart=/usr/bin/archinstall --config /config.json --creds /creds.json --silent
+      ExecStartPost=/usr/bin/arch-chroot /mnt /bin/bash -c "systemctl enable sshd"
+      ExecStartPost=/usr/bin/arch-chroot /mnt /bin/bash -c "systemctl enable NetworkManager"
+      ExecStartPost=/usr/bin/arch-chroot /mnt /bin/bash -c "echo 'user ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/nopasswd && chmod 0440 /etc/sudoers.d/nopasswd"
+      ExecStartPost=/usr/bin/poweroff
+
+      [Install]
+      WantedBy=multi-user.target
+runcmd:
+  - systemctl daemon-reload
+  - systemctl enable --now --no-block auto-install.service

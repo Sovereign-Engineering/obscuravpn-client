@@ -12,3 +12,10 @@ result-*
 
 # Android
 /android/.kotlin/errors
+
+# Linux
+/linux/vm/*.qcow2
+/linux/vm/*.iso
+*.rpm
+*.pkg.tar.zst
+*.deb

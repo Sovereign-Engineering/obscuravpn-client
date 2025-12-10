@@ -1,0 +1,10 @@
+[Unit]
+Description=Obscura VPN
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/obscuravpn service --connect --config-dir "/var/lib/obscuravpn"
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

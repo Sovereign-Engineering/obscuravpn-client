@@ -115,8 +115,18 @@ export function featureFlagEnabled(value: FeatureFlagValue | undefined): boolean
   return value === true;
 }
 
+export interface DNSContentBlock {
+    ad: boolean,
+    tracker: boolean,
+    malware: boolean,
+    adult: boolean,
+    gambling: boolean,
+    socialMedia: boolean,
+}
+
 export interface AppStatus {
     version: string,
+    dnsContentBlock: DNSContentBlock,
     vpnStatus: VpnStatus,
     accountId: AccountId,
     pinnedLocations: Array<PinnedLocation>,

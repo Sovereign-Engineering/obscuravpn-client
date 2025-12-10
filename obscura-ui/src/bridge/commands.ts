@@ -4,7 +4,7 @@ import { TFunction } from 'i18next';
 import { useState } from 'react';
 import { AccountId } from '../common/accountUtils';
 import { AccountInfo, Exit } from '../common/api';
-import { AppStatus, FeatureFlagKey, NEVPNStatus, OsStatus, PinnedLocation } from '../common/appContext';
+import { AppStatus, DNSContentBlock, FeatureFlagKey, NEVPNStatus, OsStatus, PinnedLocation } from '../common/appContext';
 import { errMsg, normalizeError } from '../common/utils';
 import { fmtErrorI18n } from '../translations/i18n';
 import './android';
@@ -247,6 +247,10 @@ export function setUseSystemDns(enable: boolean) {
 
 export async function setFeatureFlag(flag: FeatureFlagKey, active: boolean) {
   await jsonFfiCmd('setFeatureFlag', { flag, active });
+}
+
+export async function setDnsContentBlock(value: DNSContentBlock): Promise<void> {
+  await jsonFfiCmd('setDnsContentBlock', { value });
 }
 
 export function useHandleCommand(t: TFunction) {

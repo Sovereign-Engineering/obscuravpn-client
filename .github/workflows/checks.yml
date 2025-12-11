@@ -151,6 +151,13 @@ jobs:
         run: |
           nix develop .#android --command bash -c contrib/bin/android-apk.sh
 
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: obscura-debug.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
   sync:
     name: Sync
     if: |

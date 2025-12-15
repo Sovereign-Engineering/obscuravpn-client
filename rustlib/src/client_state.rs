@@ -201,8 +201,11 @@ impl ClientState {
 
     pub fn set_api_url(&self, url: Option<String>) -> Result<(), ConfigSaveError> {
         let mut inner = self.lock();
-        Self::change_config(&mut inner, move |config, _| config.api_url = url)?;
         inner.cached_api_client = None;
+        Self::change_config(&mut inner, move |config, inner| {
+            config.api_url = url;
+            config.wireguard_key_cache.rotate_now(inner.set_keychain_wg_sk.as_ref());
+        })?;
         Ok(())
     }
 

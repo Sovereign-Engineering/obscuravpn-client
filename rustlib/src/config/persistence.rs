@@ -20,6 +20,7 @@ use x25519_dalek::PublicKey;
 
 use crate::client_state::AccountStatus;
 use crate::config::cached::ConfigCached;
+use crate::config::dns_cache::DnsCache;
 use crate::config::feature_flags::FeatureFlags;
 use crate::exit_selection::ExitSelector;
 use crate::network_config::{DnsConfig, DnsContentBlock};
@@ -235,6 +236,8 @@ pub struct Config {
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub dns_content_block: DnsContentBlock,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
+    pub dns_cache: DnsCache,
+    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub old_account_ids: Vec<AccountId>,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub local_tunnels_ids: Vec<String>,
@@ -289,6 +292,7 @@ pub struct ConfigDebug {
     pub api_host_alternate: Option<String>,
     pub api_url: Option<String>,
     pub cached_exits: Option<ConfigCached<Arc<ExitList>>>,
+    pub dns_cache: DnsCache,
     pub dns_content_block: DnsContentBlock,
     pub local_tunnels_ids: Vec<String>,
     pub feature_flags: FeatureFlags,
@@ -311,6 +315,7 @@ impl From<Config> for ConfigDebug {
             api_url,
             account_id,
             dns_content_block,
+            dns_cache,
             old_account_ids: _,
             local_tunnels_ids,
             exit: (),
@@ -334,6 +339,7 @@ impl From<Config> for ConfigDebug {
             api_url,
             cached_exits,
             dns_content_block,
+            dns_cache,
             local_tunnels_ids,
             feature_flags,
             in_new_account_flow,

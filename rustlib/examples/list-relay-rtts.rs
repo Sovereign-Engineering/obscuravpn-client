@@ -3,6 +3,7 @@ use obscuravpn_api::cmd::ListRelays;
 use obscuravpn_api::types::AccountId;
 use obscuravpn_client::client_state::ClientState;
 use obscuravpn_client::relay_selection::race_relay_handshakes;
+use std::sync::Arc;
 
 #[derive(Parser, Debug, PartialEq)]
 #[command(author, version, about, long_about = None)]
@@ -20,7 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let args = Args::parse();
 
-    let client_state = ClientState::new(".".into(), None, "list-relays".into(), None)?;
+    let client_state = Arc::new(ClientState::new(".".into(), None, "list-relays".into(), None)?);
     client_state.set_api_url(args.base_url)?;
     if let Some(account_no) = args.account_no {
         let account_id = AccountId::from_string_unchecked(account_no);

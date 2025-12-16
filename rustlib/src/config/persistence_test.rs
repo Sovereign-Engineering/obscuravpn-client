@@ -150,6 +150,7 @@ fn test_ignore_invalid_fields() {
         sni_relay: Some("relay.obscura.net".into()),
         wireguard_key_cache: Default::default(),
         dns: Default::default(),
+        dns_cache: Default::default(),
         use_wireguard_key_cache: (),
         cached_account_status: Default::default(),
         auto_connect: true,

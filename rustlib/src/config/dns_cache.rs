@@ -1,3 +1,4 @@
+use crate::constants::DNS_CACHE_SEED;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -20,7 +21,7 @@ impl DnsCache {
 impl Default for DnsCache {
     fn default() -> Self {
         Self {
-            entries: HashMap::from([("v1.api.prod.obscura.net".to_string(), vec![SocketAddr::from(([66, 42, 95, 12], 0))])]),
+            entries: HashMap::from_iter(DNS_CACHE_SEED.iter().map(|(name, addrs)| (name.to_string(), addrs.to_vec()))),
         }
     }
 }

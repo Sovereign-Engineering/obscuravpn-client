@@ -2,6 +2,7 @@ use super::{
     errors::{ApiError, TunnelConnectError},
     network_config::TunnelNetworkConfig,
 };
+use crate::constants::DEFAULT_API_URL;
 use crate::network_config::DnsContentBlock;
 use crate::{config::KeychainSetSecretKeyFn, net::NetworkInterface, network_config::DnsConfig, quicwg::QuicWgConnHandshaking};
 use crate::{config::PinnedLocation, exit_selection::ExitSelectionState};
@@ -71,7 +72,7 @@ impl PartialEq for AccountStatus {
 
 impl ClientStateInner {
     fn base_url(&self) -> String {
-        self.config.api_url.clone().unwrap_or(crate::DEFAULT_API_URL.to_string())
+        self.config.api_url.clone().unwrap_or(DEFAULT_API_URL.to_string())
     }
 }
 

@@ -22,7 +22,6 @@ pub mod android;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 pub mod apple;
 mod cached_value;
+mod constants;
 mod liveness;
 pub mod positive_u31;
-
-pub const DEFAULT_API_URL: &str = "https://v1.api.prod.obscura.net/api";

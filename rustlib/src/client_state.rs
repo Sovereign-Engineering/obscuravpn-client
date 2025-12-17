@@ -20,13 +20,14 @@ use chrono::Utc;
 use obscuravpn_api::cmd::{CacheWgKey, ETagCmd, ExitList, ListExits2};
 use obscuravpn_api::types::{AccountId, AccountInfo, AuthToken, OneExit};
 use obscuravpn_api::{
-    Client, ClientError,
+    Client, ClientError, ResolverFallbackCache,
     cmd::{ApiErrorKind, Cmd, CreateTunnel, DeleteTunnel, ListRelays, ListTunnels},
     types::{ObfuscatedTunnelConfig, OneRelay, TunnelConfig, WgPubkey},
 };
 use rand::{seq::SliceRandom, thread_rng};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
+use std::net::SocketAddr;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::{cmp::min, path::PathBuf, time::Instant};
 use std::{
@@ -236,7 +237,7 @@ impl ClientState {
     }
 
     pub async fn connect(
-        &self,
+        self: &Arc<Self>,
         exit_selector: &ExitSelector,
         network_interface: Option<&NetworkInterface>,
         selection_state: &mut ExitSelectionState,
@@ -274,7 +275,7 @@ impl ClientState {
     }
 
     async fn new_tunnel(
-        &self,
+        self: &Arc<Self>,
         exit_selector: &ExitSelector,
         network_interface: Option<&NetworkInterface>,
         selection_state: &mut ExitSelectionState,
@@ -379,7 +380,7 @@ impl ClientState {
         Ok((tunnel_id, config, sk, tunnel_info.exit, tunnel_info.relay, handshaking))
     }
 
-    pub async fn remove_local_tunnels(&self) -> Result<(), ApiError> {
+    pub async fn remove_local_tunnels(self: &Arc<Self>) -> Result<(), ApiError> {
         loop {
             let Some(local_tunnel_id) = self.lock().config.local_tunnels_ids.first().cloned() else {
                 return Ok(());
@@ -390,7 +391,10 @@ impl ClientState {
         }
     }
 
-    pub async fn select_relay(&self, network_interface: Option<&NetworkInterface>) -> Result<(OneRelay, QuicWgConnHandshaking), TunnelConnectError> {
+    pub async fn select_relay(
+        self: &Arc<Self>,
+        network_interface: Option<&NetworkInterface>,
+    ) -> Result<(OneRelay, QuicWgConnHandshaking), TunnelConnectError> {
         let relays = self.api_request(ListRelays {}).await?;
         let sni = self.lock().config.sni_relay.clone().unwrap_or_else(|| DEFAULT_RELAY_SNI.into());
 
@@ -463,12 +467,12 @@ impl ClientState {
         Ok((relay, handshaking))
     }
 
-    pub fn make_api_client(&self, account_id: AccountId) -> Result<Client, ApiError> {
+    pub fn make_api_client(self: &Arc<Self>, account_id: AccountId) -> Result<Client, ApiError> {
         let mut inner = self.lock();
         self.make_api_client_inner(&mut inner, account_id)
     }
 
-    fn make_api_client_inner(&self, inner: &mut ClientStateInner, account_id: AccountId) -> Result<Client, ApiError> {
+    fn make_api_client_inner(self: &Arc<Self>, inner: &mut ClientStateInner, account_id: AccountId) -> Result<Client, ApiError> {
         let base_url = inner.base_url();
         tracing::info!(message_id = "By9iMtd5", network_interface = ?inner.network_interface, ?base_url, "creating new API client");
         Client::new(
@@ -477,12 +481,13 @@ impl ClientState {
             account_id,
             &self.user_agent,
             inner.network_interface.as_ref().map(|i| i.name.as_str()),
+            Some(self.clone()),
         )
         .map_err(ClientError::from)
         .map_err(ApiError::from)
     }
 
-    fn api_client(&self) -> Result<Arc<Client>, ApiError> {
+    fn api_client(self: &Arc<Self>) -> Result<Arc<Client>, ApiError> {
         let mut inner = self.lock();
 
         let Some(account_id) = inner.config.account_id.clone() else {
@@ -511,14 +516,18 @@ impl ClientState {
         Ok(())
     }
 
-    pub async fn api_request<C: Cmd>(&self, cmd: C) -> Result<C::Output, ApiError> {
+    pub async fn api_request<C: Cmd>(self: &Arc<Self>, cmd: C) -> Result<C::Output, ApiError> {
         let api_client = self.api_client()?;
         let result = api_client.run(cmd).await;
         self.cache_auth_token()?;
         Ok(result?)
     }
 
-    pub async fn cached_api_request<C: ETagCmd>(&self, cmd: C, etag: Option<&[u8]>) -> Result<obscuravpn_api::Response<C::Output>, ApiError> {
+    pub async fn cached_api_request<C: ETagCmd>(
+        self: &Arc<Self>,
+        cmd: C,
+        etag: Option<&[u8]>,
+    ) -> Result<obscuravpn_api::Response<C::Output>, ApiError> {
         let api_client = self.api_client()?;
         let result = api_client.run_with_etag(cmd, etag).await?;
         self.cache_auth_token()?;
@@ -533,7 +542,7 @@ impl ClientState {
         &self.user_agent
     }
 
-    pub async fn maybe_update_exits(&self, freshness: Duration) -> Result<(), ApiError> {
+    pub async fn maybe_update_exits(self: &Arc<Self>, freshness: Duration) -> Result<(), ApiError> {
         let _update_lock = self.exit_update_lock.lock().await;
 
         let prev = self.lock().config.cached_exits.clone();
@@ -592,7 +601,7 @@ impl ClientState {
     }
 
     // Registers the current wireguard key via the API server if it has not been registered yet. Because this function is a NOOP after first successful use (until key rotation), it may be called frequently. Most importantly it should be called after disconnecting (due to possible key rotation) and after observing that the user paid.
-    pub async fn register_cached_wireguard_key_if_new(&self) -> Result<(), ApiError> {
+    pub async fn register_cached_wireguard_key_if_new(self: &Arc<Self>) -> Result<(), ApiError> {
         let key_pair = Self::change_config(&mut self.lock(), |config, inner| {
             config.wireguard_key_cache.need_registration(inner.set_keychain_wg_sk.as_ref())
         })?;
@@ -632,5 +641,20 @@ impl ClientState {
 
     pub fn subscribe_exit_list(&self) -> tokio::sync::watch::Receiver<Option<ConfigCached<Arc<ExitList>>>> {
         self.exit_list_watch.subscribe()
+    }
+}
+
+impl ResolverFallbackCache for ClientState {
+    fn get(&self, name: &str) -> Vec<SocketAddr> {
+        self.get_config().dns_cache.get(name)
+    }
+
+    fn set(&self, name: &str, addr: &[SocketAddr]) {
+        let result = Self::change_config(&mut self.lock(), |config, _| {
+            config.dns_cache.set(name, addr);
+        });
+        if let Err(error) = result {
+            tracing::error!(?error, message_id = "rdq7a2Vh", ?error, "DNS cache set error: {}", error);
+        }
     }
 }

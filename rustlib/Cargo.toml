@@ -64,7 +64,7 @@ rev = "ff3b5555b5b1c4f85ae23d8d4aaf00bea2cd2bf0"
 
 [dependencies.obscuravpn-api]
 git = "https://github.com/Sovereign-Engineering/obscuravpn-api.git"
-rev = "0cacb637ceb4512a57020de1f771f4fec7a5bb2b"
+rev = "15c61632b418001b7e0e0bbb98373d8437a20d01"
 
 [dependencies.quinn]
 git = "https://github.com/Sovereign-Engineering/quinn.git"

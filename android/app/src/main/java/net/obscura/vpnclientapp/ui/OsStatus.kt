@@ -77,7 +77,6 @@ class OsStatus(
               internetAvailable = hasInternet(),
               osVpnStatus = vpnStatus,
               srcVersion = "TODO",
-              strictLeakPrevention = preferences.strictLeakPrevention,
               updaterStatus =
                   GetOsStatus.Result.UpdaterStatus(
                       type = "initiated",

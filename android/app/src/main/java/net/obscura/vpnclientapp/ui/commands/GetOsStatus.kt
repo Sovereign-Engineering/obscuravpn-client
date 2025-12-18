@@ -20,7 +20,6 @@ data class GetOsStatus(
       val internetAvailable: Boolean,
       val osVpnStatus: NEVPNStatus?,
       val srcVersion: String,
-      val strictLeakPrevention: Boolean,
       val updaterStatus: UpdaterStatus,
       val debugBundleStatus: DebugBundleStatus,
       val canSendMail: Boolean,

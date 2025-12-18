@@ -19,7 +19,6 @@ data class InvokeCommand(
     val emailArchive: EmailArchive? = null,
     val revealItemInDir: RevealItemInDir? = null,
     val setColorScheme: SetColorScheme? = null,
-    val setStrictLeakPrevention: SetStrictLeakPrevention? = null,
     val shareFile: ShareFile? = null,
     val startTunnel: StartTunnel? = null,
     val stopTunnel: JsonObject? = null,
@@ -38,9 +37,6 @@ data class InvokeCommand(
 
         setColorScheme != null ->
             CompletableFuture.completedFuture("null").also { setColorScheme.run(context) }
-
-        setStrictLeakPrevention != null ->
-            CompletableFuture.completedFuture("null").also { setStrictLeakPrevention.run(context) }
 
         shareFile != null -> shareFile.run(context).thenApply { "null" }
 

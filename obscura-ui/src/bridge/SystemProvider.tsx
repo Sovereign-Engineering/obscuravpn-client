@@ -9,7 +9,7 @@ export enum Platform {
   Android = 'android',
 }
 
-export function systemName() {
+export function systemName(): string {
   switch (PLATFORM) {
     case Platform.macOS:
       return "macOS";

@@ -1,5 +1,6 @@
 use anyhow::{Context, anyhow, bail};
 use futures::{StreamExt, TryStreamExt};
+use ipnetwork::IpNetwork;
 use obscuravpn_client::net::NetworkInterface;
 use obscuravpn_client::positive_u31::PositiveU31;
 use obscuravpn_client::tokio::AbortOnDrop;
@@ -9,7 +10,7 @@ use rtnetlink::packet_route::link::{LinkAttribute, LinkMessage};
 use rtnetlink::packet_route::route::{RouteAttribute, RouteHeader, RouteMessage};
 use rtnetlink::sys::{AsyncSocket, SocketAddr};
 use std::convert::Infallible;
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::net::{IpAddr, Ipv4Addr};
 use std::num::NonZeroI32;
 use std::time::Duration;
 use tokio;
@@ -31,9 +32,9 @@ pub async fn netlink_connect() -> Result<rtnetlink::Handle, ()> {
     Ok(handle)
 }
 
-pub async fn add_routes(tun: &NetworkInterface) -> Result<(), ()> {
+pub async fn add_routes(tun: &NetworkInterface, routes: &[IpNetwork]) -> Result<(), ()> {
     let handle = netlink_connect().await?;
-    let route_messages = build_route_messages(tun)?;
+    let route_messages = build_route_messages(tun, routes)?;
     for route_message in route_messages {
         handle.route().add(route_message.clone()).replace().execute().await.map_err(|error| {
             tracing::error!(message_id = "a1Uk0dKX", ?error, ?route_message, "failed to add route");
@@ -42,9 +43,9 @@ pub async fn add_routes(tun: &NetworkInterface) -> Result<(), ()> {
     Ok(())
 }
 
-pub async fn del_routes(tun: &NetworkInterface) -> Result<(), ()> {
+pub async fn del_routes(tun: &NetworkInterface, routes: &[IpNetwork]) -> Result<(), ()> {
     let handle = netlink_connect().await?;
-    let route_messages = build_route_messages(tun)?;
+    let route_messages = build_route_messages(tun, routes)?;
     for route_message in route_messages {
         handle
             .route()
@@ -67,26 +68,18 @@ pub async fn del_routes(tun: &NetworkInterface) -> Result<(), ()> {
     Ok(())
 }
 
-/// Build IPv4 and Ipv6 route messages for two routes to the tun device each. The individual routes cover half of the respective address space, which gives them priority over the default route without replacing it. We don't want to replace the default route, because:
-/// - We use the default route for preferred network interface discovery
-/// - We wouldn't know what the set it to when the tunnel is disabled
-/// - Network management services like network manager tend to overwrite it.
-pub fn build_route_messages(tun: &NetworkInterface) -> Result<Vec<RouteMessage>, ()> {
-    [
-        IpAddr::V4(Ipv4Addr::new(000, 0, 0, 0)),
-        IpAddr::V4(Ipv4Addr::new(128, 0, 0, 0)),
-        IpAddr::V6(Ipv6Addr::new(0x0000, 0, 0, 0, 0, 0, 0, 0)),
-        IpAddr::V6(Ipv6Addr::new(0x8000, 0, 0, 0, 0, 0, 0, 0)),
-    ]
-    .map(|destination| {
-        Ok(RouteMessageBuilder::<IpAddr>::new()
-            .destination_prefix(destination, 1)
-            .map_err(|error| tracing::error!(message_id = "wtAo1gKj", ?error, "failed to build route message"))?
-            .output_interface(tun.index.into())
-            .build())
-    })
-    .into_iter()
-    .collect()
+/// Build route messages for tun device.
+fn build_route_messages(tun: &NetworkInterface, routes: &[IpNetwork]) -> Result<Vec<RouteMessage>, ()> {
+    routes
+        .iter()
+        .map(|net| {
+            Ok(RouteMessageBuilder::<IpAddr>::new()
+                .destination_prefix(net.ip(), net.prefix())
+                .map_err(|error| tracing::error!(message_id = "wtAo1gKj", ?error, "failed to build route message"))?
+                .output_interface(tun.index.into())
+                .build())
+        })
+        .collect()
 }
 
 pub fn watch_preferred_network_interface(runtime: &tokio::runtime::Handle) -> Receiver<Option<NetworkInterface>> {

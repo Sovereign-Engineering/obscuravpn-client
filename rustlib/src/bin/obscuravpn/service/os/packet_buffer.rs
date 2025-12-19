@@ -10,7 +10,7 @@ pub struct PacketBuffer {
 impl PacketBuffer {
     pub fn buffer(&mut self) -> Option<&mut [u8]> {
         let remainder = &mut self.buffer[self.buffer_len..];
-        (remainder.len() > usize::from(u16::MAX)).then_some(remainder)
+        (self.lengths_len < self.lengths.len() && remainder.len() > usize::from(u16::MAX)).then_some(remainder)
     }
     pub fn commit(&mut self, size: u16) {
         self.buffer_len += usize::from(size);

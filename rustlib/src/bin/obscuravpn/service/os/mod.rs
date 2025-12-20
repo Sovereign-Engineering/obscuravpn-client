@@ -1,5 +1,5 @@
 // TODO: move this module to the library and make `Os` an argument to `Manager::new`
-#[cfg(any(target_os = "linux", target_os = "android"))]
+#[cfg(target_os = "linux")]
 pub mod linux;
 pub mod packet_buffer;
 

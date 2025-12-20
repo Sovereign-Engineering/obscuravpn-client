@@ -2,6 +2,7 @@ use crate::service::os::PutIncomingPacketFn;
 use crate::service::os::packet_buffer::PacketBuffer;
 use ipnetwork::Ipv6Network;
 use obscuravpn_client::net::NetworkInterface;
+use obscuravpn_client::network_config::TunnelNetworkConfig;
 use obscuravpn_client::positive_u31::PositiveU31;
 use std::io::ErrorKind::{AlreadyExists, WouldBlock};
 use std::net::{IpAddr, Ipv4Addr};
@@ -25,7 +26,16 @@ pub struct TunWriter {
 
 impl Tun {
     pub fn create(runtime: &Handle) -> anyhow::Result<Self> {
-        let dev = Arc::new(runtime.block_on(async { tun_rs::DeviceBuilder::new().name(TUN_NAME.to_string()).build_async() })?);
+        let network_config = TunnelNetworkConfig::dummy();
+        let dev = Arc::new(runtime.block_on(async {
+            tun_rs::DeviceBuilder::new()
+                // NetworkManager classifies new TUN devices without assigned IPs as `NM_DEVICE_STATE_UNMANAGED` instead of just externally connected and refuses all device configuration interactions. As initial state this is harmless in tested versions, but avoiding the state is simpler and may be safer.
+                .ipv4(network_config.ipv4, 32u8, None)
+                .ipv6(network_config.ipv6.network(), network_config.ipv6.prefix())
+                .mtu(network_config.mtu)
+                .name(TUN_NAME.to_string())
+                .build_async()
+        })?);
         let interface_index = dev.if_index()?.try_into()?;
         Ok(Self { dev, interface_index, last_error_log_at: Mutex::new(None) })
     }

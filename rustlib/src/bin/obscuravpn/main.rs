@@ -1,8 +1,18 @@
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use std::convert::Infallible;
 
 #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android")))]
 mod service;
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum DnsManagerArg {
+    Auto,
+    Disabled,
+    #[cfg(target_os = "linux")]
+    NetworkManager,
+    #[cfg(target_os = "linux")]
+    Resolved,
+}
 
 #[derive(Args, Debug)]
 pub struct ServiceArgs {
@@ -12,6 +22,8 @@ pub struct ServiceArgs {
     pub account: Option<String>,
     #[clap(long)]
     pub config_dir: String,
+    #[arg(long, value_enum, default_value_t = DnsManagerArg::Auto)]
+    pub dns: DnsManagerArg,
 }
 
 #[derive(Subcommand, Debug)]

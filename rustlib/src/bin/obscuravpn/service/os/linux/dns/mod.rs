@@ -1,39 +1,45 @@
-use obscuravpn_client::net::NetworkInterface;
-use std::net::IpAddr;
+use crate::DnsManagerArg;
+use crate::service::os::linux::network_manager;
 
-mod network_manager;
-mod resolved;
+pub mod resolved;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, strum::EnumIs)]
 pub enum DnsManager {
+    Disabled,
     Resolved,
     NetworkManager,
 }
 
-pub async fn detect_dns_manager() -> Option<DnsManager> {
+pub async fn choose_dns_manager(dns_manager_arg: DnsManagerArg) -> Result<DnsManager, ()> {
     let network_manager = network_manager::detect().await;
     let resolved = resolved::detect().await;
-    let pick = if resolved {
-        Some(DnsManager::Resolved)
-    } else if network_manager {
-        Some(DnsManager::NetworkManager)
-    } else {
-        None
+
+    let choice = match dns_manager_arg {
+        DnsManagerArg::Disabled => Ok(DnsManager::Disabled),
+        DnsManagerArg::Auto => {
+            if resolved {
+                Ok(DnsManager::Resolved)
+            } else if network_manager {
+                Ok(DnsManager::NetworkManager)
+            } else {
+                tracing::error!(message_id = "ltV4egoX", "no supported DNS manager detected");
+                Err(())
+            }
+        }
+        DnsManagerArg::NetworkManager if network_manager => Ok(DnsManager::NetworkManager),
+        DnsManagerArg::Resolved if resolved => Ok(DnsManager::Resolved),
+        dns_manager_arg => {
+            tracing::error!(message_id = "bJO46yTy", ?dns_manager_arg, "requested DNS manager not detected");
+            Err(())
+        }
     };
-    tracing::info!(message_id = "PsaY3ZPO", network_manager, resolved, ?pick, "DNS manager detection");
-    pick
-}
-
-pub async fn set_dns(tun: &NetworkInterface, dns: &[IpAddr]) -> Result<(), ()> {
-    match detect_dns_manager().await.ok_or(())? {
-        DnsManager::Resolved => resolved::set_dns(tun, dns).await,
-        DnsManager::NetworkManager => network_manager::set_dns(tun, dns).await,
-    }
-}
-
-pub async fn reset_dns(tun: &NetworkInterface) -> Result<(), ()> {
-    match detect_dns_manager().await.ok_or(())? {
-        DnsManager::Resolved => resolved::reset_dns(tun).await,
-        DnsManager::NetworkManager => network_manager::reset_dns(tun).await,
-    }
+    tracing::info!(
+        message_id = "PsaY3ZPO",
+        ?dns_manager_arg,
+        network_manager,
+        resolved,
+        ?choice,
+        "DNS manager detection"
+    );
+    choice
 }

@@ -34,7 +34,7 @@ pub fn run(args: ServiceArgs) -> anyhow::Result<Infallible> {
         init_commands.push(ManagerCmd::SetTunnelArgs { args: Some(TunnelArgs { exit: ExitSelector::Any {} }), allow_activation: true });
     }
 
-    let mut os_impl = LinuxOsImpl::new(runtime.handle(), init_commands)?;
+    let mut os_impl = LinuxOsImpl::new(runtime.handle(), init_commands, args.dns)?;
     *TUN_WRITER.lock().expect("poisoned") = os_impl.put_incoming_packet_fn();
 
     let manager = Manager::new(

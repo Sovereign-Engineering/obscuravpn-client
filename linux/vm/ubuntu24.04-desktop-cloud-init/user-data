@@ -1,0 +1,23 @@
+#cloud-config
+autoinstall:
+  version: 1
+  shutdown: poweroff
+  identity:
+    hostname: unassigned-hostname
+    password: '$6$.3M3jqAKFfWngAem$XK/l4Mepy7Poe1Re8gmDzN3gSgdu/mGIs5slQKc909CEEZHaXpBhNf9kF5QXmdfnf50CM0MXSiaahx8VUnFHW1'
+    realname: user
+    username: user
+  locale: en_US.UTF-8
+  keyboard: {layout: us}
+  ssh:
+    install-server: true
+    allow-pw: true
+  storage:
+    layout:
+      name: direct
+  packages:
+    - net-tools
+    - curl
+  late-commands:
+    - "echo 'user ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/user-nopasswd"
+    - "chmod 440 /target/etc/sudoers.d/user-nopasswd"

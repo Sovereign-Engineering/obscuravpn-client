@@ -166,7 +166,7 @@
   "dnsBlockTrackers": "Block trackers",
   "dnsModeObscura": "Use Obscura DNS",
   "dnsSetting": "DNS Server",
-  "dnsModeSystem": "Use installed custom DNS profile",
+  "dnsModeSystem": "Use installed custom system DNS profile",
   "dnsModeSystemDescription": "If you have a custom system DNS profile installed (e.g. NextDNS), enabling this option will make your connections use the custom DNS profile instead of Obscura's default DNS servers.",
   "downgradeAvailable": "Version {{ VERSION }} has been yanked. Please downgrade to v{{ v }}.",
   "emailBodyIntro": "Please describe the problem you're seeing and what you expected to happen below",

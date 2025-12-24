@@ -12,7 +12,7 @@ use quinn::rustls::pki_types::{CertificateDer, ServerName, UnixTime};
 use quinn::rustls::{CertificateError, DigitallySignedStruct, SignatureScheme};
 use quinn::{ClientConfig, MtuDiscoveryConfig, rustls};
 use rand::random;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::mem;
 use std::net::{Ipv4Addr, SocketAddr};
@@ -159,7 +159,7 @@ struct TickStats {
     max_ip_rx_size: Option<usize>,
 }
 
-#[derive(Debug, Display, Eq, PartialEq, Clone, Copy, Serialize)]
+#[derive(Debug, Display, Eq, PartialEq, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum TransportKind {
     Quic,

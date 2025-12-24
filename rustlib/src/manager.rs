@@ -10,10 +10,7 @@ use obscuravpn_api::{
     types::{AccountId, AccountInfo, OneExit, OneRelay, WgPubkey},
 };
 use serde::{Deserialize, Serialize};
-use tokio::{
-    runtime::{Handle, Runtime},
-    sync::watch::{Receiver, Sender, channel},
-};
+use tokio::sync::watch::{Receiver, Sender, channel};
 use tokio_util::sync::{CancellationToken, DropGuard};
 use tracing_appender::non_blocking::WorkerGuard;
 use uuid::Uuid;
@@ -41,13 +38,13 @@ pub struct Manager {
     tunnel_state: Receiver<TunnelState>,
     target_state: Sender<TargetState>,
     status_watch: Sender<Status>,
-    runtime: Handle,
+    runtime: tokio::runtime::Handle,
     _background_task_drop_guard: DropGuard,
     _log_flush_guard: Option<Box<WorkerGuard>>,
 }
 
 // Keep synchronized with ../../apple/shared/NetworkExtensionIpc.swift
-#[derive(Debug, Serialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Eq, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Status {
     pub version: Uuid,
@@ -61,7 +58,7 @@ pub struct Status {
     pub account: Option<AccountStatus>,
     pub auto_connect: bool,
     pub feature_flags: FeatureFlags,
-    pub feature_flag_keys: &'static [&'static str],
+    pub feature_flag_keys: Vec<String>,
     pub use_system_dns: bool,
     pub dns_content_block: DnsContentBlock,
 }
@@ -93,7 +90,7 @@ impl Status {
             account: cached_account_status,
             auto_connect,
             feature_flags,
-            feature_flag_keys: FeatureFlags::KEYS,
+            feature_flag_keys: FeatureFlags::KEYS.iter().map(ToString::to_string).collect(),
             use_system_dns: dns.is_system(),
             dns_content_block,
         }
@@ -101,7 +98,7 @@ impl Status {
 }
 
 // Keep synchronized with ../../apple/shared/NetworkExtensionIpc.swift
-#[derive(Debug, Serialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Eq, Clone, Deserialize)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum VpnStatus {
     Connecting {
@@ -165,7 +162,7 @@ impl Manager {
         config_dir: PathBuf,
         keychain_wg_sk: Option<&[u8]>,
         user_agent: String,
-        runtime: &Runtime,
+        runtime: tokio::runtime::Handle,
         receive_cb: extern "C" fn(FfiBytes),
         set_keychain_wg_sk: Option<KeychainSetSecretKeyFn>,
         log_flush_guard: Option<Box<WorkerGuard>>,
@@ -173,14 +170,14 @@ impl Manager {
         let cancellation_token = CancellationToken::new();
         let client_state = Arc::new(ClientState::new(config_dir, keychain_wg_sk, user_agent, set_keychain_wg_sk)?);
         let config = client_state.get_config();
-        let (target_state, tunnel_state) = TunnelState::new(runtime, client_state.clone(), receive_cb, cancellation_token.clone());
+        let (target_state, tunnel_state) = TunnelState::new(&runtime, client_state.clone(), receive_cb, cancellation_token.clone());
         let initial_status = Status::new(Uuid::new_v4(), VpnStatus::Disconnected {}, config, client_state.base_url());
         let this = Arc::new(Self {
             target_state,
             tunnel_state,
             client_state,
             status_watch: channel(initial_status).0,
-            runtime: runtime.handle().clone(),
+            runtime,
             _background_task_drop_guard: cancellation_token.clone().drop_guard(),
             background_taks_cancellation_token: cancellation_token,
             _log_flush_guard: log_flush_guard,

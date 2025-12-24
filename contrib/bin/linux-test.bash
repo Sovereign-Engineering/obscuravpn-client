@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -eux
+set -eu
 trap 'pkill -P $$' EXIT
 
 function error() {
@@ -15,8 +15,8 @@ function check_args() {
 
 function reset() {
   check_args $# 2
-  DISTRO=$1
-  FLAVOR=$2
+  local DISTRO=$1
+  local FLAVOR=$2
 
   echo "Creating disk image"
   virsh --connect qemu:///session destroy "${DISTRO}-${FLAVOR}" &> /dev/null || true
@@ -46,21 +46,21 @@ function reset() {
 
 function disk_image_path() {
   check_args $# 2
-  DISTRO=$1
-  FLAVOR=$2
+  local DISTRO=$1
+  local FLAVOR=$2
   echo "./linux/vm/${DISTRO}-${FLAVOR}.qcow2"
 }
 
 function download() {
   check_args $# 2
-  DISTRO=$1
-  FLAVOR=$2
+  local DISTRO=$1
+  local FLAVOR=$2
   # Ubuntu doesn't have small desktop or netinstall images, so we need to download the iso
   declare -A map=(
     ["ubuntu24.04-desktop"]="https://releases.ubuntu.com/noble/ubuntu-24.04.3-desktop-amd64.iso"
   )
   if [[ -v map[${DISTRO}-${FLAVOR}] ]]; then
-    ISO="./linux/vm/${DISTRO}-${FLAVOR}.iso"
+    local ISO="./linux/vm/${DISTRO}-${FLAVOR}.iso"
     if [ ! -e "${ISO}" ]; then
       wget "${map[${DISTRO}-${FLAVOR}]}" -O "${ISO}"
     fi
@@ -69,8 +69,8 @@ function download() {
 
 function prepare() {
   check_args $# 2
-  DISTRO=$1
-  FLAVOR=$2
+  local DISTRO=$1
+  local FLAVOR=$2
   # Ubuntu on desktop doesn't support auto install via initrd injected files
   declare -A map=(
     ["ubuntu24.04-desktop"]="x"
@@ -82,8 +82,8 @@ function prepare() {
 }
 function autoinstall() {
     check_args $# 2
-    DISTRO=$1
-    FLAVOR=$2
+    local DISTRO=$1
+    local FLAVOR=$2
 
     echo "--os-variant"
     declare -A map=(
@@ -151,21 +151,21 @@ function ssh_run() {
 
 function scp_run() {
   check_args $# 2
-  SRC=$1
-  DEST=$2
-  sxx_run "scp -P 2222" "${SRC}" "user@localhost:${DEST}"
+  local SRC=$1
+  local DEST=$2
+  sxx_run scp -P 2222 "${SRC}" "user@localhost:${DEST}"
 }
 
 function sxx_run() {
-  CMD=$1
+  local CMD=$1
   shift
   sshpass -p pw "${CMD}" -o ConnectTimeout=1 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "$@"
 }
 
 function start_vm() {
   check_args $# 2
-  DISTRO=$1
-  FLAVOR=$2
+  local DISTRO=$1
+  local FLAVOR=$2
 
   qemu-system-x86_64 \
     -enable-kvm \
@@ -184,34 +184,38 @@ function start_vm() {
 
 function install_package() {
   check_args $# 2
-  DISTRO=$1
-  FLAVOR=$2
+  local DISTRO=$1
+  local FLAVOR=$2
 
   if [[ ${DISTRO} == debian* ]] || [[ ${DISTRO} == ubuntu* ]]; then
-    scp_run ./obscuravpn_0.0.1_amd64.deb /home/user/obscuravpn.deb
-    ssh_run sudo dpkg -i /home/user/obscuravpn.deb
+    scp_run ./obscura_0.0.1_amd64.deb /home/user/obscura.deb
+    ssh_run sudo dpkg -i /home/user/obscura.deb
   elif [[ ${DISTRO} == fedora* ]] || [[ ${DISTRO} == alma* ]]; then
-    scp_run ./obscuravpn-0.0.1-1.x86_64.rpm /home/user/obscuravpn.rpm
-    ssh_run sudo dnf install -y /home/user/obscuravpn.rpm
+    scp_run ./obscura-0.0.1-1.x86_64.rpm /home/user/obscura.rpm
+    ssh_run sudo dnf install -y /home/user/obscura.rpm
   elif [[ ${DISTRO} == archlinux* ]]; then
-    scp_run ./obscuravpn-0.0.1-1-x86_64.pkg.tar.zst /home/user/obscuravpn.zst
-    ssh_run sudo pacman --noconfirm -U /home/user/obscuravpn.zst
-    ssh_run sudo systemctl enable --now obscuravpn
+    scp_run ./obscura-0.0.1-1-x86_64.pkg.tar.zst /home/user/obscura.zst
+    ssh_run sudo pacman --noconfirm -U /home/user/obscura.zst
+    ssh_run sudo systemctl enable --now obscura
+    ssh_run sudo chmod g+s /usr/bin/obscura
   else
     error "no package install instructions for this ${DISTRO}"
   fi
 }
 
-# shellcheck disable=SC2120
-function login_and_connect() {
-  check_args $# 0
-  # TODO: placeholder until cli login and cli start/status are implemented
-  sleep 10
+function setup_and_connect() {
+  check_args $# 1
+  local ACCOUNT_ID=$1
+  sleep 1
+  ssh_run sudo usermod -aG obscura user
+  ssh_run obscura login "${ACCOUNT_ID}"
+  ssh_run obscura start
 }
 
 # shellcheck disable=SC2120
 function check_if_mullvad() {
   check_args $# 0
+  local MULLVAD_CHECK_OUTPUT
   for IP_VERSION in 4 6; do
     MULLVAD_CHECK_OUTPUT="$(ssh_run curl -sS https://ipv${IP_VERSION}.am.i.mullvad.net/json)"
     if [[ "${MULLVAD_CHECK_OUTPUT}" == *'"mullvad_exit_ip":true'* ]]; then
@@ -236,14 +240,9 @@ fi
 
 start_vm "${DISTRO}" "${FLAVOR}"
 
-# TODO: remove once cli login is implemented
-ssh_run sudo mkdir /var/lib/obscuravpn
-ssh_run sudo echo "'{\"account_id\":\"${ACCOUNT_ID}\"}'" ">" /home/user/config.json
-ssh_run sudo cp /home/user/config.json /var/lib/obscuravpn
-
 install_package "${DISTRO}" "${FLAVOR}"
 
-login_and_connect
+setup_and_connect "${ACCOUNT_ID}"
 check_if_mullvad
 
 sleep 100000000

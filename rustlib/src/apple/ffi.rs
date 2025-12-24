@@ -73,7 +73,7 @@ pub unsafe extern "C" fn initialize(
             config_dir,
             keychain_wg_sk.as_deref(),
             user_agent,
-            &RUNTIME,
+            RUNTIME.handle().clone(),
             receive_cb,
             Some(keychain_set_wg_secret_key),
             log_flush_guard,
@@ -158,53 +158,21 @@ pub unsafe extern "C" fn wake() {
 pub unsafe extern "C" fn json_ffi_cmd(context: usize, json_cmd: FfiBytes, cb: extern "C" fn(context: usize, json_ret: FfiStr, json_err: FfiStr)) {
     let json_cmd = json_cmd.to_vec();
 
-    let hash = ring::digest::digest(&ring::digest::SHA1_FOR_LEGACY_USE_ONLY, &json_cmd);
-
-    let cmd: ManagerCmd = match serde_json::from_slice(&json_cmd) {
-        Ok(cmd) => cmd,
-        Err(error) => {
-            tracing::error!(
-                ?error,
-                cmd =? String::from_utf8_lossy(&json_cmd),
-                hash =? hash,
-                message_id = "ahsh9Aec",
-                "could not decode json command: {error}",
-            );
-            let err: &'static str = ManagerCmdErrorCode::Other.into();
-            cb(context, "".ffi_str(), err.ffi_str());
-            return;
-        }
-    };
-
-    tracing::info!(
-        cmd = format!("{:#?}", cmd),
-        hash =? hash,
-        message_id = "JumahFi5",
-        "received json ffi cmd",
-    );
-
     RUNTIME.spawn(async move {
         let manager = global_manager();
 
-        let result = cmd.run(&manager).await;
-
-        tracing::info!(
-            result = format!("{:#?}", result),
-            hash =? hash,
-            message_id = "eed0Oogi",
-            "finished json ffi cmd",
-        );
-
-        let json_result = result.and_then(|ok| {
-            serde_json::to_string(&ok).map_err(|err| {
-                tracing::error!(?err, "could not serialize successful json cmd result: {err}");
+        let json_result: Result<String, ManagerCmdErrorCode> = async move {
+            let ok = ManagerCmd::from_json(&json_cmd)?.run(&manager).await?;
+            serde_json::to_string(&ok).map_err(|error| {
+                tracing::error!(message_id = "TFqFKASM", ?error, "could not serialize successful json cmd result: {error}");
                 ManagerCmdErrorCode::Other
             })
-        });
+        }
+        .await;
 
         match json_result {
             Ok(ok) => cb(context, ok.ffi_str(), "".ffi_str()),
-            Err(err) => cb(context, "".ffi_str(), <&'static str>::from(err).ffi_str()),
+            Err(err) => cb(context, "".ffi_str(), err.as_static_str().ffi_str()),
         }
     });
 }

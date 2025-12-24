@@ -106,7 +106,7 @@ pub unsafe extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_ini
             PathBuf::from(config_dir),
             None, // TODO
             user_agent.into(),
-            &RUNTIME,
+            RUNTIME.handle().clone(),
             receive_cb,
             None, // TODO
             None, // TODO

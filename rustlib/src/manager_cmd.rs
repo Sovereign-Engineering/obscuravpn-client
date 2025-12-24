@@ -36,6 +36,7 @@ use crate::{config::PinnedLocation, manager::TunnelArgs};
 #[strum(serialize_all = "camelCase")]
 pub enum ManagerCmdErrorCode {
     ApiError,
+    ApiInvalidAccountId,
     ApiNoLongerSupported,
     ApiRateLimitExceeded,
     ApiSignupLimitExceeded,
@@ -43,6 +44,12 @@ pub enum ManagerCmdErrorCode {
     ConfigSaveError,
     Other,
     TunnelInactive,
+}
+
+impl ManagerCmdErrorCode {
+    pub fn as_static_str(&self) -> &'static str {
+        self.into()
+    }
 }
 
 impl From<&ConfigSaveError> for ManagerCmdErrorCode {
@@ -53,14 +60,15 @@ impl From<&ConfigSaveError> for ManagerCmdErrorCode {
 }
 
 impl From<&ApiError> for ManagerCmdErrorCode {
-    fn from(err: &ApiError) -> Self {
-        tracing::info!("deriving json cmd error code for {}", &err);
-        match err {
+    fn from(error: &ApiError) -> Self {
+        tracing::info!(message_id = "ch2a5Sp5", ?error, "deriving json cmd error code for {}", &error);
+        match error {
             ApiError::ApiClient(err) => match err {
                 ClientError::ApiError(err) => match err.body.error {
                     ApiErrorKind::NoLongerSupported {} => Self::ApiNoLongerSupported,
                     ApiErrorKind::RateLimitExceeded {} => Self::ApiRateLimitExceeded,
                     ApiErrorKind::SignupLimitExceeded {} => Self::ApiSignupLimitExceeded,
+                    ApiErrorKind::InvalidAccountId {} => Self::ApiInvalidAccountId,
                     ApiErrorKind::AccountExpired {}
                     | ApiErrorKind::AlreadyExists {}
                     | ApiErrorKind::AlreadyReferred {}
@@ -186,6 +194,31 @@ where
 }
 
 impl ManagerCmd {
+    pub fn from_json(json_cmd: &[u8]) -> Result<Self, ManagerCmdErrorCode> {
+        // apple frameworks log IPC message SHA1
+        let hash = ring::digest::digest(&ring::digest::SHA1_FOR_LEGACY_USE_ONLY, json_cmd);
+
+        let cmd: ManagerCmd = serde_json::from_slice(json_cmd).map_err(|error| {
+            tracing::error!(
+                ?error,
+                cmd =? String::from_utf8_lossy(json_cmd),
+                hash =? hash,
+                message_id = "ahsh9Aec",
+                "could not decode json command: {error}",
+            );
+            ManagerCmdErrorCode::Other
+        })?;
+
+        tracing::info!(
+            cmd = format!("{:#?}", cmd),
+            hash =? hash,
+            message_id = "JumahFi5",
+            "decoded json cmd",
+        );
+
+        Ok(cmd)
+    }
+
     pub async fn run(self, manager: &Manager) -> Result<ManagerCmdOk, ManagerCmdErrorCode> {
         match self {
             Self::ApiAppleAssociateAccount { app_transaction_jws } => map_result(manager.apple_associate_account(app_transaction_jws).await),

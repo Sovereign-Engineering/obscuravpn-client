@@ -1,38 +1,44 @@
 pub mod dns;
+pub mod ipc;
 mod network_manager;
 mod routes;
+mod service_lock;
+pub mod start_error;
 pub mod tun;
 
 use crate::DnsManagerArg;
 use crate::service::os::Os;
 use crate::service::os::linux::dns::{DnsManager, choose_dns_manager, resolved};
+use crate::service::os::linux::ipc::ServiceIpc;
 use crate::service::os::linux::routes::{ROUTES, netlink};
+use crate::service::os::linux::service_lock::ServiceLock;
+use crate::service::os::linux::start_error::ServiceStartError;
 use crate::service::os::linux::tun::{Tun, TunWriter};
 use crate::service::os::packet_buffer::PacketBuffer;
 use obscuravpn_client::manager_cmd::{ManagerCmd, ManagerCmdErrorCode, ManagerCmdOk};
 use obscuravpn_client::net::NetworkInterface;
 use obscuravpn_client::network_config::TunnelNetworkConfig;
-use std::collections::VecDeque;
-use std::future;
 use tokio::sync::watch::Receiver;
 
 pub struct LinuxOsImpl {
     tun: Tun,
     preferred_network_interface: Receiver<Option<NetworkInterface>>,
-    pending_commands: std::sync::Mutex<VecDeque<ManagerCmd>>,
     current_network_config: Result<Option<TunnelNetworkConfig>, ()>,
     dns_manager_arg: DnsManagerArg,
+    ipc: ServiceIpc,
+    _lock: ServiceLock,
 }
 
 impl LinuxOsImpl {
-    pub fn new(runtime: &tokio::runtime::Handle, init_commands: Vec<ManagerCmd>, dns_manager_arg: DnsManagerArg) -> anyhow::Result<Self> {
-        runtime
-            .block_on(choose_dns_manager(dns_manager_arg))
-            .map_err(|()| anyhow::anyhow!("failed to detect compatible dns management service"))?;
+    pub async fn new(dns_manager_arg: DnsManagerArg) -> Result<Self, ServiceStartError> {
+        let lock = ServiceLock::new()?;
+        choose_dns_manager(dns_manager_arg).await.map_err(|()| ServiceStartError::NoDnsManager)?;
+        let ipc = ServiceIpc::new(&lock).await?;
         Ok(Self {
-            tun: Tun::create(runtime)?,
-            preferred_network_interface: netlink::watch_preferred_network_interface(runtime),
-            pending_commands: VecDeque::from(init_commands).into(),
+            _lock: lock,
+            ipc,
+            tun: Tun::create().await?,
+            preferred_network_interface: netlink::watch_preferred_network_interface().await,
             current_network_config: Ok(None),
             dns_manager_arg,
         })
@@ -90,9 +96,31 @@ impl Os for LinuxOsImpl {
     }
 
     async fn get_manager_command(&self) -> (ManagerCmd, Box<dyn FnOnce(Result<ManagerCmdOk, ManagerCmdErrorCode>) + Send>) {
-        if let Some(cmd) = self.pending_commands.lock().unwrap().pop_front() {
-            return (cmd, Box::new(move |_| {}));
+        loop {
+            let (json_cmd, response_fn) = self.ipc.next().await;
+            let response_fn = move |result: Result<ManagerCmdOk, ManagerCmdErrorCode>| {
+                let json_response = serde_json::to_vec(&result)
+                    .map_err(|error| {
+                        tracing::error!(message_id = "8Jj0yWQt", ?error, "failed to encode command result: {}", error);
+                        ManagerCmdErrorCode::Other
+                    })
+                    .unwrap_or(JSON_OTHER_ERROR.into());
+                response_fn(json_response)
+            };
+            match ManagerCmd::from_json(&json_cmd) {
+                Ok(cmd) => return (cmd, Box::new(response_fn)),
+                Err(error) => response_fn(Err(error)),
+            }
         }
-        future::pending().await
     }
+}
+
+const JSON_OTHER_ERROR: &str = r#"{"Err":"other"}"#;
+
+#[test]
+fn test_other_error_json() {
+    assert_eq!(
+        serde_json::to_string(&Result::<ManagerCmdOk, ManagerCmdErrorCode>::Err(ManagerCmdErrorCode::Other)).unwrap(),
+        JSON_OTHER_ERROR
+    )
 }

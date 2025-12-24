@@ -1,0 +1,5 @@
+FROM archlinux:latest
+RUN pacman -Sy --noconfirm base-devel namcap sudo && \
+    useradd -m builder && \
+    echo 'builder ALL=(ALL) NOPASSWD: /usr/bin/cp' >> /etc/sudoers
+USER builder

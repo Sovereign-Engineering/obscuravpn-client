@@ -1,0 +1,7 @@
+addFilter("statically-linked-binary")
+addFilter("no-manual-page-for-binary")
+addFilter("no-documentation")
+addFilter("invalid-license")
+addFilter("unstripped-binary-or-object")
+addFilter("name-repeated-in-summary")
+addFilter("no-changelogname-tag")

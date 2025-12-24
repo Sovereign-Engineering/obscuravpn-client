@@ -1,0 +1,14 @@
+pkgname=obscura
+pkgver=0.0.1
+pkgrel=1
+pkgdesc='Privacy that'\''s more than a promise'
+arch=('x86_64')
+license=('LicenseRef-PolyForm-Noncommercial-1.0.0')
+options=('!debug')
+
+package() {
+    install -Dm755 "$srcdir/obscura" "$pkgdir/usr/bin/obscura"
+    install -Dm644 "$srcdir/obscura.service" "$pkgdir/usr/lib/systemd/system/obscura.service"
+    install -Dm644 "$srcdir/obscura-sysusers.conf" "$pkgdir/usr/lib/sysusers.d/obscura.conf"
+    install -Dm644 "$srcdir/LICENSE.md" "$pkgdir/usr/share/licenses/obscura/LICENSE.md"
+}

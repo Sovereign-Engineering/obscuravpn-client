@@ -5,7 +5,7 @@ edition = "2024"
 license = "PolyForm-Noncommercial-1.0.0"
 
 [[bin]]
-name = "obscuravpn"
+name = "obscura"
 
 [lib]
 crate-type = ["cdylib", "lib", "staticlib"]
@@ -65,7 +65,7 @@ rev = "ff3b5555b5b1c4f85ae23d8d4aaf00bea2cd2bf0"
 
 [dependencies.obscuravpn-api]
 git = "https://github.com/Sovereign-Engineering/obscuravpn-api.git"
-rev = "15c61632b418001b7e0e0bbb98373d8437a20d01"
+rev = "0b3ed27e36cbf0fcb12c9e90f335177b5c2bf419"
 
 [dependencies.quinn]
 git = "https://github.com/Sovereign-Engineering/quinn.git"
@@ -80,7 +80,7 @@ aws-lc-rs = { version = "*", features = ["bindgen"] } # We don't use directly, b
 libc = "0.2.178"
 rtnetlink = "0.18.1"
 zbus = "5.12.0"
-zbus_systemd = {  version="0.25800.0", features = ["resolve1"] }
+zbus_systemd = { version = "0.25900.0", features = ["resolve1"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
 jni = { version = "0.21.1", default-features = false }

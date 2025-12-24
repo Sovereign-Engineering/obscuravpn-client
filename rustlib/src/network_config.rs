@@ -7,7 +7,7 @@ use thiserror::Error;
 
 // Keep synchronized with ../apple/system-network-extension/RustFfi.swift
 // Avoid adding information with high-frequency of change to this type, to prevent triggering frequent changes OS network configuration, which can't be deduplicated by checking for changes.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TunnelNetworkConfig {
     pub dns: Vec<IpAddr>,

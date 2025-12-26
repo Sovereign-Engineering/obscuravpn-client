@@ -44,7 +44,9 @@
           includeExtras = [ "extras;google;google_play_services" ];
         };
         androidBuildTools = "${android.androidsdk}/libexec/android-sdk/build-tools/${androidBuildToolsVersion}";
-        androidEnv = { ANDROID_NDK_ROOT = "${android.ndk-bundle}/libexec/android-sdk/ndk-bundle"; };
+        androidGradleEnv = { ANDROID_HOME = "${android.androidsdk}/libexec/android-sdk"; };
+        androidRustEnv = { ANDROID_NDK_ROOT = "${android.ndk-bundle}/libexec/android-sdk/ndk-bundle"; };
+        gradleFlags = [ "-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidBuildTools}/aapt2" ];
 
         rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./rustlib/rust-toolchain.toml;
         craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
@@ -55,7 +57,7 @@
           strictDeps = true;
           nativeBuildInputs = [ pkgs.cmake ];
         };
-        rustDepsArgs-android = rustDepsArgs // androidEnv // {
+        rustDepsArgs-android = rustDepsArgs // androidRustEnv // {
           buildInputs = [ android.androidsdk ];
           nativeBuildInputs = rustDepsArgs.nativeBuildInputs ++ [ pkgs.cargo-ndk ];
           CARGO_BUILD_TARGET = "aarch64-linux-android";
@@ -147,6 +149,7 @@
             };
 
             LICENSE_JSON = licenses;
+            OBS_WEB_PLATFORM = platform;
 
             buildPhase = ''
               pushd obscura-ui
@@ -165,6 +168,49 @@
         web-ios = mkWeb "iphoneos";
         web-macos = mkWeb "macosx";
 
+        # https://nixos.org/manual/nixpkgs/stable/#gradle
+        apks = pkgs.stdenv.mkDerivation (finalAttrs:
+          androidGradleEnv // {
+            name = "obscura-apks";
+
+            src = (lib.fileset.toSource {
+              root = ./android;
+              fileset = lib.fileset.unions [
+                android/app/build.gradle.kts
+                android/app/proguard-rules.pro
+                android/app/src
+                android/build.gradle.kts
+                android/gradle.properties
+                android/gradle/libs.versions.toml
+                android/settings.gradle.kts
+              ];
+            });
+
+            nativeBuildInputs = [ pkgs.gradle ];
+
+            mitmCache = pkgs.gradle.fetchDeps {
+              pkg = finalAttrs.finalPackage;
+              data = android/deps.json;
+            };
+
+            ANDROID_USER_HOME = "/tmp/";
+            gradleFlags = gradleFlags;
+
+            patchPhase = ''
+              # TODO: Find a cleaner way to pass these inputs that works during dev as well.
+              ln -sfv ${rust-android}/lib/libobscuravpn_client.so app/src/main/jniLibs/arm64-v8a/
+              ln -sfv ${web-android} app/src/main/assets
+            '';
+
+            installPhase = ''
+              mkdir $out
+              cp -v app/build/outputs/apk/debug/app-debug.apk $out/
+              cp -v app/build/outputs/apk/release/app-release-unsigned.apk $out/
+            '';
+
+            doCheck = false;
+          });
+
         shellFiles = lib.sources.sourceFilesBySuffices ./. [ ".bash" ".sh" ".shellcheckrc" ];
 
         swiftFiles = lib.sources.sourceFilesBySuffices (lib.fileset.toSource {
@@ -172,8 +218,15 @@
           fileset = lib.fileset.unions [ ./.swiftformat apple/client ];
         }) [ ".swift" ".swiftformat" ];
       in {
+        apps = {
+          gradle-deps-update = {
+            type = "app";
+            program = toString apks.mitmCache.updateScript;
+          };
+        };
+
         checks = {
-          inherit licenses rust rust-android web-android web-ios web-macos;
+          inherit apks licenses rust rust-android web-android web-ios web-macos;
 
           shellcheck = pkgs.runCommand "shellcheck" { nativeBuildInputs = [ pkgs.shellcheck ]; } ''
             shopt -s globstar
@@ -235,7 +288,7 @@
             LICENSE_JSON = licenses;
           };
 
-          android = pkgs.mkShellNoCC (androidEnv // {
+          android = pkgs.mkShellNoCC (androidGradleEnv // androidRustEnv // {
             buildInputs = [ pkgs.libiconv ] ++ rustArgs-android.buildInputs;
             nativeBuildInputs = [
               android.cmake
@@ -251,10 +304,8 @@
               pkgs.pnpm
             ] ++ rustArgs-android.nativeBuildInputs;
 
-            ANDROID_HOME = "${android.androidsdk}/libexec/android-sdk";
-            GRADLE_OPTS = "-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidBuildTools}/aapt2";
+            GRADLE_OPTS = lib.concatStringsSep " " gradleFlags; # Doesn't support spaces.
             JAVA_HOME = pkgs.jdk21.home;
-            OBSCURA_UI = web-android;
 
             shellHook = ''
               export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:${androidBuildTools}:$PATH"
@@ -262,6 +313,6 @@
           });
         };
 
-        packages = { inherit licenses licenses-node licenses-rust rust web-android web-ios web-macos; };
+        packages = { inherit apks licenses licenses-node licenses-rust rust web-android web-ios web-macos; };
       });
 }

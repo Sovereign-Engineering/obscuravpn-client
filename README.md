@@ -93,21 +93,45 @@ The network extension manages the virtual device and maintains the tunnel using 
 
 ### For Android
 
+#### Nix Builds
+
+Nix builds provide an easy way to get a fully built APK. They are hermetic and reliable. However, they provide only coarse grained caching so if you are iterating during development you may prefer to use [Incremental Builds](#incremental-builds).
+
+```sh
+nix build '.#apks'
+apksigner sign --ks your-keystore.jks --ks-pass pass:hunter2 --out=obscura-signed.apk result/app-release-unsigned.apk # Sign.
+adb install obscura-signed.apk # Push to your device.
+```
+
+Instead of `app-release-unsigned` you can also use `app-debug` for the debug build. Note that just the Android portion is a debug build, the Rust core and UI are still release builds.
+
+#### Incremental Builds
+
 The Android app requires a special build of the Rust library and Obscura UI. These are built using Nix, while the Android app itself can be built using [Android Studio](https://developer.android.com/studio) for local development, or the Gradle build system to create an official build.
 
 1. Build the Obscura UI
    ```bash
-   OBS_WEB_PLATFORM="android" nix develop .#web --print-build-logs -c just web-bundle-build
+   OBS_WEB_PLATFORM="android" nix develop '.#web' --print-build-logs -c just web-bundle-build
    ```
 2. Build the Rust library
    ```bash
-   nix develop .#android --command bash -c 'cd rustlib && cargo ndk -t arm64-v8a build --release'
+   nix develop '.#android' --command bash -c 'cd rustlib && cargo ndk -t arm64-v8a build --release'
    ```
 3. Open Android Studio and point it at the `android` directory, or
 4. Use Gradle to build everything
     ```bash
     nix develop '.#android' --command bash -c 'cd android && gradle --no-daemon $GRADLE_OPTS build'
     ```
+
+In order to iterate you can just repeat the steps. 1 and 2 are only required if you changed the UI or Rust core respectively but the final APK build must always be re-run.
+
+#### Gradle Dependencies
+
+To ensure hermetic builds we pin our Gradle dependencies. If you change the dependencies you will need to regenerate the pin file.
+
+```
+bin/gradle-deps-update.sh
+```
 
 ## Swift unit tests
 

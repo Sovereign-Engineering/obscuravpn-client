@@ -73,3 +73,18 @@ spotless {
         endWithNewline()
     }
 }
+
+if (gradle.startParameter.taskNames.contains("nixDownloadDeps")) {
+    configurations.configureEach {
+        // This configuration fails to evaluate.
+        if (name == "implementation") {
+            exclude(module = project.name)
+        }
+    }
+
+    // Some parts of the build are dynamically scheduled so aren't triggered during the dep fetch so we force the dependency.
+    val lintConfig = configurations.create("nixDynamicDeps")
+    dependencies {
+        "nixDynamicDeps"("com.android.tools.lint:lint-gradle:31.13.0")
+    }
+}

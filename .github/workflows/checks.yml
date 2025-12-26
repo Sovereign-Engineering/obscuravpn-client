@@ -38,7 +38,7 @@ jobs:
           determinate: false
           mac-volume-label: obscuravpn-client
 
-      - name: Build Nix
+      - name: Nix Checks
         shell: bash
         run: |
           nix flake check \
@@ -46,6 +46,21 @@ jobs:
             --no-update-lock-file \
             --print-build-logs \
             --show-trace
+
+      - name: Nix Build
+        shell: bash
+        run: |
+          nix build '.#apks' \
+            --no-update-lock-file \
+            --print-build-logs \
+            --show-trace
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: obscura-debug.apk
+          path: result/app-debug.apk
+          retention-days: 30
 
   macos_build:
     name: MacOS build
@@ -116,47 +131,6 @@ jobs:
             -workspace apple/client.xcodeproj/project.xcworkspace \
             -scheme 'Obscura VPN iOS' \
             CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED="NO" CODE_SIGN_ENTITLEMENTS="" CODE_SIGNING_ALLOWED="NO"
-
-  android_build:
-    name: Android Build
-    runs-on:
-      # https://namespace.so/docs/features/faster-github-actions#using-runner-labels
-      - nscloud-macos-sequoia-arm64-12x28-with-cache
-      - nscloud-cache-tag-obscuravpn-client
-      - nscloud-cache-size-50gb
-    steps:
-      - name: git checkout
-        uses: actions/checkout@v3
-
-      - name: unshallow and fetch git tags
-        shell: bash
-        run: |
-          git fetch --prune --unshallow --tags
-
-      - uses: namespacelabs/nscloud-cache-action@v1
-        with:
-          # The action fails to mount at `/nix` and we want to let the Nix installer handle that anyways.
-          path: /tmp/nix
-
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
-
-      - name: Build Android web bundle
-        shell: bash
-        run: |
-          OBS_WEB_PLATFORM="android" nix develop .#web --print-build-logs -c just web-bundle-build
-
-      - name: Build and check Android
-        shell: bash
-        run: |
-          nix develop .#android --command bash -c contrib/bin/android-apk.sh
-
-      - name: Upload debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: obscura-debug.apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 30
 
   sync:
     name: Sync

@@ -11,6 +11,8 @@ result-*
 *.dmg
 
 # Android
+*.apk
+*.apk.idsig
 /android/.kotlin/errors
 
 # Linux

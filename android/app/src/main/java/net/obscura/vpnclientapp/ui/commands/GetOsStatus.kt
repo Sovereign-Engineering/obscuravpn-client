@@ -1,10 +1,9 @@
 package net.obscura.vpnclientapp.ui.commands
 
-import android.content.Context
 import java.util.concurrent.CompletableFuture
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import net.obscura.vpnclientapp.helpers.currentApp
+import net.obscura.vpnclientapp.ui.OsStatus
 
 @Serializable
 data class GetOsStatus(
@@ -67,6 +66,5 @@ data class GetOsStatus(
     }
   }
 
-  fun run(context: Context): CompletableFuture<Result> =
-      context.currentApp().osStatus.getStatus(knownVersion)
+  fun run(osStatus: OsStatus): CompletableFuture<Result> = osStatus.getStatus(knownVersion)
 }

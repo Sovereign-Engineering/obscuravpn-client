@@ -1,11 +1,17 @@
 package net.obscura.vpnclientapp.client;
 
+import android.app.Application;
+import android.content.Context;
 import java.util.concurrent.CompletableFuture;
 
 public class ObscuraLibrary {
 
-  static {
-    System.loadLibrary("obscuravpn_client");
+  public static void load(Context context) {
+    // Using this class outside of the :vpnservice process is not allowed.
+    if (Application.getProcessName().endsWith(":vpnservice")) {
+      System.loadLibrary("obscuravpn_client");
+      initialize(context.getFilesDir().getAbsolutePath(), "Obscura Android TODO");
+    }
   }
 
   public static native void initialize(String configDir, String userAgent);

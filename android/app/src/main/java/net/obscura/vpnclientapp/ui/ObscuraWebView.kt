@@ -1,19 +1,24 @@
 package net.obscura.vpnclientapp.ui
 
 import android.content.Context
+import android.content.Intent
 import android.util.AttributeSet
 import android.webkit.WebMessage
 import android.webkit.WebResourceRequest
-import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.core.net.toUri
 import androidx.webkit.WebViewAssetLoader
+import net.obscura.vpnclientapp.helpers.alwaysHTTPS
+import net.obscura.vpnclientapp.helpers.whenTrue
+import net.obscura.vpnclientapp.services.IObscuraVpnService
 
 class ObscuraWebView
 @JvmOverloads
 constructor(
     context: Context,
+    binder: IObscuraVpnService,
+    osStatus: OsStatus,
     attrs: AttributeSet? = null,
 ) : WebView(context, attrs) {
   companion object {
@@ -23,7 +28,7 @@ constructor(
   }
 
   val commandBridge =
-      CommandBridge(context) { data ->
+      CommandBridge(context, binder, osStatus) { data ->
         post { postWebMessage(WebMessage("android/$data"), ORIGIN) }
       }
 
@@ -39,10 +44,25 @@ constructor(
         .also { assetLoader ->
           webViewClient =
               object : WebViewClient() {
+                override fun shouldOverrideUrlLoading(
+                    view: WebView,
+                    request: WebResourceRequest,
+                ) =
+                    (request.url.host != ORIGIN.host).whenTrue {
+                      if (request.isForMainFrame) {
+                        context.startActivity(
+                            Intent(
+                                Intent.ACTION_VIEW,
+                                request.url.alwaysHTTPS(),
+                            ),
+                        )
+                      }
+                    }
+
                 override fun shouldInterceptRequest(
                     view: WebView?,
-                    request: WebResourceRequest?,
-                ): WebResourceResponse? = assetLoader.shouldInterceptRequest(request!!.url)
+                    request: WebResourceRequest,
+                ) = assetLoader.shouldInterceptRequest(request.url)
               }
         }
 

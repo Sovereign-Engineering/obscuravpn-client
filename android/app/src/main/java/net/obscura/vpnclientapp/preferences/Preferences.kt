@@ -4,11 +4,16 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import kotlinx.serialization.json.Json
+import net.obscura.vpnclientapp.helpers.requireUIProcess
 import net.obscura.vpnclientapp.ui.commands.SetColorScheme
 
 class Preferences(
     context: Context,
 ) {
+  init {
+    requireUIProcess()
+  }
+
   private val preferences = context.getSharedPreferences("preferences", Context.MODE_PRIVATE)
 
   var colorScheme: SetColorScheme.ColorScheme

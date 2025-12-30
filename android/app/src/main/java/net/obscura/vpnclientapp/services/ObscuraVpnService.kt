@@ -1,7 +1,6 @@
 package net.obscura.vpnclientapp.services
 
 import android.Manifest
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
@@ -14,6 +13,7 @@ import android.net.NetworkRequest
 import android.net.VpnService
 import android.os.Build
 import android.os.Handler
+import android.os.IBinder
 import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.system.OsConstants
@@ -29,8 +29,10 @@ import net.obscura.vpnclientapp.R
 import net.obscura.vpnclientapp.client.ObscuraLibrary
 import net.obscura.vpnclientapp.client.commands.GetStatus
 import net.obscura.vpnclientapp.client.commands.SetTunnelArgs
-import net.obscura.vpnclientapp.helpers.currentApp
 import net.obscura.vpnclientapp.helpers.debug
+import net.obscura.vpnclientapp.helpers.requireVpnServiceProcess
+import net.obscura.vpnclientapp.ui.CommandBridge
+import net.obscura.vpnclientapp.ui.OsStatus
 import net.obscura.vpnclientapp.ui.commands.GetOsStatus
 
 class ObscuraVpnService : VpnService() {
@@ -44,11 +46,8 @@ class ObscuraVpnService : VpnService() {
       debug("network is available $network")
 
       service.updateInterface(network)
-
-      service.currentApp().osStatus.vpnStatus = GetOsStatus.Result.NEVPNStatus.Connected
-      service.currentApp().osStatus.update()
-
       service.setTunnelArgs(exitSelector)
+      service.updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Connected)
     }
 
     override fun onBlockedStatusChanged(
@@ -60,6 +59,7 @@ class ObscuraVpnService : VpnService() {
       debug("network blocked status changed $network $blocked")
 
       service.updateInterface(network)
+      service.updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Connected)
     }
 
     override fun onCapabilitiesChanged(
@@ -71,6 +71,7 @@ class ObscuraVpnService : VpnService() {
       debug("network capabilities changed $network $networkCapabilities")
 
       service.updateInterface(network)
+      service.updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Connected)
     }
 
     override fun onLinkPropertiesChanged(
@@ -82,6 +83,7 @@ class ObscuraVpnService : VpnService() {
       debug("network link properties changed $network $linkProperties")
 
       service.updateInterface(network)
+      service.updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Connected)
     }
 
     override fun onLosing(
@@ -92,8 +94,7 @@ class ObscuraVpnService : VpnService() {
 
       debug("loosing network $network $maxMsToLive")
 
-      service.currentApp().osStatus.vpnStatus = GetOsStatus.Result.NEVPNStatus.Disconnecting
-      service.currentApp().osStatus.update()
+      service.updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Disconnecting)
     }
 
     override fun onLost(network: Network) {
@@ -101,36 +102,41 @@ class ObscuraVpnService : VpnService() {
 
       debug("lost network $network")
 
-      service.currentApp().osStatus.vpnStatus = GetOsStatus.Result.NEVPNStatus.Disconnected
-      service.currentApp().osStatus.update()
+      service.updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Disconnected)
+    }
+  }
+
+  private class Binder(
+      val service: ObscuraVpnService,
+  ) : IObscuraVpnService.Stub() {
+    override fun startTunnel(exitSelector: String?) {
+      debug("startTunnel $exitSelector")
+
+      service.startTunnel(exitSelector!!)
+    }
+
+    override fun stopTunnel() {
+      debug("stopTunnel")
+
+      service.stopTunnel()
+    }
+
+    override fun jsonFfi(
+        id: Long,
+        command: String?,
+    ) {
+      debug("jsonFfi $id $command")
+
+      CompletableFuture<String>().also {
+        CommandBridge.Receiver.broadcast(service, id, it)
+        ObscuraLibrary.jsonFfi(command!!, it)
+      }
     }
   }
 
   companion object {
     private val NOTIFICATION_CHANNEL_ID = "vpn_channel"
     private val NOTIFICATION_ID = 1
-
-    private const val ACTION_START_TUNNEL = "start-tunnel"
-    private const val ACTION_STOP_TUNNEL = "stop-tunnel"
-    private const val EXTRA_EXIT_SELECTOR = "exit-selector"
-
-    fun startTunnel(
-        context: Context,
-        exitSelector: String,
-    ) {
-      context.startForegroundService(
-          Intent(context, ObscuraVpnService::class.java).apply {
-            setAction(ACTION_START_TUNNEL)
-            putExtra(EXTRA_EXIT_SELECTOR, exitSelector)
-          },
-      )
-    }
-
-    fun stopTunnel(context: Context) {
-      context.startForegroundService(
-          Intent(context, ObscuraVpnService::class.java).apply { setAction(ACTION_STOP_TUNNEL) },
-      )
-    }
   }
 
   private lateinit var json: Json
@@ -142,10 +148,16 @@ class ObscuraVpnService : VpnService() {
   private var networkCallbackHandler: NetworkCallbackHandler? = null
 
   private var vpnStatus: GetStatus.Response.VpnStatus? = null
+
+  private var neVpnStatus: GetOsStatus.Result.NEVPNStatus =
+      GetOsStatus.Result.NEVPNStatus.Disconnected
+
   private var fd: ParcelFileDescriptor? = null
 
   override fun onCreate() {
     super.onCreate()
+
+    requireVpnServiceProcess()
 
     debug("onCreate")
 
@@ -175,16 +187,17 @@ class ObscuraVpnService : VpnService() {
       startForeground(NOTIFICATION_ID, buildNotification())
     }
 
-    intent?.action?.let {
-      when (it) {
-        ACTION_START_TUNNEL -> startTunnel(intent.getStringExtra(EXTRA_EXIT_SELECTOR)!!)
-        ACTION_STOP_TUNNEL -> stopTunnel()
-
-        else -> throw RuntimeException("Unknown action $it")
-      }
-    }
+    updateNEVPNStatus(neVpnStatus)
 
     return START_STICKY
+  }
+
+  override fun onBind(intent: Intent?): IBinder? {
+    debug("onBind $intent")
+
+    updateNEVPNStatus(neVpnStatus)
+
+    return Binder(this)
   }
 
   private fun onStatusUpdated(status: GetStatus.Response) {
@@ -216,6 +229,11 @@ class ObscuraVpnService : VpnService() {
     stopTunnel()
   }
 
+  private fun updateNEVPNStatus(status: GetOsStatus.Result.NEVPNStatus) {
+    neVpnStatus = status
+    OsStatus.Receiver.broadcast(this, status)
+  }
+
   private fun updateNotification() {
     // permission should already have been granted, but checking here to avoid crashes and to fix
     // the lint errors
@@ -238,6 +256,7 @@ class ObscuraVpnService : VpnService() {
                       it?.connected != null -> getString(R.string.notification_vpn_status_connected)
                       it?.connecting != null ->
                           getString(R.string.notification_vpn_status_connecting)
+
                       else -> getString(R.string.notification_vpn_status_disconnected)
                     }
                   },
@@ -246,6 +265,9 @@ class ObscuraVpnService : VpnService() {
           .setSmallIcon(R.drawable.ic_launcher_background)
           .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
           .setOngoing(true)
+          .setLocalOnly(true)
+          .setOnlyAlertOnce(true)
+          .setCategory(NotificationCompat.CATEGORY_SERVICE)
           .build()
 
   private fun createNotificationChannel() {
@@ -271,7 +293,7 @@ class ObscuraVpnService : VpnService() {
           it,
       )
 
-      it.whenComplete { data, tr ->
+      it.handle { data, tr ->
         debug("getStatus completed $data", tr)
 
         data?.let { onStatusUpdated(json.decodeFromString(it)) }
@@ -279,46 +301,52 @@ class ObscuraVpnService : VpnService() {
     }
   }
 
-  private fun setTunnelArgs(exitSelector: String) {
+  private fun setTunnelArgs(exitSelector: String?) {
     CompletableFuture<String>().also {
       ObscuraLibrary.jsonFfi(
           json.encodeToString(
               SetTunnelArgs(
                   SetTunnelArgs.Request(
-                      args = json.decodeFromString(exitSelector),
-                      allowActivation = true,
+                      args =
+                          if (exitSelector == null) {
+                            null
+                          } else {
+                            json.decodeFromString(exitSelector)
+                          },
+                      allowActivation = exitSelector != null,
                   ),
               ),
           ),
           it,
       )
-
-      it.whenComplete { data, tr -> debug("setTunnelArgs completed $data", tr) }
     }
   }
 
   private fun stopTunnel() {
     networkCallbackHandler?.let {
+      updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Disconnecting)
+
       connectivityManager.unregisterNetworkCallback(it)
 
-      currentApp().osStatus.vpnStatus = GetOsStatus.Result.NEVPNStatus.Disconnected
-      currentApp().osStatus.update()
+      updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Disconnected)
 
       networkCallbackHandler = null
     }
 
-    fd?.let { ObscuraLibrary.stopTunnel() }
+    fd?.let {
+      ObscuraLibrary.stopTunnel()
+      setTunnelArgs(null)
+    }
     fd = null
   }
 
   private fun startTunnel(exitSelector: String) {
     stopTunnel()
 
+    OsStatus.Receiver.broadcast(this, GetOsStatus.Result.NEVPNStatus.Connecting)
+
     networkCallbackHandler =
         NetworkCallbackHandler(this, exitSelector).also {
-          currentApp().osStatus.vpnStatus = GetOsStatus.Result.NEVPNStatus.Connecting
-          currentApp().osStatus.update()
-
           connectivityManager.requestNetwork(
               NetworkRequest.Builder()
                   .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)

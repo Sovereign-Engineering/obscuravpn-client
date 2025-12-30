@@ -4,23 +4,8 @@ import android.app.Application
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import net.obscura.vpnclientapp.client.ObscuraLibrary
-import net.obscura.vpnclientapp.ui.OsStatus
 
 class App : Application() {
-  companion object {
-    private lateinit var _app: App
-
-    val app: App
-      get() = _app
-
-    fun currentApp(): App = _app
-  }
-
-  private lateinit var _osStatus: OsStatus
-
-  val osStatus: OsStatus
-    get() = _osStatus
-
   private lateinit var _ioExecutor: ExecutorService
 
   val ioExecutor: ExecutorService
@@ -29,12 +14,8 @@ class App : Application() {
   override fun onCreate() {
     super.onCreate()
 
-    _app = this
-    _osStatus = OsStatus(this)
+    ObscuraLibrary.load(this)
+
     _ioExecutor = Executors.newCachedThreadPool()
-
-    osStatus.registerCallbacks()
-
-    ObscuraLibrary.initialize(filesDir.path, "Obscura Android TODO")
   }
 }

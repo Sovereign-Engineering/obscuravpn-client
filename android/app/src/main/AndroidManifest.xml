@@ -41,12 +41,20 @@
             android:name=".services.ObscuraVpnService"
             android:permission="android.permission.BIND_VPN_SERVICE"
             android:exported="false"
-            android:foregroundServiceType="systemExempted">
+            android:foregroundServiceType="systemExempted"
+            android:process=":vpnservice"
+            >
 
             <intent-filter>
                 <action android:name="android.net.VpnService"/>
             </intent-filter>
         </service>
+
+        <receiver android:name=".ui.CommandBridge$Receiver"
+            android:exported="false" />
+
+        <receiver android:name=".ui.OsStatus$Receiver"
+            android:exported="false" />
 
         <meta-data
             android:name="android.webkit.WebView.MetricsOptOut"

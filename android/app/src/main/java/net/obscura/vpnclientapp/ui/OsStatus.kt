@@ -1,18 +1,76 @@
 package net.obscura.vpnclientapp.ui
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.net.ConnectivityManager
-import android.net.Network
 import android.net.NetworkCapabilities
+import java.lang.ref.WeakReference
+import java.util.LinkedList
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
+import net.obscura.vpnclientapp.helpers.requireUIProcess
+import net.obscura.vpnclientapp.helpers.requireVpnServiceProcess
 import net.obscura.vpnclientapp.preferences.Preferences
 import net.obscura.vpnclientapp.ui.commands.GetOsStatus
 
 class OsStatus(
     context: Context,
 ) {
+  class Receiver : BroadcastReceiver() {
+    companion object {
+      private const val EXTRA_STATUS = "status"
+
+      internal val osStatuses = LinkedList<WeakReference<OsStatus>>()
+
+      fun broadcast(
+          context: Context,
+          status: GetOsStatus.Result.NEVPNStatus,
+      ) {
+        requireVpnServiceProcess()
+
+        context.sendOrderedBroadcast(
+            Intent(context, Receiver::class.java).apply { putExtra(EXTRA_STATUS, status.name) },
+            null,
+        )
+      }
+    }
+
+    override fun onReceive(
+        context: Context?,
+        intent: Intent,
+    ) {
+      requireUIProcess()
+
+      val vpnStatus = GetOsStatus.Result.NEVPNStatus.valueOf(intent.getStringExtra(EXTRA_STATUS)!!)
+
+      synchronized(Receiver) {
+        osStatuses.listIterator().apply {
+          while (hasNext()) {
+            val osStatus = next().get()
+
+            if (osStatus == null) {
+              remove()
+            } else {
+              synchronized(osStatus) {
+                osStatus.vpnStatus = vpnStatus
+                osStatus.update()
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  init {
+    // This object is not to be constructed in the ObscuraVpnService process space.
+    requireUIProcess()
+
+    synchronized(Receiver) { Receiver.osStatuses.add(WeakReference(this)) }
+  }
+
   private val preferences = Preferences(context)
   private val connectivityManager =
       context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -21,25 +79,8 @@ class OsStatus(
 
   private var current: Pair<String, GetOsStatus.Result>? = null
 
-  var vpnStatus: GetOsStatus.Result.NEVPNStatus = GetOsStatus.Result.NEVPNStatus.Disconnected
-
-  private val networkCallback =
-      object : ConnectivityManager.NetworkCallback() {
-        override fun onCapabilitiesChanged(
-            network: Network,
-            networkCapabilities: NetworkCapabilities,
-        ) {
-          super.onCapabilitiesChanged(network, networkCapabilities)
-
-          update()
-        }
-
-        override fun onLost(network: Network) {
-          super.onLost(network)
-
-          update()
-        }
-      }
+  private var vpnStatus: GetOsStatus.Result.NEVPNStatus =
+      GetOsStatus.Result.NEVPNStatus.Disconnected
 
   private val sharedPreferencesListener =
       SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, key ->
@@ -49,12 +90,10 @@ class OsStatus(
       }
 
   fun registerCallbacks() {
-    connectivityManager.registerDefaultNetworkCallback(networkCallback)
     preferences.registerListener(sharedPreferencesListener)
   }
 
   fun deregisterCallbacks() {
-    connectivityManager.unregisterNetworkCallback(networkCallback)
     preferences.unregisterListener(sharedPreferencesListener)
   }
 
@@ -97,7 +136,6 @@ class OsStatus(
       current = Pair(version, result)
 
       waiting.forEach { it.complete(result) }
-
       waiting.clear()
     }
   }

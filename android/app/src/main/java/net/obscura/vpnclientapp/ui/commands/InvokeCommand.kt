@@ -3,11 +3,12 @@ package net.obscura.vpnclientapp.ui.commands
 import android.content.Context
 import java.util.concurrent.CompletableFuture
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import net.obscura.vpnclientapp.client.ObscuraLibrary
-import net.obscura.vpnclientapp.services.ObscuraVpnService
+import net.obscura.vpnclientapp.helpers.completedJsonNullFuture
+import net.obscura.vpnclientapp.services.IObscuraVpnService
+import net.obscura.vpnclientapp.ui.CommandBridge
+import net.obscura.vpnclientapp.ui.OsStatus
 
 @Serializable
 data class InvokeCommand(
@@ -25,18 +26,17 @@ data class InvokeCommand(
 ) {
   fun run(
       context: Context,
+      binder: IObscuraVpnService,
+      osStatus: OsStatus,
       json: Json,
   ): CompletableFuture<String> =
       when {
-        getOsStatus != null -> getOsStatus.run(context).thenApply { json.encodeToString(it) }
+        getOsStatus != null -> getOsStatus.run(osStatus).thenApply { json.encodeToString(it) }
 
         jsonFfiCmd != null ->
-            CompletableFuture<String>().also { future ->
-              ObscuraLibrary.jsonFfi(jsonFfiCmd.cmd, future)
-            }
+            CommandBridge.Receiver.register { id -> binder.jsonFfi(id, jsonFfiCmd.cmd) }
 
-        setColorScheme != null ->
-            CompletableFuture.completedFuture("null").also { setColorScheme.run(context) }
+        setColorScheme != null -> completedJsonNullFuture().also { setColorScheme.run(context) }
 
         shareFile != null -> shareFile.run(context).thenApply { "null" }
 
@@ -45,12 +45,9 @@ data class InvokeCommand(
         revealItemInDir != null -> revealItemInDir.run(context).thenApply { "null" }
 
         startTunnel != null ->
-            CompletableFuture.completedFuture("null").also {
-              ObscuraVpnService.startTunnel(context, startTunnel.tunnelArgs!!)
-            }
+            completedJsonNullFuture().also { binder.startTunnel(startTunnel.tunnelArgs) }
 
-        stopTunnel != null ->
-            CompletableFuture.completedFuture("null").also { ObscuraVpnService.stopTunnel(context) }
+        stopTunnel != null -> completedJsonNullFuture().also { binder.stopTunnel() }
 
         else -> throw NotImplementedError("InvokeCommand not implemented")
       }

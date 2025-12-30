@@ -10,4 +10,9 @@
     <string name="notification_vpn_status_connecting">Connecting…</string>
     <string name="notification_vpn_status_connected">Connected</string>
     <string name="notification_vpn_status_disconnected">Disconnected</string>
+    <string name="nav_connection">Connection</string>
+    <string name="nav_location">Location</string>
+    <string name="nav_account">Account</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_about">About</string>
 </resources>

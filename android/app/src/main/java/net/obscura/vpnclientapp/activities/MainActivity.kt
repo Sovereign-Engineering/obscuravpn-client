@@ -10,9 +10,6 @@ import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
-import android.view.ViewGroup
-import android.view.ViewGroup.LayoutParams.MATCH_PARENT
-import android.widget.FrameLayout
 import androidx.activity.addCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -25,7 +22,7 @@ import net.obscura.vpnclientapp.helpers.requireUIProcess
 import net.obscura.vpnclientapp.preferences.Preferences
 import net.obscura.vpnclientapp.services.IObscuraVpnService
 import net.obscura.vpnclientapp.services.ObscuraVpnService
-import net.obscura.vpnclientapp.ui.ObscuraWebView
+import net.obscura.vpnclientapp.ui.ObscuraUI
 import net.obscura.vpnclientapp.ui.OsStatus
 import net.obscura.vpnclientapp.ui.commands.SetColorScheme
 
@@ -46,40 +43,14 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
     ) {
       debug("onServiceConnected $name $service")
 
-      activity.webView?.destroy()
-      activity.webView =
-          ObscuraWebView(
-                  activity,
-                  IObscuraVpnService.Stub.asInterface(service),
-                  activity.osStatus,
-              )
-              .also { webView ->
-                activity.setContentView(
-                    webView,
-                    ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT),
-                )
-
-                activity.onBackPressedDispatcher.addCallback {
-                  if (webView.canGoBack()) {
-                    webView.goBack()
-                  } else {
-                    isEnabled = false
-                    activity.onBackPressedDispatcher.onBackPressed()
-                    isEnabled = true
-                  }
-                }
-              }
+      activity.ui.onCreate(IObscuraVpnService.Stub.asInterface(service), activity.osStatus)
     }
 
     override fun onServiceDisconnected(name: ComponentName?) {
       debug("onServiceDisconnected $name")
 
-      activity.setContentView(
-          FrameLayout(activity),
-          FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT),
-      )
-      activity.webView?.destroy()
-      activity.webView = null
+      activity.ui.onDestroy()
+
       if (activity.vpnServiceConnection === this) {
         activity.vpnServiceConnection = null
       }
@@ -89,9 +60,9 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
   private lateinit var preferences: Preferences
   private lateinit var osStatus: OsStatus
 
-  private var vpnServiceConnection: VpnServiceConnection? = null
+  private lateinit var ui: ObscuraUI
 
-  private var webView: ObscuraWebView? = null
+  private var vpnServiceConnection: VpnServiceConnection? = null
 
   private var permissionAlertDialog: AlertDialog? = null
 
@@ -99,6 +70,20 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
     super.onCreate(savedInstanceState)
 
     requireUIProcess()
+
+    setContentView(R.layout.activity_main)
+
+    ui = findViewById(R.id.ui)
+
+    onBackPressedDispatcher.addCallback {
+      if (ui.canGoBack) {
+        ui.goBack()
+      } else {
+        isEnabled = false
+        onBackPressedDispatcher.onBackPressed()
+        isEnabled = true
+      }
+    }
 
     osStatus = OsStatus(this)
     preferences = Preferences(this).apply { registerListener(this@MainActivity) }
@@ -124,7 +109,7 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
   override fun onResume() {
     super.onResume()
 
-    webView?.onResume()
+    ui.onResume()
   }
 
   override fun onPostResume() {
@@ -198,7 +183,7 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
   override fun onPause() {
     super.onPause()
 
-    webView?.onPause()
+    ui.onPause()
   }
 
   override fun onStop() {

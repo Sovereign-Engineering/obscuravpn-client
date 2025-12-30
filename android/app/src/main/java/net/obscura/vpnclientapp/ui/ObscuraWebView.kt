@@ -32,6 +32,8 @@ constructor(
         post { postWebMessage(WebMessage("android/$data"), ORIGIN) }
       }
 
+  var onPageLoadedCallback: ((String) -> Unit)? = null
+
   init {
     settings.javaScriptEnabled = true
 
@@ -63,9 +65,22 @@ constructor(
                     view: WebView?,
                     request: WebResourceRequest,
                 ) = assetLoader.shouldInterceptRequest(request.url)
+
+                override fun onPageFinished(
+                    view: WebView?,
+                    url: String,
+                ) {
+                  super.onPageFinished(view, url)
+
+                  onPageLoadedCallback?.invoke(url)
+                }
               }
         }
 
     loadUrl(HOME)
+  }
+
+  fun navigate(path: String) {
+    postWebMessage(WebMessage("android-navigate/$path"), ORIGIN)
   }
 }

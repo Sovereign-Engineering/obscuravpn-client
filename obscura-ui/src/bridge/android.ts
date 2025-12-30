@@ -2,6 +2,7 @@ import { PLATFORM, Platform } from "./SystemProvider";
 
 if (PLATFORM === Platform.Android) {
   const MESSAGE_PREFIX = "android/";
+  const NAVIGATE_PREFIX = "android-navigate/";
 
   let counter = 0;
 
@@ -9,8 +10,11 @@ if (PLATFORM === Platform.Android) {
   const rejectFns = new Map<number, (error: string) => void>();
 
   window.addEventListener("message", (event) => {
+    if (typeof event.data !== "string") {
+      return;
+    }
+
     if (
-      typeof event.data === "string" &&
       event.data.startsWith(MESSAGE_PREFIX)
     ) {
       const message: { id: number; error?: string; data?: string } = JSON.parse(
@@ -28,6 +32,10 @@ if (PLATFORM === Platform.Android) {
           accept(message.data);
         }
       }
+    } else if (event.data.startsWith(NAVIGATE_PREFIX)) {
+      window.dispatchEvent(new CustomEvent('navUpdate', {
+        detail: event.data.substring(NAVIGATE_PREFIX.length),
+      }));
     }
   });
 

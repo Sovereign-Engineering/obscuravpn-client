@@ -19,7 +19,7 @@ extension AccountInfo {
     }
 
     var activeNotApple: Bool {
-        return self.currentExpiry != nil && !self.hasActiveAppleSubscription
+        return self.active && !self.hasActiveAppleSubscription
     }
 
     var hasActiveAppleSubscription: Bool {

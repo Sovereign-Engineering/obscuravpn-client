@@ -11,7 +11,9 @@ import * as commands from '../bridge/commands';
 import { IS_HANDHELD_DEVICE, PLATFORM } from '../bridge/SystemProvider';
 import * as ObscuraAccount from '../common/accountUtils';
 import { HEADER_TITLE, multiRef, normalizeError } from '../common/utils';
+import { ButtonLink } from '../components/ButtonLink';
 import { ConfirmationDialog } from '../components/ConfirmationDialog';
+import { PaymentManagementSheet } from '../components/PaymentManagementSheet';
 import DecoOrangeTop from '../res/deco/deco-orange-top.svg';
 import DecoOrangeBottom from '../res/deco/deco-signup-mobile.svg';
 import { fmtErrorI18n, TranslationKey } from '../translations/i18n';
@@ -151,6 +153,7 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
   const [paymentPressed, userPressOnPayment] = useState(false);
   const [accountNumberCopied, setAccountNumberCopied] = useState(false);
   const timeoutRef = useRef<number>(undefined);
+  const [paymentSheetOpened, { open: openPaymentSheet, close: closePaymentSheet }] = useDisclosure(false);
 
   const rollAccountValue = (tries: number) => {
     if (tries === 0) return setValue(generatedAccountId);
@@ -187,15 +190,27 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
 
   return (
     <>
+      {IS_HANDHELD_DEVICE && <PaymentManagementSheet opened={paymentSheetOpened} onClose={closePaymentSheet} />}
       <ConfirmationDialog opened={confirmAccountSecured} onClose={close}>
         <Stack p={IS_HANDHELD_DEVICE ? 'xl' : undefined} ta={IS_HANDHELD_DEVICE ? 'center' : undefined}>
           <Text>{t('accountNumberStoredConfirmation')}</Text>
-          <Anchor onClick={() => {
-            userPressOnPayment(true);
-            close();
-          }} target='_blank' href={ObscuraAccount.payUrl(generatedAccountId)}>
-            <Button>{t('Continue to payment')}</Button>
-          </Anchor>
+          {
+            IS_HANDHELD_DEVICE ?
+              (
+                <>
+                  <Button onClick={() => {
+                    userPressOnPayment(true);
+                    close();
+                    openPaymentSheet();
+                  }}>{t('Continue to payment')}</Button>
+                </>
+              ) : (
+                <ButtonLink onClick={() => {
+                  userPressOnPayment(true);
+                  close();
+                }} href={ObscuraAccount.payUrl(generatedAccountId)}>{t('Continue to payment')}</ButtonLink>
+              )
+          }
         </Stack>
       </ConfirmationDialog>
       <Stack maw={400} mx='auto' justify='center' align='center' style={{ overflow: 'hidden' }}>
@@ -253,13 +268,12 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
 }
 
 function AccountId({ accountId }: { accountId: ObscuraAccount.AccountId }) {
-  // every 4 digits, add a -
-  let result = [];
+  const result = [];
   const accountIdStr = ObscuraAccount.accountIdToString(accountId);
   for (let i = 0; i < accountIdStr.length; i += 1) {
     result.push(<DigitsWheel key={i} digit={accountIdStr.charAt(i)} />)
     if (i % 4 === 3 && i !== accountIdStr.length - 1) {
-      result.push(<span>&nbsp;-&nbsp;</span>);
+      result.push(<span key={`span-${i}`}>&nbsp;-&nbsp;</span>);
     }
   }
 

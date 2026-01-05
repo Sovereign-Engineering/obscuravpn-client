@@ -20,6 +20,11 @@ class OsStatus: Encodable {
         let canSendMail: Bool = false
     #else
         let canSendMail: Bool = MFMailComposeViewController.canSendMail()
+        var storeKit = StoreKitStatus()
+
+        struct StoreKitStatus: Codable {
+            var subscriptionProduct: SubscriptionProductModel?
+        }
     #endif
 
     struct LoginItemStatus: Codable {

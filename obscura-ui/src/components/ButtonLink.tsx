@@ -1,15 +1,28 @@
-import { Button } from '@mantine/core';
+import { Button, ButtonProps } from '@mantine/core';
+import { PropsWithChildren } from 'react';
 import ExternalLinkIcon from './ExternalLinkIcon';
 
-interface ButtonLinkProps {
+interface ButtonLinkProps extends PropsWithChildren {
   href: string,
-  text: string
+  inline?: boolean,
+  size?: ButtonProps['size'],
+  onClick?: React.MouseEventHandler,
+  variant?: ButtonProps['variant'],
 }
 
-export function ButtonLink({ text, href }: ButtonLinkProps) {
+export function ButtonLink({ children, href, onClick, variant, inline = false, size }: ButtonLinkProps) {
   return (
-    <Button w={{ base: '100%', xs: 'auto' }} component='a' href={href}>
-      <span>{text} <ExternalLinkIcon size={11} /></span>
+    <Button
+      component='a'
+      size={size}
+      onClick={onClick}
+      variant={variant}
+      w={inline ? 'auto' : { base: '100%', xs: 'auto' }}
+      display={inline ? 'inline-block' : undefined}
+      href={href}
+      target='_blank'
+    >
+      <span>{children} <ExternalLinkIcon size={11} /></span>
     </Button>
   );
 }

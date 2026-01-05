@@ -11,6 +11,7 @@ private let logger = Logger(
 class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
     @Published var showModalWebview: Bool = false
     @Published var showSubscriptionManageSheet: Bool = false
+    @Published var showOfferCodeRedemption: Bool = false
 
     @Published var obscuraWebView: ObscuraUIWebView? = nil
     @Published var externalWebView: ExternalWebView? = nil
@@ -89,12 +90,7 @@ class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
             let destination: LinkDestination?
             if host.contains("obscura") {
                 if path.contains("pay") {
-                    if url.absoluteString.contains("external") {
-                        destination = .stripePayment
-                    } else {
-                        self.showSubscriptionManageSheet = true
-                        return
-                    }
+                    destination = .stripePayment
                 } else if path.contains("check") {
                     destination = .checkConnection
                 } else if path.contains("legal") {
@@ -156,6 +152,10 @@ class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
         switch components.path {
         case .some("/open"):
             break
+        case .some("/manage-subscription"):
+            self.showSubscriptionManageSheet = true
+        case .some("/redeem-offer-code"):
+            self.showOfferCodeRedemption = true
         case .some("/payment-succeeded"):
             self.obscuraWebView?.handlePaymentSucceeded()
         case .some("/account"):

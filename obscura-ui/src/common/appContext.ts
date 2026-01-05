@@ -50,7 +50,18 @@ export interface OsStatus {
     loginItemStatus?: {
         registered: boolean,
         error?: string
+    },
+    storeKit?: {
+      subscriptionProduct?: SubscriptionProductModel,
     }
+}
+
+export interface SubscriptionProductModel {
+  displayName: string,
+  description: string,
+  displayPrice: string,
+  renewalPrice?: string,
+  subscriptionPeriodFormatted: string,
 }
 
 export enum TransportKind {
@@ -152,7 +163,9 @@ interface IAppContext {
     osStatus: OsStatus,
     showOfflineUI: boolean,
     accountInfo: AccountInfo | null,
-    connectionInProgress: ConnectionInProgress
+    connectionInProgress: ConnectionInProgress,
+    isProcessingPayment: boolean,
+    setPaymentProcessing: (value: boolean) => void
 }
 
 export const AppContext = createContext(null as any as IAppContext);

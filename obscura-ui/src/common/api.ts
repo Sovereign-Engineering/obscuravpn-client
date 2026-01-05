@@ -83,6 +83,16 @@ export function paidUntil(account: AccountInfo): Date | null {
   return maxExpiry > 0 ? new Date(maxExpiry * 1000) : null;
 }
 
+export function activeAppleSubscription(account: AccountInfo): boolean {
+  return (
+    account.active && account.apple_subscription !== null &&
+      (
+        account.apple_subscription.status === AppleSubscriptionStatus.ACTIVE ||
+        account.apple_subscription.status === AppleSubscriptionStatus.GRACE_PERIOD
+      )
+  );
+}
+
 export function accountIsExpired(accountInfo: AccountInfo): boolean {
   if (accountInfo.auto_renews) return false;
   return (accountInfo.active && accountInfo.current_expiry) ?

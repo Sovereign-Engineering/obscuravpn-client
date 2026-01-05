@@ -2,10 +2,11 @@ import { useThrottledValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { TFunction } from 'i18next';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AccountId } from '../common/accountUtils';
 import { AccountInfo, Exit } from '../common/api';
-import { AppStatus, DNSContentBlock, FeatureFlagKey, NEVPNStatus, OsStatus, PinnedLocation } from '../common/appContext';
-import { errMsg, normalizeError } from '../common/utils';
+import { AppStatus, DNSContentBlock, FeatureFlagKey, OsStatus, PinnedLocation, SubscriptionProductModel } from '../common/appContext';
+import { normalizeError } from '../common/utils';
 import { fmtErrorI18n } from '../translations/i18n';
 import './android';
 
@@ -253,6 +254,22 @@ export async function setDnsContentBlock(value: DNSContentBlock): Promise<void> 
   await jsonFfiCmd('setDnsContentBlock', { value });
 }
 
+export async function getSubscriptionProductDisplay(): Promise<SubscriptionProductModel> {
+  return await invoke('getSubscriptionProduct') as SubscriptionProductModel;
+}
+
+export async function storeKitAssociateAccount(): Promise<void> {
+  await invoke('associateAccount');
+}
+
+export async function storeKitPurchaseSubscription(): Promise<boolean> {
+  return await invoke('purchaseSubscription', {}) as boolean;
+}
+
+export async function storeKitRestorePurchases(): Promise<void> {
+  await invoke('restorePurchases', {});
+}
+
 export function useHandleCommand(t: TFunction) {
   return async (command: () => Promise<void> | void) => {
     try {
@@ -266,6 +283,7 @@ export function useHandleCommand(t: TFunction) {
         title: t('Error'),
         message
       });
+      throw error;
     }
   };
 }
@@ -288,6 +306,7 @@ export function useHandleCommand(t: TFunction) {
 export function useAsyncCommand() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
+  const { t } = useTranslation();
   const showLoadingUI = useThrottledValue(loading, loading ? 200 : 0);
 
   const execute = async (command: () => Promise<unknown>) => {
@@ -297,7 +316,10 @@ export function useAsyncCommand() {
     try {
       await command();
     } catch (err) {
-      setError(errMsg(err));
+      const error = normalizeError(err);
+      const message = error instanceof CommandError
+        ? fmtErrorI18n(t, error) : error.message;
+      setError(message);
     } finally {
       setLoading(false)
     }

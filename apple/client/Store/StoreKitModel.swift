@@ -6,6 +6,7 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
 @MainActor class StoreKitModel: ObservableObject {
     @Published private var products: [Product] = []
     @Published private var purchasedProducts: [Product] = []
+    @Published var renewalPrice: String? = nil
 
     private let subscriptionProductId = "subscriptions.monthly"
     var subscriptionProduct: Product? {
@@ -40,23 +41,43 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
 
     func updatePurchases() async {
         self.purchasedProducts.removeAll()
+        self.renewalPrice = nil
         // For auto-renewable subscriptions, `currentEntitlements` only contains
         // the latest non-expired transaction.
         for await result in Transaction.currentEntitlements {
             if case .verified(let transaction) = result {
                 if let product = products.first(where: { $0.id == transaction.productID }) {
                     self.purchasedProducts.append(product)
+                    if product.id == self.subscriptionProductId,
+                       let subscription = product.subscription
+                    {
+                        do {
+                            for status in try await subscription.status {
+                                if case .verified(let renewalInfo) = status.renewalInfo {
+                                    if let renewalPrice = renewalInfo.renewalPrice,
+                                       let renewalCurrency = renewalInfo.currency
+                                    {
+                                        self.renewalPrice = renewalPrice.formatted(.currency(code: renewalCurrency.identifier))
+                                    }
+                                }
+                            }
+                        } catch {
+                            logger.error("Failed to fetch subscription renewal info: \(error, privacy: .public)")
+                        }
+                        break
+                    }
                 }
             }
         }
     }
 
-    func restorePurchases() async {
+    func restorePurchases() async throws(String) {
         do {
             try await AppStore.sync()
             await self.updatePurchases()
         } catch {
             logger.error("failed to restore purchases: \(error, privacy: .public)")
+            throw "failed to restore purchases: \(error)"
         }
     }
 
@@ -76,5 +97,34 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
             ])
         }
         return debugData
+    }
+
+    func toSubscriptionModel() -> SubscriptionProductModel? {
+        if let subscriptionProduct = self.subscriptionProduct {
+            return SubscriptionProductModel(
+                displayName: subscriptionProduct.displayName,
+                description: subscriptionProduct.description,
+                displayPrice: subscriptionProduct.displayPrice,
+                renewalPrice: self.renewalPrice,
+                subscriptionPeriodFormatted: subscriptionProduct.subscriptionPeriodFormatted()
+            )
+        }
+        return nil
+    }
+}
+
+// static representation of useful information derived from a StoreKit Product
+class SubscriptionProductModel: Codable {
+    var displayName: String
+    var description: String
+    var displayPrice: String
+    var renewalPrice: String?
+    var subscriptionPeriodFormatted: String?
+    init(displayName: String, description: String, displayPrice: String, renewalPrice: String?, subscriptionPeriodFormatted: String? = nil) {
+        self.displayName = displayName
+        self.description = description
+        self.displayPrice = displayPrice
+        self.renewalPrice = renewalPrice
+        self.subscriptionPeriodFormatted = subscriptionPeriodFormatted
     }
 }

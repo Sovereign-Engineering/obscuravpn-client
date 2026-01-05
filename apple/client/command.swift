@@ -21,6 +21,9 @@ enum Command: Codable {
     case getOsStatus(knownVersion: UUID?)
     case checkForUpdates
     case installUpdate
+    case associateAccount
+    case purchaseSubscription
+    case restorePurchases
     case jsonFfiCmd(
         cmd: String,
         timeoutMs: Int?
@@ -82,7 +85,7 @@ extension CommandHandler {
             }
             return try path.json()
         #if os(macOS)
-            case .emailDebugArchive, .shareDebugArchive:
+            case .emailDebugArchive, .shareDebugArchive, .purchaseSubscription, .restorePurchases, .associateAccount:
                 throw errorUnsupportedOnOS
             case .revealItemInDir(let path):
                 NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
@@ -98,6 +101,13 @@ extension CommandHandler {
                 }
                 appState.updater.showUpdaterIfNeeded()
         #else
+            case .associateAccount:
+                try await appState.associateAccount()
+            case .purchaseSubscription:
+                let result = try await appState.purchaseSubscription()
+                return try result.json()
+            case .restorePurchases:
+                try await appState.storeKitModel.restorePurchases()
             case .emailDebugArchive(let path, let subject, let body):
                 try appState.emailDebugArchive(path: path, subject: subject, body: body)
             case .shareDebugArchive(let path):

@@ -53,6 +53,7 @@ export default function () {
   const [connectionInProgress, setConnectionInProgress] = useState<ConnectionInProgress>(ConnectionInProgress.UNSET);
   const [appStatus, setStatus] = useState<AppStatus | null>(null);
   const [osStatus, setOsStatus] = useState<OsStatus | null>(null);
+  const [isProcessingPayment, setPaymentProcessing] = useState(false);
   const ignoreConnectingErrors = useRef(false);
 
   const views: View[] = [
@@ -254,10 +255,17 @@ export default function () {
   } = useLoadable({
     skip: !osStatus?.internetAvailable || !isLoggedIn,
     load: commands.getAccount,
-    periodMs: showAccountCreation ? 60 * 1000 : 12 * 3600 * 1000,
+    periodMs: isProcessingPayment ? 3000 : (showAccountCreation ? 60 * 1000 : 12 * 3600 * 1000),
     returnError: true,
   });
   const accountLoadingDelayed = useThrottledValue(accountLoading, accountLoading ? MIN_LOAD_MS : 0);
+
+  useEffect(() => {
+    if (isProcessingPayment && accountInfo?.active) {
+      setPaymentProcessing(false);
+      commands.setInNewAccountFlow(false);
+    }
+  }, [accountInfo, isProcessingPayment]);
 
   useEffect(() => {
     if (accountInfoError) {
@@ -274,8 +282,6 @@ export default function () {
 
   if (loading) return <SplashScreen text={t('appStatusLoading')} osStatus={osStatus} />;
 
-  if (!isLoggedIn || showAccountCreation) return <LogIn accountNumber={appStatus.accountId} accountActive={accountInfo?.active} />;
-
   const appContext = {
     accountInfo: accountInfo ?? null,
     appStatus,
@@ -288,7 +294,18 @@ export default function () {
     vpnConnected,
     vpnDisconnect: disconnectFromVpn,
     initiatingExitSelector,
+    isProcessingPayment,
+    setPaymentProcessing
   }
+
+  if (!isLoggedIn || showAccountCreation) {
+    return (
+      <AppContext.Provider value={appContext}>
+        <LogIn accountNumber={appStatus.accountId} accountActive={accountInfo?.active} />
+      </AppContext.Provider>
+    );
+  }
+
 
   return <>
     <AppShell

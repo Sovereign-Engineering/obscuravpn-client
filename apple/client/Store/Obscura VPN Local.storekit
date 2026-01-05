@@ -96,8 +96,8 @@
           "codeOffers" : [
             {
               "eligibility" : [
-                "expired",
                 "existing",
+                "expired",
                 "new"
               ],
               "internalID" : "2D97084D",

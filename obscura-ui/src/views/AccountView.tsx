@@ -17,6 +17,7 @@ import { normalizeError } from '../common/utils';
 import { AccountNumberSection } from '../components/AccountNumberSection';
 import { ButtonLink } from '../components/ButtonLink';
 import { ConfirmationDialog } from '../components/ConfirmationDialog';
+import { PaymentManagementSheet } from '../components/PaymentManagementSheet';
 import AccountExpiredBadge from '../res/account-expired.svg?react';
 import PaidUpExpiringSoonBadge from '../res/paid-up-expiring-soon.svg?react';
 import PaidUpExpiringVerySoonBadge from '../res/paid-up-expiring-very-soon.svg?react';
@@ -319,14 +320,14 @@ function AccountStatusCardTemplate({
           <Group justify='right'>
             <AccountRefreshButton smallerSize />
           </Group>
-          <ButtonLink text={t('Manage Payments')} href={ObscuraAccount.payUrl(appStatus.accountId)} />
+          <ManagePaymentsButton />
         </Stack>
       </Group>
       <Group grow mt='xs' hiddenFrom='xs'>
         <Group justify='center'>
           <AccountRefreshButton />
         </Group>
-        <ButtonLink text={t('Manage')} href={ObscuraAccount.payUrl(appStatus.accountId)} />
+        <ManagePaymentsButton mobile />
       </Group>
     </Paper>
   );
@@ -377,7 +378,7 @@ function WGConfigurations() {
     <Stack align='start' w='100%' p='md' style={{ borderRadius: theme.radius.md, boxShadow: theme.shadows.sm }} className={commonClasses.elevatedSurface}>
       <Group w='100%' justify='space-between'>
         <Text fw={500}>{t('WGConfigs')}</Text>
-        <ButtonLink text={t('Manage Configurations')} href={ObscuraAccount.tunnelsUrl(appStatus.accountId)} />
+        <ButtonLink href={ObscuraAccount.tunnelsUrl(appStatus.accountId)}>{t('Manage Configurations')}</ButtonLink>
       </Group>
     </Stack>
   </>
@@ -393,6 +394,27 @@ function DeleteAccount({ onClick }: { onClick: () => void }) {
       </Group>
     </Button>
   </Group>;
+}
+
+function ManagePaymentsButton({ mobile = false }: { mobile?: boolean }) {
+  const { t } = useTranslation();
+  const { appStatus } = useContext(AppContext);
+  const [paymentSheetOpened, { open: openPaymentSheet, close: closePaymentSheet }] = useDisclosure(false);
+
+  if (IS_HANDHELD_DEVICE) {
+    return <>
+      <PaymentManagementSheet opened={paymentSheetOpened} onClose={closePaymentSheet} />
+      <Button onClick={openPaymentSheet} w={{ base: '100%', xs: 'auto' }}>
+        {mobile ? t('Manage') : t('Manage Payments')}
+      </Button>
+    </>;
+  }
+
+  return (
+    <ButtonLink
+      href={ObscuraAccount.payUrl(appStatus.accountId)}
+    >{mobile ? t('Manage') : t('Manage Payments')}</ButtonLink>
+  );
 }
 
 function MobileLogOut({ logOut }: { logOut: () => void }) {

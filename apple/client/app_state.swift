@@ -395,8 +395,14 @@ class AppState: ObservableObject {
     }
 
     #if os(iOS)
-        func associateAccount() async throws -> AppleAssociateAccountOutput {
-            return try await runNeCommand(self.manager, .apiAppleAssociateAccount(appTransactionJws: AppTransaction.shared.jwsRepresentation))
+        func associateAccount() async throws(String) -> AppleAssociateAccountOutput {
+            let appTransaction: String
+            do {
+                appTransaction = try await AppTransaction.shared.jwsRepresentation
+            } catch {
+                throw errorFailedToAssociateAccount
+            }
+            return try await runNeCommand(self.manager, .apiAppleAssociateAccount(appTransactionJws: appTransaction))
         }
 
         // TODO: Test interrupted purchase
@@ -413,12 +419,17 @@ class AppState: ObservableObject {
             return false
         }
 
-        func purchaseSubscription() async throws -> Bool {
+        func purchaseSubscription() async throws(String) -> Bool {
             guard let subscriptionProduct = await self.storeKitModel.subscriptionProduct else {
                 Self.logger.error("subscription product missing")
                 return false
             }
-            return try await self.purchase(product: subscriptionProduct)
+            do {
+                return try await self.purchase(product: subscriptionProduct)
+            } catch {
+                Self.logger.error("Failed to purchase subscription: \(error, privacy: .public)")
+                throw errorPurchaseFailed
+            }
         }
 
         private func rootViewController() -> UIViewController? {

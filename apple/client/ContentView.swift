@@ -212,6 +212,13 @@ struct ContentView: View {
                     self.splitViewVisibility = .automatic
                 }
             }
+            .onChange(of: self.webviewsController.showSubscriptionManageSheet) { newValue in
+                if !newValue {
+                    Task {
+                        try? await self.appState.getAccountInfo()
+                    }
+                }
+            }
             // once we are targeting macOS 14+, we can use .toolbar(removing: .sidebarToggle) instead
             .toolbar(self.loginViewShown ? .hidden : .automatic)
             .onAppear {
@@ -289,6 +296,13 @@ struct ContentView: View {
                 .ignoresSafeArea()
                 .ignoresSafeArea()
                 .tint(Color("ObscuraOrange"))
+                .onChange(of: self.appState.storeKitModel.subscriptionProduct) {
+                    if let model = self.appState.storeKitModel.toSubscriptionModel() {
+                        _ = self.appState.osStatus.update { value in
+                            value.storeKit.subscriptionProduct = model
+                        }
+                    }
+                }
                 .sheet(
                     isPresented: self.$webviewsController.showModalWebview)
                 {
@@ -297,14 +311,17 @@ struct ContentView: View {
                         .presentationDetents([.large])
                         .presentationDragIndicator(.visible)
                 }
-                .sheet(
+                .manageSubscriptionsSheet(
                     isPresented: self.$webviewsController.showSubscriptionManageSheet)
-                {
-                    SubscriptionManageSheet(appState: self.appState, openUrl: { url in
-                        self.webviewsController.handleWebsiteLinkiOS(url: url)
-                    })
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
+                .offerCodeRedemption(isPresented: self.$webviewsController.showOfferCodeRedemption) { result in
+                    switch result {
+                    case .success:
+                        logger.info(
+                            "Promo code redemption flow completed successfully. (errors only show up if a valid code fails to redeem. So invalid codes and not entering a code land you here)"
+                        )
+                    case .failure(let error):
+                        logger.error("Promo code redemption failed: \(error, privacy: .public)")
+                    }
                 }
                 .onOpenURL { incomingURL in
                     self.webviewsController.handleObscuraURL(url: incomingURL)

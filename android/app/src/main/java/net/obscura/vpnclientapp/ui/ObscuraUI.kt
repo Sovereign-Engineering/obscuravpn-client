@@ -148,10 +148,10 @@ constructor(
                       WeakReference(binder),
                       {
                         bottomNavigation.visibility =
-                            if (it.accountId != null) {
-                              VISIBLE
-                            } else {
+                            if (it.accountId == null || it.inNewAccountFlow) {
                               GONE
+                            } else {
+                              VISIBLE
                             }
                       },
                   )

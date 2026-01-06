@@ -16,7 +16,7 @@ data class GetStatus(
   data class Response(
       val version: String? = null,
       val accountId: String? = null,
-      val inNewAccountFlow: Boolean? = null,
+      val inNewAccountFlow: Boolean,
       val vpnStatus: VpnStatus? = null,
   ) {
     @Serializable

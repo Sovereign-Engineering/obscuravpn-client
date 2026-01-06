@@ -177,6 +177,7 @@
               root = ./android;
               fileset = lib.fileset.unions [
                 android/app/build.gradle.kts
+                android/app/google-services.json
                 android/app/proguard-rules.pro
                 android/app/src
                 android/build.gradle.kts
@@ -295,6 +296,7 @@
               android.emulator
               android.platform-tools
               rustToolchain
+              pkgs.firebase-tools
               pkgs.gradle
               pkgs.jdk21
               pkgs.just

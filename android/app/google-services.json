@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "980686794718",
+    "project_id": "obscura-vpn",
+    "storage_bucket": "obscura-vpn.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:980686794718:android:db99381cf88e8d6712774f",
+        "android_client_info": {
+          "package_name": "net.obscura.vpnclientapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQpmOigUAURQCeVDA489R8ds78uvAdhCg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

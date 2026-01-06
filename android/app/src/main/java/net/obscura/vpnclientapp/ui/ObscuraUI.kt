@@ -1,6 +1,7 @@
 package net.obscura.vpnclientapp.ui
 
 import android.content.Context
+import android.net.Uri
 import android.util.AttributeSet
 import android.widget.FrameLayout
 import androidx.core.view.ViewCompat
@@ -13,6 +14,8 @@ import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
 import net.obscura.vpnclientapp.R
 import net.obscura.vpnclientapp.client.commands.GetStatus
+import net.obscura.vpnclientapp.helpers.logDebug
+import net.obscura.vpnclientapp.helpers.logError
 import net.obscura.vpnclientapp.services.IObscuraVpnService
 
 class ObscuraUI
@@ -187,15 +190,30 @@ constructor(
   }
 
   private fun navigateToTab(id: Int) {
-    webView?.navigate(
-        when (id) {
-          R.id.nav_connection -> ""
-          R.id.nav_location -> "location"
-          R.id.nav_account -> "account"
-          R.id.nav_settings -> "settings"
-          R.id.nav_about -> "about"
-          else -> throw RuntimeException("Unknown id")
-        },
-    )
+    val path = when (id) {
+      R.id.nav_connection -> ""
+      R.id.nav_location -> "location"
+      R.id.nav_account -> "account"
+      R.id.nav_settings -> "settings"
+      R.id.nav_about -> "about"
+      else -> {
+        logError("unrecognized view id: $id")
+        return
+      }
+    }
+    this.webView?.navigate(path)
+  }
+
+  fun handleObscuraUri(uri: Uri) {
+    logDebug("handling deep link: $uri")
+    val id = when (uri.path) {
+      "/account" -> R.id.nav_account
+      "/location" -> R.id.nav_location
+      else -> {
+        logError("unrecognized path for deep link: $uri")
+        return
+      }
+    }
+    this.bottomNavigation.selectedItemId = id
   }
 }

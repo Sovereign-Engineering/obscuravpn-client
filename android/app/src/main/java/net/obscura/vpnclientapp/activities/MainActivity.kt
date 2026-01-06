@@ -17,7 +17,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import net.obscura.vpnclientapp.R
-import net.obscura.vpnclientapp.helpers.debug
+import net.obscura.vpnclientapp.helpers.logDebug
 import net.obscura.vpnclientapp.helpers.requireUIProcess
 import net.obscura.vpnclientapp.preferences.Preferences
 import net.obscura.vpnclientapp.services.IObscuraVpnService
@@ -41,13 +41,13 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
         name: ComponentName?,
         service: IBinder?,
     ) {
-      debug("onServiceConnected $name $service")
+      logDebug("onServiceConnected $name $service")
 
       activity.ui.onCreate(IObscuraVpnService.Stub.asInterface(service), activity.osStatus)
     }
 
     override fun onServiceDisconnected(name: ComponentName?) {
-      debug("onServiceDisconnected $name")
+      logDebug("onServiceDisconnected $name")
 
       activity.ui.onDestroy()
 
@@ -104,6 +104,14 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
 
     osStatus.registerCallbacks()
     osStatus.update()
+  }
+
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+
+    intent.data?.let { uri ->
+      this.ui.handleObscuraUri(uri)
+    }
   }
 
   override fun onResume() {

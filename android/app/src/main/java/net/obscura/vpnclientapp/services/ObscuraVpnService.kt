@@ -29,7 +29,7 @@ import net.obscura.vpnclientapp.R
 import net.obscura.vpnclientapp.client.ObscuraLibrary
 import net.obscura.vpnclientapp.client.commands.GetStatus
 import net.obscura.vpnclientapp.client.commands.SetTunnelArgs
-import net.obscura.vpnclientapp.helpers.debug
+import net.obscura.vpnclientapp.helpers.logDebug
 import net.obscura.vpnclientapp.helpers.requireVpnServiceProcess
 import net.obscura.vpnclientapp.ui.CommandBridge
 import net.obscura.vpnclientapp.ui.OsStatus
@@ -43,7 +43,7 @@ class ObscuraVpnService : VpnService() {
     override fun onAvailable(network: Network) {
       super.onAvailable(network)
 
-      debug("network is available $network")
+      logDebug("network is available $network")
 
       service.updateInterface(network)
       service.setTunnelArgs(exitSelector)
@@ -56,7 +56,7 @@ class ObscuraVpnService : VpnService() {
     ) {
       super.onBlockedStatusChanged(network, blocked)
 
-      debug("network blocked status changed $network $blocked")
+      logDebug("network blocked status changed $network $blocked")
 
       service.updateInterface(network)
       service.updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Connected)
@@ -68,7 +68,7 @@ class ObscuraVpnService : VpnService() {
     ) {
       super.onCapabilitiesChanged(network, networkCapabilities)
 
-      debug("network capabilities changed $network $networkCapabilities")
+      logDebug("network capabilities changed $network $networkCapabilities")
 
       service.updateInterface(network)
       service.updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Connected)
@@ -80,7 +80,7 @@ class ObscuraVpnService : VpnService() {
     ) {
       super.onLinkPropertiesChanged(network, linkProperties)
 
-      debug("network link properties changed $network $linkProperties")
+      logDebug("network link properties changed $network $linkProperties")
 
       service.updateInterface(network)
       service.updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Connected)
@@ -92,7 +92,7 @@ class ObscuraVpnService : VpnService() {
     ) {
       super.onLosing(network, maxMsToLive)
 
-      debug("loosing network $network $maxMsToLive")
+      logDebug("loosing network $network $maxMsToLive")
 
       service.updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Disconnecting)
     }
@@ -100,7 +100,7 @@ class ObscuraVpnService : VpnService() {
     override fun onLost(network: Network) {
       super.onLost(network)
 
-      debug("lost network $network")
+      logDebug("lost network $network")
 
       service.updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Disconnected)
     }
@@ -110,13 +110,13 @@ class ObscuraVpnService : VpnService() {
       val service: ObscuraVpnService,
   ) : IObscuraVpnService.Stub() {
     override fun startTunnel(exitSelector: String?) {
-      debug("startTunnel $exitSelector")
+      logDebug("startTunnel $exitSelector")
 
       service.startTunnel(exitSelector!!)
     }
 
     override fun stopTunnel() {
-      debug("stopTunnel")
+      logDebug("stopTunnel")
 
       service.stopTunnel()
     }
@@ -125,7 +125,7 @@ class ObscuraVpnService : VpnService() {
         id: Long,
         command: String?,
     ) {
-      debug("jsonFfi $id $command")
+      logDebug("jsonFfi $id $command")
 
       CompletableFuture<String>().also {
         CommandBridge.Receiver.broadcast(service, id, it)
@@ -159,7 +159,7 @@ class ObscuraVpnService : VpnService() {
 
     requireVpnServiceProcess()
 
-    debug("onCreate")
+    logDebug("onCreate")
 
     json = Json { ignoreUnknownKeys = true }
     handler = Handler(Looper.getMainLooper())
@@ -174,7 +174,7 @@ class ObscuraVpnService : VpnService() {
       flags: Int,
       startId: Int,
   ): Int {
-    debug("onStartCommand")
+    logDebug("onStartCommand")
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
       ServiceCompat.startForeground(
@@ -193,7 +193,7 @@ class ObscuraVpnService : VpnService() {
   }
 
   override fun onBind(intent: Intent?): IBinder? {
-    debug("onBind $intent")
+    logDebug("onBind $intent")
 
     updateNEVPNStatus(neVpnStatus)
 
@@ -201,7 +201,7 @@ class ObscuraVpnService : VpnService() {
   }
 
   private fun onStatusUpdated(status: GetStatus.Response) {
-    debug("status updated $status")
+    logDebug("status updated $status")
 
     loadStatus(status.version)
 
@@ -216,7 +216,7 @@ class ObscuraVpnService : VpnService() {
   override fun onRevoke() {
     super.onRevoke()
 
-    debug("onRevoke")
+    logDebug("onRevoke")
 
     stopTunnel()
   }
@@ -224,7 +224,7 @@ class ObscuraVpnService : VpnService() {
   override fun onDestroy() {
     super.onDestroy()
 
-    debug("onDestroy")
+    logDebug("onDestroy")
 
     stopTunnel()
   }
@@ -283,7 +283,7 @@ class ObscuraVpnService : VpnService() {
   }
 
   private fun loadStatus(knownVersion: String?) {
-    debug("load status $knownVersion")
+    logDebug("load status $knownVersion")
 
     CompletableFuture<String>().also {
       ObscuraLibrary.jsonFfi(
@@ -294,7 +294,7 @@ class ObscuraVpnService : VpnService() {
       )
 
       it.handle { data, tr ->
-        debug("getStatus completed $data", tr)
+        logDebug("getStatus completed $data", tr)
 
         data?.let { onStatusUpdated(json.decodeFromString(it)) }
       }
@@ -404,7 +404,7 @@ class ObscuraVpnService : VpnService() {
             ?.apply {
               ObscuraLibrary.startTunnel(detachFd())
 
-              debug("VPN tunnel started")
+              logDebug("VPN tunnel started")
             }
   }
 

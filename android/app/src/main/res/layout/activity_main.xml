@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+
 <net.obscura.vpnclientapp.ui.ObscuraUI xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/ui"
@@ -15,9 +16,7 @@
             android:id="@+id/web_view_container"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1">
-
-        </FrameLayout>
+            android:layout_weight="1" />
 
         <com.google.android.material.bottomnavigation.BottomNavigationView
             android:id="@+id/nav_view"
@@ -27,11 +26,8 @@
             app:menu="@menu/nav_menu"
             app:labelVisibilityMode="labeled"
             app:elevation="8dp"
-            android:elevation="8dp"
-            >
+            android:elevation="8dp" />
 
-        </com.google.android.material.bottomnavigation.BottomNavigationView>
-
-</LinearLayout>
+    </LinearLayout>
 
 </net.obscura.vpnclientapp.ui.ObscuraUI>

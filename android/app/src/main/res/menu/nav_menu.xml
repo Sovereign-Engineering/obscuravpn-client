@@ -1,10 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
-
-    <item android:id="@+id/nav_connection" android:title="@string/nav_connection" android:icon="@drawable/icon_connection" />
-    <item android:id="@+id/nav_location" android:title="@string/nav_location" android:icon="@drawable/icon_location" />
-    <item android:id="@+id/nav_account" android:title="@string/nav_account" android:icon="@drawable/icon_account" />
-    <item android:id="@+id/nav_settings" android:title="@string/nav_settings" android:icon="@drawable/icon_settings" />
-    <item android:id="@+id/nav_about" android:title="@string/nav_about" android:icon="@drawable/icon_about" />
-
+    <item
+        android:id="@+id/nav_connection"
+        android:icon="@drawable/icon_connection"
+        android:title="@string/nav_connection" />
+    <item
+        android:id="@+id/nav_location"
+        android:icon="@drawable/icon_location"
+        android:title="@string/nav_location" />
+    <item
+        android:id="@+id/nav_account"
+        android:icon="@drawable/icon_account"
+        android:title="@string/nav_account" />
+    <item
+        android:id="@+id/nav_settings"
+        android:icon="@drawable/icon_settings"
+        android:title="@string/nav_settings" />
+    <item
+        android:id="@+id/nav_about"
+        android:icon="@drawable/icon_about"
+        android:title="@string/nav_about" />
 </menu>

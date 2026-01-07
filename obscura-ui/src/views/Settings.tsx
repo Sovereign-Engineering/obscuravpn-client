@@ -6,6 +6,7 @@ import { BsCircleHalf } from 'react-icons/bs';
 import { IoInformationCircleOutline, IoMoon, IoSunnySharp } from 'react-icons/io5';
 import { MdBlock, MdWarning } from 'react-icons/md';
 import * as commands from '../bridge/commands';
+import { PLATFORM, Platform } from '../bridge/SystemProvider';
 import { AppContext, DNSContentBlock, featureFlagEnabled, FeatureFlagKey, KnownFeatureFlagKey } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { NotificationId } from '../common/notifIds';
@@ -13,11 +14,17 @@ import { normalizeError } from '../common/utils';
 import { fmtErrorI18n, TranslationKey } from '../translations/i18n';
 import classes from './Settings.module.css';
 
+const APPLE_PLATFORMS = new Set([Platform.macOS, Platform.iOS]);
+const IS_APPLE = APPLE_PLATFORMS.has(PLATFORM);
+
+const CUSTOM_DNS_PLATFORMS_EXCLUDED = new Set([Platform.Android]);
+const CUSTOM_DNS_SUPPORTED = !CUSTOM_DNS_PLATFORMS_EXCLUDED.has(PLATFORM);
+
 export default function Settings() {
   return (
     <Stack mb='xl' gap='lg' align='flex-start' className={classes.container}>
       <GeneralSettings />
-      <DnsSettings />
+      {CUSTOM_DNS_SUPPORTED && <DnsSettings />}
       <ExperimentalSettings />
       <NetworkSettings />
       <AppearanceSettings />
@@ -167,13 +174,18 @@ function ExperimentalSettings() {
         </Accordion.Control>
         <Accordion.Panel style={{ borderTop: '1px solid var(--mantine-color-default-border)' }}>
           <Stack gap='lg' align='flex-start' my='xs'>
-            {appStatus.featureFlagKeys.map(featureFlagKey => (
-              <React.Fragment key={featureFlagKey}>
-                <FeatureFlagToggle featureFlagKey={featureFlagKey} />
-                <Divider w='100%' />
-              </React.Fragment>
-            ))}
-            <StrictLeakPreventionSwitch />
+            {appStatus.featureFlagKeys.map(featureFlagKey => {
+              if (featureFlagKey === KnownFeatureFlagKey.KillSwitch && !IS_APPLE) {
+                return null;
+              }
+              return (
+                <React.Fragment key={featureFlagKey}>
+                  <FeatureFlagToggle featureFlagKey={featureFlagKey} />
+                  <Divider w='100%' />
+                </React.Fragment>
+              );
+            })}
+            {IS_APPLE && <StrictLeakPreventionSwitch />}
           </Stack>
         </Accordion.Panel>
       </Accordion.Item>

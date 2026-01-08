@@ -1,9 +1,9 @@
 import { Accordion, ActionIcon, Alert, Button, Card, Checkbox, Divider, Group, Radio, Stack, Switch, Text, Title, useMantineColorScheme } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import React, { ReactNode, useContext } from 'react';
+import React, { ReactNode, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsCircleHalf } from 'react-icons/bs';
-import { IoInformationCircleOutline, IoMoon, IoSunnySharp } from 'react-icons/io5';
+import { IoCheckmark, IoInformationCircleOutline, IoMoon, IoSunnySharp } from 'react-icons/io5';
 import { MdBlock, MdWarning } from 'react-icons/md';
 import * as commands from '../bridge/commands';
 import { PLATFORM, Platform } from '../bridge/SystemProvider';
@@ -136,10 +136,15 @@ function GeneralSettings() {
 
 function NetworkSettings() {
   const { t } = useTranslation();
+  const [wgRotated, setWgRotated] = useState(false);
+  const [wgRotatedTimeout, setWGRotateTimeout] = useState<number | null>(null);
 
   const rotateWgKey = async () => {
     try {
       await commands.rotateWgKey();
+      window.clearTimeout(wgRotatedTimeout!);
+      setWgRotated(true);
+      setWGRotateTimeout(window.setTimeout(() => setWgRotated(false), 2000));
     } catch (e) {
       const error = normalizeError(e);
       const message = error instanceof commands.CommandError
@@ -156,7 +161,9 @@ function NetworkSettings() {
     <Card padding='md' radius='md' w='100%' shadow='xs'>
       <Stack gap='xs' align='flex-start'>
         <Title order={4}>{t('Network')}</Title>
-        <Button onClick={rotateWgKey}>{t('rotateWgKey')}</Button>
+        <Button onClick={rotateWgKey} bg={wgRotated ? 'teal' : undefined} rightSection={wgRotated ? <IoCheckmark /> : undefined} miw={200}>
+          {wgRotated ? t('Rotated') : t('rotateWgKey')}
+        </Button>
       </Stack>
     </Card>
   );

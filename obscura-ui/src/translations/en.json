@@ -263,6 +263,7 @@
   "Reveal": "Reveal",
   "revealFile": "Show {{ item }} in file system",
   "revealFile_darwin": "Reveal {{ item }} in Finder",
+  "Rotated": "Rotated",
   "rotateWgKey": "Rotate WireGuard® key",
   "searchLocations": "Search locations",
   "securedBy": "Secured by <0>{{ provider }}</0>",

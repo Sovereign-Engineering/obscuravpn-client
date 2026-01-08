@@ -35,6 +35,7 @@ constructor(
   var onPageLoadedCallback: ((String) -> Unit)? = null
 
   init {
+    settings.domStorageEnabled = true
     settings.javaScriptEnabled = true
 
     addJavascriptInterface(commandBridge, "obscuraAndroidCommandBridge")

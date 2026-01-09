@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
-    <color name="orange_400">#F56B39</color>
-    <color name="orange_600">#DC4D26</color>
+    <color name="black">#ff000000</color>
+    <color name="white">#ffffff</color>
+    <color name="orange_400">#f56b39</color>
+    <color name="orange_600">#dc4d26</color>
     <color name="orange_800">#9f2d00</color>
     <color name="slate_400">#90a1b9</color>
     <color name="slate_600">#45556c</color>
     <color name="slate_800">#303030</color>
-
+    <color name="background_light">#ffffff</color>
+    <color name="background_dark">#303030</color>
 </resources>

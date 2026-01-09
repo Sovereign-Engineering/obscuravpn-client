@@ -181,6 +181,12 @@ constructor(
     webView = null
   }
 
+  override fun invalidate() {
+    super.invalidate()
+
+    this.webView?.invalidate()
+  }
+
   fun goBack() {
     if (webView?.canGoBack() ?: false) {
       webView?.goBack()

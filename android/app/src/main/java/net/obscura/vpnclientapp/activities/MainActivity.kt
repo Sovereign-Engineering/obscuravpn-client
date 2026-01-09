@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
@@ -206,6 +207,14 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
 
     preferences.unregisterListener(this)
     vpnServiceConnection?.let { unbindService(it) }
+  }
+
+  override fun onConfigurationChanged(newConfig: Configuration) {
+    super.onConfigurationChanged(newConfig)
+
+    logDebug("configuration changed: $newConfig")
+
+    this.ui.invalidate()
   }
 
   override fun onSharedPreferenceChanged(

@@ -19,11 +19,17 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.ObscuraVPN">
 
+        <!--
+        `WebView` necessitates aggressive use of `android:configChanges`:
+        https://developer.android.com/develop/ui/compose/quick-guides/content/manage-webview-state
+        -->
         <activity
             android:name=".activities.MainActivity"
+            android:configChanges="keyboard|keyboardHidden|orientation
+                |screenLayout|screenSize|smallestScreenSize"
             android:exported="true"
             android:enabled="true"
-            android:launchMode="singleInstance"> 
+            android:launchMode="singleInstance">
 
             <intent-filter>
                 <category android:name="android.intent.category.LAUNCHER" />

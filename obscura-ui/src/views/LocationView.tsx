@@ -7,7 +7,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { BsPin, BsPinFill, BsSearch, BsShieldFillCheck, BsShieldFillExclamation } from 'react-icons/bs';
 import * as commands from '../bridge/commands';
 import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
-import { Exit, getContinent, getExitCountry } from '../common/api';
+import { accountIsExpired, Exit, getContinent, getExitCountry } from '../common/api';
 import { AppContext, ConnectionInProgress, getCityFromArgs, getCityFromStatus, NEVPNStatus } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { exitCityEquals, exitLocation, exitsSortComparator, getExitCountryFlag } from '../common/exitUtils';
@@ -218,14 +218,15 @@ interface LocationCarProps {
 
 function LocationCard({ exit, connected, showLastChosen = false, onSelect, togglePin, pinned }: LocationCarProps) {
     const { t } = useTranslation();
-    const { osStatus, showOfflineUI, appStatus, initiatingExitSelector } = useContext(AppContext);
+    const { osStatus, showOfflineUI, appStatus, initiatingExitSelector, accountInfo } = useContext(AppContext);
 
     const onPinClick = (e: MouseEvent) => {
         e.stopPropagation();
         togglePin(exit);
     };
 
-    const disableClick = osStatus.osVpnStatus === NEVPNStatus.Disconnecting || showOfflineUI;
+    const isAccountExpired = accountInfo ? accountIsExpired(accountInfo) : false;
+    const disableClick = osStatus.osVpnStatus === NEVPNStatus.Disconnecting || showOfflineUI || isAccountExpired;
     const cardClasses = [];
     if (connected) cardClasses.push(classes.locationCardConnected);
     else if (!connected && osStatus.osVpnStatus !== NEVPNStatus.Disconnecting && (exitCityEquals(getCityFromStatus(appStatus.vpnStatus), exit) || exitCityEquals(getCityFromArgs(initiatingExitSelector), exit))) {
@@ -233,7 +234,7 @@ function LocationCard({ exit, connected, showLastChosen = false, onSelect, toggl
     }
     else if (disableClick) cardClasses.push(classes.locationCardDisabled);
     else if (!connected) cardClasses.push(classes.locationCardNotConnected);
-    const cardTitle = (!connected && !disableClick) ? t('clickToConnect') : undefined;
+    const cardTitle = (!connected && !disableClick) ? t('clickToConnect') : (isAccountExpired ? t('account-Expired') : undefined);
 
     return (
         <Card shadow='xs' title={cardTitle} className={cardClasses.join(' ')} withBorder padding='xs' radius='md' w='100%' onClick={(connected || disableClick) ? undefined : onSelect}>
@@ -305,7 +306,7 @@ function NoExitServers() {
 function VpnStatusCard() {
     const theme = useMantineTheme();
     const { t } = useTranslation();
-    const { appStatus, vpnConnected, showOfflineUI, osStatus, connectionInProgress, vpnDisconnect, vpnConnect } = useContext(AppContext);
+    const { appStatus, vpnConnected, showOfflineUI, osStatus, connectionInProgress, vpnDisconnect, vpnConnect, accountInfo } = useContext(AppContext);
 
     const getStatusTitle = () => {
         if (connectionInProgress !== ConnectionInProgress.UNSET) return t(connectionInProgress) + '...';
@@ -325,8 +326,9 @@ function VpnStatusCard() {
         return showOfflineUI ? t('connectToInternet') : t('trafficVulnerable');
     };
 
+    const isAccountExpired = accountInfo ? accountIsExpired(accountInfo) : false;
     const allowCancel = connectionInProgress === ConnectionInProgress.Connecting || connectionInProgress === ConnectionInProgress.Reconnecting;
-    const btnDisabled = !allowCancel && (connectionInProgress === ConnectionInProgress.Disconnecting || connectionInProgress === ConnectionInProgress.ChangingLocations || showOfflineUI);
+    const btnDisabled = !allowCancel && (connectionInProgress === ConnectionInProgress.Disconnecting || connectionInProgress === ConnectionInProgress.ChangingLocations || showOfflineUI || isAccountExpired);
     const buttonDisconnectProps = ((allowCancel || vpnConnected) && !btnDisabled) ? theme.other.buttonDisconnectProps : {};
 
     const getButtonContent = () => {
@@ -339,6 +341,7 @@ function VpnStatusCard() {
     const btnTitle = () => {
         if (!btnDisabled) return;
         if (showOfflineUI) return t('noInternet');
+        if (isAccountExpired) return t('account-Expired');
         return t('busyConnection');
     };
 

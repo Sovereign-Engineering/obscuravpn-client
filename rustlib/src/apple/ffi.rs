@@ -22,46 +22,12 @@ static APPLE_LOG_INIT: std::sync::Once = std::sync::Once::new();
 /// - there is no other global function of this name
 #[unsafe(no_mangle)]
 pub extern "C" fn initialize_apple_system_logging(log_dir: FfiStr) -> *mut c_void {
-    use tracing_oslog::OsLogger;
-    use tracing_subscriber::{
-        Layer as _,
-        filter::{EnvFilter, LevelFilter},
-        layer::SubscriberExt as _,
-        registry,
-    };
-    // `EnvFilter` doesn't impl `Clone`
-    fn filter() -> EnvFilter {
-        EnvFilter::from_default_env().add_directive(LevelFilter::INFO.into())
-    }
-    #[cfg(not(target_os = "ios"))]
-    let _ = log_dir;
-    #[cfg_attr(not(target_os = "ios"), allow(unused_mut))]
     let mut guard_ptr = std::ptr::null_mut();
     APPLE_LOG_INIT.call_once(|| {
-        let oslog_layer = OsLogger::new("net.obscura.rust-apple", "default").with_filter(filter());
-        let registry = registry().with(oslog_layer);
-        #[cfg(not(target_os = "ios"))]
-        tracing::subscriber::set_global_default(registry).expect("failed to set global subscriber");
-        #[cfg(target_os = "ios")]
-        match super::ios::build_log_roller(&log_dir) {
-            Ok(roller) => {
-                use tracing_appender::non_blocking::NonBlocking;
-                let (writer, guard) = NonBlocking::new(roller);
-                guard_ptr = Box::into_raw(Box::new(guard)) as _;
-                let fs_layer = tracing_subscriber::fmt::Layer::default().json().with_writer(writer).with_filter(filter());
-                tracing::subscriber::set_global_default(registry.with(fs_layer)).expect("failed to set global subscriber");
-            }
-            Err(error) => {
-                tracing::subscriber::set_global_default(registry).expect("failed to set global subscriber");
-                tracing::error!(?error, "failed to initialize log persistence");
-            }
-        }
-        tracing::info!("logging initialized");
-        std::panic::set_hook(Box::new(|info| {
-            let backtrace = std::backtrace::Backtrace::force_capture();
-            tracing::error!("panic: {}\n{:#}", info, backtrace);
-        }));
-        tracing::info!("panic logging hook set");
+        guard_ptr = crate::logging::init(
+            tracing_oslog::OsLogger::new("net.obscura.rust-apple", "default"),
+            cfg!(target_os = "ios").then(|| log_dir.as_str()),
+        ) as *mut _;
     });
     guard_ptr
 }

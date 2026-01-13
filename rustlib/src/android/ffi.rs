@@ -17,9 +17,6 @@ use std::path::PathBuf;
 use std::sync::{Arc, LazyLock, Mutex, OnceLock};
 use tokio::io::unix::AsyncFd;
 use tokio::runtime::Runtime;
-use tracing_subscriber::layer::SubscriberExt as _;
-use tracing_subscriber::util::SubscriberInitExt as _;
-use tracing_subscriber::{EnvFilter, Registry};
 
 static RUNTIME: LazyLock<Runtime> = LazyLock::new(|| Runtime::new().unwrap());
 static GLOBAL: OnceLock<Arc<Manager>> = OnceLock::new();
@@ -80,27 +77,6 @@ extern "C" fn receive_cb(ffi_bytes: FfiBytes) -> () {
 /// cbindgen:ignore
 #[unsafe(no_mangle)]
 pub extern "C" fn JNI_OnLoad(_vm: *mut jni::sys::JavaVM, _reserved: *mut c_void) -> jni::sys::jint {
-    let android_layer = tracing_android::layer("ObscuraNative").expect("failed to create `tracing-android` layer");
-
-    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
-
-    Registry::default().with(filter).with(android_layer).init();
-
-    std::panic::set_hook(Box::new(|info| {
-        let loc = info
-            .location()
-            .map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column()))
-            .unwrap_or_else(|| "<unknown>".into());
-        let msg = info
-            .payload()
-            .downcast_ref::<&str>()
-            .copied()
-            .or_else(|| info.payload().downcast_ref::<String>().map(|s| s.as_str()))
-            .unwrap_or("panic payload not str");
-        let bt = std::backtrace::Backtrace::force_capture();
-        tracing::error!(message_id = "W6fhvnSf", "panic at {loc}: {msg}\n{bt}");
-    }));
-
     jni::sys::JNI_VERSION_1_6
 }
 
@@ -114,6 +90,11 @@ pub unsafe extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_ini
 ) -> () {
     let mut first_init = false;
     GLOBAL.get_or_init(|| {
+        crate::logging::init(
+            tracing_android::layer("ObscuraNative").expect("failed to create `tracing-android` layer"),
+            None,
+        );
+
         rustls::crypto::aws_lc_rs::default_provider()
             .install_default()
             .expect("Failed to install aws-lc crypto provider");

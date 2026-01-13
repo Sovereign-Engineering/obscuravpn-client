@@ -6,7 +6,7 @@
     rust-overlay.url = "github:oxalica/rust-overlay";
   };
 
-  outputs = { crane, flake-utils, nixpkgs, rust-overlay, self, }:
+  outputs = { crane, flake-utils, nixpkgs, rust-overlay, self }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         overlays = [ (import rust-overlay) ];
@@ -20,6 +20,23 @@
         };
 
         lib = pkgs.lib;
+
+        evaluatedSource = lib.fileset.toSource {
+          root = ./.;
+          fileset = lib.fileset.difference ./. ./tag.json;
+        };
+
+        # Extract the hash from the store path.
+        sourceHash = builtins.substring 0 32 (baseNameOf evaluatedSource);
+
+        tag = builtins.fromJSON (builtins.readFile ./tag.json);
+        commit = self.rev or self.dirtyRev;
+
+        # Note: We need to check `self.rev` to ensure that a modification of `tag.json` doesn't get marked as clean. Otherwise only the hash matters.
+        isCleanBuild = self ? rev && tag.sourceHash == sourceHash;
+        version = if isCleanBuild then tag.version else "${tag.version}.1";
+
+        hash = pkgs.writeText "obscura-source-hash.txt" sourceHash;
 
         androidBuildToolsVersion = "36.0.0";
         androidCmakeVersion = "3.31.6";
@@ -71,15 +88,17 @@
         rustArgs = rustDepsArgs // { cargoArtifacts = craneLib.buildDepsOnly rustDepsArgs; };
         rustArgs-android = rustDepsArgs-android // { cargoArtifacts = craneLib.buildDepsOnly rustDepsArgs-android; };
 
-        rustlibBindgenArgs = {
+        rustLibArgs = {
           # Environment variables for cbindgen, see rustlib/build.rs
           outputs = [ "out" "dev" ]; # Assumes that crane's derivation only has "out"
           OBSCURA_CLIENT_RUSTLIB_CBINDGEN_CONFIG_PATH = ./apple/cbindgen-apple.toml;
           OBSCURA_CLIENT_RUSTLIB_CBINDGEN_OUTPUT_HEADER_PATH = "${placeholder "dev"}/include/libobscuravpn_client.h";
+          OBSCURA_COMMIT = commit;
+          OBSCURA_VERSION = version;
         };
 
-        rust = craneLib.buildPackage (rustArgs // rustlibBindgenArgs);
-        rust-android = craneLib.buildPackage (rustArgs-android // rustlibBindgenArgs);
+        rust = craneLib.buildPackage (rustArgs // rustLibArgs);
+        rust-android = craneLib.buildPackage (rustArgs-android // rustLibArgs);
 
         nodeModules = pkgs.importNpmLock.buildNodeModules {
           npmRoot = ./obscura-ui;
@@ -113,10 +132,10 @@
 
           nativeBuildInputs = [ pkgs.pnpm ];
 
-          src = (lib.fileset.toSource {
+          src = lib.fileset.toSource {
             root = ./obscura-ui;
             fileset = lib.fileset.unions [ ./obscura-ui/package.json ./obscura-ui/package-lock.json ];
-          });
+          };
 
           buildPhase = ''
             license-checker \
@@ -212,7 +231,8 @@
             doCheck = false;
           });
 
-        shellFiles = lib.sources.sourceFilesBySuffices ./. [ ".bash" ".sh" ".shellcheckrc" ];
+        nixFiles = lib.sources.sourceFilesBySuffices evaluatedSource [ ".nix" ];
+        shellFiles = lib.sources.sourceFilesBySuffices evaluatedSource [ ".bash" ".sh" ".shellcheckrc" ];
 
         swiftFiles = lib.sources.sourceFilesBySuffices (lib.fileset.toSource {
           root = ./.;
@@ -227,7 +247,7 @@
         };
 
         checks = {
-          inherit apks licenses rust rust-android web-android web-ios web-macos;
+          inherit apks hash licenses rust rust-android web-android web-ios web-macos;
 
           shellcheck = pkgs.runCommand "shellcheck" { nativeBuildInputs = [ pkgs.shellcheck ]; } ''
             shopt -s globstar
@@ -254,7 +274,7 @@
           };
 
           nixfmt = pkgs.runCommand "nixfmt" { nativeBuildInputs = [ pkgs.nixfmt-classic ]; } ''
-            nixfmt --width=120 --check ${self}/*.nix
+            nixfmt --width=120 --check ${nixFiles}
             touch "$out"
           '';
         } // (lib.optionalAttrs pkgs.stdenv.isDarwin {
@@ -315,6 +335,6 @@
           });
         };
 
-        packages = { inherit apks licenses licenses-node licenses-rust rust web-android web-ios web-macos; };
+        packages = { inherit apks hash licenses licenses-node licenses-rust rust web-android web-ios web-macos; };
       });
 }

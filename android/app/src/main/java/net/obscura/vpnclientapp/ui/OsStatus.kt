@@ -119,7 +119,7 @@ class OsStatus(
               srcVersion = BuildConfig.VERSION_NAME,
               updaterStatus =
                   GetOsStatus.Result.UpdaterStatus(
-                      type = "initiated",
+                      type = "uninitiated",
                       appcast = null,
                       error = null,
                       errorCode = null,

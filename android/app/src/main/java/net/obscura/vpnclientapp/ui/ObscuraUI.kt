@@ -196,30 +196,32 @@ constructor(
   }
 
   private fun navigateToTab(id: Int) {
-    val path = when (id) {
-      R.id.nav_connection -> ""
-      R.id.nav_location -> "location"
-      R.id.nav_account -> "account"
-      R.id.nav_settings -> "settings"
-      R.id.nav_about -> "about"
-      else -> {
-        logError("unrecognized view id: $id")
-        return
-      }
-    }
+    val path =
+        when (id) {
+          R.id.nav_connection -> ""
+          R.id.nav_location -> "location"
+          R.id.nav_account -> "account"
+          R.id.nav_settings -> "settings"
+          R.id.nav_about -> "about"
+          else -> {
+            logError("unrecognized view id: $id")
+            return
+          }
+        }
     this.webView?.navigate(path)
   }
 
   fun handleObscuraUri(uri: Uri) {
     logDebug("handling deep link: $uri")
-    val id = when (uri.path) {
-      "/account" -> R.id.nav_account
-      "/location" -> R.id.nav_location
-      else -> {
-        logError("unrecognized path for deep link: $uri")
-        return
-      }
-    }
+    val id =
+        when (uri.path) {
+          "/account" -> R.id.nav_account
+          "/location" -> R.id.nav_location
+          else -> {
+            logError("unrecognized path for deep link: $uri")
+            return
+          }
+        }
     this.bottomNavigation.selectedItemId = id
   }
 }

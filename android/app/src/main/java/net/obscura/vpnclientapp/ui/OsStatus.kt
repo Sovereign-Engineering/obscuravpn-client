@@ -10,6 +10,7 @@ import java.lang.ref.WeakReference
 import java.util.LinkedList
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
+import net.obscura.vpnclientapp.BuildConfig
 import net.obscura.vpnclientapp.helpers.requireUIProcess
 import net.obscura.vpnclientapp.helpers.requireVpnServiceProcess
 import net.obscura.vpnclientapp.preferences.Preferences
@@ -115,7 +116,7 @@ class OsStatus(
               version = version,
               internetAvailable = hasInternet(),
               osVpnStatus = vpnStatus,
-              srcVersion = "TODO",
+              srcVersion = BuildConfig.VERSION_NAME,
               updaterStatus =
                   GetOsStatus.Result.UpdaterStatus(
                       type = "initiated",

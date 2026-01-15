@@ -30,11 +30,11 @@
         sourceHash = builtins.substring 0 32 (baseNameOf evaluatedSource);
 
         tag = builtins.fromJSON (builtins.readFile ./tag.json);
-        commit = self.rev or self.dirtyRev;
+        commitShort = self.shortRev or self.dirtyShortRev;
 
         # Note: We need to check `self.rev` to ensure that a modification of `tag.json` doesn't get marked as clean. Otherwise only the hash matters.
         isCleanBuild = self ? rev && tag.sourceHash == sourceHash;
-        version = if isCleanBuild then tag.version else "${tag.version}.1";
+        version = if isCleanBuild then "v${tag.version}" else "v${tag.version}.1-${commitShort}";
 
         hash = pkgs.writeText "obscura-source-hash.txt" sourceHash;
 
@@ -61,7 +61,10 @@
           includeExtras = [ "extras;google;google_play_services" ];
         };
         androidBuildTools = "${android.androidsdk}/libexec/android-sdk/build-tools/${androidBuildToolsVersion}";
-        androidGradleEnv = { ANDROID_HOME = "${android.androidsdk}/libexec/android-sdk"; };
+        androidGradleEnv = {
+          ANDROID_HOME = "${android.androidsdk}/libexec/android-sdk";
+          OBSCURA_VERSION = version;
+        };
         androidRustEnv = { ANDROID_NDK_ROOT = "${android.ndk-bundle}/libexec/android-sdk/ndk-bundle"; };
         gradleFlags = [ "-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidBuildTools}/aapt2" ];
 
@@ -93,7 +96,6 @@
           outputs = [ "out" "dev" ]; # Assumes that crane's derivation only has "out"
           OBSCURA_CLIENT_RUSTLIB_CBINDGEN_CONFIG_PATH = ./apple/cbindgen-apple.toml;
           OBSCURA_CLIENT_RUSTLIB_CBINDGEN_OUTPUT_HEADER_PATH = "${placeholder "dev"}/include/libobscuravpn_client.h";
-          OBSCURA_COMMIT = commit;
           OBSCURA_VERSION = version;
         };
 
@@ -200,6 +202,9 @@
                 android/app/proguard-rules.pro
                 android/app/src
                 android/build.gradle.kts
+                android/buildSrc/build.gradle.kts
+                android/buildSrc/settings.gradle.kts
+                android/buildSrc/src
                 android/gradle.properties
                 android/gradle/libs.versions.toml
                 android/settings.gradle.kts

@@ -22,7 +22,7 @@ android {
         minSdk = 29
         targetSdk = 36
         versionCode = 1
-        versionName = "1.0"
+        versionName = project.getVersionName(project.rootDir)
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -104,6 +104,7 @@ if (gradle.startParameter.taskNames.contains("nixDownloadDeps")) {
     }
 
     // Some parts of the build are dynamically scheduled so aren't triggered during the dep fetch so we force the dependency.
+    @Suppress("UNUSED_VARIABLE")
     val lintConfig = configurations.create("nixDynamicDeps")
     dependencies {
         "nixDynamicDeps"("com.android.tools.lint:lint-gradle:31.13.0")

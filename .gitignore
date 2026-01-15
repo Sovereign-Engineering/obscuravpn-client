@@ -13,7 +13,6 @@ result-*
 # Android
 *.apk
 *.apk.idsig
-/android/.kotlin/errors
 
 # Linux
 /linux/vm/*.qcow2

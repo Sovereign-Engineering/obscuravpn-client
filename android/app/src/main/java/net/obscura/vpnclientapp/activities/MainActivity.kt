@@ -110,9 +110,7 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
 
-    intent.data?.let { uri ->
-      this.ui.handleObscuraUri(uri)
-    }
+    intent.data?.let { uri -> this.ui.handleObscuraUri(uri) }
   }
 
   override fun onResume() {

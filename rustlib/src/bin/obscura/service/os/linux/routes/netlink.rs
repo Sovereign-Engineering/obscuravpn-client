@@ -82,9 +82,9 @@ fn build_route_messages(tun: &NetworkInterface, routes: &[IpNetwork]) -> Result<
         .collect()
 }
 
-pub fn watch_preferred_network_interface(runtime: &tokio::runtime::Handle) -> Receiver<Option<NetworkInterface>> {
+pub async fn watch_preferred_network_interface() -> Receiver<Option<NetworkInterface>> {
     let (sender, receiver) = channel(None);
-    runtime.spawn(async move {
+    tokio::spawn(async move {
         loop {
             select! {
                 _ = sender.closed() => {

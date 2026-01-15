@@ -3,7 +3,9 @@ Description=Obscura VPN
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/obscuravpn service --connect --config-dir "/var/lib/obscuravpn"
+ExecStart=/usr/bin/obscura service
+Group=obscura
+UMask=0007
 Restart=on-failure
 
 [Install]

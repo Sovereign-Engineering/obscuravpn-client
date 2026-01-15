@@ -3,4 +3,5 @@ channel = "1.89.0"
 components = [ "rustfmt" ]
 targets = [
     "aarch64-linux-android",
+    "x86_64-unknown-linux-musl",
 ]

@@ -4,7 +4,6 @@ use std::{future::Future, sync::Arc};
 use futures::future::pending;
 use obscuravpn_api::types::{OneExit, OneRelay};
 use strum::EnumIs;
-use tokio::runtime::Runtime;
 use tokio::select;
 use tokio::sync::watch::{Receiver, Sender, channel};
 use tokio::time::{Instant, sleep_until};
@@ -52,7 +51,7 @@ pub enum TunnelState {
 
 impl TunnelState {
     pub fn new(
-        runtime: &Runtime,
+        runtime: &tokio::runtime::Handle,
         client_state: Arc<ClientState>,
         receive_cb: extern "C" fn(FfiBytes),
         cancel: CancellationToken,

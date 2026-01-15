@@ -33,6 +33,12 @@ pub enum ConnectErrorCode {
     Other,
 }
 
+impl ConnectErrorCode {
+    pub fn as_static_str(&self) -> &'static str {
+        self.into()
+    }
+}
+
 impl From<&TunnelConnectError> for ConnectErrorCode {
     fn from(err: &TunnelConnectError) -> Self {
         use ApiErrorKind::*;
@@ -43,6 +49,7 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
                 ApiError::ApiClient(err) => match err {
                     ClientError::ApiError(err) => match err.body.error {
                         AccountExpired {} => Self::AccountExpired,
+                        InvalidAccountId {} => Self::InvalidAccountId,
                         NoLongerSupported {} => Self::NoLongerSupported,
                         TunnelLimitExceeded {} => Self::NoSlotsLeft,
                         RateLimitExceeded {} => Self::ApiRateLimitExceeded,

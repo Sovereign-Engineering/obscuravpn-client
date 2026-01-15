@@ -87,9 +87,16 @@
           cargoBuildCommand = "cargo ndk -t arm64-v8a build --release";
           cargoCheckCommand = "cargo ndk -t arm64-v8a check --release";
         };
+        rustDepsArgs-musl = rustDepsArgs // {
+          nativeBuildInputs = rustDepsArgs.nativeBuildInputs ++ [ pkgs.pkgsCross.musl64.stdenv.cc ];
+          CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
+          CC_x86_64_unknown_linux_musl =
+            "${pkgs.pkgsCross.musl64.stdenv.cc}/bin/${pkgs.pkgsCross.musl64.stdenv.cc.targetPrefix}cc";
+        };
 
         rustArgs = rustDepsArgs // { cargoArtifacts = craneLib.buildDepsOnly rustDepsArgs; };
         rustArgs-android = rustDepsArgs-android // { cargoArtifacts = craneLib.buildDepsOnly rustDepsArgs-android; };
+        rustArgs-musl = rustDepsArgs-musl // { cargoArtifacts = craneLib.buildDepsOnly rustDepsArgs-musl; };
 
         rustLibArgs = {
           # Environment variables for cbindgen, see rustlib/build.rs
@@ -101,6 +108,7 @@
 
         rust = craneLib.buildPackage (rustArgs // rustLibArgs);
         rust-android = craneLib.buildPackage (rustArgs-android // rustLibArgs);
+        rust-static = craneLib.buildPackage rustArgs-musl;
 
         nodeModules = pkgs.importNpmLock.buildNodeModules {
           npmRoot = ./obscura-ui;
@@ -253,7 +261,7 @@
 
         checks = {
           inherit apks hash licenses rust rust-android web-android web-ios web-macos;
-
+        } // lib.optionalAttrs pkgs.stdenv.isLinux { inherit rust-static; } // {
           clippy =
             craneLib.cargoClippy (rustArgs // { cargoClippyExtraArgs = "--all-features --all-targets -- -Dwarnings"; });
 
@@ -339,6 +347,8 @@
           });
         };
 
-        packages = { inherit apks hash licenses licenses-node licenses-rust rust web-android web-ios web-macos; };
+        packages = {
+          inherit apks hash licenses licenses-node licenses-rust rust web-android web-ios web-macos;
+        } // lib.optionalAttrs pkgs.stdenv.isLinux { inherit rust-static; };
       });
 }

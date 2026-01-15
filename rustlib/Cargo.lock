@@ -2116,7 +2116,7 @@ dependencies = [
 [[package]]
 name = "obscuravpn-api"
 version = "0.0.0"
-source = "git+https://github.com/Sovereign-Engineering/obscuravpn-api.git?rev=15c61632b418001b7e0e0bbb98373d8437a20d01#15c61632b418001b7e0e0bbb98373d8437a20d01"
+source = "git+https://github.com/Sovereign-Engineering/obscuravpn-api.git?rev=0b3ed27e36cbf0fcb12c9e90f335177b5c2bf419#0b3ed27e36cbf0fcb12c9e90f335177b5c2bf419"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -4550,9 +4550,9 @@ dependencies = [
 
 [[package]]
 name = "zbus_systemd"
-version = "0.25800.0"
+version = "0.25900.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6a2f7b9069a167831b75297e75c7c85f1fb6581d02c5ec9ebfff34e582208ba"
+checksum = "80eb71fc4026445862d4e094602f2945e01f827543b228e299833ffb9fc8fb36"
 dependencies = [
  "futures",
  "serde",

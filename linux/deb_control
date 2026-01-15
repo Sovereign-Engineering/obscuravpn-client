@@ -1,0 +1,10 @@
+Source: obscura
+Maintainer: obscura authors <support@obscura.net>
+Build-Depends: debhelper-compat (= 13)
+Section: net
+
+Package: obscura
+Architecture: amd64
+Depends: systemd
+Description: Obscura VPN client
+ Privacy that's more than a promise.

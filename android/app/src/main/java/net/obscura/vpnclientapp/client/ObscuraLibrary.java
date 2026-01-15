@@ -6,11 +6,11 @@ import java.util.concurrent.CompletableFuture;
 
 public class ObscuraLibrary {
 
-  public static void load(Context context) {
+  public static void load(Context context, String userAgent) {
     // Using this class outside of the :vpnservice process is not allowed.
     if (Application.getProcessName().endsWith(":vpnservice")) {
       System.loadLibrary("obscuravpn_client");
-      initialize(context.getFilesDir().getAbsolutePath(), "Obscura Android TODO");
+      initialize(context.getFilesDir().getAbsolutePath(), userAgent);
     }
   }
 

@@ -1,3 +1,5 @@
+#![cfg_attr(target_os = "linux", allow(unused))]
+
 use tracing_appender::non_blocking::{NonBlocking, WorkerGuard};
 use tracing_subscriber::{
     Layer, Registry,

@@ -229,6 +229,9 @@
         checks = {
           inherit apks licenses rust rust-android web-android web-ios web-macos;
 
+          clippy =
+            craneLib.cargoClippy (rustArgs // { cargoClippyExtraArgs = "--all-features --all-targets -- -Dwarnings"; });
+
           shellcheck = pkgs.runCommand "shellcheck" { nativeBuildInputs = [ pkgs.shellcheck ]; } ''
             shopt -s globstar
             shellcheck -P ${shellFiles} -- ${shellFiles}/**/*.{bash,sh}
@@ -257,11 +260,7 @@
             nixfmt --width=120 --check ${self}/*.nix
             touch "$out"
           '';
-        } // (lib.optionalAttrs pkgs.stdenv.isDarwin {
-          # TODO: Fails due to unused code on non-darwin.
-          clippy =
-            craneLib.cargoClippy (rustArgs // { cargoClippyExtraArgs = "--all-features --all-targets -- -Dwarnings"; });
-        });
+        };
 
         devShells = {
           default = pkgs.mkShellNoCC {

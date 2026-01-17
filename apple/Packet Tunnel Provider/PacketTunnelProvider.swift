@@ -107,33 +107,16 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             throw "dummy start with \"dontStartTunnel\" flag"
         }
 
-        // TODO: Consolidate source of TunnelArgs (https://linear.app/soveng/issue/OBS-2428)
-        var tunnelArgs = TunnelArgs(exit: .any)
+        var tunnelArgs: TunnelArgs? = .none
         switch options {
         case .some(let options):
             ffiLog(.Info, "tunnel options: \(options)")
             if let args = options["tunnelArgs"] as? String {
                 ffiLog(.Info, "startTunnel called with \"tunnelArgs\"")
                 tunnelArgs = try TunnelArgs(json: args)
-            } else if options["is-on-demand"] as? Int == 1 {
-                ffiLog(.Info, "startTunnel called without \"tunnelArgs\", but with \"is-on-demand\" set to 1, using serverAddress as tunnel args")
-                do {
-                    guard let serverAddress = self.protocolConfiguration.serverAddress else {
-                        throw "serverAddress is nil"
-                    }
-                    ffiLog(.Info, "serverAddress: \(serverAddress)")
-                    switch try VersionedTunnelArgs(json: serverAddress) {
-                    case .v1(let tunnelArgsV1):
-                        tunnelArgs = tunnelArgsV1
-                    }
-                } catch {
-                    ffiLog(.Info, "failed to get tunnel args from serverAddress, using default tunnel args: \(error)")
-                }
-            } else {
-                ffiLog(.Info, "startTunnel called without \"tunnelArgs\" or \"is-on-demand\": \"1\", using default tunnel args")
             }
         case .none:
-            ffiLog(.Info, "startTunnel \(self.providerId) called without options, using default tunnel args")
+            ffiLog(.Info, "startTunnel \(self.providerId) called without options")
         }
 
         try await self.isActive.withLock { isActiveGuard in
@@ -144,7 +127,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
             let networkConfig = OsNetworkConfig(tunnelNetworkConfig: TunnelNetworkConfig(ipv4: "10.75.76.77", dns: ["10.64.0.99"], ipv6: "fc00:bbbb:bbbb:bb01::c:4c4d/128", mtu: 1280), useSystemDns: false)
             try await self.setTunnelNetworkSettings(NEPacketTunnelNetworkSettings.build(networkConfig))
-            let _: Empty = try await runManagerCmd(.setTunnelArgs(args: tunnelArgs, allowActivation: true))
+            let _: Empty = try await runManagerCmd(.setTunnelArgs(args: tunnelArgs, active: true))
 
             ffiLog(.Info, "set tunnel active flag \(self.providerId)")
             isActiveGuard.value = true
@@ -185,18 +168,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             #if os(macOS)
                 ffiLog(.Info, "ignoring disableOndemand on macOS")
             #else
-                do {
-                    let managers = try await NETunnelProviderManager.loadAllFromPreferences()
-                    if managers.isEmpty {
-                        throw ("no tunnel providers found")
-                    }
-                    for manager in managers {
-                        manager.isOnDemandEnabled = false
-                        try await manager.saveToPreferences()
-                    }
-                } catch {
-                    ffiLog(.Error, "disabling on-demand failed: \(error)")
-                }
+                await try_setting_ondemand(false)
             #endif
         }
 
@@ -209,7 +181,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
             ffiLog(.Info, "stopping tunnel \(self.providerId)")
             do {
-                let _: Empty = try await runManagerCmd(.setTunnelArgs(args: .none, allowActivation: false))
+                let _: Empty = try await runManagerCmd(.setTunnelArgs(args: .none, active: false))
             } catch {
                 ffiLog(.Error, "setting empty tunnel args failed: \(error)")
             }
@@ -309,6 +281,12 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             }
         }
         await self.isActive.withLock { isActiveGuard in
+            #if !os(macOS)
+                // Move to startTunnel once onDemand is unconditional ( https://linear.app/soveng/issue/OBS-2428 )
+                if isActiveGuard.value {
+                    await try_setting_ondemand(status.featureFlags.killSwitch == .some(true))
+                }
+            #endif
             switch status.vpnStatus {
             case .disconnected:
                 fallthrough
@@ -510,3 +488,20 @@ func getProtectionLevel(_ path: String) throws -> FileProtectionType? {
     let attributes = try FileManager.default.attributesOfItem(atPath: path)
     return attributes[.protectionKey] as? FileProtectionType
 }
+
+#if !os(macOS)
+    func try_setting_ondemand(_ enabled: Bool) async {
+        do {
+            let managers = try await NETunnelProviderManager.loadAllFromPreferences()
+            if managers.isEmpty {
+                throw ("no tunnel providers found")
+            }
+            for manager in managers {
+                manager.isOnDemandEnabled = enabled
+                try await manager.saveToPreferences()
+            }
+        } catch {
+            ffiLog(.Error, "setting isOnDemandEnabled to \(enabled) failed: \(error)")
+        }
+    }
+#endif

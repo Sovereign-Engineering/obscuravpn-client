@@ -5,23 +5,26 @@ use std::{
     time::Duration,
 };
 
+use obscuravpn_api::cmd::ExitList;
 use obscuravpn_api::{
-    cmd::{AppleAssociateAccount, AppleAssociateAccountOutput, Cmd, DeleteAccount, DeleteAccountOutput, ExitList, GetAccountInfo},
+    cmd::{AppleAssociateAccount, AppleAssociateAccountOutput, Cmd, DeleteAccount, DeleteAccountOutput, GetAccountInfo},
     types::{AccountId, AccountInfo, OneExit, OneRelay, WgPubkey},
 };
 use serde::{Deserialize, Serialize};
+use tokio::select;
 use tokio::sync::watch::{Receiver, Sender, channel};
 use tokio_util::sync::{CancellationToken, DropGuard};
 use uuid::Uuid;
 
 use super::ffi_helpers::*;
+use crate::cached_value::CachedValue;
+use crate::client_state::ClientStateHandle;
+use crate::errors::{ConfigDirty, ConfigDirtyOrApiError};
+use crate::manager_cmd::{ManagerCmdErrorCode, ManagerCmdOk};
 use crate::{
     backoff::Backoff,
     client_state::{AccountStatus, ClientState},
-    config::{
-        Config, ConfigDebug, ConfigLoadError, ConfigSaveError, KeychainSetSecretKeyFn, PinnedLocation, cached::ConfigCached,
-        feature_flags::FeatureFlags,
-    },
+    config::{Config, ConfigDebug, ConfigLoadError, KeychainSetSecretKeyFn, PinnedLocation, feature_flags::FeatureFlags},
     debug_archive::create_debug_archive,
     errors::{ApiError, ConnectErrorCode},
     exit_selection::ExitSelector,
@@ -30,14 +33,13 @@ use crate::{
     network_config::DnsContentBlock,
     network_config::TunnelNetworkConfig,
     quicwg::TransportKind,
-    tunnel_state::{TargetState, TunnelState},
+    tunnel_state::TunnelState,
 };
 
 pub struct Manager {
     background_taks_cancellation_token: CancellationToken,
-    client_state: Arc<ClientState>,
+    client_state: ClientStateHandle,
     tunnel_state: Receiver<TunnelState>,
-    target_state: Sender<TargetState>,
     status_watch: Sender<Status>,
     runtime: tokio::runtime::Handle,
     _background_task_drop_guard: DropGuard,
@@ -65,7 +67,7 @@ pub struct Status {
 }
 
 impl Status {
-    fn new(version: Uuid, vpn_status: VpnStatus, config: Config, api_url: String) -> Self {
+    fn new(version: Uuid, vpn_status: VpnStatus, client_state: &ClientState) -> Self {
         let Config {
             account_id,
             in_new_account_flow,
@@ -78,22 +80,23 @@ impl Status {
             dns,
             dns_content_block,
             ..
-        } = config;
+        } = client_state.config();
+        let api_url = client_state.base_url();
         Self {
             version,
             vpn_status,
-            account_id,
-            in_new_account_flow,
-            pinned_locations,
-            last_chosen_exit: last_chosen_exit_selector,
-            last_exit: last_exit_selector,
+            account_id: account_id.clone(),
+            in_new_account_flow: *in_new_account_flow,
+            pinned_locations: pinned_locations.clone(),
+            last_chosen_exit: last_chosen_exit_selector.clone(),
+            last_exit: last_exit_selector.clone(),
             api_url,
-            account: cached_account_status,
-            auto_connect,
-            feature_flags,
+            account: cached_account_status.clone(),
+            auto_connect: *auto_connect,
+            feature_flags: feature_flags.clone(),
             feature_flag_keys: FeatureFlags::KEYS.iter().map(ToString::to_string).collect(),
             use_system_dns: dns.is_system(),
-            dns_content_block,
+            dns_content_block: *dns_content_block,
         }
     }
 }
@@ -119,7 +122,7 @@ pub enum VpnStatus {
     Disconnected {},
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct TunnelArgs {
     pub exit: ExitSelector,
@@ -167,14 +170,13 @@ impl Manager {
         receive_cb: extern "C" fn(FfiBytes),
         set_keychain_wg_sk: Option<KeychainSetSecretKeyFn>,
         log_persistence: Option<Box<LogPersistence>>,
+        force_init_inactive: bool,
     ) -> Result<Arc<Self>, ConfigLoadError> {
         let cancellation_token = CancellationToken::new();
-        let client_state = Arc::new(ClientState::new(config_dir, keychain_wg_sk, user_agent, set_keychain_wg_sk)?);
-        let config = client_state.get_config();
-        let (target_state, tunnel_state) = TunnelState::new(&runtime, client_state.clone(), receive_cb, cancellation_token.clone());
-        let initial_status = Status::new(Uuid::new_v4(), VpnStatus::Disconnected {}, config, client_state.base_url());
+        let client_state = ClientState::new(config_dir, keychain_wg_sk, user_agent, set_keychain_wg_sk, force_init_inactive)?;
+        let tunnel_state = TunnelState::new(&runtime, client_state.clone(), receive_cb, cancellation_token.clone());
+        let initial_status = Status::new(Uuid::new_v4(), VpnStatus::Disconnected {}, &client_state.borrow());
         let this = Arc::new(Self {
-            target_state,
             tunnel_state,
             client_state,
             status_watch: channel(initial_status).0,
@@ -184,7 +186,7 @@ impl Manager {
             log_persistence,
         });
         this.spawn_child_task(Self::wireguard_key_registraction_task);
-        this.spawn_child_task(Self::propagate_tunnel_state_updates_to_status_task);
+        this.spawn_child_task(Self::propagate_updates_to_status_task);
         Ok(this)
     }
 
@@ -196,55 +198,8 @@ impl Manager {
         self.status_watch.subscribe()
     }
 
-    pub fn subscribe_exit_list(&self) -> Receiver<Option<ConfigCached<Arc<ExitList>>>> {
-        self.client_state.subscribe_exit_list()
-    }
-
-    #[allow(clippy::result_unit_err)]
-    pub fn set_target_state(&self, new_target_args: Option<TunnelArgs>, allow_activation: bool) -> Result<(), ()> {
-        let mut ret = Ok(());
-        let ret_ref = &mut ret;
-        _ = self.target_state.send_if_modified(move |target_state| {
-            if target_state.tunnel_args == new_target_args {
-                tracing::warn!(
-                    message_id = "oqQ8GZEE",
-                    "not setting target state, because the new one is identical to the current one"
-                );
-                return false;
-            }
-            if target_state.tunnel_args.is_none() && new_target_args.is_some() && !allow_activation {
-                *ret_ref = Err(());
-                tracing::warn!(message_id = "juurJ3bm", "not setting target state, because activation is not allowed");
-                return false;
-            }
-            target_state.tunnel_args = new_target_args;
-            true
-        });
-        ret
-    }
-
     pub fn set_network_interface(&self, network_interface: Option<NetworkInterface>) {
-        tracing::info!(message_id = "Yqi8bHbi", ?network_interface, "setting network interface");
-        _ = self.target_state.send_if_modified(|target_state| {
-            if target_state.network_interface != network_interface {
-                target_state.network_interface = network_interface.clone();
-                return true;
-            }
-            false
-        });
         self.client_state.set_network_interface(network_interface);
-    }
-
-    pub fn set_feature_flag(&self, flag: &str, active: bool) -> Result<(), ConfigSaveError> {
-        let ret = self.client_state.set_feature_flag(flag, active);
-        self.update_status_if_changed(None);
-        ret
-    }
-
-    pub fn set_use_system_dns(&self, enable: bool) -> Result<(), ConfigSaveError> {
-        let ret = self.client_state.set_use_system_dns(enable);
-        self.update_status_if_changed(None);
-        ret
     }
 
     pub fn send_packet(&self, packet: &[u8]) {
@@ -257,91 +212,35 @@ impl Manager {
         self.tunnel_state.borrow().traffic_stats()
     }
 
-    fn update_status_if_changed(&self, new_vpn_status: Option<VpnStatus>) {
-        self.status_watch.send_if_modified(|status| {
-            let config = self.client_state.get_config();
-            let vpn_status = new_vpn_status.unwrap_or_else(|| status.vpn_status.clone());
-            let mut new_status = Status::new(status.version, vpn_status, config, self.client_state.base_url());
-            if new_status == *status {
-                return false;
-            }
-            new_status.version = Uuid::new_v4();
-            *status = new_status;
-            true
-        });
-    }
-
-    pub async fn login(&self, account_id: AccountId, validate: bool) -> Result<(), ApiError> {
+    pub async fn login(&self, account_id: AccountId, validate: bool) -> Result<(), ConfigDirtyOrApiError> {
         let mut auth_token = None;
         if validate {
             const MAX_ATTEMPTS: usize = 10;
             for _ in 0..MAX_ATTEMPTS {
                 let api_client = self.client_state.make_api_client(account_id.clone())?;
-                let output = api_client.acquire_auth_token().await?;
+                let output = api_client.acquire_auth_token().await.map_err(ApiError::from)?;
                 if let Some(url_override) = output.url_override {
                     // TODO: https://linear.app/soveng/issue/OBS-2268/override-web-url-for-apple-demo-accounts
-                    self.set_api_url(Some(url_override.api))?;
+                    self.set_api_url(Some(url_override.api));
                 } else {
                     auth_token = Some(output.auth_token.into());
                     break;
                 }
             }
             if auth_token.is_none() {
-                return Err(ApiError::ApiClient(anyhow::format_err!("exceeded {MAX_ATTEMPTS} URL overrides").into()));
+                return Err(ApiError::ApiClient(anyhow::format_err!("exceeded {MAX_ATTEMPTS} URL overrides").into()).into());
             }
         }
-        let ret = self.client_state.set_account_id(Some(account_id), auth_token);
-        self.update_status_if_changed(None);
-        ret.map_err(Into::into)
+        self.client_state.set_account_id(Some((account_id, auth_token)))?;
+        Ok(())
     }
 
-    pub fn logout(&self) -> Result<(), ConfigSaveError> {
-        let ret = self.client_state.set_account_id(None, None);
-        self.update_status_if_changed(None);
-        ret
+    pub fn logout(&self) -> Result<(), ConfigDirty> {
+        self.client_state.set_account_id(None)
     }
 
-    pub fn set_pinned_exits(&self, exits: Vec<PinnedLocation>) -> Result<(), ConfigSaveError> {
-        let ret = self.client_state.set_pinned_locations(exits);
-        self.update_status_if_changed(None);
-        ret
-    }
-
-    pub fn set_sni_relay(&self, value: Option<String>) -> Result<(), ConfigSaveError> {
-        self.client_state.set_sni_relay(value)
-    }
-
-    pub fn set_in_new_account_flow(&self, value: bool) -> Result<(), ConfigSaveError> {
-        let ret = self.client_state.set_in_new_account_flow(value);
-        self.update_status_if_changed(None);
-        ret
-    }
-
-    pub fn set_api_host_alternate(&self, value: Option<String>) -> Result<(), ConfigSaveError> {
-        self.client_state.set_api_host_alternate(value)
-    }
-
-    pub fn set_api_url(&self, value: Option<String>) -> Result<(), ConfigSaveError> {
-        let ret = self.client_state.set_api_url(value);
-        self.update_status_if_changed(None);
-        ret
-    }
-
-    pub fn set_dns_content_block(&self, value: DnsContentBlock) -> Result<(), ConfigSaveError> {
-        let ret = self.client_state.set_dns_content_block(value);
-        self.update_status_if_changed(None);
-        _ = self.target_state.send_if_modified(|target_state| {
-            if target_state.dns_content_block == value {
-                tracing::info!(
-                    message_id = "oNnPYAjD",
-                    "not sending new target state, because dns content block did not change"
-                );
-                return false;
-            }
-            target_state.dns_content_block = value;
-            true
-        });
-        ret
+    pub fn set_api_url(&self, value: Option<String>) {
+        self.client_state.set_api_url(value);
     }
 
     pub async fn api_request<C: Cmd>(&self, cmd: C) -> Result<C::Output, ApiError> {
@@ -358,8 +257,7 @@ impl Manager {
 
     pub async fn get_account_info(&self) -> Result<AccountInfo, ApiError> {
         let account_info = self.api_request(GetAccountInfo()).await?;
-        self.client_state.update_account_info(&account_info)?;
-        self.update_status_if_changed(None);
+        self.client_state.update_account_info(&account_info);
         Ok(account_info)
     }
 
@@ -375,26 +273,37 @@ impl Manager {
         });
     }
 
-    async fn propagate_tunnel_state_updates_to_status_task(this: Weak<Self>) {
-        let mut tunnel_state_recv = {
+    async fn propagate_updates_to_status_task(this: Weak<Self>) {
+        let (mut tunnel_state_recv, mut client_state_recv) = {
             let Some(this) = this.upgrade() else {
-                tracing::error!(
-                    message_id = "rkWUIljV",
-                    "could not start propagate_tunnel_state_updates_to_status_task task"
-                );
+                tracing::error!(message_id = "rkWUIljV", "could not start propagate_updates_to_status_task task");
                 return;
             };
-            this.tunnel_state.clone()
+            (this.tunnel_state.clone(), this.client_state.subscribe())
         };
         tunnel_state_recv.mark_changed();
-        while let Ok(()) = tunnel_state_recv.changed().await {
-            let new_tunnel_state_ref = tunnel_state_recv.borrow_and_update();
-            let new_vpn_status = VpnStatus::from_tunnel_state(&new_tunnel_state_ref);
-            drop(new_tunnel_state_ref);
+        loop {
+            let cont = select! {
+                res = tunnel_state_recv.changed() => res.is_ok(),
+                res = client_state_recv.changed() => res.is_ok(),
+            };
+            if !cont {
+                break;
+            };
             let Some(this) = this.upgrade() else { break };
-            this.update_status_if_changed(Some(new_vpn_status));
+            this.status_watch.send_if_modified(|status| {
+                let vpn_status = VpnStatus::from_tunnel_state(&tunnel_state_recv.borrow_and_update());
+                let client_state = client_state_recv.borrow_and_update();
+                let mut new_status = Status::new(status.version, vpn_status, &client_state);
+                if new_status == *status {
+                    return false;
+                }
+                new_status.version = Uuid::new_v4();
+                *status = new_status;
+                true
+            });
         }
-        tracing::info!(message_id = "NUeloeKe", "propagate_tunnel_state_updates_to_status_task stops")
+        tracing::info!(message_id = "NUeloeKe", "propagate_updates_to_status_task stops")
     }
 
     async fn wireguard_key_registraction_task(this: Weak<Self>) {
@@ -436,31 +345,45 @@ impl Manager {
         tracing::info!(message_id = "RG0S8UvK", "wireguard_key_registraction_task stops");
     }
 
-    pub fn rotate_wg_key(&self) -> Result<(), ConfigSaveError> {
-        self.client_state.rotate_wg_key()
-    }
-
     pub async fn create_debug_archive(&self, user_feedback: Option<&str>) -> anyhow::Result<String> {
         let user_feedback = user_feedback.map(ToOwned::to_owned);
         let log_dir = self.log_persistence.as_deref().map(LogPersistence::log_dir).map(ToOwned::to_owned);
-        let config = ConfigDebug::from(self.client_state.get_config());
+        let config = self.client_state.config_debug();
         tokio::task::spawn_blocking(move || create_debug_archive(user_feedback.as_deref(), &config, log_dir.as_deref()).map(Into::into)).await?
     }
 
     pub fn get_debug_info(&self) -> DebugInfo {
-        DebugInfo { config: self.client_state.get_config().into() }
-    }
-
-    pub fn set_auto_connect(&self, enable: bool) -> Result<(), ConfigSaveError> {
-        self.client_state.set_auto_connect(enable)?;
-        self.update_status_if_changed(None);
-        Ok(())
+        DebugInfo { config: self.client_state.config_debug() }
     }
 
     pub fn wake(&self) {
         if let Some(conn) = self.tunnel_state.borrow().get_conn() {
             conn.wake();
         }
+    }
+
+    pub async fn get_exit_list(&self, known_version: Option<Vec<u8>>) -> Result<CachedValue<Arc<ExitList>>, ManagerCmdErrorCode> {
+        let mut watch = self.client_state.subscribe();
+        let client_state = watch
+            .wait_for(|client_state| {
+                client_state
+                    .config()
+                    .cached_exits
+                    .clone()
+                    .is_some_and(|e| Some(e.version()) != known_version.as_deref())
+            })
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, message_id = "ahcieM1h", "exit list subscription channel closed: {}", error,);
+                ManagerCmdErrorCode::Other
+            })?;
+        let cached = client_state.config().cached_exits.clone().unwrap();
+        Ok(CachedValue { version: cached.version().to_vec(), last_updated: cached.last_updated, value: cached.value.clone() })
+    }
+
+    pub fn run_on_client_state(&self, f: impl FnOnce(&ClientStateHandle)) -> Result<ManagerCmdOk, ManagerCmdErrorCode> {
+        f(&self.client_state);
+        Ok(ManagerCmdOk::Empty)
     }
 }
 

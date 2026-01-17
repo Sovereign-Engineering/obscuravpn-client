@@ -59,7 +59,7 @@ async fn login(args: ClientLoginArgs) -> Result<(), ClientError> {
 }
 
 async fn go_to_target_state(target_state: Option<TunnelArgs>) -> Result<(), ClientError> {
-    run_command::<()>(ManagerCmd::SetTunnelArgs { args: target_state.clone(), allow_activation: true }).await??;
+    run_command::<()>(ManagerCmd::SetTunnelArgs { args: target_state.clone(), active: Some(target_state.is_some()) }).await??;
     eprintln!("updated target state");
     let mut known_version = None;
     loop {

@@ -20,24 +20,18 @@ enum NeManagerCmd: Codable {
     case getStatus(knownVersion: UUID?)
     case getTrafficStats
     case ping
-    case setTunnelArgs(args: TunnelArgs?, allowActivation: Bool = false)
+    case setTunnelArgs(args: TunnelArgs?, active: Bool?)
     case login(accountId: String, validate: Bool)
     case getExitList(knownVersion: String?)
     case refreshExitList(freshness: TimeInterval)
 }
 
-enum VersionedTunnelArgs: Codable {
-    case v1(TunnelArgs)
-}
-
 // See ../../rustlib/src/manager.rs
-// Reflect changes in VersionedTunnelArgs!
 struct TunnelArgs: Codable {
     var exit: ExitSelector
 }
 
 // See ../../rustlib/src/manager.rs
-// Reflect changes in VersionedTunnelArgs!
 enum ExitSelector: Codable {
     case any
     case exit(id: String)

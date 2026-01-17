@@ -2,18 +2,19 @@ use super::{
     errors::{ApiError, TunnelConnectError},
     network_config::TunnelNetworkConfig,
 };
+use crate::config::{ConfigDebug, ConfigHandle};
 use crate::constants::DEFAULT_API_URL;
+use crate::errors::ConfigDirty;
+use crate::manager::TunnelArgs;
 use crate::network_config::DnsContentBlock;
+use crate::tunnel_state::TargetState;
 use crate::{config::KeychainSetSecretKeyFn, net::NetworkInterface, network_config::DnsConfig, quicwg::QuicWgConnHandshaking};
 use crate::{config::PinnedLocation, exit_selection::ExitSelectionState};
+use crate::{config::cached::ConfigCached, exit_selection::ExitSelector};
 use crate::{
     config::{self, Config, ConfigLoadError},
     errors::RelaySelectionError,
     quicwg::QuicWgConn,
-};
-use crate::{
-    config::{ConfigSaveError, cached::ConfigCached},
-    exit_selection::ExitSelector,
 };
 use crate::{quicwg::TUNNEL_MTU, relay_selection::race_relay_handshakes};
 use boringtun::x25519::{PublicKey, StaticSecret};
@@ -29,31 +30,30 @@ use rand::{seq::SliceRandom, thread_rng};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::Arc;
 use std::{cmp::min, path::PathBuf, time::Instant};
 use std::{
     mem,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
+use tokio::sync::watch::{Receiver, Sender};
 use tokio::{spawn, time::timeout_at};
 use uuid::Uuid;
 
 const DEFAULT_API_BACKUP: &str = "crimsonlance.net";
 const DEFAULT_RELAY_SNI: &str = "example.com";
 
-pub struct ClientState {
-    exit_list_watch: tokio::sync::watch::Sender<Option<ConfigCached<Arc<ExitList>>>>,
-    exit_update_lock: tokio::sync::Mutex<()>,
-    inner: Mutex<ClientStateInner>,
-    user_agent: String,
-}
+// A convenience wrapper to act as message receiver (reevaluate when https://rust-lang.github.io/rfcs//3519-arbitrary-self-types-v2.html is stable)
+#[derive(Clone)]
+pub struct ClientStateHandle(Sender<ClientState>);
 
-struct ClientStateInner {
+pub struct ClientState {
     cached_api_client: Option<Arc<Client>>,
-    config: Config,
-    config_dir: PathBuf,
-    set_keychain_wg_sk: Option<KeychainSetSecretKeyFn>,
+    config: ConfigHandle,
+    exit_update_lock: Arc<tokio::sync::Mutex<()>>,
     network_interface: Option<NetworkInterface>,
+    set_keychain_wg_sk: Option<KeychainSetSecretKeyFn>,
+    user_agent: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -70,121 +70,177 @@ impl PartialEq for AccountStatus {
     }
 }
 
-impl ClientStateInner {
-    fn base_url(&self) -> String {
-        self.config.api_url.clone().unwrap_or(DEFAULT_API_URL.to_string())
-    }
-}
-
 impl ClientState {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(
         config_dir: PathBuf,
         keychain_wg_sk: Option<&[u8]>,
         user_agent: String,
         set_keychain_wg_sk: Option<KeychainSetSecretKeyFn>,
-    ) -> Result<Self, ConfigLoadError> {
-        let mut config = config::load(&config_dir, keychain_wg_sk)?;
-        config.migrate();
-        let exit_list_watch = tokio::sync::watch::channel(config.cached_exits.clone()).0;
-        let inner = ClientStateInner { config_dir, config, cached_api_client: None, set_keychain_wg_sk, network_interface: None };
-        Ok(Self { exit_list_watch, exit_update_lock: Default::default(), inner: Mutex::new(inner), user_agent })
-    }
-
-    fn lock(&self) -> MutexGuard<'_, ClientStateInner> {
-        self.inner.lock().unwrap()
-    }
-
-    fn change_config<T>(inner: &mut ClientStateInner, f: impl FnOnce(&mut Config, &mut ClientStateInner) -> T) -> Result<T, ConfigSaveError> {
-        let mut new_config = inner.config.clone();
-        let ret = f(&mut new_config, inner);
-        if inner.config != new_config {
-            config::save(&inner.config_dir, &new_config)?;
+        force_init_inactive: bool,
+    ) -> Result<ClientStateHandle, ConfigLoadError> {
+        let mut config = ConfigHandle::new(config_dir, keychain_wg_sk)?;
+        if force_init_inactive {
+            config.change(|config| config.tunnel_active = false)
         }
-        inner.config = new_config;
-        Ok(ret)
+        let this = ClientState {
+            config,
+            cached_api_client: None,
+            set_keychain_wg_sk,
+            network_interface: None,
+            exit_update_lock: Default::default(),
+            user_agent,
+        };
+        Ok(ClientStateHandle(tokio::sync::watch::channel(this).0))
+    }
+
+    pub fn target_state(&self) -> TargetState {
+        TargetState {
+            tunnel_args: self.config.tunnel_active.then_some(self.config.tunnel_args.clone()),
+            network_interface: self.network_interface.clone(),
+            dns_content_block: self.config.dns_content_block,
+        }
+    }
+
+    pub fn config(&self) -> &Config {
+        &self.config
+    }
+
+    pub fn base_url(&self) -> String {
+        self.config.api_url.clone().unwrap_or(DEFAULT_API_URL.to_string())
+    }
+
+    fn make_api_client(&self, handle: Arc<ClientStateHandle>, account_id: AccountId) -> Result<Client, ApiError> {
+        let base_url = self.base_url();
+        let network_interface = self.network_interface.clone();
+        let alternative_hosts = vec![self.config.api_host_alternate.clone().unwrap_or_else(|| DEFAULT_API_BACKUP.into())];
+        tracing::info!(
+            message_id = "By9iMtd5",
+            ?network_interface,
+            ?base_url,
+            ?alternative_hosts,
+            "creating new API client"
+        );
+        Client::new(
+            base_url,
+            alternative_hosts,
+            account_id,
+            &self.user_agent,
+            network_interface.as_ref().map(|i| i.name.as_str()),
+            Some(handle),
+        )
+        .map_err(ClientError::from)
+        .map_err(ApiError::from)
+    }
+}
+
+impl ClientStateHandle {
+    pub fn borrow(&self) -> tokio::sync::watch::Ref<'_, ClientState> {
+        self.0.borrow()
+    }
+
+    pub fn subscribe(&self) -> Receiver<ClientState> {
+        self.0.subscribe()
+    }
+
+    fn change_config(&self, f: impl FnOnce(&mut Config)) {
+        self.change(|inner| {
+            inner.config.change(|config| {
+                f(config);
+            })
+        });
+    }
+
+    fn change<T>(&self, f: impl FnOnce(&mut ClientState) -> T) -> T {
+        let mut ret: Option<T> = None;
+        self.0.send_modify(|inner| {
+            ret = Some(f(inner));
+        });
+        ret.unwrap()
     }
 
     /// Log in or out.
-    ///
-    /// If `account_id` is set log in `auth_token` may be specified with an initial auth token.
-    ///
-    /// If `account_id` is `None` log out, `auth_token` should be `None`.
-    pub fn set_account_id(&self, account_id: Option<AccountId>, auth_token: Option<AuthToken>) -> Result<(), ConfigSaveError> {
-        debug_assert!(
-            account_id.is_some() || auth_token.is_none(),
-            "It doesn't make sense to set `auth_token` with no `account_id`."
-        );
+    pub fn set_account_id(&self, account_id_and_auth_token: Option<(AccountId, Option<AuthToken>)>) -> Result<(), ConfigDirty> {
+        let (account_id, auth_token) = match account_id_and_auth_token {
+            Some((account_id, auth_token)) => (Some(account_id), auth_token),
+            None => (None, None),
+        };
+        self.change(|inner| {
+            inner.config.change(|config| {
+                if account_id != config.account_id {
+                    // Log-out / Change User
 
-        let mut inner = self.lock();
-        inner.cached_api_client = None;
-        Self::change_config(&mut inner, move |config, _| {
-            if account_id != config.account_id {
-                // Log-out / Change User
+                    let mut old_account_ids = mem::take(&mut config.old_account_ids);
+                    if let Some(old_account_id) = &config.account_id
+                        && !old_account_ids.contains(old_account_id)
+                    {
+                        old_account_ids.push(old_account_id.clone());
+                    }
 
-                let mut old_account_ids = mem::take(&mut config.old_account_ids);
-                if let Some(old_account_id) = &config.account_id
-                    && !old_account_ids.contains(old_account_id)
-                {
-                    old_account_ids.push(old_account_id.clone());
+                    *config = Config {
+                        api_url: config.api_url.take(),
+                        account_id,
+                        cached_auth_token: auth_token.map(Into::into),
+                        old_account_ids,
+                        in_new_account_flow: config.in_new_account_flow,
+                        // see https://linear.app/soveng/issue/OBS-1171
+                        local_tunnels_ids: config.local_tunnels_ids.clone(),
+                        ..Default::default()
+                    }
+                } else {
+                    tracing::warn!(message_id = "shia4Eph", "Setting auth token for logged in account. This isn't expected.");
+                    config.cached_auth_token = auth_token.map(Into::into);
                 }
-
-                *config = Config {
-                    api_url: config.api_url.take(),
-                    account_id,
-                    cached_auth_token: auth_token.map(Into::into),
-                    old_account_ids,
-                    in_new_account_flow: config.in_new_account_flow,
-                    // see https://linear.app/soveng/issue/OBS-1171
-                    local_tunnels_ids: config.local_tunnels_ids.clone(),
-                    ..Default::default()
-                }
-            } else {
-                tracing::warn!(message_id = "shia4Eph", "Setting auth token for logged in account. This isn't expected.");
-                config.cached_auth_token = auth_token.map(Into::into);
-            }
-        })?;
-        Ok(())
-    }
-
-    pub fn get_config(&self) -> Config {
-        self.lock().config.clone()
+            });
+            inner.cached_api_client = None;
+        });
+        self.borrow().config.check_persisted()
     }
 
     pub fn get_exit_list(&self) -> Option<ConfigCached<Arc<ExitList>>> {
-        self.lock().config.cached_exits.clone()
+        self.borrow().config.cached_exits.clone()
     }
 
-    pub fn set_pinned_locations(&self, pinned_locations: Vec<PinnedLocation>) -> Result<(), ConfigSaveError> {
-        let mut inner = self.lock();
-        Self::change_config(&mut inner, move |config, _| {
+    pub fn set_pinned_exits(&self, pinned_locations: Vec<PinnedLocation>) {
+        self.change_config(|config| {
             config.pinned_locations = pinned_locations;
-        })?;
-        Ok(())
-    }
-
-    pub fn set_feature_flag(&self, flag: &str, active: bool) -> Result<(), ConfigSaveError> {
-        Self::change_config(&mut self.lock(), |config, _| {
-            config.feature_flags.set(flag, active);
-        })?;
-        Ok(())
-    }
-
-    pub fn set_api_host_alternate(&self, value: Option<String>) -> Result<(), ConfigSaveError> {
-        let mut inner = self.lock();
-        Self::change_config(&mut inner, move |config, _| {
-            tracing::info!(
-                message_id = "jee1ieWa",
-                api_host_alternate_new = value,
-                api_host_alternate_old = config.api_host_alternate,
-                "Changing API alternate host.",
-            );
-            config.api_host_alternate = value;
         })
     }
 
-    pub fn set_sni_relay(&self, value: Option<String>) -> Result<(), ConfigSaveError> {
-        let mut inner = self.lock();
-        Self::change_config(&mut inner, move |config, _| {
+    pub fn set_feature_flag(&self, flag: &str, active: bool) {
+        self.change_config(|config| {
+            config.feature_flags.set(flag, active);
+        })
+    }
+
+    pub fn set_tunnel_target_state(&self, tunnel_args: Option<TunnelArgs>, active: Option<bool>) {
+        self.change_config(|config| {
+            if let Some(tunnel_args) = tunnel_args {
+                config.tunnel_args = tunnel_args
+            }
+            if let Some(active) = active {
+                config.tunnel_active = active
+            }
+        });
+    }
+
+    pub fn set_api_host_alternate(&self, value: Option<String>) {
+        self.change(|inner| {
+            inner.config.change(|config| {
+                tracing::info!(
+                    message_id = "jee1ieWa",
+                    api_host_alternate_new = value,
+                    api_host_alternate_old = config.api_host_alternate,
+                    "Changing API alternate host.",
+                );
+                config.api_host_alternate = value;
+            });
+            inner.cached_api_client = None;
+        })
+    }
+
+    pub fn set_sni_relay(&self, value: Option<String>) {
+        self.change_config(|config| {
             tracing::info!(
                 message_id = "jee1ieWa",
                 sni_relay_new = value,
@@ -195,50 +251,45 @@ impl ClientState {
         })
     }
 
-    pub fn set_in_new_account_flow(&self, value: bool) -> Result<(), ConfigSaveError> {
-        let mut inner = self.lock();
-        Self::change_config(&mut inner, move |config, _| config.in_new_account_flow = value)?;
-        Ok(())
+    pub fn set_in_new_account_flow(&self, value: bool) {
+        self.change_config(|config| {
+            config.in_new_account_flow = value;
+        })
     }
 
-    pub fn set_api_url(&self, url: Option<String>) -> Result<(), ConfigSaveError> {
-        let mut inner = self.lock();
-        inner.cached_api_client = None;
-        Self::change_config(&mut inner, move |config, inner| {
-            config.api_url = url;
-            config.wireguard_key_cache.rotate_now(inner.set_keychain_wg_sk.as_ref());
-        })?;
-        Ok(())
+    pub fn set_api_url(&self, url: Option<String>) {
+        self.change(|inner| {
+            inner.config.change(|config| {
+                config.api_url = url;
+                config.wireguard_key_cache.rotate_now(inner.set_keychain_wg_sk.as_ref());
+            });
+            inner.cached_api_client = None;
+        })
     }
 
-    pub fn set_dns_content_block(&self, value: DnsContentBlock) -> Result<(), ConfigSaveError> {
-        let mut inner = self.lock();
-        Self::change_config(&mut inner, move |config, _| config.dns_content_block = value)?;
-        Ok(())
+    pub fn set_dns_content_block(&self, value: DnsContentBlock) {
+        self.change_config(move |config| config.dns_content_block = value)
     }
 
     pub fn set_network_interface(&self, network_interface: Option<NetworkInterface>) {
-        let mut inner = self.lock();
-        inner.network_interface = network_interface;
-        inner.cached_api_client = None;
+        self.change(|inner| {
+            inner.network_interface = network_interface;
+            inner.cached_api_client = None;
+        })
     }
 
-    pub fn set_auto_connect(&self, enable: bool) -> Result<(), ConfigSaveError> {
-        let mut inner = self.lock();
-        Self::change_config(&mut inner, move |config, _| config.auto_connect = enable)?;
-        Ok(())
+    pub fn set_auto_connect(&self, enable: bool) {
+        self.change_config(|config| {
+            config.auto_connect = enable;
+        })
     }
 
-    pub fn set_use_system_dns(&self, enable: bool) -> Result<(), ConfigSaveError> {
-        let mut inner = self.lock();
-        Self::change_config(&mut inner, move |config, _| {
-            config.dns = if enable { DnsConfig::System } else { DnsConfig::Default }
-        })?;
-        Ok(())
+    pub fn set_use_system_dns(&self, enable: bool) {
+        self.change_config(|config| config.dns = if enable { DnsConfig::System } else { DnsConfig::Default })
     }
 
     pub async fn connect(
-        self: &Arc<Self>,
+        &self,
         exit_selector: &ExitSelector,
         network_interface: Option<&NetworkInterface>,
         selection_state: &mut ExitSelectionState,
@@ -255,13 +306,14 @@ impl ClientState {
         let conn = QuicWgConn::connect(handshaking, wg_sk.clone(), remote_pk, client_ip_v4, ping_keepalive_ip, token).await?;
         tracing::info!("tunnel connected");
         let exit_id = exit.id.clone();
-        Self::change_config(&mut self.lock(), move |config, _| {
+
+        self.change_config(|config| {
             if *exit_selector != (ExitSelector::Any {}) {
                 config.last_chosen_exit = Some(exit_id);
                 config.last_chosen_exit_selector = exit_selector.clone();
             };
             config.last_exit_selector = exit_selector.clone();
-        })?;
+        });
         Ok((conn, network_config, exit, relay))
     }
 
@@ -276,7 +328,7 @@ impl ClientState {
     }
 
     async fn new_tunnel(
-        self: &Arc<Self>,
+        &self,
         exit_selector: &ExitSelector,
         network_interface: Option<&NetworkInterface>,
         selection_state: &mut ExitSelectionState,
@@ -313,11 +365,14 @@ impl ClientState {
                 tracing::warn!("error removing unused local tunnels: {}", err);
             }
 
-            let (sk, pk) = Self::change_config(&mut self.lock(), |config, inner| {
-                config.wireguard_key_cache.use_key_pair(inner.set_keychain_wg_sk.as_ref())
-            })?;
-            let wg_pubkey = WgPubkey(pk.to_bytes());
             let tunnel_id = Uuid::new_v4();
+            let (sk, pk) = self.change(|inner| {
+                inner.config.change(|config| {
+                    config.local_tunnels_ids.push(tunnel_id.to_string());
+                    config.wireguard_key_cache.use_key_pair(inner.set_keychain_wg_sk.as_ref())
+                })
+            });
+            let wg_pubkey = WgPubkey(pk.to_bytes());
             tracing::info!(
                     %tunnel_id,
                     client.pubkey =? wg_pubkey,
@@ -325,7 +380,6 @@ impl ClientState {
                     relay.id =? &closest_relay.id,
                     relay.ip_v4 =% closest_relay.ip_v4,
                     "creating tunnel");
-            Self::change_config(&mut self.lock(), |config, _| config.local_tunnels_ids.push(tunnel_id.to_string()))?;
 
             let cmd = CreateTunnel::Obfuscated {
                 id: Some(tunnel_id),
@@ -340,9 +394,11 @@ impl ClientState {
                     Some(ApiErrorKind::TunnelLimitExceeded {}) => error,
                     Some(ApiErrorKind::WgKeyRotationRequired {}) => {
                         tracing::warn!(?error, "server indicated that key rotation is required immediately");
-                        Self::change_config(&mut self.lock(), |config, inner| {
-                            config.wireguard_key_cache.rotate_now(inner.set_keychain_wg_sk.as_ref())
-                        })?;
+                        self.change(|inner| {
+                            inner
+                                .config
+                                .change(|config| config.wireguard_key_cache.rotate_now(inner.set_keychain_wg_sk.as_ref()))
+                        });
                         continue;
                     }
                     _ => return Err(error.into()),
@@ -381,23 +437,21 @@ impl ClientState {
         Ok((tunnel_id, config, sk, tunnel_info.exit, tunnel_info.relay, handshaking))
     }
 
-    pub async fn remove_local_tunnels(self: &Arc<Self>) -> Result<(), ApiError> {
+    pub async fn remove_local_tunnels(&self) -> Result<(), ApiError> {
         loop {
-            let Some(local_tunnel_id) = self.lock().config.local_tunnels_ids.first().cloned() else {
+            let Some(local_tunnel_id) = self.borrow().config.local_tunnels_ids.first().cloned() else {
                 return Ok(());
             };
             tracing::info!("removing previously used tunnel {}", &local_tunnel_id);
             self.api_request(DeleteTunnel { id: local_tunnel_id.clone() }).await?;
-            Self::change_config(&mut self.lock(), |config, _| config.local_tunnels_ids.retain(|x| x != &local_tunnel_id))?
+            self.0
+                .send_modify(|inner| inner.config.change(|config| config.local_tunnels_ids.retain(|x| x != &local_tunnel_id)))
         }
     }
 
-    pub async fn select_relay(
-        self: &Arc<Self>,
-        network_interface: Option<&NetworkInterface>,
-    ) -> Result<(OneRelay, QuicWgConnHandshaking), TunnelConnectError> {
+    pub async fn select_relay(&self, network_interface: Option<&NetworkInterface>) -> Result<(OneRelay, QuicWgConnHandshaking), TunnelConnectError> {
         let relays = self.api_request(ListRelays {}).await?;
-        let sni = self.lock().config.sni_relay.clone().unwrap_or_else(|| DEFAULT_RELAY_SNI.into());
+        let sni = self.0.borrow().config.sni_relay.clone().unwrap_or_else(|| DEFAULT_RELAY_SNI.into());
 
         tracing::info!(
             message_id = "eech6Ier",
@@ -406,10 +460,10 @@ impl ClientState {
             "Racing relays",
         );
         let (use_tcp_tls, pad_to_mtu) = {
-            let feature_flags = &self.get_config().feature_flags;
+            let this = self.borrow();
             (
-                feature_flags.tcp_tls_tunnel.unwrap_or(false),
-                feature_flags.quic_frame_padding.unwrap_or(false),
+                this.config.feature_flags.tcp_tls_tunnel.unwrap_or(false),
+                this.config.feature_flags.quic_frame_padding.unwrap_or(false),
             )
         };
         let racing_handshakes = race_relay_handshakes(network_interface, relays, sni, use_tcp_tls, pad_to_mtu)?;
@@ -468,85 +522,65 @@ impl ClientState {
         Ok((relay, handshaking))
     }
 
-    pub fn make_api_client(self: &Arc<Self>, account_id: AccountId) -> Result<Client, ApiError> {
-        let mut inner = self.lock();
-        self.make_api_client_inner(&mut inner, account_id)
+    pub fn make_api_client(&self, account_id: AccountId) -> Result<Client, ApiError> {
+        self.borrow().make_api_client(Arc::new(self.clone()), account_id)
     }
 
-    fn make_api_client_inner(self: &Arc<Self>, inner: &mut ClientStateInner, account_id: AccountId) -> Result<Client, ApiError> {
-        let base_url = inner.base_url();
-        tracing::info!(message_id = "By9iMtd5", network_interface = ?inner.network_interface, ?base_url, "creating new API client");
-        Client::new(
-            base_url,
-            vec![inner.config.api_host_alternate.clone().unwrap_or_else(|| DEFAULT_API_BACKUP.into())],
-            account_id,
-            &self.user_agent,
-            inner.network_interface.as_ref().map(|i| i.name.as_str()),
-            Some(self.clone()),
-        )
-        .map_err(ClientError::from)
-        .map_err(ApiError::from)
-    }
-
-    fn api_client(self: &Arc<Self>) -> Result<Arc<Client>, ApiError> {
-        let mut inner = self.lock();
-
-        let Some(account_id) = inner.config.account_id.clone() else {
+    fn api_client(&self) -> Result<Arc<Client>, ApiError> {
+        let Some(account_id) = self.borrow().config.account_id.clone() else {
             return Err(ApiError::NoAccountId);
         };
 
-        if let Some(api_client) = inner.cached_api_client.clone() {
-            Ok(api_client)
-        } else {
-            let api_client = Arc::new(self.make_api_client_inner(&mut inner, account_id)?);
-            if let Some(auth_token) = inner.config.cached_auth_token.clone() {
-                api_client.set_auth_token(Some(auth_token.into()));
+        self.change(|inner| {
+            if let Some(api_client) = inner.cached_api_client.clone() {
+                Ok(api_client)
+            } else {
+                let api_client = Arc::new(inner.make_api_client(Arc::new(self.clone()), account_id)?);
+                if let Some(auth_token) = inner.config.cached_auth_token.clone() {
+                    api_client.set_auth_token(Some(auth_token.into()));
+                }
+                Ok(inner.cached_api_client.insert(api_client).clone())
             }
-            Ok(inner.cached_api_client.insert(api_client).clone())
-        }
+        })
     }
 
-    fn cache_auth_token(&self) -> Result<(), ConfigSaveError> {
-        let mut inner = self.lock();
-
-        let auth_token = inner.cached_api_client.as_ref().and_then(|c| c.get_auth_token());
-        Self::change_config(&mut inner, |config, _| {
-            config.cached_auth_token = auth_token.map(Into::into);
-        })?;
-
-        Ok(())
+    fn cache_auth_token(&self) {
+        self.change(|inner| {
+            let auth_token = inner.cached_api_client.as_ref().and_then(|c| c.get_auth_token());
+            inner.config.change(|config| {
+                config.cached_auth_token = auth_token.map(Into::into);
+            });
+        })
     }
 
-    pub async fn api_request<C: Cmd>(self: &Arc<Self>, cmd: C) -> Result<C::Output, ApiError> {
+    pub async fn api_request<C: Cmd>(&self, cmd: C) -> Result<C::Output, ApiError> {
         let api_client = self.api_client()?;
         let result = api_client.run(cmd).await;
-        self.cache_auth_token()?;
+        self.cache_auth_token();
         Ok(result?)
     }
 
-    pub async fn cached_api_request<C: ETagCmd>(
-        self: &Arc<Self>,
-        cmd: C,
-        etag: Option<&[u8]>,
-    ) -> Result<obscuravpn_api::Response<C::Output>, ApiError> {
+    pub async fn cached_api_request<C: ETagCmd>(&self, cmd: C, etag: Option<&[u8]>) -> Result<obscuravpn_api::Response<C::Output>, ApiError> {
         let api_client = self.api_client()?;
         let result = api_client.run_with_etag(cmd, etag).await?;
-        self.cache_auth_token()?;
+        self.cache_auth_token();
         Ok(result)
     }
 
     pub fn base_url(&self) -> String {
-        self.lock().base_url()
+        self.borrow().base_url()
     }
 
-    pub fn user_agent(&self) -> &str {
-        &self.user_agent
+    pub fn user_agent(&self) -> String {
+        self.borrow().user_agent.clone()
     }
 
-    pub async fn maybe_update_exits(self: &Arc<Self>, freshness: Duration) -> Result<(), ApiError> {
-        let _update_lock = self.exit_update_lock.lock().await;
+    pub async fn maybe_update_exits(&self, freshness: Duration) -> Result<(), ApiError> {
+        // Outstanding borrows should not be held over .await
+        let exit_update_lock = self.borrow().exit_update_lock.clone();
+        let _exit_update_guard = exit_update_lock.lock().await;
 
-        let prev = self.lock().config.cached_exits.clone();
+        let prev = self.borrow().config.cached_exits.clone();
         let prev = prev.as_ref();
         if prev.is_some_and(|c| c.staleness() < freshness) {
             tracing::info!(message_id = "fao5ciJu", "Exit list is already up to date.");
@@ -567,45 +601,33 @@ impl ClientState {
             }
         };
         let cached_exits = ConfigCached::new(Arc::new(body), version);
-
-        let mut inner = self.lock();
-
-        Self::change_config(&mut inner, |config, _| {
-            config.cached_exits = Some(cached_exits.clone());
-        })?;
-
-        match self.exit_list_watch.send(Some(cached_exits)) {
-            Ok(()) => {}
-            Err(error) => {
-                tracing::error!(?error, message_id = "Ziesha5y", "Ignoring failed exit_list_watch.send: {}", error,);
-            }
-        }
-
+        self.change_config(|config| config.cached_exits = Some(cached_exits.clone()));
         Ok(())
     }
 
-    pub fn update_account_info(&self, account_info: &AccountInfo) -> Result<(), ConfigSaveError> {
+    pub fn update_account_info(&self, account_info: &AccountInfo) {
         let response_time = SystemTime::now();
         let last_updated_sec = response_time.duration_since(UNIX_EPOCH).unwrap_or(Duration::ZERO).as_secs();
-        let mut inner = self.lock();
         let account = Some(AccountStatus { account_info: account_info.clone(), last_updated_sec });
-        Self::change_config(&mut inner, move |config, _| {
-            config.cached_account_status = account;
-        })
+        self.change_config(|config| config.cached_account_status = account);
     }
 
     // Only intended to be called after use (on disconnect). Rotation schedules are fairly arbitrary, so using the key one more time is fine. The benefit is that we don't trigger rotation if the user stops using the client, but the client is still auto-starting. This does not imply the effect of `Self::register_cached_wireguard_key_if_new`. It's the callers responsibility to ensure that registration is triggered asap.
-    pub fn rotate_wireguard_key_if_required(&self) -> Result<(), ConfigSaveError> {
-        Self::change_config(&mut self.lock(), |config, inner| {
-            config.wireguard_key_cache.rotate_if_required(inner.set_keychain_wg_sk.as_ref());
+    pub fn rotate_wireguard_key_if_required(&self) {
+        self.change(|inner| {
+            inner.config.change(|config| {
+                config.wireguard_key_cache.rotate_if_required(inner.set_keychain_wg_sk.as_ref());
+            })
         })
     }
 
     // Registers the current wireguard key via the API server if it has not been registered yet. Because this function is a NOOP after first successful use (until key rotation), it may be called frequently. Most importantly it should be called after disconnecting (due to possible key rotation) and after observing that the user paid.
-    pub async fn register_cached_wireguard_key_if_new(self: &Arc<Self>) -> Result<(), ApiError> {
-        let key_pair = Self::change_config(&mut self.lock(), |config, inner| {
-            config.wireguard_key_cache.need_registration(inner.set_keychain_wg_sk.as_ref())
-        })?;
+    pub async fn register_cached_wireguard_key_if_new(&self) -> Result<(), ApiError> {
+        let key_pair = self.change(|inner| {
+            inner
+                .config
+                .change(|config| config.wireguard_key_cache.need_registration(inner.set_keychain_wg_sk.as_ref()))
+        });
         let Some((current_public_key, old_public_keys)) = key_pair else {
             tracing::info!("public wireguard key already registered");
             return Ok(());
@@ -616,46 +638,45 @@ impl ClientState {
         };
         match self.api_request(cmd).await {
             Ok(()) => {
-                Self::change_config(&mut self.lock(), |config, _| {
-                    config.wireguard_key_cache.registered(current_public_key, &old_public_keys)
-                })?;
+                self.change_config(|config| config.wireguard_key_cache.registered(current_public_key, &old_public_keys));
                 tracing::info!("successfully registered public wireguard key");
                 Ok(())
             }
             Err(error) => {
                 if matches!(error.api_error_kind(), Some(ApiErrorKind::WgKeyRotationRequired {})) {
                     tracing::warn!(?error, "server indicated that key rotation is required immediately");
-                    Self::change_config(&mut self.lock(), |config, inner| {
-                        config.wireguard_key_cache.rotate_now(inner.set_keychain_wg_sk.as_ref())
-                    })?;
+                    self.change(|inner| {
+                        inner.config.change(|config| {
+                            config.wireguard_key_cache.rotate_now(inner.set_keychain_wg_sk.as_ref());
+                        })
+                    })
                 }
                 Err(error)
             }
         }
     }
 
-    pub fn rotate_wg_key(&self) -> Result<(), ConfigSaveError> {
-        Self::change_config(&mut self.lock(), |config, inner| {
-            config.wireguard_key_cache.rotate_now(inner.set_keychain_wg_sk.as_ref());
+    pub fn rotate_wg_key(&self) {
+        self.change(|inner| {
+            inner.config.change(|config| {
+                config.wireguard_key_cache.rotate_now(inner.set_keychain_wg_sk.as_ref());
+            })
         })
     }
 
-    pub fn subscribe_exit_list(&self) -> tokio::sync::watch::Receiver<Option<ConfigCached<Arc<ExitList>>>> {
-        self.exit_list_watch.subscribe()
+    pub fn config_debug(&self) -> ConfigDebug {
+        self.borrow().config().clone().into()
     }
 }
 
-impl ResolverFallbackCache for ClientState {
+impl ResolverFallbackCache for ClientStateHandle {
     fn get(&self, name: &str) -> Vec<SocketAddr> {
-        self.get_config().dns_cache.get(name)
+        self.borrow().config.dns_cache.get(name)
     }
 
     fn set(&self, name: &str, addr: &[SocketAddr]) {
-        let result = Self::change_config(&mut self.lock(), |config, _| {
+        self.change_config(|config| {
             config.dns_cache.set(name, addr);
-        });
-        if let Err(error) = result {
-            tracing::error!(?error, message_id = "rdq7a2Vh", ?error, "DNS cache set error: {}", error);
-        }
+        })
     }
 }

@@ -36,6 +36,7 @@ pub async fn run(args: ServiceArgs) -> Result<Infallible, ServiceStartError> {
         receive_cb,
         None,
         None,
+        false,
     )
     .context("failed to create manager")?;
 

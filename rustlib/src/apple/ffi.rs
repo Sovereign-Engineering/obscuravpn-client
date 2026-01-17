@@ -79,6 +79,7 @@ pub unsafe extern "C" fn initialize(
             receive_cb,
             Some(keychain_set_wg_secret_key),
             log_persistence,
+            true, // persistent tunnel activation must be handled by the on-demand OS feature on Apple platforms
         ) {
             Ok(c) => {
                 first_init = true;

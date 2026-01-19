@@ -12,6 +12,7 @@ enum URLs {
     static let ExtensionSettings = URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension?ExtensionItems")!
     static let NetworkSettings = URL(string: "x-apple.systempreferences:com.apple.NetworkExtensionSettingsUI.NESettingsUIExtension")!
     // See [Deep Linking](https://soveng.getoutline.com/doc/deep-linking-rhhx0E5oDB)
+    static let AppOpenURL = URL(string: "obscuravpn:///open")!
     static let AppAccountPage = URL(string: "obscuravpn:///account")!
     static let AppLocationPage = URL(string: "obscuravpn:///location")!
 }

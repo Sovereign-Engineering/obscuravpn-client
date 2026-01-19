@@ -8,12 +8,15 @@ import UserNotifications
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "App")
 
 func openWindow(id: String) {
-    NSApp.windows
-        .filter { $0.identifier?.rawValue == id }
-        .forEach {
-            $0.makeKeyAndOrderFront(nil)
-            $0.orderFrontRegardless()
-        }
+    let filteredWindows = NSApp.windows.filter { $0.identifier?.rawValue == id }
+    if filteredWindows.isEmpty {
+        // trigger relaunch behavior
+        NSWorkspace.shared.open(URLs.AppOpenURL)
+    }
+    for window in filteredWindows {
+        window.makeKeyAndOrderFront(nil)
+        window.orderFrontRegardless()
+    }
 }
 
 // dismissWindow(id: String) requires macOS 14+

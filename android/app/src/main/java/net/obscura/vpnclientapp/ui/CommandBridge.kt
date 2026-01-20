@@ -144,14 +144,14 @@ class CommandBridge(
   }
 
   private fun reject(
-      data: String,
+      data: String?,
       id: Long,
   ) {
     postMessage(
         Json.encodeToString(
             AndroidCommandMessage(
                 id = id,
-                error = data,
+                error = data ?: "null",
             ),
         ),
     )

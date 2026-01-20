@@ -24,10 +24,12 @@ static APPLE_LOG_INIT: std::sync::Once = std::sync::Once::new();
 pub extern "C" fn initialize_apple_system_logging(log_dir: FfiStr) -> *mut c_void {
     let mut guard_ptr = std::ptr::null_mut();
     APPLE_LOG_INIT.call_once(|| {
-        guard_ptr = crate::logging::init(
+        if let Some(guard) = crate::logging::init(
             tracing_oslog::OsLogger::new("net.obscura.rust-apple", "default"),
-            cfg!(target_os = "ios").then(|| log_dir.as_str()),
-        ) as *mut _;
+            cfg!(target_os = "ios").then(|| log_dir.as_str().as_ref()),
+        ) {
+            guard_ptr = Box::into_raw(guard) as *mut _;
+        };
     });
     guard_ptr
 }

@@ -1,5 +1,6 @@
 #![cfg_attr(target_os = "linux", allow(unused))]
 
+use camino::Utf8Path;
 use tracing_appender::non_blocking::{NonBlocking, WorkerGuard};
 use tracing_subscriber::{
     Layer, Registry,
@@ -9,17 +10,17 @@ use tracing_subscriber::{
 };
 
 #[cfg(any(target_os = "android", target_os = "ios"))]
-fn build_log_roller(log_dir: &str) -> anyhow::Result<(NonBlocking, WorkerGuard)> {
+fn build_log_roller(log_dir: &Utf8Path) -> anyhow::Result<(NonBlocking, WorkerGuard)> {
     use logroller::{Compression, LogRollerBuilder, Rotation, RotationSize, TimeZone};
 
     static LOG_FILE_NAME: &str = "rust-log.ndjson";
     const MAX_LOG_FILES: u64 = 24;
     const MAX_LOG_SIZE: u64 = 10_000_000;
 
-    if log_dir.is_empty() {
+    if log_dir.as_str().is_empty() {
         anyhow::bail!("no log dir specified");
     }
-    LogRollerBuilder::new(log_dir, LOG_FILE_NAME)
+    LogRollerBuilder::new(log_dir, LOG_FILE_NAME.as_ref())
         // The rotation often runs behind a bit, but at low log pressure
         // (i.e. not TRACE) it's good enough
         .rotation(Rotation::SizeBased(RotationSize::Bytes(MAX_LOG_SIZE)))
@@ -33,7 +34,7 @@ fn build_log_roller(log_dir: &str) -> anyhow::Result<(NonBlocking, WorkerGuard)>
 }
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
-fn build_log_roller(log_dir: &str) -> anyhow::Result<(NonBlocking, WorkerGuard)> {
+fn build_log_roller(log_dir: &Utf8Path) -> anyhow::Result<(NonBlocking, WorkerGuard)> {
     anyhow::bail!("specified log dir on a platform that doesn't support log persistence: {log_dir}")
 }
 
@@ -42,9 +43,9 @@ fn filter() -> EnvFilter {
     EnvFilter::from_default_env().add_directive(LevelFilter::INFO.into())
 }
 
-pub fn init(base_layer: impl Layer<Registry> + Send + Sync, persistence_dir: Option<&str>) -> *mut WorkerGuard {
+pub fn init(base_layer: impl Layer<Registry> + Send + Sync, persistence_dir: Option<&Utf8Path>) -> Option<Box<WorkerGuard>> {
     let registry = registry().with(base_layer.with_filter(filter()));
-    let guard_ptr = if let Some((writer, guard)) = persistence_dir.and_then(|log_dir| {
+    let guard = if let Some((writer, guard)) = persistence_dir.and_then(|log_dir| {
         build_log_roller(log_dir)
             .inspect_err(|error| {
                 tracing::error!(?error, "failed to initialize log persistence");
@@ -53,15 +54,15 @@ pub fn init(base_layer: impl Layer<Registry> + Send + Sync, persistence_dir: Opt
     }) {
         let fs_layer = tracing_subscriber::fmt::Layer::default().json().with_writer(writer).with_filter(filter());
         tracing::subscriber::set_global_default(registry.with(fs_layer)).expect("failed to set global subscriber");
-        Box::into_raw(Box::new(guard))
+        Some(Box::new(guard))
     } else {
         tracing::subscriber::set_global_default(registry).expect("failed to set global subscriber");
-        std::ptr::null_mut()
+        None
     };
     tracing::info!("logging initialized");
     std::panic::set_hook(Box::new(|panic_info| {
         tracing::error!(message_id = "W6fhvnSf", "{panic_info}\n{:#}", std::backtrace::Backtrace::force_capture());
     }));
     tracing::info!("panic logging hook set");
-    guard_ptr
+    guard
 }

@@ -28,6 +28,7 @@ too_many_arguments = "allow"
 anyhow = { version = "1.0.98", features = ["backtrace"] }
 base64 = "0.21.7"
 bytes = "1"
+camino = "1.2.2"
 chrono = "0.4.37"
 clap = { version = "4.5.53", features = ["derive"] }
 const_format = "0.2.35"
@@ -83,6 +84,7 @@ zbus = "5.12.0"
 zbus_systemd = { version = "0.25900.0", features = ["resolve1"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
+cesu8 = "1.1.0"
 jni = { version = "0.21.1", default-features = false }
 nix = "0.30.1"
 tracing-android = "0.2.0"

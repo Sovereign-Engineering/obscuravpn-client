@@ -29,7 +29,7 @@ data class InvokeCommand(
       binder: IObscuraVpnService,
       osStatus: OsStatus,
       json: Json,
-  ): CompletableFuture<String> =
+  ): CompletableFuture<String?> =
       when {
         getOsStatus != null -> getOsStatus.run(osStatus).thenApply { json.encodeToString(it) }
 

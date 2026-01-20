@@ -5,7 +5,7 @@ import Mantine from './components/Mantine';
 
 export default function ({ children }: PropsWithChildren) {
   return <>
-    {/* In WKWebview, BrowserRouter does not work in production due to sandboxing */}
+    {/* Cannot use Browser router for loading from file */}
     <MemoryRouter>
       <Mantine>
         {children}

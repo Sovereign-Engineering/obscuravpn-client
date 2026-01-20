@@ -2,14 +2,14 @@ import { ActionIcon, Affix, ScrollArea, Transition } from '@mantine/core';
 import { useWindowScroll } from '@mantine/hooks';
 import { PropsWithChildren, useRef } from 'react';
 import { IoArrowUp } from 'react-icons/io5';
-import classes from './ScrollableView.module.css';
 import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
+import classes from './ScrollableView.module.css';
 
 export function ScrollableView({ children }: PropsWithChildren) {
   const viewport = useRef<HTMLDivElement>(null);
 
   return (
-    <ScrollArea type='always' scrollbarSize={IS_HANDHELD_DEVICE ? 2 : 12} classNames={classes} viewportRef={viewport}>
+    <ScrollArea h='100vh' type='always' scrollbarSize={IS_HANDHELD_DEVICE ? 2 : 12} classNames={classes} viewportRef={viewport}>
       {children}
       <ScrollToTop />
     </ScrollArea>

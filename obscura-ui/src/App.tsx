@@ -25,7 +25,6 @@ interface View {
   component: () => ReactNode,
   path: string,
   exact?: boolean,
-  name: string,
   needsScroll: boolean,
 }
 
@@ -57,13 +56,13 @@ export default function () {
   const ignoreConnectingErrors = useRef(false);
 
   const views: View[] = [
-    { component: Connection, path: '/connection', name: t('Connection'), needsScroll: false },
-    { component: DeveloperView, path: '/developer', name: t('Developer'), needsScroll: true },
-    { component: Location, path: '/location', name: t('Location'), needsScroll: true },
-    { component: Account, path: '/account', name: t('Account'), needsScroll: false },
-    { component: Help, path: '/help', name: t('Help'), needsScroll: false },
-    { component: About, path: '/about', name: t('About'), needsScroll: false },
-    { component: Settings, path: '/settings', name: t('Settings'), needsScroll: true },
+    { component: Connection, path: '/connection', needsScroll: false },
+    { component: DeveloperView, path: '/developer', needsScroll: true },
+    { component: Location, path: '/location', needsScroll: true },
+    { component: Account, path: '/account', needsScroll: false },
+    { component: Help, path: '/help', needsScroll: false },
+    { component: About, path: '/about', needsScroll: false },
+    { component: Settings, path: '/settings', needsScroll: true },
   ];
 
   const isLoggedIn = !!appStatus?.accountId;
@@ -317,7 +316,7 @@ export default function () {
           <ErrorBoundary FallbackComponent={FallbackAppRender} onReset={_details => resetState()} onError={logReactError}>
             <Routes>
               {views[0] !== undefined && <Route path='/' element={<Navigate to={views[0].path} />} />}
-              {views.map((view, index) => <Route key={index} path={view.path} element={<RenderView view={view} />} />)}
+              {views.map((view, index) => <Route key={index} path={view.path} element={<RenderView key={view.path} view={view} />} />)}
             </Routes>
           </ErrorBoundary>
         </AppContext.Provider>

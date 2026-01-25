@@ -4,7 +4,7 @@ use obscuravpn_client::manager_cmd::ManagerCmdErrorCode;
 pub enum ClientError {
     #[error("The Obscura API is unreachable.")]
     ApiUnreachable,
-    #[error("Insufficient permissions to connect to service. Use sudo or add the user to the obscura group.")]
+    #[error("Insufficient permissions to connect to service. Use sudo or the `obscura add-operator` command.")]
     InsufficientPermissions,
     #[error("Unexpected error. Details: {0:#}")]
     Unexpected(#[from] anyhow::Error),

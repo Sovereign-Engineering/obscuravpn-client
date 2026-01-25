@@ -1,6 +1,7 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use derive_more::From;
 use std::process::exit;
+use strum::EnumIs;
 use tracing_subscriber::EnvFilter;
 
 #[cfg(target_os = "linux")]
@@ -52,12 +53,17 @@ pub struct ClientStatusArgs {
     /// Print full JSON status instead of summary.
     pub json: bool,
 }
-#[derive(From)]
+
+#[derive(Args, Debug)]
+pub struct ClientIpcTestArgs {}
+
+#[derive(From, EnumIs)]
 pub enum ClientCommand {
     Login(ClientLoginArgs),
     Start(ClientStartArgs),
     Stop(ClientStopArgs),
     Status(ClientStatusArgs),
+    IpcTest(ClientIpcTestArgs),
 }
 
 #[derive(Subcommand, Debug)]
@@ -72,12 +78,22 @@ pub enum Command {
     Start(ClientStartArgs),
     Stop(ClientStopArgs),
     Status(ClientStatusArgs),
+    #[command(hide = true)]
+    IpcTest(ClientIpcTestArgs),
 }
 
 #[derive(Parser)]
 pub struct Cli {
     #[command(subcommand)]
     command: Command,
+    #[command(flatten)]
+    pub global_args: GlobalArgs,
+}
+
+#[derive(Args, Debug)]
+pub struct GlobalArgs {
+    #[clap(long, hide = true)]
+    no_group_refresh: bool,
 }
 
 #[tokio::main]
@@ -90,7 +106,8 @@ async fn main() {
         .install_default()
         .expect("Failed to install aws-lc crypto provider");
 
-    let client_command: ClientCommand = match Cli::parse().command {
+    let cli = Cli::parse();
+    let client_command: ClientCommand = match cli.command {
         #[cfg(target_os = "linux")]
         Command::AddOperator { users } => add_operator::run_add_operator(users).await,
         Command::Service(args) => run_service(args).await,
@@ -98,8 +115,9 @@ async fn main() {
         Command::Stop(args) => args.into(),
         Command::Status(args) => args.into(),
         Command::Login(args) => args.into(),
+        Command::IpcTest(args) => args.into(),
     };
-    run_client(client_command).await
+    run_client(cli.global_args, client_command).await
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android")))]
@@ -116,15 +134,15 @@ async fn run_service(_args: ServiceArgs) -> ! {
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android")))]
-async fn run_client(args: ClientCommand) {
-    if let Err(error) = client::run(args).await {
+async fn run_client(global_args: GlobalArgs, args: ClientCommand) {
+    if let Err(error) = client::run(global_args, args).await {
         eprintln!("{}", error);
         exit(1)
     }
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
-async fn run_client(_args: ClientCommand) {
+async fn run_client(_global_args: GlobalArgs, _args: ClientCommand) {
     eprintln!("unsupported OS");
     exit(1)
 }

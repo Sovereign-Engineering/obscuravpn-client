@@ -19,7 +19,7 @@ function reset() {
   local FLAVOR=$2
 
   echo "Creating disk image"
-  virsh --connect qemu:///session destroy "${DISTRO}-${FLAVOR}" &> /dev/null || true
+  virsh --connect qemu:///session destroy "obs-${DISTRO}-${FLAVOR}" &> /dev/null || true
   qemu-img create -f qcow2 "$(disk_image_path "${DISTRO}" "${FLAVOR}").tmp" 20G
 
   echo "Downloading ${DISTRO}-${FLAVOR} installation media if necessary"
@@ -137,7 +137,6 @@ function autoinstall() {
       ["debian12-desktop"]="./linux/vm/debian12-desktop.preseed.cfg"
       ["debian13-desktop"]="./linux/vm/debian13-desktop.preseed.cfg"
       ["fedora43-desktop"]="./linux/vm/fedora43-desktop.ks"
-      ["archlinux-desktop"]="./linux/vm/archlinux-install.sh"
     )
     if [[ -v map[${DISTRO}-${FLAVOR}] ]]; then
       echo "--initrd-inject"
@@ -197,17 +196,16 @@ function install_package() {
     scp_run ./obscura-0.0.1-1-x86_64.pkg.tar.zst /home/user/obscura.zst
     ssh_run sudo pacman --noconfirm -U /home/user/obscura.zst
     ssh_run sudo systemctl enable --now obscura
-    ssh_run sudo chmod g+s /usr/bin/obscura
   else
     error "no package install instructions for this ${DISTRO}"
   fi
+  sleep 1
 }
 
 function setup_and_connect() {
   check_args $# 1
   local ACCOUNT_ID=$1
-  sleep 1
-  ssh_run obscura add-operator
+  ssh_run obscura add-operator '&&' RUST_LOG=debug obscura ipc-test
   ssh_run obscura login "${ACCOUNT_ID}"
   ssh_run obscura start
 }

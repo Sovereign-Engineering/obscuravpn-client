@@ -2186,6 +2186,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
+ "shlex",
  "socket2 0.6.0",
  "static_assertions",
  "strum 0.26.2",

@@ -207,7 +207,7 @@ function setup_and_connect() {
   check_args $# 1
   local ACCOUNT_ID=$1
   sleep 1
-  ssh_run sudo usermod -aG obscura user
+  ssh_run obscura add-operator
   ssh_run obscura login "${ACCOUNT_ID}"
   ssh_run obscura start
 }

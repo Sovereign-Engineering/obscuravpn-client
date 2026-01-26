@@ -3,6 +3,8 @@ use derive_more::From;
 use std::process::exit;
 use tracing_subscriber::EnvFilter;
 
+#[cfg(target_os = "linux")]
+mod add_operator;
 #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android")))]
 mod client;
 #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android")))]
@@ -60,6 +62,11 @@ pub enum ClientCommand {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
+    #[cfg(target_os = "linux")]
+    /// Grant operator privileges by adding the specified users to the 'obscura' group. Defaults to the current user.
+    AddOperator {
+        users: Vec<String>,
+    },
     Service(ServiceArgs),
     Login(ClientLoginArgs),
     Start(ClientStartArgs),
@@ -84,6 +91,8 @@ async fn main() {
         .expect("Failed to install aws-lc crypto provider");
 
     let client_command: ClientCommand = match Cli::parse().command {
+        #[cfg(target_os = "linux")]
+        Command::AddOperator { users } => add_operator::run_add_operator(users).await,
         Command::Service(args) => run_service(args).await,
         Command::Start(args) => args.into(),
         Command::Stop(args) => args.into(),

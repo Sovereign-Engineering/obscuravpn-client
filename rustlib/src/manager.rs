@@ -12,11 +12,9 @@ use obscuravpn_api::{
 use serde::{Deserialize, Serialize};
 use tokio::sync::watch::{Receiver, Sender, channel};
 use tokio_util::sync::{CancellationToken, DropGuard};
-use tracing_appender::non_blocking::WorkerGuard;
 use uuid::Uuid;
 
 use super::ffi_helpers::*;
-use crate::network_config::DnsContentBlock;
 use crate::{
     backoff::Backoff,
     client_state::{AccountStatus, ClientState},
@@ -24,9 +22,12 @@ use crate::{
         Config, ConfigDebug, ConfigLoadError, ConfigSaveError, KeychainSetSecretKeyFn, PinnedLocation, cached::ConfigCached,
         feature_flags::FeatureFlags,
     },
+    debug_archive::create_debug_archive,
     errors::{ApiError, ConnectErrorCode},
     exit_selection::ExitSelector,
+    logging::LogPersistence,
     net::NetworkInterface,
+    network_config::DnsContentBlock,
     network_config::TunnelNetworkConfig,
     quicwg::TransportKind,
     tunnel_state::{TargetState, TunnelState},
@@ -40,7 +41,7 @@ pub struct Manager {
     status_watch: Sender<Status>,
     runtime: tokio::runtime::Handle,
     _background_task_drop_guard: DropGuard,
-    _log_flush_guard: Option<Box<WorkerGuard>>,
+    log_persistence: Option<Box<LogPersistence>>,
 }
 
 // Keep synchronized with ../../apple/shared/NetworkExtensionIpc.swift
@@ -165,7 +166,7 @@ impl Manager {
         runtime: tokio::runtime::Handle,
         receive_cb: extern "C" fn(FfiBytes),
         set_keychain_wg_sk: Option<KeychainSetSecretKeyFn>,
-        log_flush_guard: Option<Box<WorkerGuard>>,
+        log_persistence: Option<Box<LogPersistence>>,
     ) -> Result<Arc<Self>, ConfigLoadError> {
         let cancellation_token = CancellationToken::new();
         let client_state = Arc::new(ClientState::new(config_dir, keychain_wg_sk, user_agent, set_keychain_wg_sk)?);
@@ -180,7 +181,7 @@ impl Manager {
             runtime,
             _background_task_drop_guard: cancellation_token.clone().drop_guard(),
             background_taks_cancellation_token: cancellation_token,
-            _log_flush_guard: log_flush_guard,
+            log_persistence,
         });
         this.spawn_child_task(Self::wireguard_key_registraction_task);
         this.spawn_child_task(Self::propagate_tunnel_state_updates_to_status_task);
@@ -437,6 +438,12 @@ impl Manager {
 
     pub fn rotate_wg_key(&self) -> Result<(), ConfigSaveError> {
         self.client_state.rotate_wg_key()
+    }
+
+    pub async fn create_debug_archive(&self, user_feedback: Option<&str>) -> anyhow::Result<String> {
+        let user_feedback = user_feedback.map(ToOwned::to_owned);
+        let log_dir = self.log_persistence.as_deref().map(LogPersistence::log_dir).map(ToOwned::to_owned);
+        tokio::task::spawn_blocking(move || create_debug_archive(user_feedback.as_deref(), log_dir.as_deref()).map(Into::into)).await?
     }
 
     pub fn get_debug_info(&self) -> DebugInfo {

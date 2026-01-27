@@ -45,10 +45,14 @@
         </activity>
 
         <provider
-            android:authorities="net.obscura.vpnclientapp.debug_bundle_file_provider"
-            android:name=".sharing.DebugBundleFileProvider"
+            android:authorities="net.obscura.vpnclientapp.debug_archive_file_provider"
+            android:name=".sharing.DebugArchiveFileProvider"
             android:exported="false"
-            android:grantUriPermissions="true" />
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/debug_archive_file_provider_paths" />
+        </provider>
 
         <service
             android:name=".services.ObscuraVpnService"

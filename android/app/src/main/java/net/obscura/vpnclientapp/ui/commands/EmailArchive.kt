@@ -9,5 +9,5 @@ data class EmailArchive(
     val subject: String,
     val body: String,
 ) {
-  fun run(context: Context) = shareDebugBundle(context, path, true, subject, body)
+  fun run(context: Context) = shareDebugArchive(context, path, true, subject, body)
 }

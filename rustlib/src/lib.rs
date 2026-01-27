@@ -23,6 +23,7 @@ pub mod android;
 pub mod apple;
 mod cached_value;
 mod constants;
+mod debug_archive;
 mod liveness;
 mod logging;
 pub mod positive_u31;

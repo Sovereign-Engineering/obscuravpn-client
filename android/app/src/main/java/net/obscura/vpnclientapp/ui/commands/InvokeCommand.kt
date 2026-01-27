@@ -17,10 +17,11 @@ data class InvokeCommand(
     val timeoutMs: Long? = null,
     val jsonFfiCmd: JsonFfiCommand? = null,
     val getOsStatus: GetOsStatus? = null,
-    val emailArchive: EmailArchive? = null,
+    val debuggingArchive: DebuggingArchive? = null,
+    val shareDebugArchive: ShareArchive? = null,
+    val emailDebugArchive: EmailArchive? = null,
     val revealItemInDir: RevealItemInDir? = null,
     val setColorScheme: SetColorScheme? = null,
-    val shareFile: ShareFile? = null,
     val startTunnel: StartTunnel? = null,
     val stopTunnel: JsonObject? = null,
 ) {
@@ -29,7 +30,7 @@ data class InvokeCommand(
       binder: IObscuraVpnService,
       osStatus: OsStatus,
       json: Json,
-  ): CompletableFuture<String?> =
+  ): CompletableFuture<String> =
       when {
         getOsStatus != null -> getOsStatus.run(osStatus).thenApply { json.encodeToString(it) }
 
@@ -38,9 +39,9 @@ data class InvokeCommand(
 
         setColorScheme != null -> completedJsonNullFuture().also { setColorScheme.run(context) }
 
-        shareFile != null -> shareFile.run(context).thenApply { "null" }
-
-        emailArchive != null -> emailArchive.run(context).thenApply { "null" }
+        debuggingArchive != null -> debuggingArchive.run(context, binder, osStatus, json)
+        shareDebugArchive != null -> completedJsonNullFuture().also { shareDebugArchive.run(context) }
+        emailDebugArchive != null -> completedJsonNullFuture().also { emailDebugArchive.run(context) }
 
         revealItemInDir != null -> revealItemInDir.run(context).thenApply { "null" }
 

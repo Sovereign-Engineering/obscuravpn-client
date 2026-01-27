@@ -6,7 +6,7 @@ use std::{borrow::Cow, ffi::CStr, fmt::Display};
 pub fn throw_runtime_exception(env: &mut JNIEnv, msg: impl Display) {
     let msg = msg.to_string();
     if let Err(error) = env.throw_new("java/lang/RuntimeException", &msg) {
-        tracing::error!(?error, msg, "failed to throw `RuntimeException`");
+        tracing::error!(message_id = "bxCfsHAC", ?error, msg, "failed to throw `RuntimeException`");
     }
 }
 

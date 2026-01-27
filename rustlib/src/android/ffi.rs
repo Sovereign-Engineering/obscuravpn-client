@@ -40,7 +40,7 @@ fn initialize(env: &mut JNIEnv, j_config_dir: &JString, j_user_agent: &JString) 
     let config_dir = Utf8JavaStr::new(env, j_config_dir, "j_config_dir")?;
     let user_agent = Utf8JavaStr::new(env, j_user_agent, "j_user_agent")?;
     let log_dir = config_dir.as_path().join(RUST_LOG_DIR_NAME);
-    let log_flush_guard = crate::logging::init(tracing_android::layer("ObscuraNative")?, Some(&log_dir));
+    let log_persistence = crate::logging::init(tracing_android::layer("ObscuraNative")?, Some(&log_dir));
     rustls::crypto::aws_lc_rs::default_provider()
         .install_default()
         .map_err(|_| anyhow::format_err!("failed to install crypto provider"))?;
@@ -51,7 +51,7 @@ fn initialize(env: &mut JNIEnv, j_config_dir: &JString, j_user_agent: &JString) 
         RUNTIME.handle().clone(),
         receive_cb,
         None, // TODO: https://linear.app/soveng/issue/OBS-2699/android-keychain-equivalent
-        log_flush_guard,
+        log_persistence,
     )
     .map_err(Into::into)
 }
@@ -115,12 +115,7 @@ fn json_ffi(env: &mut JNIEnv, j_json_cmd: &JString, j_future: &JObject) -> anyho
 
 /// cbindgen:ignore
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_jsonFfi(
-    mut env: JNIEnv,
-    _: JClass,
-    j_json_cmd: JString,
-    j_future: JObject,
-) {
+pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_jsonFfi(mut env: JNIEnv, _: JClass, j_json_cmd: JString, j_future: JObject) {
     if let Err(error) = json_ffi(&mut env, &j_json_cmd, &j_future) {
         tracing::error!(message_id = "jmx2DBFz", ?error, "`json_ffi` failed");
         throw_runtime_exception(&mut env, error);

@@ -107,6 +107,9 @@ pub enum ManagerCmd {
     },
     ApiDeleteAccount {},
     ApiGetAccountInfo {},
+    CreateDebugArchive {
+        user_feedback: Option<String>,
+    },
     GetDebugInfo {},
     GetExitList {
         #[debug("{:?}", known_version.as_ref().map(|b| BASE64_STANDARD.encode(b)))]
@@ -172,6 +175,7 @@ pub enum ManagerCmdOk {
     ApiDeleteAccount(DeleteAccountOutput),
     #[from]
     ApiGetAccountInfo(AccountInfo),
+    CreateDebugArchive(String),
     Empty,
     GetDebugInfo(DebugInfo),
     GetExitList(CachedValue<Arc<ExitList>>),
@@ -225,6 +229,14 @@ impl ManagerCmd {
             Self::ApiDeleteAccount {} => map_result(manager.delete_account().await),
             Self::ApiGetAccountInfo {} => map_result(manager.get_account_info().await),
             Self::SetFeatureFlag { flag, active } => map_result(manager.set_feature_flag(&flag, active)),
+            Self::CreateDebugArchive { user_feedback } => manager
+                .create_debug_archive(user_feedback.as_deref())
+                .await
+                .map(ManagerCmdOk::CreateDebugArchive)
+                .map_err(|error| {
+                    tracing::error!(?error, "failed to create debug archive");
+                    ManagerCmdErrorCode::Other
+                }),
             Self::GetDebugInfo {} => Ok(ManagerCmdOk::GetDebugInfo(manager.get_debug_info())),
             Self::GetExitList { known_version } => {
                 let mut recv = manager.subscribe_exit_list();

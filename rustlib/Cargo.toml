@@ -33,6 +33,7 @@ chrono = "0.4.37"
 clap = { version = "4.5.53", features = ["derive"] }
 const_format = "0.2.35"
 derive_more = {  version = "2.0.1", features = ["full"] }
+diva = "0.1.0"
 etherparse = "0.17.0"
 flume = { version = "0.11.1", features = ["async"] }
 futures = "0.3.29"
@@ -58,6 +59,7 @@ tracing-appender = "0.2.3"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter", "fmt", "json"] }
 uuid = { version = "1.11.0", features = ["v4", "serde"] }
 x25519-dalek = { version = "2.0.1" }
+zip = { version = "7.2.0", default-features = false, features = ["deflate", "time"] }
 
 [dependencies.boringtun]
 package = "neptun"

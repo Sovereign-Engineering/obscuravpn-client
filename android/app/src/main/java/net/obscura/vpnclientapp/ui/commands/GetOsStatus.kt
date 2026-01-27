@@ -44,9 +44,9 @@ data class GetOsStatus(
 
     @Serializable
     data class DebugBundleStatus(
-        val inProgress: Boolean?,
-        val latestPath: String?,
-        val inProgressCounter: Long,
+        var inProgress: Boolean?,
+        var latestPath: String?,
+        var inProgressCounter: Long,
     )
 
     @Serializable

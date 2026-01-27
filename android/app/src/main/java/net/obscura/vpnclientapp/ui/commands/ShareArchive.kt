@@ -4,8 +4,8 @@ import android.content.Context
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class ShareFile(
+data class ShareArchive(
     val path: String,
 ) {
-  fun run(context: Context) = shareDebugBundle(context, path, false)
+  fun run(context: Context) = shareDebugArchive(context, path, false)
 }

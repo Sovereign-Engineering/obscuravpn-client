@@ -82,6 +82,11 @@ class OsStatus(
 
   private var vpnStatus: GetOsStatus.Result.NEVPNStatus =
       GetOsStatus.Result.NEVPNStatus.Disconnected
+  var debugBundleStatus: GetOsStatus.Result.DebugBundleStatus = GetOsStatus.Result.DebugBundleStatus(
+      inProgress = false,
+      latestPath = null,
+      inProgressCounter = 0,
+  )
 
   private val sharedPreferencesListener =
       SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, key ->
@@ -124,13 +129,8 @@ class OsStatus(
                       error = null,
                       errorCode = null,
                   ),
-              debugBundleStatus =
-                  GetOsStatus.Result.DebugBundleStatus(
-                      inProgress = false,
-                      latestPath = null,
-                      inProgressCounter = 0,
-                  ),
-              canSendMail = false,
+              debugBundleStatus,
+              canSendMail = true,
               loginItemStatus = null,
           )
 

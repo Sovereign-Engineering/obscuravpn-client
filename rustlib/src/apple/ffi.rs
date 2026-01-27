@@ -43,7 +43,7 @@ fn global_manager() -> Arc<Manager> {
 }
 
 /// SAFETY:
-/// - `log_flush_guard` must be a pointer returned by `initialize_apple_system_logging`
+/// - `log_persistence` must be a pointer returned by `initialize_apple_system_logging`
 /// - there is no other global function of this name
 /// - (TODO)
 #[unsafe(no_mangle)]
@@ -53,7 +53,7 @@ pub unsafe extern "C" fn initialize(
     keychain_wg_secret_key: FfiBytes,
     receive_cb: extern "C" fn(FfiBytes),
     keychain_set_wg_secret_key: extern "C" fn(FfiBytes) -> bool,
-    log_flush_guard: *mut c_void,
+    log_persistence: *mut c_void,
 ) {
     let mut first_init = false;
     GLOBAL.get_or_init(|| {
@@ -65,12 +65,12 @@ pub unsafe extern "C" fn initialize(
         let user_agent = user_agent.to_string();
         let keychain_wg_sk = Some(keychain_wg_secret_key.to_vec()).filter(|v| !v.is_empty());
         let keychain_set_wg_secret_key: KeychainSetSecretKeyFn = Box::new(move |sk: &[u8; 32]| keychain_set_wg_secret_key(sk.ffi()));
-        let log_flush_guard = std::ptr::NonNull::new(log_flush_guard).map(|log_flush_guard|
+        let log_persistence = std::ptr::NonNull::new(log_persistence).map(|log_persistence|
             // SAFETY:
-            // - `log_flush_guard` was checked to be non-null
-            // - Caller guarantees that `log_flush_guard` originates from a
+            // - `log_persistence` was checked to be non-null
+            // - Caller guarantees that `log_persistence` originates from a
             //   matching `into_raw` call
-            unsafe { Box::from_raw(log_flush_guard.as_ptr() as _) });
+            unsafe { Box::from_raw(log_persistence.as_ptr() as _) });
         match Manager::new(
             config_dir,
             keychain_wg_sk.as_deref(),
@@ -78,7 +78,7 @@ pub unsafe extern "C" fn initialize(
             RUNTIME.handle().clone(),
             receive_cb,
             Some(keychain_set_wg_secret_key),
-            log_flush_guard,
+            log_persistence,
         ) {
             Ok(c) => {
                 first_init = true;

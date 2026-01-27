@@ -262,7 +262,7 @@ class ObscuraVpnService : VpnService() {
                   },
               ),
           )
-          .setSmallIcon(R.drawable.ic_launcher_background)
+          .setSmallIcon(R.drawable.ic_stat_name)
           .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
           .setOngoing(true)
           .setLocalOnly(true)

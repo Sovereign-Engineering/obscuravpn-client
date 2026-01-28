@@ -443,7 +443,8 @@ impl Manager {
     pub async fn create_debug_archive(&self, user_feedback: Option<&str>) -> anyhow::Result<String> {
         let user_feedback = user_feedback.map(ToOwned::to_owned);
         let log_dir = self.log_persistence.as_deref().map(LogPersistence::log_dir).map(ToOwned::to_owned);
-        tokio::task::spawn_blocking(move || create_debug_archive(user_feedback.as_deref(), log_dir.as_deref()).map(Into::into)).await?
+        let config = ConfigDebug::from(self.client_state.get_config());
+        tokio::task::spawn_blocking(move || create_debug_archive(user_feedback.as_deref(), &config, log_dir.as_deref()).map(Into::into)).await?
     }
 
     pub fn get_debug_info(&self) -> DebugInfo {

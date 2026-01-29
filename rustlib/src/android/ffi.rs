@@ -62,7 +62,7 @@ fn initialize(env: &mut JNIEnv, j_config_dir: &JString, j_user_agent: &JString) 
         receive_cb,
         None, // TODO: https://linear.app/soveng/issue/OBS-2699/android-keychain-equivalent
         log_persistence,
-        false,
+        true,
     )
     .map_err(Into::into)
 }

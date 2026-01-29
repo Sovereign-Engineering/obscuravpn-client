@@ -31,7 +31,7 @@ pub fn signal_json_ffi_future(env: &mut JNIEnv, j_future: &JObject, result: Resu
                 });
             let j_exception = env
                 .new_object(
-                    "net/obscura/vpnclientapp/client/JsonFfiException",
+                    super::class_cache::get()?.json_ffi_exception(),
                     "(Ljava/lang/String;)V",
                     &[JValue::Object(&j_error)],
                 )
@@ -42,7 +42,7 @@ pub fn signal_json_ffi_future(env: &mut JNIEnv, j_future: &JObject, result: Resu
             env.call_method(
                 j_future,
                 "completeExceptionally",
-                "(Ljava/lang/Throwable;)V",
+                "(Ljava/lang/Throwable;)Z",
                 &[JValue::Object(&j_exception)],
             )
             .context("failed to call `completeExceptionally`")?;

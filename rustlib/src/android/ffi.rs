@@ -8,7 +8,7 @@ use super::{
 use crate::{ffi_helpers::FfiBytes, manager::Manager, manager_cmd::ManagerCmd, net::NetworkInterface, positive_u31::PositiveU31};
 use anyhow::Context as _;
 use jni::{
-    JNIEnv,
+    JNIEnv, JavaVM,
     objects::{JClass, JObject, JString},
     sys::jint,
 };
@@ -32,7 +32,17 @@ extern "C" fn receive_cb(ffi_bytes: FfiBytes) {
 
 /// cbindgen:ignore
 #[unsafe(no_mangle)]
-pub extern "C" fn JNI_OnLoad(_vm: *mut jni::sys::JavaVM, _reserved: *mut c_void) -> jint {
+pub extern "C" fn JNI_OnLoad(vm: *mut jni::sys::JavaVM, _reserved: *mut c_void) -> jint {
+    // `JNI_OnLoad` is called by the Java VM automatically, so we can get away
+    // with calling `expect` and making other strong assumptions.
+    // SAFETY: `vm` is the current Java VM
+    let vm = unsafe { JavaVM::from_raw(vm) }.expect("`JNI_OnLoad` called with null VM pointer");
+    let mut env = vm.get_env().expect("`JNI_OnLoad` called from detached thread");
+    // Looking up app-specific Java classes from native threads isn't possible,
+    // so we take advantage of the fact that `JNI_OnLoad` is called from a Java
+    // thread to cache all the app-specific classes we need.
+    // https://developer.android.com/ndk/guides/jni-tips#faq:-why-didnt-findclass-find-my-class
+    super::class_cache::init(&mut env);
     jni::sys::JNI_VERSION_1_6
 }
 

@@ -1,3 +1,4 @@
+mod class_cache;
 mod ffi;
 mod future;
 mod tunnel;

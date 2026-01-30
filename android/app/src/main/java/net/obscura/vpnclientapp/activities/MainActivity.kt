@@ -122,6 +122,8 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
   override fun onPostResume() {
     super.onPostResume()
 
+    logDebug("onPostResume")
+
     val vpnIntent = VpnService.prepare(this)
 
     if (vpnIntent == null) {
@@ -142,6 +144,7 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
         }
       }
 
+      logDebug("starting VPN service (onPostResume)")
       startForegroundService(Intent(this, ObscuraVpnService::class.java))
     } else if (permissionAlertDialog == null) {
       permissionAlertDialog =
@@ -178,12 +181,12 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
   ) {
     super.onActivityResult(requestCode, resultCode, data)
 
-    if (requestCode == RequestCodes.VPN_PREPARE.code) {
-      if (resultCode == RESULT_OK) {
-        preferences.permissionGiven = true
+    logDebug("onActivityResult $requestCode $resultCode $data")
 
-        startForegroundService(Intent(this, ObscuraVpnService::class.java))
-      }
+    if (requestCode == RequestCodes.VPN_PREPARE.code && resultCode == RESULT_OK) {
+      preferences.permissionGiven = true
+      logDebug("starting VPN service (onActivityResult)")
+      startForegroundService(Intent(this, ObscuraVpnService::class.java))
     }
   }
 

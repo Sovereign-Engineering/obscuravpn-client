@@ -1,6 +1,7 @@
 package net.obscura.vpnclientapp.services
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
@@ -35,6 +36,7 @@ import net.obscura.vpnclientapp.ui.CommandBridge
 import net.obscura.vpnclientapp.ui.OsStatus
 import net.obscura.vpnclientapp.ui.commands.GetOsStatus
 
+@SuppressLint("VpnServicePolicy")
 class ObscuraVpnService : VpnService() {
   private class NetworkCallbackHandler(
       val service: ObscuraVpnService,
@@ -135,8 +137,8 @@ class ObscuraVpnService : VpnService() {
   }
 
   companion object {
-    private val NOTIFICATION_CHANNEL_ID = "vpn_channel"
-    private val NOTIFICATION_ID = 1
+    private const val NOTIFICATION_CHANNEL_ID = "vpn_channel"
+    private const val NOTIFICATION_ID = 1
   }
 
   private lateinit var json: Json
@@ -296,7 +298,7 @@ class ObscuraVpnService : VpnService() {
       it.handle { data, tr ->
         logDebug("getStatus completed $data", tr)
 
-        data?.let { onStatusUpdated(json.decodeFromString(it)) }
+        data?.let { data -> onStatusUpdated(json.decodeFromString(data)) }
       }
     }
   }
@@ -365,7 +367,7 @@ class ObscuraVpnService : VpnService() {
               addDisallowedApplication(applicationInfo.packageName)
 
               networkConfig.mtu?.let { setMtu(it) }
-              networkConfig.dns?.forEach { it?.let({ dns -> addDnsServer(dns) }) }
+              networkConfig.dns?.forEach { it?.let { dns -> addDnsServer(dns) } }
 
               networkConfig.ipv4?.split("/")?.let {
                 addAddress(

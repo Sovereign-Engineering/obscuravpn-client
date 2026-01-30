@@ -21,7 +21,6 @@ import android.system.OsConstants
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import java.net.NetworkInterface
 import java.util.concurrent.CompletableFuture
@@ -176,21 +175,17 @@ class ObscuraVpnService : VpnService() {
       flags: Int,
       startId: Int,
   ): Int {
-    logDebug("onStartCommand")
-
+    logDebug("onStartCommand $intent $flags $startId")
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-      ServiceCompat.startForeground(
-          this,
+      this.startForeground(
           NOTIFICATION_ID,
-          buildNotification(),
+          this.buildNotification(),
           ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED,
       )
     } else {
-      startForeground(NOTIFICATION_ID, buildNotification())
+      this.startForeground(NOTIFICATION_ID, this.buildNotification())
     }
-
-    updateNEVPNStatus(neVpnStatus)
-
+    this.updateNEVPNStatus(neVpnStatus)
     return START_STICKY
   }
 

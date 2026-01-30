@@ -84,6 +84,7 @@ libc = "0.2.178"
 rtnetlink = "0.18.1"
 zbus = "5.12.0"
 zbus_systemd = { version = "0.25900.0", features = ["resolve1"] }
+shlex = "1.3.0"
 
 [target.'cfg(target_os = "android")'.dependencies]
 cesu8 = "1.1.0"

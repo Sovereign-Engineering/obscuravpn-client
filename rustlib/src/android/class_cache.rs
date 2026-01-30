@@ -1,4 +1,3 @@
-use super::util::throw_runtime_exception;
 use anyhow::Context as _;
 use jni::{
     JNIEnv,

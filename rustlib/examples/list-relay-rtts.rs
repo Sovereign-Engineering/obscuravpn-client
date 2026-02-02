@@ -21,11 +21,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let args = Args::parse();
 
-    let client_state = Arc::new(ClientState::new(".".into(), None, "list-relays".into(), None)?);
-    client_state.set_api_url(args.base_url)?;
+    let client_state = Arc::new(ClientState::new(".".into(), None, "list-relays".into(), None, true)?);
+    client_state.set_api_url(args.base_url);
     if let Some(account_no) = args.account_no {
         let account_id = AccountId::from_string_unchecked(account_no);
-        client_state.set_account_id(Some(account_id), None)?;
+        client_state.set_account_id(Some((account_id, None)))?;
     }
     let relays = client_state.api_request(ListRelays {}).await?;
 

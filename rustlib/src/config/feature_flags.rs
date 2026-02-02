@@ -55,7 +55,6 @@ mod test {
     fn check_flag_list() {
         let _: FeatureFlags = serde_json::from_str("{}").unwrap();
         for flag in FeatureFlags::KEYS {
-            dbg!(flag);
             let feature_flags: FeatureFlags = serde_json::from_str(&format!(r#"{{ "{flag}": true }}"#)).unwrap();
             assert_eq!(feature_flags.other.len(), 0)
         }

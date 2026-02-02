@@ -47,7 +47,7 @@ pub async fn run_command<O: DeserializeOwned>(cmd: ManagerCmd) -> Result<Result<
         tracing::error!(
             message_id = "2TVuEG5e",
             ?error,
-            response = String::from_utf8_lossy(&response).as_ref(),
+            response = &*String::from_utf8_lossy(&response),
             "failed to parse json command response: {error}"
         );
         ManagerCmdErrorCode::Other

@@ -10,6 +10,6 @@ data class SetTunnelArgs(
   @Serializable
   data class Request(
       val args: Map<String, JsonObject>? = null,
-      val allowActivation: Boolean? = null,
+      val active: Boolean? = null,
   )
 }

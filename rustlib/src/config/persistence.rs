@@ -23,6 +23,7 @@ use crate::config::cached::ConfigCached;
 use crate::config::dns_cache::DnsCache;
 use crate::config::feature_flags::FeatureFlags;
 use crate::exit_selection::ExitSelector;
+use crate::manager::TunnelArgs;
 use crate::network_config::{DnsConfig, DnsContentBlock};
 
 pub(super) const CONFIG_FILE: &str = "config.json";
@@ -263,6 +264,10 @@ pub struct Config {
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub last_exit_selector: ExitSelector,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
+    pub tunnel_active: bool,
+    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
+    pub tunnel_args: TunnelArgs,
+    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub sni_relay: Option<String>,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub wireguard_key_cache: WireGuardKeyCache,
@@ -302,6 +307,8 @@ pub struct ConfigDebug {
     pub last_chosen_exit_selector: ExitSelector,
     pub last_exit_selector: ExitSelector,
     pub sni_relay: Option<String>,
+    pub tunnel_active: bool,
+    pub tunnel_args: TunnelArgs,
     pub dns: DnsConfig,
     pub has_account_id: bool,
     pub has_cached_auth_token: bool,
@@ -334,6 +341,8 @@ impl From<Config> for ConfigDebug {
             cached_account_status: _,
             auto_connect,
             force_tcp_tls_relay_transport: (),
+            tunnel_active,
+            tunnel_args,
         } = config;
         Self {
             api_url,
@@ -353,6 +362,8 @@ impl From<Config> for ConfigDebug {
             has_account_id: account_id.is_some(),
             has_cached_auth_token: cached_auth_token.is_some(),
             auto_connect,
+            tunnel_active,
+            tunnel_args,
         }
     }
 }

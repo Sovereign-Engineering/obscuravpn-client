@@ -147,6 +147,8 @@ fn test_ignore_invalid_fields() {
         last_chosen_exit: Some("mylastexit".into()),
         last_chosen_exit_selector: ExitSelector::City { city_code: CityCode { country_code: CountryCode("ca".into()), city_code: "yyz".into() } },
         last_exit_selector: ExitSelector::City { city_code: CityCode { country_code: CountryCode("ca".into()), city_code: "yyz".into() } },
+        tunnel_active: false,
+        tunnel_args: Default::default(),
         sni_relay: Some("relay.obscura.net".into()),
         wireguard_key_cache: Default::default(),
         dns: Default::default(),

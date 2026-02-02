@@ -24,8 +24,7 @@ impl From<ManagerCmdErrorCode> for ClientError {
             | ManagerCmdErrorCode::ApiRateLimitExceeded
             | ManagerCmdErrorCode::ApiSignupLimitExceeded
             | ManagerCmdErrorCode::ConfigSaveError
-            | ManagerCmdErrorCode::Other
-            | ManagerCmdErrorCode::TunnelInactive => anyhow::Error::msg(error.as_static_str()).into(),
+            | ManagerCmdErrorCode::Other => anyhow::Error::msg(error.as_static_str()).into(),
         }
     }
 }

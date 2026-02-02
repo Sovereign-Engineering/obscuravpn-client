@@ -29,12 +29,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let args = Args::parse();
 
-    let client_state = Arc::new(ClientState::new(".".into(), None, "list-relays".into(), None)?);
-    client_state.set_api_url(args.base_url)?;
-    client_state.set_feature_flag(FeatureFlagKey::TcpTlsTunnel.into(), args.force_tcp_tls)?;
+    let client_state = Arc::new(ClientState::new(".".into(), None, "list-relays".into(), None, true)?);
+    client_state.set_api_url(args.base_url);
+    client_state.set_feature_flag(FeatureFlagKey::TcpTlsTunnel.into(), args.force_tcp_tls);
     if let Some(account_no) = args.account_no {
         let account_id = AccountId::from_string_unchecked(account_no);
-        client_state.set_account_id(Some(account_id), None)?;
+        client_state.set_account_id(Some((account_id, None)))?;
     }
 
     let mut exit_selection_state = ExitSelectionState::default();

@@ -1,3 +1,4 @@
+use std::fmt::Formatter;
 use std::io;
 use std::time::Instant;
 
@@ -74,7 +75,6 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
                         Self::Other
                     }
                 },
-                ApiError::ConfigSave(_) => Self::Other,
             },
             TunnelConnectError::NoInternet => Self::NoInternet,
             TunnelConnectError::NetworkConfig(_)
@@ -120,10 +120,25 @@ pub enum TunnelConnectError {
 pub enum ApiError {
     #[error(transparent)]
     ApiClient(#[from] ClientError),
-    #[error(transparent)]
-    ConfigSave(#[from] ConfigSaveError),
     #[error("no account id")]
     NoAccountId,
+}
+
+#[derive(Debug, Error)]
+pub enum ConfigDirtyOrApiError {
+    #[error(transparent)]
+    ApiError(#[from] ApiError),
+    #[error(transparent)]
+    ConfigDirty(#[from] ConfigDirty),
+}
+
+#[derive(Debug, Error)]
+pub struct ConfigDirty;
+
+impl std::fmt::Display for ConfigDirty {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "config not saved to file")
+    }
 }
 
 impl ApiError {

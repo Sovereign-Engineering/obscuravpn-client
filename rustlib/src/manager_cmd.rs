@@ -1,6 +1,6 @@
 // Command interface for commands, whose arguments and return values can be serialized and deserialized. You should usually prefer other methods unless you are implementing an FFI interface. All commands map more or less directly to another method.
 
-use std::{sync::Arc, thread::sleep, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use base64::prelude::*;
 use obscuravpn_api::{
@@ -14,12 +14,14 @@ use strum::IntoStaticStr;
 use tokio::spawn;
 use uuid::Uuid;
 
+use crate::client_state::ClientStateHandle;
+use crate::errors::ApiError;
+use crate::errors::{ConfigDirty, ConfigDirtyOrApiError};
 use crate::network_config::DnsContentBlock;
 use crate::{
     cached_value::CachedValue,
     manager::{DebugInfo, Manager, ManagerTrafficStats, Status},
 };
-use crate::{config::ConfigSaveError, errors::ApiError};
 use crate::{config::PinnedLocation, manager::TunnelArgs};
 
 /// High-level json command error codes, which are actionable for frontends.
@@ -43,7 +45,6 @@ pub enum ManagerCmdErrorCode {
     ApiUnreachable,
     ConfigSaveError,
     Other,
-    TunnelInactive,
 }
 
 impl ManagerCmdErrorCode {
@@ -52,16 +53,26 @@ impl ManagerCmdErrorCode {
     }
 }
 
-impl From<&ConfigSaveError> for ManagerCmdErrorCode {
-    fn from(err: &ConfigSaveError) -> Self {
-        tracing::info!("deriving json cmd error code for {}", &err);
+impl From<&ConfigDirty> for ManagerCmdErrorCode {
+    fn from(error: &ConfigDirty) -> Self {
+        tracing::info!(message_id = "7YMEQ3ac", ?error, "deriving json cmd error code for: {}", &error);
         Self::ConfigSaveError
+    }
+}
+
+impl From<&ConfigDirtyOrApiError> for ManagerCmdErrorCode {
+    fn from(error: &ConfigDirtyOrApiError) -> Self {
+        tracing::info!(message_id = "7oPu26ad", ?error, "deriving json cmd error code for: {}", &error);
+        match error {
+            ConfigDirtyOrApiError::ApiError(error) => error.into(),
+            ConfigDirtyOrApiError::ConfigDirty(error) => error.into(),
+        }
     }
 }
 
 impl From<&ApiError> for ManagerCmdErrorCode {
     fn from(error: &ApiError) -> Self {
-        tracing::info!(message_id = "ch2a5Sp5", ?error, "deriving json cmd error code for {}", &error);
+        tracing::info!(message_id = "ch2a5Sp5", ?error, "deriving json cmd error code for: {}", &error);
         match error {
             ApiError::ApiClient(err) => match err {
                 ClientError::ApiError(err) => match err.body.error {
@@ -91,7 +102,6 @@ impl From<&ApiError> for ManagerCmdErrorCode {
                     Self::ApiError
                 }
             },
-            ApiError::ConfigSave(err) => err.into(),
             ApiError::NoAccountId => Self::ApiError,
         }
     }
@@ -159,7 +169,7 @@ pub enum ManagerCmd {
     },
     SetTunnelArgs {
         args: Option<TunnelArgs>,
-        allow_activation: bool,
+        active: Option<bool>,
     },
     SetUseSystemDns {
         enable: bool,
@@ -228,7 +238,7 @@ impl ManagerCmd {
             Self::ApiAppleAssociateAccount { app_transaction_jws } => map_result(manager.apple_associate_account(app_transaction_jws).await),
             Self::ApiDeleteAccount {} => map_result(manager.delete_account().await),
             Self::ApiGetAccountInfo {} => map_result(manager.get_account_info().await),
-            Self::SetFeatureFlag { flag, active } => map_result(manager.set_feature_flag(&flag, active)),
+            Self::SetFeatureFlag { flag, active } => manager.run_on_client_state(|c| c.set_feature_flag(&flag, active)),
             Self::CreateDebugArchive { user_feedback } => manager
                 .create_debug_archive(user_feedback.as_deref())
                 .await
@@ -238,22 +248,7 @@ impl ManagerCmd {
                     ManagerCmdErrorCode::Other
                 }),
             Self::GetDebugInfo {} => Ok(ManagerCmdOk::GetDebugInfo(manager.get_debug_info())),
-            Self::GetExitList { known_version } => {
-                let mut recv = manager.subscribe_exit_list();
-                let res = recv
-                    .wait_for(|exits| exits.as_ref().is_some_and(|e| Some(e.version()) != known_version.as_deref()))
-                    .await
-                    .map_err(|error| {
-                        tracing::error!(?error, message_id = "ahcieM1h", "exit list subscription channel closed: {}", error,);
-                        ManagerCmdErrorCode::Other
-                    })?;
-                let res = res.as_ref().unwrap();
-                Ok(ManagerCmdOk::GetExitList(CachedValue {
-                    version: res.version().to_vec(),
-                    last_updated: res.last_updated,
-                    value: res.value.clone(),
-                }))
-            }
+            Self::GetExitList { known_version } => manager.get_exit_list(known_version).await.map(ManagerCmdOk::GetExitList),
             Self::GetStatus { known_version } => manager
                 .subscribe()
                 .wait_for(|s| Some(s.version) != known_version)
@@ -268,7 +263,7 @@ impl ManagerCmd {
                 const WAIT: Duration = Duration::from_secs(3);
                 tracing::error!(message_id = "i5BA5bOA", "received termination command, exiting in {}ms", WAIT.as_millis());
                 spawn(async {
-                    sleep(Duration::from_secs(3));
+                    tokio::time::sleep(Duration::from_secs(3)).await;
                     tracing::error!(message_id = "eCoVnCI6", "executing scheduled termination");
                     std::process::exit(1);
                 });
@@ -278,19 +273,16 @@ impl ManagerCmd {
             Self::Logout {} => map_result(manager.logout()),
             Self::Ping {} => Ok(ManagerCmdOk::Empty),
             Self::RefreshExitList { freshness } => map_result(manager.maybe_update_exits(freshness).await),
-            Self::RotateWgKey {} => map_result(manager.rotate_wg_key()),
-            Self::SetAutoConnect { enable } => map_result(manager.set_auto_connect(enable)),
-            Self::SetApiHostAlternate { host } => map_result(manager.set_api_host_alternate(host)),
-            Self::SetApiUrl { url } => map_result(manager.set_api_url(url)),
-            Self::SetDnsContentBlock { value } => map_result(manager.set_dns_content_block(value)),
-            Self::SetInNewAccountFlow { value } => map_result(manager.set_in_new_account_flow(value)),
-            Self::SetPinnedExits { exits } => map_result(manager.set_pinned_exits(exits)),
-            Self::SetSniRelay { host } => map_result(manager.set_sni_relay(host)),
-            Self::SetTunnelArgs { args, allow_activation } => manager
-                .set_target_state(args, allow_activation)
-                .map(Into::into)
-                .map_err(|()| ManagerCmdErrorCode::TunnelInactive),
-            Self::SetUseSystemDns { enable } => map_result(manager.set_use_system_dns(enable)),
+            Self::RotateWgKey {} => manager.run_on_client_state(ClientStateHandle::rotate_wg_key),
+            Self::SetAutoConnect { enable } => manager.run_on_client_state(|c| c.set_auto_connect(enable)),
+            Self::SetApiHostAlternate { host } => manager.run_on_client_state(|c| c.set_api_host_alternate(host)),
+            Self::SetApiUrl { url } => manager.run_on_client_state(|c| c.set_api_url(url)),
+            Self::SetDnsContentBlock { value } => manager.run_on_client_state(|c| c.set_dns_content_block(value)),
+            Self::SetInNewAccountFlow { value } => manager.run_on_client_state(|c| c.set_in_new_account_flow(value)),
+            Self::SetPinnedExits { exits } => manager.run_on_client_state(|c| c.set_pinned_exits(exits)),
+            Self::SetSniRelay { host } => manager.run_on_client_state(|c| c.set_sni_relay(host)),
+            Self::SetTunnelArgs { args, active } => manager.run_on_client_state(|c| c.set_tunnel_target_state(args, active)),
+            Self::SetUseSystemDns { enable } => manager.run_on_client_state(|c| c.set_use_system_dns(enable)),
         }
     }
 }

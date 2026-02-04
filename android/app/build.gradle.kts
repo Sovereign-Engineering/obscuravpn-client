@@ -19,7 +19,7 @@ android {
 
     defaultConfig {
         applicationId = "net.obscura.vpnclientapp"
-        minSdk = 29
+        minSdk = 31
         targetSdk = 36
         versionCode = 1
         versionName = project.getVersionName(project.rootDir)

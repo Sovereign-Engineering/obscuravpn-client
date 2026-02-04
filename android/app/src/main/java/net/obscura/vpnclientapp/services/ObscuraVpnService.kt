@@ -1,6 +1,7 @@
 package net.obscura.vpnclientapp.services
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
@@ -20,7 +21,6 @@ import android.system.OsConstants
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import java.net.NetworkInterface
 import java.util.concurrent.CompletableFuture
@@ -35,6 +35,7 @@ import net.obscura.vpnclientapp.ui.CommandBridge
 import net.obscura.vpnclientapp.ui.OsStatus
 import net.obscura.vpnclientapp.ui.commands.GetOsStatus
 
+@SuppressLint("VpnServicePolicy")
 class ObscuraVpnService : VpnService() {
   private class NetworkCallbackHandler(
       val service: ObscuraVpnService,
@@ -135,8 +136,8 @@ class ObscuraVpnService : VpnService() {
   }
 
   companion object {
-    private val NOTIFICATION_CHANNEL_ID = "vpn_channel"
-    private val NOTIFICATION_ID = 1
+    private const val NOTIFICATION_CHANNEL_ID = "vpn_channel"
+    private const val NOTIFICATION_ID = 1
   }
 
   private lateinit var json: Json
@@ -174,21 +175,17 @@ class ObscuraVpnService : VpnService() {
       flags: Int,
       startId: Int,
   ): Int {
-    logDebug("onStartCommand")
-
+    logDebug("onStartCommand $intent $flags $startId")
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-      ServiceCompat.startForeground(
-          this,
+      this.startForeground(
           NOTIFICATION_ID,
-          buildNotification(),
+          this.buildNotification(),
           ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED,
       )
     } else {
-      startForeground(NOTIFICATION_ID, buildNotification())
+      this.startForeground(NOTIFICATION_ID, this.buildNotification())
     }
-
-    updateNEVPNStatus(neVpnStatus)
-
+    this.updateNEVPNStatus(neVpnStatus)
     return START_STICKY
   }
 
@@ -296,7 +293,7 @@ class ObscuraVpnService : VpnService() {
       it.handle { data, tr ->
         logDebug("getStatus completed $data", tr)
 
-        data?.let { onStatusUpdated(json.decodeFromString(it)) }
+        data?.let { data -> onStatusUpdated(json.decodeFromString(data)) }
       }
     }
   }
@@ -365,7 +362,7 @@ class ObscuraVpnService : VpnService() {
               addDisallowedApplication(applicationInfo.packageName)
 
               networkConfig.mtu?.let { setMtu(it) }
-              networkConfig.dns?.forEach { it?.let({ dns -> addDnsServer(dns) }) }
+              networkConfig.dns?.forEach { it?.let { dns -> addDnsServer(dns) } }
 
               networkConfig.ipv4?.split("/")?.let {
                 addAddress(

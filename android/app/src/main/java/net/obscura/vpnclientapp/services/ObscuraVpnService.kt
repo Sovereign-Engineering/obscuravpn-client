@@ -39,7 +39,7 @@ import net.obscura.vpnclientapp.ui.commands.GetOsStatus
 class ObscuraVpnService : VpnService() {
   private class NetworkCallbackHandler(
       val service: ObscuraVpnService,
-      val exit: String,
+      val exitSelector: String?,
   ) : NetworkCallback() {
     override fun onAvailable(network: Network) {
       super.onAvailable(network)
@@ -47,7 +47,7 @@ class ObscuraVpnService : VpnService() {
       logDebug("network is available $network")
 
       service.updateInterface(network)
-      service.setTunnelArgs(exit, true)
+      service.setTunnelArgs(exitSelector, true)
       service.updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Connected)
     }
 
@@ -113,7 +113,7 @@ class ObscuraVpnService : VpnService() {
     override fun startTunnel(exitSelector: String?) {
       logDebug("startTunnel $exitSelector")
 
-      service.startTunnel(exitSelector!!)
+      service.startTunnel(exitSelector)
     }
 
     override fun stopTunnel() {
@@ -332,7 +332,7 @@ class ObscuraVpnService : VpnService() {
     fd = null
   }
 
-  private fun startTunnel(exitSelector: String) {
+  private fun startTunnel(exitSelector: String?) {
     stopTunnel()
 
     OsStatus.Receiver.broadcast(this, GetOsStatus.Result.NEVPNStatus.Connecting)

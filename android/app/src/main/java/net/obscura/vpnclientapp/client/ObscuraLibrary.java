@@ -26,9 +26,7 @@ public class ObscuraLibrary {
 
     public static native void setNetworkInterfaceIndex(int index);
 
-    public static native void startTunnel(int fd);
-
-    public static native void stopTunnel();
+    public static native void setTun(int fd);
 
     public static native void forwardLog(int level, String tag, String message, String messageId, String throwableString);
 }

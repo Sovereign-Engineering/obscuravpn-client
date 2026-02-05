@@ -2,7 +2,7 @@ use super::{
     MANAGER, RUNTIME,
     future::signal_json_ffi_future,
     get_manager,
-    tunnel::Tunnel,
+    tunnel::Tun,
     util::{Utf8JavaStr, throw_runtime_exception},
 };
 use crate::{ffi_helpers::FfiBytes, manager::Manager, manager_cmd::ManagerCmd, net::NetworkInterface, positive_u31::PositiveU31};
@@ -21,11 +21,11 @@ use std::{
 
 const RUST_LOG_DIR_NAME: &str = "rust-log";
 
-static TUNNEL: Mutex<Option<Tunnel>> = Mutex::new(None);
+static TUN: Mutex<Option<Tun>> = Mutex::new(None);
 
 /// cbindgen:ignore
 extern "C" fn receive_cb(ffi_bytes: FfiBytes) {
-    if let Some(tun) = &*TUNNEL.lock().unwrap() {
+    if let Some(tun) = &*TUN.lock().unwrap() {
         tun.write(&ffi_bytes.as_slice());
     }
 }
@@ -162,26 +162,21 @@ pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_setNetwork
 
 /// cbindgen:ignore
 #[unsafe(no_mangle)]
-pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_startTunnel(mut env: JNIEnv, _: JClass, j_fd: jint) {
+pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_setTun(mut env: JNIEnv, _: JClass, j_fd: jint) {
     // SAFETY:
     // - `detachFd` surrenders ownership of the FD on the Kotlin side
     // - No cleanup required besides `close`
-    let fd = unsafe { OwnedFd::from_raw_fd(j_fd) };
-    match Tunnel::spawn(fd) {
-        Ok(tunnel) => {
-            TUNNEL.lock().unwrap().replace(tunnel);
-        }
-        Err(error) => {
-            tracing::error!(message_id = "VjGxw5uw", ?error, "failed to spawn tunnel");
-            throw_runtime_exception(&mut env, error);
-        }
+    let fd = (j_fd >= 0).then(|| unsafe { OwnedFd::from_raw_fd(j_fd) });
+    match fd {
+        Some(fd) => match Tun::spawn(fd) {
+            Ok(tun) => *TUN.lock().unwrap() = Some(tun),
+            Err(error) => {
+                tracing::error!(message_id = "VjGxw5uw", ?error, "failed to spawn tun reader");
+                throw_runtime_exception(&mut env, error);
+            }
+        },
+        None => *TUN.lock().unwrap() = None,
     }
-}
-
-/// cbindgen:ignore
-#[unsafe(no_mangle)]
-pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_stopTunnel(_env: JNIEnv, _: JClass) {
-    TUNNEL.lock().unwrap().take();
 }
 
 // We'd need to use `getStackTrace` to get more information than this, but that

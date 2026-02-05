@@ -5,12 +5,12 @@ use nix::{errno::Errno, unistd};
 use std::os::fd::{AsRawFd as _, OwnedFd};
 use tokio::io::unix::AsyncFd;
 
-pub struct Tunnel {
+pub struct Tun {
     fd: OwnedFd,
     _read_loop_task: AbortOnDrop,
 }
 
-impl Tunnel {
+impl Tun {
     pub fn spawn(fd: OwnedFd) -> anyhow::Result<Self> {
         let fd_watcher = AsyncFd::new(fd.as_raw_fd()).context("failed to watch tun")?;
         let manager = get_manager()?.clone();
@@ -44,7 +44,7 @@ impl Tunnel {
 
     pub fn write(&self, packet: &[u8]) {
         if packet.len() > TUNNEL_MTU as usize {
-            tracing::warn!("packet larger than MTU: {}", packet.len());
+            tracing::warn!(message_id = "Yc1WxQBY", packet_len = packet.len(), "packet larger than MTU",);
         }
         if let Err(error) = unistd::write(&self.fd, packet) {
             tracing::error!(message_id = "W0sOhigq", ?error, "writing packet to tun failed");

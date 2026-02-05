@@ -242,10 +242,7 @@ function StrictLeakPreventionSwitch() {
   const { t } = useTranslation();
   const { vpnConnected, osStatus } = useContext(AppContext);
   const { strictLeakPrevention } = osStatus;
-  const { showLoadingUI, error, execute } = commands.useAsyncCommand();
-
-  const onChange = (checked: boolean) =>
-    execute(() => commands.setStrictLeakPrevention(checked));
+  const { showLoadingUI, error, execute: setStrictLeakPrevention } = commands.useCommand({ command: commands.setStrictLeakPrevention});
 
   const disabled = strictLeakPrevention && vpnConnected;
 
@@ -254,7 +251,7 @@ function StrictLeakPreventionSwitch() {
       <Switch
         error={error}
         checked={strictLeakPrevention}
-        onChange={(event) => onChange(event.currentTarget.checked)}
+        onChange={(event) => setStrictLeakPrevention(event.currentTarget.checked)}
         disabled={disabled || showLoadingUI}
         label={t('strictLeakPreventionLabel')}
         description={t('strictLeakPreventionDescription')}
@@ -277,10 +274,9 @@ function StrictLeakPreventionSwitch() {
 function FeatureFlagToggle({ featureFlagKey }: { featureFlagKey: FeatureFlagKey }) {
   const { t, i18n } = useTranslation();
   const { appStatus } = useContext(AppContext);
-  const { showLoadingUI, error, execute } = commands.useAsyncCommand();
+  const { showLoadingUI, error, execute: setFeatureFlag } = commands.useCommand({ command: commands.setFeatureFlag });
 
-  const onChange = (checked: boolean) =>
-    execute(() => commands.setFeatureFlag(featureFlagKey, checked));
+  const onChange = (checked: boolean) => setFeatureFlag(featureFlagKey, checked);
 
   const labelKey = `featureFlag-${featureFlagKey}-Label`;
   const descriptionKey = `featureFlag-${featureFlagKey}-Description`;

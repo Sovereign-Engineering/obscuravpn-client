@@ -270,58 +270,54 @@ export async function storeKitRestorePurchases(): Promise<void> {
   await invoke('restorePurchases', {});
 }
 
-export function useHandleCommand(t: TFunction) {
-  return async (command: () => Promise<void> | void) => {
-    try {
-      await command();
-    } catch (e) {
-      const error = normalizeError(e);
-      const message = error instanceof CommandError
-        ? fmtErrorI18n(t, error) : error.message;
-      notifications.show({
-        color: 'red',
-        title: t('Error'),
-        message
-      });
-      throw error;
-    }
-  };
+export interface UseCommandOptions<CommandArgs extends any[]> {
+  command: (...args: CommandArgs) => Promise<void>;
+  /** Whether to show a notification on error. Default: false */
+  showNotification?: boolean;
+  /** Whether to re-throw the error after handling. Default: false */
+  rethrow?: boolean;
 }
 
 /**
- * Hook for calling bridge commands with no return values with loading and error state management.
+ * Hook for calling non-return value bridge commands with loading and error state management.
  *
  * @returns Object containing:
  *   - loading: boolean indicating if command is in progress
- *   - showLoadingUI: boolean indicating whether caller should show loading UI
+ *   - showLoadingUI: boolean indicating whether caller should show a throttled loading UI
  *   - error: string with error message if command failed
- *   - execute: function that wraps the async command with loading/error handling
- *
- * @example
- * const { loading, error, execute } = useAsyncCommand();
- *
- * const onChange = (checked: boolean) =>
- *   execute(() => commands.setFeatureFlag(FeatureFlagKey.KillSwitch, checked));
  */
-export function useAsyncCommand() {
+export function useCommand<CommandArgs extends any[]>({ command, showNotification = false, rethrow = false }: UseCommandOptions<CommandArgs>) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
   const { t } = useTranslation();
   const showLoadingUI = useThrottledValue(loading, loading ? 200 : 0);
 
-  const execute = async (command: () => Promise<unknown>) => {
+  const execute = async (...args: CommandArgs) => {
     if (loading) return;
     setLoading(true);
     setError(undefined);
     try {
-      await command();
+      await command(...args);
     } catch (err) {
       const error = normalizeError(err);
       const message = error instanceof CommandError
         ? fmtErrorI18n(t, error) : error.message;
+
       setError(message);
+
+      if (showNotification) {
+        notifications.show({
+          color: 'red',
+          title: t('Error'),
+          message
+        });
+      }
+
+      if (rethrow) {
+        throw error;
+      }
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   };
 

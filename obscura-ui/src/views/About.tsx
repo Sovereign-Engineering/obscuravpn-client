@@ -22,7 +22,8 @@ export default function About() {
   const { osStatus } = useContext(AppContext);
   const { updaterStatus } = osStatus;
   const [showLicenses, setShowLicenses] = useState(false);
-  const handleCommand = commands.useHandleCommand(t);
+  const { execute: checkForUpdates } = commands.useCommand({ command: commands.checkForUpdates, showNotification: true, rethrow: false });
+  const { execute: installUpdate } = commands.useCommand({ command: commands.installUpdate, showNotification: true, rethrow: false });
   const navigate = useNavigate();
   const [_, setVersionClicks] = useState(0);
 
@@ -39,7 +40,7 @@ export default function About() {
   useEffect(() => {
     // Intentionally run only on mount (recheck once if update not already available)
     if (updaterStatus?.type !== UpdaterStatusType.Available && !IS_HANDHELD_DEVICE) {
-      handleCommand(commands.checkForUpdates);
+      checkForUpdates();
     }
   }, []);
   const updaterStatusDelayed = useThrottledValue(updaterStatus, updaterStatus.type === UpdaterStatusType.Initiated ? MIN_LOAD_MS : 0);
@@ -66,9 +67,9 @@ export default function About() {
           <Group>
             {!IS_HANDHELD_DEVICE && <> {
               updaterStatusDelayed?.type === UpdaterStatusType.Available ? (
-                <Button onClick={() => handleCommand(commands.installUpdate)}>{t('installUpdate')}</Button>
+                <Button onClick={installUpdate}>{t('installUpdate')}</Button>
               ) : (
-                <Button onClick={() => handleCommand(commands.checkForUpdates)}>{t('checkForUpdates')}</Button>
+                <Button onClick={checkForUpdates}>{t('checkForUpdates')}</Button>
               )
             }</>}
           </Group>

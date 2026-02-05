@@ -143,7 +143,7 @@ interface SubscriptionProductCardProps {
 function AppleSubscriptionProductCard({ product, subscribed }: SubscriptionProductCardProps) {
   const { t } = useTranslation();
   const { pollAccount, setPaymentProcessing } = useContext(AppContext);
-  const commandHandler = commands.useHandleCommand(t);
+  const { execute: storeKitAssociateAccount } = commands.useCommand({ command: commands.storeKitAssociateAccount, showNotification: true, rethrow: true });
   const redeemCodeLinkRef = useRef<HTMLAnchorElement>(null);
   const [preparingToRedeem, setPreparingToRedeem] = useState(false);
 
@@ -197,7 +197,7 @@ function AppleSubscriptionProductCard({ product, subscribed }: SubscriptionProdu
               async () => {
                 setPreparingToRedeem(true);
                 try {
-                  await commandHandler(commands.storeKitAssociateAccount);
+                  await storeKitAssociateAccount();
                   // if successfully associated account, open the URL
                   redeemCodeLinkRef.current?.click();
                 } finally {

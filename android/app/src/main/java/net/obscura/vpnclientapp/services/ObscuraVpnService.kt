@@ -157,7 +157,6 @@ class ObscuraVpnService : VpnService() {
   private var neVpnStatus: GetOsStatus.Result.NEVPNStatus =
       GetOsStatus.Result.NEVPNStatus.Disconnected
 
-  private var fd: ParcelFileDescriptor? = null
   private var currentNetwork: Network? = null
 
   override fun onCreate() {
@@ -221,16 +220,11 @@ class ObscuraVpnService : VpnService() {
   }
 
   private fun onStatusUpdated(status: GetStatus.Response) {
-    logInfo("status updated $status", "xXx7PxdD")
-
-    loadStatus(status.version)
-
-    vpnStatus = status.vpnStatus
-    status.vpnStatus?.connected?.networkConfig?.let { networkConfig ->
-      establishConnection(networkConfig)
-    }
-
-    updateNotification()
+      logInfo("status updated $status", "xXx7PxdD")
+      vpnStatus = status.vpnStatus
+      setNetworkConfig(status.vpnStatus)
+      loadStatus(status.version)
+      updateNotification()
   }
 
   override fun onRevoke() {
@@ -347,12 +341,7 @@ class ObscuraVpnService : VpnService() {
 
       networkCallbackHandler = null
     }
-
-    fd?.let {
-      ObscuraLibrary.stopTunnel()
-      setTunnelArgs(null, false)
-    }
-    fd = null
+    setTunnelArgs(null, false)
   }
 
   private fun startTunnel(exitSelector: String?) {
@@ -373,12 +362,27 @@ class ObscuraVpnService : VpnService() {
         }
   }
 
-  private fun establishConnection(
-      networkConfig: GetStatus.Response.VpnStatus.Connected.NetworkConfig
-  ) {
-    fd?.let { ObscuraLibrary.stopTunnel() }
+  private fun setNetworkConfig(vpnStatus: GetStatus.Response.VpnStatus) {
+      // TODO: we would like to use when here and list variant explicitly, so we can compile-time check completeness (e.g. a disconnecting variant may be added eventually): https://linear.app/soveng/issue/OBS-3132
+      if (vpnStatus.disconnected != null) {
+          ObscuraLibrary.setTun(-1)
+          logInfo("unset TUN device")
+          return
+      }
+      // TODO: check if we need to create a TUN device while connecting to start capturing traffic asap: https://linear.app/soveng/issue/OBS-3133
+      if (vpnStatus.connecting != null) {
+          logInfo("skipping TUN device update")
+          return
+      }
+      val networkConfig = if (vpnStatus.connected != null) {
+          vpnStatus.connected.networkConfig
+      } else {
+          // should be unreachable
+          logError("VpnStatus has no variant")
+          return
+      }
+      logInfo("updating TUN device")
 
-    fd =
         Builder()
             .apply {
               // always disallow current app so it doesn't get routed through the VPN
@@ -417,9 +421,8 @@ class ObscuraVpnService : VpnService() {
             }
             .establish()
             ?.apply {
-              ObscuraLibrary.startTunnel(detachFd())
-
-              logInfo("VPN tunnel started", "q9cnmRY1")
+              ObscuraLibrary.setTun(detachFd())
+              logInfo("set TUN device", "q9cnmRY1")
             }
   }
 

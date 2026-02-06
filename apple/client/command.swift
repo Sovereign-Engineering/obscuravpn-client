@@ -24,6 +24,7 @@ enum Command: Codable {
     case associateAccount
     case purchaseSubscription
     case restorePurchases
+    case showOfferCodeRedemption
     case jsonFfiCmd(
         cmd: String,
         timeoutMs: Int?
@@ -85,7 +86,7 @@ extension CommandHandler {
             }
             return try path.json()
         #if os(macOS)
-            case .emailDebugArchive, .shareDebugArchive, .purchaseSubscription, .restorePurchases, .associateAccount:
+            case .emailDebugArchive, .shareDebugArchive, .purchaseSubscription, .restorePurchases, .associateAccount, .showOfferCodeRedemption:
                 throw errorUnsupportedOnOS
             case .revealItemInDir(let path):
                 NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
@@ -108,6 +109,10 @@ extension CommandHandler {
                 return try result.json()
             case .restorePurchases:
                 try await appState.storeKitModel.restorePurchases()
+            case .showOfferCodeRedemption:
+                DispatchQueue.main.async {
+                    self.appState.showOfferCodeRedemption = true
+                }
             case .emailDebugArchive(let path, let subject, let body):
                 try appState.emailDebugArchive(path: path, subject: subject, body: body)
             case .shareDebugArchive(let path):

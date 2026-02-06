@@ -313,7 +313,7 @@ struct ContentView: View {
                 }
                 .manageSubscriptionsSheet(
                     isPresented: self.$webviewsController.showSubscriptionManageSheet)
-                .offerCodeRedemption(isPresented: self.$webviewsController.showOfferCodeRedemption) { result in
+                .offerCodeRedemption(isPresented: self.$appState.showOfferCodeRedemption) { result in
                     switch result {
                     case .success:
                         logger.info(

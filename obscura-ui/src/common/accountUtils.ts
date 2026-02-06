@@ -132,7 +132,6 @@ export const LEGAL_WEBPAGE = `${OBSCURA_WEBPAGE}/legal`;
 export const APP_ACCOUNT_TAB = 'obscuravpn:///account';
 
 export const APP_MANAGE_SUBSCRIPTION = `obscuravpn:///manage-subscription`;
-export const APP_REDEEM_OFFER_CODE = `obscuravpn:///redeem-offer-code`;
 
 export function payUrl(accountId: AccountId): string {
   return `${OBSCURA_WEBPAGE}/pay#account_id=${encodeURIComponent(accountIdToString(accountId))}`;

@@ -270,6 +270,10 @@ export async function storeKitRestorePurchases(): Promise<void> {
   await invoke('restorePurchases', {});
 }
 
+export async function showOfferCodeRedemption(): Promise<void> {
+  await invoke('showOfferCodeRedemption');
+}
+
 export interface UseCommandOptions<CommandArgs extends any[]> {
   command: (...args: CommandArgs) => Promise<void>;
   /** Whether to show a notification on error. Default: false */

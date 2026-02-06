@@ -15,6 +15,7 @@ class AppState: ObservableObject {
     let osStatus: WatchableValue<OsStatus>
     @Published var status: NeStatus
     @Published var needsIsEnabledFix: Bool = false
+    @Published var showOfferCodeRedemption: Bool = false
 
     #if !os(macOS)
         private var didBecomeActiveObserver: NSObjectProtocol?

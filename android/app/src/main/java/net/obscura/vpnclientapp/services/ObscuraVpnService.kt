@@ -29,7 +29,7 @@ import net.obscura.vpnclientapp.R
 import net.obscura.vpnclientapp.client.ObscuraLibrary
 import net.obscura.vpnclientapp.client.commands.GetStatus
 import net.obscura.vpnclientapp.client.commands.SetTunnelArgs
-import net.obscura.vpnclientapp.helpers.logDebug
+import net.obscura.vpnclientapp.helpers.logInfo
 import net.obscura.vpnclientapp.helpers.logError
 import net.obscura.vpnclientapp.helpers.requireVpnServiceProcess
 import net.obscura.vpnclientapp.ui.CommandBridge
@@ -45,7 +45,7 @@ class ObscuraVpnService : VpnService() {
     override fun onAvailable(network: Network) {
       super.onAvailable(network)
 
-      logDebug("network is available $network")
+      logInfo("network is available $network", "sjIGwIBY")
       if (service.currentNetwork != null) {
         service.setUnderlyingNetworks(arrayOf(service.currentNetwork))
       } else {
@@ -61,7 +61,7 @@ class ObscuraVpnService : VpnService() {
     ) {
       super.onBlockedStatusChanged(network, blocked)
 
-      logDebug("network blocked status changed $network $blocked")
+      logInfo("network blocked status changed $network $blocked", "dVomhtV1")
 
       service.updateInterface(network)
       service.updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Connected)
@@ -73,7 +73,7 @@ class ObscuraVpnService : VpnService() {
     ) {
       super.onCapabilitiesChanged(network, networkCapabilities)
 
-      logDebug("network capabilities changed $network $networkCapabilities")
+      logInfo("network capabilities changed $network $networkCapabilities", "APRCQ1hd")
 
       service.updateInterface(network)
       service.updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Connected)
@@ -85,7 +85,7 @@ class ObscuraVpnService : VpnService() {
     ) {
       super.onLinkPropertiesChanged(network, linkProperties)
 
-      logDebug("network link properties changed $network $linkProperties")
+      logInfo("network link properties changed $network $linkProperties", "GF2XfMPW")
 
       service.updateInterface(network)
       service.updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Connected)
@@ -97,7 +97,7 @@ class ObscuraVpnService : VpnService() {
     ) {
       super.onLosing(network, maxMsToLive)
 
-      logDebug("loosing network $network $maxMsToLive")
+      logInfo("loosing network $network $maxMsToLive", "Q23Uvo5K")
 
       service.updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Disconnecting)
     }
@@ -105,7 +105,7 @@ class ObscuraVpnService : VpnService() {
     override fun onLost(network: Network) {
       super.onLost(network)
 
-      logDebug("lost network $network")
+      logInfo("lost network $network", "zOCU8MXj")
 
       service.updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Disconnected)
     }
@@ -115,13 +115,13 @@ class ObscuraVpnService : VpnService() {
       val service: ObscuraVpnService,
   ) : IObscuraVpnService.Stub() {
     override fun startTunnel(exitSelector: String?) {
-      logDebug("startTunnel $exitSelector")
+      logInfo("startTunnel $exitSelector", "CddrThRg")
 
       service.startTunnel(exitSelector)
     }
 
     override fun stopTunnel() {
-      logDebug("stopTunnel")
+      logInfo("stopTunnel", "Gf6f2lwW")
 
       service.stopTunnel()
     }
@@ -130,7 +130,7 @@ class ObscuraVpnService : VpnService() {
         id: Long,
         command: String?,
     ) {
-      logDebug("jsonFfi $id $command")
+      logInfo("jsonFfi $id $command", "qMO4l3zd")
 
       CompletableFuture<String>().also {
         CommandBridge.Receiver.broadcast(service, id, it)
@@ -165,7 +165,7 @@ class ObscuraVpnService : VpnService() {
 
     requireVpnServiceProcess()
 
-    logDebug("onCreate")
+    logInfo("onCreate", "vqiGa01f")
 
     json = Json { ignoreUnknownKeys = true }
     handler = Handler(Looper.getMainLooper())
@@ -198,7 +198,7 @@ class ObscuraVpnService : VpnService() {
       flags: Int,
       startId: Int,
   ): Int {
-    logDebug("onStartCommand $intent $flags $startId")
+    logInfo("onStartCommand $intent $flags $startId", "C9rsG0uh")
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
       this.startForeground(
           NOTIFICATION_ID,
@@ -213,7 +213,7 @@ class ObscuraVpnService : VpnService() {
   }
 
   override fun onBind(intent: Intent?): IBinder? {
-    logDebug("onBind $intent")
+    logInfo("onBind $intent", "lckBR8hX")
 
     updateNEVPNStatus(neVpnStatus)
 
@@ -221,7 +221,7 @@ class ObscuraVpnService : VpnService() {
   }
 
   private fun onStatusUpdated(status: GetStatus.Response) {
-    logDebug("status updated $status")
+    logInfo("status updated $status", "xXx7PxdD")
 
     loadStatus(status.version)
 
@@ -236,7 +236,7 @@ class ObscuraVpnService : VpnService() {
   override fun onRevoke() {
     super.onRevoke()
 
-    logDebug("onRevoke")
+    logInfo("onRevoke", "V3qS5kil")
 
     stopTunnel()
   }
@@ -244,7 +244,7 @@ class ObscuraVpnService : VpnService() {
   override fun onDestroy() {
     super.onDestroy()
 
-    logDebug("onDestroy")
+    logInfo("onDestroy", "yNLRpqaN")
 
     stopTunnel()
   }
@@ -303,7 +303,7 @@ class ObscuraVpnService : VpnService() {
   }
 
   private fun loadStatus(knownVersion: String?) {
-    logDebug("load status $knownVersion")
+    logInfo("load status $knownVersion", "8pXipD8h")
 
     CompletableFuture<String>().also {
       ObscuraLibrary.jsonFfi(
@@ -314,7 +314,7 @@ class ObscuraVpnService : VpnService() {
       )
 
       it.handle { data, tr ->
-        logDebug("getStatus completed $data", tr)
+        logInfo("getStatus completed $data", "oiAyY4gh", tr)
 
         data?.let { data -> onStatusUpdated(json.decodeFromString(data)) }
       }
@@ -419,12 +419,12 @@ class ObscuraVpnService : VpnService() {
             ?.apply {
               ObscuraLibrary.startTunnel(detachFd())
 
-              logDebug("VPN tunnel started")
+              logInfo("VPN tunnel started", "q9cnmRY1")
             }
   }
 
     private fun updateInterface(network: Network?) {
-        logDebug("network interface changed: $network")
+        logInfo("network interface changed: $network", "crWriIOe")
         if (network != null) {
             setUnderlyingNetworks(arrayOf(network))
         } else {
@@ -433,17 +433,17 @@ class ObscuraVpnService : VpnService() {
         val ifIndex: Int? = if (network != null) {
             val linkProperties = connectivityManager.getLinkProperties(network)
             if (linkProperties == null) {
-                logError("failed to get link properties")
+                logError("failed to get link properties", "W0JKaOGP")
                 null
             } else {
                 val ifName = linkProperties.interfaceName
                 if (ifName == null) {
-                    logError("interface name is not set")
+                    logError("interface name is not set", "ukjpaGLl")
                     null
                 } else {
                     val ifIndex = NetworkInterface.getByName(ifName)?.index
                     if (ifIndex == null) {
-                        logError("interface lookup by name $ifName failed")
+                        logError("interface lookup by name $ifName failed", "JvEt0GtR")
                         null
                     } else {
                         ifIndex
@@ -453,7 +453,7 @@ class ObscuraVpnService : VpnService() {
         } else {
             null
         }
-        logDebug("setting interface index $ifIndex")
+        logInfo("setting interface index $ifIndex", "pOsKRATd")
         ObscuraLibrary.setNetworkInterfaceIndex(ifIndex ?: 0)
     }
 }

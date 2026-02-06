@@ -45,6 +45,10 @@ impl<'a, 'b> Utf8JavaStr<'a, 'b> {
         Ok(Self { s, obj, env })
     }
 
+    pub fn from_nullable(env: &mut JNIEnv<'b>, obj: &'a JString<'a>, name: &str) -> anyhow::Result<Option<Self>> {
+        (!obj.as_raw().is_null()).then(|| Self::new(env, obj, name)).transpose()
+    }
+
     pub fn as_str(&self) -> &str {
         self.s.as_ref()
     }

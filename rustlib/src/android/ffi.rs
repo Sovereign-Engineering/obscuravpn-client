@@ -183,3 +183,50 @@ pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_startTunne
 pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_stopTunnel(_env: JNIEnv, _: JClass) {
     TUNNEL.lock().unwrap().take();
 }
+
+// We'd need to use `getStackTrace` to get more information than this, but that
+// seems relatively expensive, has a fiddly API, and still isn't exactly what we
+// want (i.e. line numbers are for `return` statements).
+fn forward_log(
+    env: &mut JNIEnv,
+    j_level: jint,
+    j_tag: &JString,
+    j_message: &JString,
+    j_message_id: &JString,
+    j_throwable_string: &JString,
+) -> anyhow::Result<()> {
+    let tag = Utf8JavaStr::new(env, j_tag, "j_tag")?;
+    let tag = tag.as_str();
+    let message = Utf8JavaStr::new(env, j_message, "j_message")?;
+    let message = message.as_str();
+    let message_id = Utf8JavaStr::new(env, j_message_id, "j_message_id")?;
+    let message_id = message_id.as_str();
+    let throwable_string = Utf8JavaStr::from_nullable(env, j_throwable_string, "j_throwable_string")?;
+    let throwable_string = throwable_string.as_ref().map(Utf8JavaStr::as_str);
+    // https://github.com/tokio-rs/tracing/issues/372
+    match j_level {
+        0 => tracing::event!(target: "java", tracing::Level::TRACE, message_id, tag, throwable_string, message),
+        1 => tracing::event!(target: "java", tracing::Level::DEBUG, message_id, tag, throwable_string, message),
+        2 => tracing::event!(target: "java", tracing::Level::INFO, message_id, tag, throwable_string, message),
+        3 => tracing::event!(target: "java", tracing::Level::WARN, message_id, tag, throwable_string, message),
+        4 => tracing::event!(target: "java", tracing::Level::ERROR, message_id, tag, throwable_string, message),
+        _ => anyhow::bail!("invalid log level: {j_level}"),
+    }
+    Ok(())
+}
+
+/// cbindgen:ignore
+#[unsafe(no_mangle)]
+pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_forwardLog(
+    mut env: JNIEnv,
+    _: JClass,
+    j_level: jint,
+    j_tag: JString,
+    j_message: JString,
+    j_message_id: JString,
+    j_throwable_string: JString,
+) {
+    if let Err(error) = forward_log(&mut env, j_level, &j_tag, &j_message, &j_message_id, &j_throwable_string) {
+        tracing::error!(message_id = "Cgb1qGM7", ?error, "failed to forward Java logging");
+    }
+}

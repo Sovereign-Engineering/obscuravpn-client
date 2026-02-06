@@ -42,7 +42,9 @@ pub extern "C" fn JNI_OnLoad(vm: *mut jni::sys::JavaVM, _reserved: *mut c_void) 
     // so we take advantage of the fact that `JNI_OnLoad` is called from a Java
     // thread to cache all the app-specific classes we need.
     // https://developer.android.com/ndk/guides/jni-tips#faq:-why-didnt-findclass-find-my-class
-    super::class_cache::init(&mut env);
+    if let Err(error) = super::class_cache::init(&mut env) {
+        throw_runtime_exception(&mut env, error);
+    }
     jni::sys::JNI_VERSION_1_6
 }
 
@@ -76,13 +78,13 @@ pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_initialize
     j_user_agent: JString,
 ) {
     let mut first_init = false;
-    MANAGER.get_or_init(|| {
-        // We can remove this panic once `get_or_try_init` is stable:
-        // https://github.com/rust-lang/rust/issues/109737
-        let manager = initialize(&mut env, &j_config_dir, &j_user_agent).expect("`initialize` failed");
+    if let Err(error) = MANAGER.get_or_try_init(|| -> anyhow::Result<_> {
+        let manager = initialize(&mut env, &j_config_dir, &j_user_agent).context("`initialize` failed")?;
         first_init = true;
-        manager
-    });
+        Ok(manager)
+    }) {
+        throw_runtime_exception(&mut env, error);
+    }
     if !first_init {
         throw_runtime_exception(&mut env, "manager already initialized");
     }

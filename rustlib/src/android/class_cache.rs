@@ -3,9 +3,9 @@ use jni::{
     JNIEnv,
     objects::{GlobalRef, JClass},
 };
-use std::sync::OnceLock;
+use once_cell::sync::OnceCell;
 
-static CLASS_CACHE: OnceLock<ClassCache> = OnceLock::new();
+static CLASS_CACHE: OnceCell<ClassCache> = OnceCell::new();
 
 #[derive(Debug)]
 pub struct ClassCache {
@@ -24,15 +24,13 @@ impl ClassCache {
     }
 }
 
-pub fn init(env: &mut JNIEnv) {
+pub fn init(env: &mut JNIEnv) -> anyhow::Result<()> {
     // `JNI_OnLoad` could be called multiple times, so unlike with manager init,
     // we won't throw an exception if this is called multiple times.
     // https://issuetracker.google.com/issues/220523932
-    CLASS_CACHE.get_or_init(|| {
-        // We can remove this panic once `get_or_try_init` is stable:
-        // https://github.com/rust-lang/rust/issues/109737
-        ClassCache::new(env).expect("failed to create class cache")
-    });
+    CLASS_CACHE
+        .get_or_try_init(|| ClassCache::new(env).context("failed to create class cache"))
+        .map(drop)
 }
 
 pub fn get() -> anyhow::Result<&'static ClassCache> {

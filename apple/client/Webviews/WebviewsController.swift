@@ -11,7 +11,6 @@ private let logger = Logger(
 class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
     @Published var showModalWebview: Bool = false
     @Published var showSubscriptionManageSheet: Bool = false
-    @Published var showOfferCodeRedemption: Bool = false
 
     @Published var obscuraWebView: ObscuraUIWebView? = nil
     @Published var externalWebView: ExternalWebView? = nil
@@ -154,8 +153,6 @@ class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
             break
         case .some("/manage-subscription"):
             self.showSubscriptionManageSheet = true
-        case .some("/redeem-offer-code"):
-            self.showOfferCodeRedemption = true
         case .some("/payment-succeeded"):
             self.obscuraWebView?.handlePaymentSucceeded()
         case .some("/account"):

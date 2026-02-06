@@ -1,6 +1,6 @@
 import { Anchor, Box, Button, Divider, Group, Loader, Stack, Text, UnstyledButton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as commands from '../bridge/commands';
 import * as ObscuraAccount from '../common/accountUtils';
@@ -143,8 +143,7 @@ interface SubscriptionProductCardProps {
 function AppleSubscriptionProductCard({ product, subscribed }: SubscriptionProductCardProps) {
   const { t } = useTranslation();
   const { pollAccount, setPaymentProcessing } = useContext(AppContext);
-  const commandHandler = commands.useHandleCommand(t);
-  const redeemCodeLinkRef = useRef<HTMLAnchorElement>(null);
+  const { execute: storeKitAssociateAccount } = commands.useCommand({ command: commands.storeKitAssociateAccount, showNotification: true, rethrow: true });
   const [preparingToRedeem, setPreparingToRedeem] = useState(false);
 
   const handlePurchase = async () => {
@@ -197,15 +196,14 @@ function AppleSubscriptionProductCard({ product, subscribed }: SubscriptionProdu
               async () => {
                 setPreparingToRedeem(true);
                 try {
-                  await commandHandler(commands.storeKitAssociateAccount);
-                  // if successfully associated account, open the URL
-                  redeemCodeLinkRef.current?.click();
+                  await storeKitAssociateAccount();
+                  // if successfully associated account, show the redemption sheet
+                  await commands.showOfferCodeRedemption();
                 } finally {
                   setPreparingToRedeem(false);
                 }
               }
             }>{t('Redeem Code')}</UnstyledButton>
-            <Anchor ref={redeemCodeLinkRef} href={ObscuraAccount.APP_REDEEM_OFFER_CODE} style={{ display: 'none' }} />
           </Group>
           <Anchor size='xs' td='underline' c='blue' onClick={commands.storeKitRestorePurchases}>{t('Restore Purchases')}</Anchor>
         </Stack>

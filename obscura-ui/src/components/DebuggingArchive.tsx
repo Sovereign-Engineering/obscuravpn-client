@@ -21,7 +21,7 @@ export default function DebuggingArchive({ osStatus }: { osStatus: OsStatus }) {
   const mailto = useMailto(osStatus);
   const createDebuggingArchive = useDebuggingArchive();
   const [opened, { open, close }] = useDisclosure(false);
-  const commandHandler = commands.useHandleCommand(t);
+  const { execute: disconnect } = commands.useCommand({ command: commands.disconnect, showNotification: true, rethrow: true });
   const [disconnectInProgress, setDisableButtons] = useState(false);
   const [userFeedback, setUserFeedback] = useState('');
 
@@ -61,7 +61,7 @@ export default function DebuggingArchive({ osStatus }: { osStatus: OsStatus }) {
             osStatus.osVpnStatus !== NEVPNStatus.Disconnected &&
             <Button disabled={disconnectInProgress} miw={130} onClick={async () => {
               setDisableButtons(true);
-              await commandHandler(commands.disconnect);
+              await disconnect();
               let knownOsStatusId = null;
               while (true) {
                 const newOsStatus = commands.osStatus(knownOsStatusId);

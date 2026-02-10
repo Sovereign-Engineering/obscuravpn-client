@@ -404,12 +404,17 @@ final class StatusItemManager: ObservableObject {
                 }
 
                 var lastExitIsPinned = false
-
-                if !pinnedLocations.isEmpty {
-                    let pinnedLocationsSubHeaderItem = Self.createSectionHeaderMenuItem(title: "Pinned Locations")
-                    pinnedLocationsSubHeaderItem.indentationLevel = 1
-                    self.locationSubmenu.addItem(pinnedLocationsSubHeaderItem)
-
+                let pinnedLocationsSubHeaderItem = Self.createSectionHeaderMenuItem(title: "Pinned Locations")
+                pinnedLocationsSubHeaderItem.indentationLevel = 1
+                self.locationSubmenu.addItem(pinnedLocationsSubHeaderItem)
+                if pinnedLocations.isEmpty {
+                    let placeholderItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+                    let italicFont = NSFontManager.shared.convert(NSFont.menuFont(ofSize: 10), toHaveTrait: .italicFontMask)
+                    let attributes: [NSAttributedString.Key: Any] = [.font: italicFont]
+                    placeholderItem.indentationLevel = 1
+                    placeholderItem.attributedTitle = NSAttributedString(string: "Pinned locations will appear here", attributes: attributes)
+                    self.locationSubmenu.addItem(placeholderItem)
+                } else {
                     for pinnedLocation in pinnedLocations {
                         // Do not show location in status menu if the pinned exit is not found in the fetched cityNames
                         let cityExit = CityExit(

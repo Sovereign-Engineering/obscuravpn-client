@@ -21,6 +21,7 @@ class OsStatus: Encodable {
     #else
         let canSendMail: Bool = MFMailComposeViewController.canSendMail()
         var storeKit = StoreKitStatus()
+        var offerCodeRedemptionSuccess: Bool = false
 
         struct StoreKitStatus: Codable {
             var subscriptionProduct: SubscriptionProductModel?

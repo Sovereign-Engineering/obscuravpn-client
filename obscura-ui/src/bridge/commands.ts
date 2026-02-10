@@ -274,6 +274,10 @@ export async function showOfferCodeRedemption(): Promise<void> {
   await invoke('showOfferCodeRedemption');
 }
 
+export async function resetOfferCodeRedemptionSuccess(): Promise<void> {
+  await invoke('resetOfferCodeRedemptionSuccess');
+}
+
 export interface UseCommandOptions<CommandArgs extends any[]> {
   command: (...args: CommandArgs) => Promise<void>;
   /** Whether to show a notification on error. Default: false */

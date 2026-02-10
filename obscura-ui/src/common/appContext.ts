@@ -51,9 +51,11 @@ export interface OsStatus {
         registered: boolean,
         error?: string
     },
+    // iOS-specific
     storeKit?: {
       subscriptionProduct?: SubscriptionProductModel,
-    }
+    },
+    offerCodeRedemptionSuccess?: boolean,
 }
 
 export interface SubscriptionProductModel {

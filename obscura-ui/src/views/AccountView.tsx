@@ -44,6 +44,7 @@ export default function Account() {
     try {
       await commands.disconnect();
       await commands.logout();
+      await commands.resetOfferCodeRedemptionSuccess();
     } catch (e) {
       const error = normalizeError(e);
       notifications.show({ title: t('logOutFailed'), message: <Text>{t('pleaseReportError')}<br /><Code>{error.message}</Code></Text> });

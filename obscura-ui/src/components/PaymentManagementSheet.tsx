@@ -17,11 +17,23 @@ interface PaymentManagementSheetProps {
 
 export function PaymentManagementSheet({ opened, onClose }: PaymentManagementSheetProps) {
   const { t } = useTranslation();
-  const { appStatus, accountLoading, pollAccount, isProcessingPayment } = useContext(AppContext);
+  const { appStatus, accountLoading, pollAccount, isProcessingPayment, osStatus, setPaymentProcessing } = useContext(AppContext);
 
   useEffect(() => {
     void pollAccount();
   }, []);
+
+  // When the iOS offer code redemption sheet is closed,
+  // there is a return value of success or failure;
+  // `offerCodeRedemptionSuccess` is set to true in success.
+  // For a brief period of time after a successful redemption,
+  // the account info will show expired which will confuse new users.
+  // When this field is set to true, we know to show the processing UI.
+  useEffect(() => {
+    if (osStatus.offerCodeRedemptionSuccess === true && !appStatus.account?.account_info.active) {
+      setPaymentProcessing(true);
+    }
+  }, [osStatus.offerCodeRedemptionSuccess, appStatus.account?.account_info.active, setPaymentProcessing]);
 
   if (isProcessingPayment) {
     return <ProcessingPaymentSheet opened={true} />;

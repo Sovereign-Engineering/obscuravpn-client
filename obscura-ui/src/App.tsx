@@ -263,6 +263,7 @@ export default function () {
     if (isProcessingPayment && accountInfo?.active) {
       setPaymentProcessing(false);
       commands.setInNewAccountFlow(false);
+      commands.resetOfferCodeRedemptionSuccess();
     }
   }, [accountInfo, isProcessingPayment]);
 

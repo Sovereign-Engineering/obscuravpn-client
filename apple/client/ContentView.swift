@@ -319,8 +319,14 @@ struct ContentView: View {
                         logger.info(
                             "Promo code redemption flow completed successfully. (errors only show up if a valid code fails to redeem. So invalid codes and not entering a code land you here)"
                         )
+                        _ = self.appState.osStatus.update { value in
+                            value.offerCodeRedemptionSuccess = true
+                        }
                     case .failure(let error):
                         logger.error("Promo code redemption failed: \(error, privacy: .public)")
+                        _ = self.appState.osStatus.update { value in
+                            value.offerCodeRedemptionSuccess = false
+                        }
                     }
                 }
                 .onOpenURL { incomingURL in

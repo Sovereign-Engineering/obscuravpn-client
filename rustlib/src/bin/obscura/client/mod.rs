@@ -2,8 +2,8 @@ mod client_error;
 mod ipc;
 
 use crate::client::client_error::ClientError;
-use crate::client::ipc::run_command;
-use crate::{ClientCommand, ClientLoginArgs, ClientStatusArgs};
+use crate::client::ipc::{ipc_test, run_command, try_group_refresh_fix};
+use crate::{ClientCommand, ClientLoginArgs, ClientStatusArgs, GlobalArgs};
 use anyhow::Context;
 use chrono::{MappedLocalTime, TimeZone};
 use obscuravpn_api::types::{AccountId, AccountInfo};
@@ -11,12 +11,19 @@ use obscuravpn_client::exit_selection::ExitSelector;
 use obscuravpn_client::manager::{Status, TunnelArgs, VpnStatus};
 use obscuravpn_client::manager_cmd::ManagerCmd;
 
-pub async fn run(cmd: ClientCommand) -> Result<(), ClientError> {
+pub async fn run(global_args: GlobalArgs, cmd: ClientCommand) -> Result<(), ClientError> {
+    // Group memberships changes do not automatically propagate into existing sessions. If we detect that launching the process with updated group memberships is necessary to do IPC, we replace the current process with a new one launched in a context with updated group memberships.
+    if global_args.no_group_refresh {
+        tracing::debug!(message_id = "jpjl9cI9", "skipping group refresh fix due to CLI flag");
+    } else {
+        try_group_refresh_fix().await;
+    }
     match cmd {
         ClientCommand::Login(args) => login(args).await,
         ClientCommand::Start(_args) => go_to_target_state(Some(TunnelArgs { exit: ExitSelector::Any {} })).await,
         ClientCommand::Stop(_args) => go_to_target_state(None).await,
         ClientCommand::Status(args) => status(args).await,
+        ClientCommand::IpcTest(args) => ipc_test(args).await,
     }
 }
 

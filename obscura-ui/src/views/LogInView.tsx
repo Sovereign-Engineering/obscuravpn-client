@@ -25,6 +25,9 @@ interface LogInProps {
 }
 
 const COPY_ACCOUNT_WIDTH = IS_HANDHELD_DEVICE ? 300 : '24ch';
+const BACKGROUND_IMAGE = IS_HANDHELD_DEVICE ? DecoOrangeBottom : DecoOrangeTop;
+const BACKGROUND_POSITION = IS_HANDHELD_DEVICE ? 'bottom' : 'top';
+const TOP_SPACING = IS_HANDHELD_DEVICE ? '16vh' : '28vh';
 
 export default function LogIn({ accountNumber, accountActive }: LogInProps) {
   const { t } = useTranslation();
@@ -103,8 +106,8 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
 
   return (
     <Stack h='100vh' className={classes.loginContainer} gap={20}>
-      <div style={{ height: '100%', backgroundImage: `url("${IS_HANDHELD_DEVICE ? DecoOrangeBottom : DecoOrangeTop}")`, backgroundPosition: IS_HANDHELD_DEVICE ? 'bottom' : 'top' }} className={classes.backgroundImage}>
-        <Space h='16vh' />
+      <div style={{ height: '100%', backgroundImage: `url("${BACKGROUND_IMAGE}")`, backgroundPosition: BACKGROUND_POSITION }} className={classes.backgroundImage}>
+        <Space h={TOP_SPACING} />
         {
           (!!accountNumber || awaitingAccountCreation) ? <AccountGeneration loading={awaitingAccountCreation} generatedAccountId={accountNumber} accountActive={accountActive} />
             :

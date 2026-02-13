@@ -1,2 +1,10 @@
+[target.'cfg(target_os = "android")']
+rustflags = [
+    "-C",
+    "link-arg=-Wl,-z,max-page-size=16384",
+    "-C",
+    "link-arg=-Wl,-z,common-page-size=16384",
+]
+
 [target.x86_64-apple-darwin]
-rustflags=["-C", "link-arg=-mmacosx-version-min=13.0"]
+rustflags = ["-C", "link-arg=-mmacosx-version-min=13.0"]

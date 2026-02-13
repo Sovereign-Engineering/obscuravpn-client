@@ -13,6 +13,7 @@ result-*
 # Android
 *.apk
 *.apk.idsig
+*.aab
 
 # Linux
 /linux/vm/*.qcow2

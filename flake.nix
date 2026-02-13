@@ -198,51 +198,71 @@
         web-macos = mkWeb "macosx";
 
         # https://nixos.org/manual/nixpkgs/stable/#gradle
-        apks = pkgs.stdenv.mkDerivation (finalAttrs:
-          androidGradleEnv // {
-            name = "obscura-apks";
+        gradleDerivation = { name, task, appOutputs }@args:
+          pkgs.stdenv.mkDerivation (finalAttrs:
+            androidGradleEnv // {
+              name = "obscura-${name}";
 
-            src = (lib.fileset.toSource {
-              root = ./android;
-              fileset = lib.fileset.unions [
-                android/app/build.gradle.kts
-                android/app/google-services.json
-                android/app/proguard-rules.pro
-                android/app/src
-                android/build.gradle.kts
-                android/buildSrc/build.gradle.kts
-                android/buildSrc/settings.gradle.kts
-                android/buildSrc/src
-                android/gradle.properties
-                android/gradle/libs.versions.toml
-                android/settings.gradle.kts
-              ];
+              src = (lib.fileset.toSource {
+                root = ./android;
+                fileset = lib.fileset.unions [
+                  android/app/build.gradle.kts
+                  android/app/google-services.json
+                  android/app/proguard-rules.pro
+                  android/app/src
+                  android/build.gradle.kts
+                  android/buildSrc/build.gradle.kts
+                  android/buildSrc/settings.gradle.kts
+                  android/buildSrc/src
+                  android/gradle.properties
+                  android/gradle/libs.versions.toml
+                  android/settings.gradle.kts
+                ];
+              });
+
+              nativeBuildInputs = [ pkgs.gradle ];
+
+              mitmCache = pkgs.gradle.fetchDeps {
+                pkg = finalAttrs.finalPackage;
+                data = android/deps.json;
+              };
+
+              ANDROID_USER_HOME = "/tmp/";
+              gradleBuildTask = task;
+              gradleFlags = gradleFlags;
+
+              patchPhase = ''
+                # TODO: Find a cleaner way to pass these inputs that works during dev as well.
+                ln -sfv ${rust-android}/lib/libobscuravpn_client.so app/src/main/jniLibs/arm64-v8a/
+                ln -sfv ${web-android} app/src/main/assets
+              '';
+
+              APP_OUTPUTS = toString (map lib.strings.escapeShellArg appOutputs);
+              installPhase = ''
+                mkdir $out
+                for output in $APP_OUTPUTS; do
+                  cp -v app/build/outputs/$output $out/
+                done
+              '';
+
+              doCheck = false;
             });
 
-            nativeBuildInputs = [ pkgs.gradle ];
-
-            mitmCache = pkgs.gradle.fetchDeps {
-              pkg = finalAttrs.finalPackage;
-              data = android/deps.json;
-            };
-
-            ANDROID_USER_HOME = "/tmp/";
-            gradleFlags = gradleFlags;
-
-            patchPhase = ''
-              # TODO: Find a cleaner way to pass these inputs that works during dev as well.
-              ln -sfv ${rust-android}/lib/libobscuravpn_client.so app/src/main/jniLibs/arm64-v8a/
-              ln -sfv ${web-android} app/src/main/assets
-            '';
-
-            installPhase = ''
-              mkdir $out
-              cp -v app/build/outputs/apk/debug/app-debug.apk $out/
-              cp -v app/build/outputs/apk/release/app-release-unsigned.apk $out/
-            '';
-
-            doCheck = false;
-          });
+        apks = gradleDerivation {
+          name = "apks";
+          task = "assemble";
+          appOutputs = [ "apk/debug/app-debug.apk" "apk/release/app-release-unsigned.apk" ];
+        };
+        aab-debug = gradleDerivation {
+          name = "aab-debug";
+          task = "bundleDebug";
+          appOutputs = [ "bundle/debug/app-debug.aab" ];
+        };
+        aab-release = gradleDerivation {
+          name = "aab-release";
+          task = "bundleRelease";
+          appOutputs = [ "bundle/release/app-release.aab" ];
+        };
 
         nixFiles = lib.sources.sourceFilesBySuffices evaluatedSource [ ".nix" ];
         shellFiles = lib.sources.sourceFilesBySuffices evaluatedSource [ ".bash" ".sh" ".shellcheckrc" ];
@@ -260,7 +280,7 @@
         };
 
         checks = {
-          inherit apks hash licenses rust rust-android web-android web-ios web-macos;
+          inherit apks aab-release hash licenses rust rust-android web-android web-ios web-macos;
         } // lib.optionalAttrs pkgs.stdenv.isLinux { inherit rust-static; } // {
           clippy =
             craneLib.cargoClippy (rustArgs // { cargoClippyExtraArgs = "--all-features --all-targets -- -Dwarnings"; });
@@ -348,7 +368,8 @@
         };
 
         packages = {
-          inherit apks hash licenses licenses-node licenses-rust rust web-android web-ios web-macos;
+          inherit apks aab-debug aab-release hash licenses licenses-node licenses-rust rust web-android web-ios
+            web-macos;
         } // lib.optionalAttrs pkgs.stdenv.isLinux { inherit rust-static; };
       });
 }

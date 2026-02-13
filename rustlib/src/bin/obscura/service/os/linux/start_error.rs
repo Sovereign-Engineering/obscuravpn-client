@@ -1,5 +1,5 @@
 #[derive(thiserror::Error, Debug)]
-pub enum ServiceStartError {
+pub enum LinuxServiceStartError {
     #[error("Insufficient permissions to start service. Usually requires root.")]
     InsufficientPermissions,
     #[error("Another instance of Obscura VPN is already running.")]

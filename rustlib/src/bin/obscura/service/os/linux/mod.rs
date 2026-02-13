@@ -12,12 +12,12 @@ use crate::service::os::linux::dns::{DnsManager, choose_dns_manager, resolved};
 use crate::service::os::linux::ipc::ServiceIpc;
 use crate::service::os::linux::routes::{ROUTES, netlink};
 use crate::service::os::linux::service_lock::ServiceLock;
-use crate::service::os::linux::start_error::ServiceStartError;
 use crate::service::os::linux::tun::{Tun, TunWriter};
 use crate::service::os::packet_buffer::PacketBuffer;
 use obscuravpn_client::manager_cmd::{ManagerCmd, ManagerCmdErrorCode, ManagerCmdOk};
 use obscuravpn_client::net::NetworkInterface;
 use obscuravpn_client::network_config::TunnelNetworkConfig;
+pub use start_error::LinuxServiceStartError;
 use tokio::sync::watch::Receiver;
 
 pub struct LinuxOsImpl {
@@ -30,9 +30,11 @@ pub struct LinuxOsImpl {
 }
 
 impl LinuxOsImpl {
-    pub async fn new(dns_manager_arg: DnsManagerArg) -> Result<Self, ServiceStartError> {
+    pub async fn new(dns_manager_arg: DnsManagerArg) -> Result<Self, LinuxServiceStartError> {
         let lock = ServiceLock::new()?;
-        choose_dns_manager(dns_manager_arg).await.map_err(|()| ServiceStartError::NoDnsManager)?;
+        choose_dns_manager(dns_manager_arg)
+            .await
+            .map_err(|()| LinuxServiceStartError::NoDnsManager)?;
         let ipc = ServiceIpc::new(&lock).await?;
         Ok(Self {
             _lock: lock,

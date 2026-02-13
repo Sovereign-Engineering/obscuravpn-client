@@ -126,7 +126,12 @@ impl ClientState {
             alternative_hosts,
             account_id,
             &self.user_agent,
-            network_interface.as_ref().map(|i| i.name.as_str()),
+            network_interface.as_ref().map(|i| {
+                #[cfg(not(target_os = "windows"))]
+                return i.name.as_str();
+                #[cfg(target_os = "windows")]
+                return i.ip;
+            }),
             Some(handle),
         )
         .map_err(ClientError::from)

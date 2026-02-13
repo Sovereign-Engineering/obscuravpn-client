@@ -6,7 +6,7 @@ use tracing_subscriber::EnvFilter;
 
 #[cfg(target_os = "linux")]
 mod add_operator;
-#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android", target_os = "windows")))]
 mod client;
 #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android")))]
 mod service;
@@ -133,7 +133,7 @@ async fn run_service(_args: ServiceArgs) -> ! {
     exit(1)
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android")))]
+#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android", target_os = "windows")))]
 async fn run_client(global_args: GlobalArgs, args: ClientCommand) {
     if let Err(error) = client::run(global_args, args).await {
         eprintln!("{}", error);
@@ -141,7 +141,7 @@ async fn run_client(global_args: GlobalArgs, args: ClientCommand) {
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "android", target_os = "windows"))]
 async fn run_client(_global_args: GlobalArgs, _args: ClientCommand) {
     eprintln!("unsupported OS");
     exit(1)

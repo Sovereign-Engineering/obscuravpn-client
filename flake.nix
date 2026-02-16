@@ -161,8 +161,13 @@
         licenses-rust = craneLib.mkCargoDerivation (rustArgs // {
           name = "licenses-rust.json";
           nativeBuildInputs = [ pkgs.cargo-about ];
-          src = ./rustlib;
+          src = lib.fileset.toSource {
+            root = ./rustlib;
+            fileset = lib.fileset.unions [ rustlib/about.toml rustlib/Cargo.lock rustlib/Cargo.toml ];
+          };
           buildPhaseCargoCommand = ''
+            mkdir -p src/bin/obscura
+            touch src/bin/obscura/main.rs src/lib.rs
             cargo-about generate --format=json --fail >"$out"
           '';
           installPhase = " ";

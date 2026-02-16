@@ -29,3 +29,12 @@
         background-color: var(--mantine-color-dark-8);
     }
 }
+
+.sectionContainer {
+    background-color: white;
+    padding: 0 0.5em 0.5em 0.5em;
+
+    @mixin dark {
+        background-color: var(--mantine-color-dark-8);
+    }
+}

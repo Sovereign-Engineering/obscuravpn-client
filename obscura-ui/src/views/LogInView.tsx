@@ -25,6 +25,9 @@ interface LogInProps {
 }
 
 const COPY_ACCOUNT_WIDTH = IS_HANDHELD_DEVICE ? 300 : '24ch';
+const BACKGROUND_IMAGE = IS_HANDHELD_DEVICE ? DecoOrangeBottom : DecoOrangeTop;
+const BACKGROUND_POSITION = IS_HANDHELD_DEVICE ? 'bottom' : 'top';
+const TOP_SPACING = IS_HANDHELD_DEVICE ? '16vh' : '28vh';
 
 export default function LogIn({ accountNumber, accountActive }: LogInProps) {
   const { t } = useTranslation();
@@ -103,8 +106,8 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
 
   return (
     <Stack h='100vh' className={classes.loginContainer} gap={20}>
-      <div style={{ height: '100%', backgroundImage: `url("${IS_HANDHELD_DEVICE ? DecoOrangeBottom : DecoOrangeTop}")`, backgroundPosition: IS_HANDHELD_DEVICE ? 'bottom' : 'top' }} className={classes.backgroundImage}>
-        <Space h='28vh' />
+      <div style={{ height: '100%', backgroundImage: `url("${BACKGROUND_IMAGE}")`, backgroundPosition: BACKGROUND_POSITION }} className={classes.backgroundImage}>
+        <Space h={TOP_SPACING} />
         {
           (!!accountNumber || awaitingAccountCreation) ? <AccountGeneration loading={awaitingAccountCreation} generatedAccountId={accountNumber} accountActive={accountActive} />
             :
@@ -113,7 +116,7 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
                 <Image src={AppIcon} w={64} />
                 <Title>{HEADER_TITLE}</Title>
               </Group>
-              <Stack maw='min-content'>
+              <Stack maw='min-content' className={classes.sectionContainer}>
                 <Text size='sm' ta='center'>
                   <Trans
                     i18nKey='legalNotice'
@@ -217,7 +220,7 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
         <Image src={AppIcon} w={64} />
         <AccountId accountId={value} />
         <Transition mounted={value === generatedAccountId} transition='fade-up' duration={600}>
-          {styles => <Stack style={styles} justify='space-between' align='center' h='40vh'>
+          {styles => <Stack style={styles} justify='space-between' align='center' h='40vh' className={classes.sectionContainer}>
             <CopyButton value={ObscuraAccount.accountIdToString(generatedAccountId)}>
               {({ copied, copy }) => (
                 <Button variant={copied ? 'filled' : undefined} color={copied ? 'teal' : undefined} miw={COPY_ACCOUNT_WIDTH}

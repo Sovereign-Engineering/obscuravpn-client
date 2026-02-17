@@ -18,7 +18,12 @@ impl DebugArchiveBuilder {
         std::fs::create_dir_all(&dst_parent).with_context(|| format!("failed to create dirs for {dst_parent:?}"))?;
         let zipper = Zipper::new(
             &dst_parent,
-            format!("Obscura Debugging Archive {}", Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true)),
+            format!(
+                "Obscura Debugging Archive {}",
+                // On Android, colons can't be used in user data directories.
+                // Remove them in case users try to save the archive to one of these locations (and the saving app doesn't cleanse the name).
+                Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true).replace(':', "_")
+            ),
         )?;
         Ok(Self { zipper })
     }

@@ -10,7 +10,6 @@ import androidx.core.view.postDelayed
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.navigation.NavigationBarView
 import java.lang.ref.WeakReference
-import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
 import net.obscura.vpnclientapp.R
 import net.obscura.vpnclientapp.client.commands.GetStatus
@@ -146,19 +145,9 @@ constructor(
           }
 
           statusObserver?.disable()
-          statusObserver =
-              StatusObserver(
-                      WeakReference(binder),
-                      {
-                        bottomNavigation.visibility =
-                            if (it.accountId == null || it.inNewAccountFlow) {
-                              GONE
-                            } else {
-                              VISIBLE
-                            }
-                      },
-                  )
-                  .apply { observe() }
+          statusObserver = StatusObserver(WeakReference(binder)) {
+              bottomNavigation.visibility = if (it.accountId == null || it.inNewAccountFlow) GONE else VISIBLE
+          }.apply { observe() }
         }
   }
 

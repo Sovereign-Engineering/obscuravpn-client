@@ -1,5 +1,6 @@
 package net.obscura.vpnclientapp.ui
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.util.AttributeSet
@@ -13,6 +14,7 @@ import net.obscura.vpnclientapp.helpers.alwaysHTTPS
 import net.obscura.vpnclientapp.helpers.whenTrue
 import net.obscura.vpnclientapp.services.IObscuraVpnService
 
+@SuppressLint("SetJavaScriptEnabled", "ViewConstructor")
 class ObscuraWebView
 @JvmOverloads
 constructor(

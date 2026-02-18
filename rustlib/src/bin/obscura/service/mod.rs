@@ -3,20 +3,18 @@ pub mod os;
 use crate::ServiceArgs;
 use std::convert::Infallible;
 
-use crate::service::os::linux::LinuxOsImpl;
-use crate::service::os::linux::start_error::ServiceStartError;
 use crate::service::os::packet_buffer::PacketBuffer;
 use crate::service::os::{Os, PutIncomingPacketFn};
+use crate::service::os::{OsImpl, OsTunWriterImpl, ServiceStartError, USER_AGENT};
 use anyhow::Context;
 use obscuravpn_client::ffi_helpers::FfiBytes;
 use obscuravpn_client::manager::{Manager, Status, VpnStatus};
 use obscuravpn_client::network_config::TunnelNetworkConfig;
-use os::linux::tun::TunWriter;
 use std::default::Default;
 use std::sync::Mutex;
 use tokio::select;
 
-static TUN_WRITER: Mutex<TunWriter> = Mutex::new(TunWriter::invalid());
+static TUN_WRITER: Mutex<OsTunWriterImpl> = Mutex::new(OsTunWriterImpl::invalid());
 
 extern "C" fn receive_cb(packet: FfiBytes) {
     TUN_WRITER.lock().unwrap().call(packet.as_slice())
@@ -25,13 +23,13 @@ extern "C" fn receive_cb(packet: FfiBytes) {
 pub async fn run(args: ServiceArgs) -> Result<Infallible, ServiceStartError> {
     tracing::info!(message_id = "MNqPkSTH", "starting service");
 
-    let mut os_impl = LinuxOsImpl::new(args.dns).await?;
+    let mut os_impl = OsImpl::new(args.dns).await?;
     *TUN_WRITER.lock().expect("poisoned") = os_impl.put_incoming_packet_fn();
 
     let manager = Manager::new(
         args.config_dir.into(),
         None,
-        "obscura.net/linux/v0.0-alpha".to_string(),
+        USER_AGENT.to_string(),
         tokio::runtime::Handle::current(),
         receive_cb,
         None,

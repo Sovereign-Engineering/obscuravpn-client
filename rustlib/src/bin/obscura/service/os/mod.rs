@@ -1,12 +1,35 @@
 // TODO: move this module to the library and make `Os` an argument to `Manager::new`
-#[cfg(target_os = "linux")]
-pub mod linux;
+
 pub mod packet_buffer;
 
 use crate::service::os::packet_buffer::PacketBuffer;
 use obscuravpn_client::manager_cmd::{ManagerCmd, ManagerCmdErrorCode, ManagerCmdOk};
 use obscuravpn_client::net::NetworkInterface;
 use obscuravpn_client::network_config::TunnelNetworkConfig;
+
+#[cfg(target_os = "linux")]
+pub mod linux;
+#[cfg(target_os = "windows")]
+mod windows;
+
+#[cfg(target_os = "linux")]
+pub type ServiceStartError = linux::LinuxServiceStartError;
+#[cfg(target_os = "windows")]
+pub type ServiceStartError = windows::WindowsServiceStartError;
+#[cfg(target_os = "linux")]
+pub const USER_AGENT: &str = "obscura.net/linux/v0.0-alpha";
+#[cfg(target_os = "windows")]
+pub const USER_AGENT: &str = "obscura.net/windows/v0.0-alpha";
+
+#[cfg(target_os = "linux")]
+pub type OsImpl = linux::LinuxOsImpl;
+#[cfg(target_os = "windows")]
+pub type OsImpl = windows::WindowsOsImpl;
+
+#[cfg(target_os = "linux")]
+pub type OsTunWriterImpl = linux::tun::TunWriter;
+#[cfg(target_os = "windows")]
+pub type OsTunWriterImpl = windows::tun::TunWriter;
 
 pub trait Os {
     type PutIncomingPacketFn: PutIncomingPacketFn;

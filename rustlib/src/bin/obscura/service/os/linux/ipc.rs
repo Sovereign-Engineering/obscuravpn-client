@@ -1,5 +1,5 @@
 use crate::service::os::linux::service_lock::ServiceLock;
-use crate::service::os::linux::start_error::ServiceStartError;
+use crate::service::os::linux::start_error::LinuxServiceStartError;
 use flume::{Receiver, Sender, bounded};
 use std::fs;
 use std::io::ErrorKind;
@@ -13,13 +13,13 @@ pub struct ServiceIpc {
 }
 
 impl ServiceIpc {
-    pub async fn new(_lock: &ServiceLock) -> Result<Self, ServiceStartError> {
+    pub async fn new(_lock: &ServiceLock) -> Result<Self, LinuxServiceStartError> {
         fs::remove_file(SOCKET_PATH).or_else(|error| match error.kind() {
             ErrorKind::NotFound => Ok(()),
             kind => {
                 tracing::error!(message_id = "GTtsZsdU", ?error, "failed to remove stale socket file: {error}");
                 Err(match kind {
-                    ErrorKind::PermissionDenied => ServiceStartError::InsufficientPermissions,
+                    ErrorKind::PermissionDenied => LinuxServiceStartError::InsufficientPermissions,
                     _ => anyhow::Error::new(error).context("failed to remove stale socket file").into(),
                 })
             }
@@ -28,7 +28,7 @@ impl ServiceIpc {
         let socket = UnixListener::bind(SOCKET_PATH).map_err(|error| {
             tracing::error!(message_id = "1WXBW1gj", ?error, "failed to bind socket: {error}");
             match error.kind() {
-                ErrorKind::PermissionDenied => ServiceStartError::InsufficientPermissions,
+                ErrorKind::PermissionDenied => LinuxServiceStartError::InsufficientPermissions,
                 _ => anyhow::Error::new(error).context("failed to create IPC socket").into(),
             }
         })?;

@@ -1,6 +1,5 @@
 import { useThrottledValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { TFunction } from 'i18next';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AccountId } from '../common/accountUtils';
@@ -8,6 +7,7 @@ import { AccountInfo, Exit } from '../common/api';
 import { AppStatus, DNSContentBlock, FeatureFlagKey, OsStatus, PinnedLocation, SubscriptionProductModel } from '../common/appContext';
 import { normalizeError } from '../common/utils';
 import { fmtErrorI18n } from '../translations/i18n';
+import { Platform, PLATFORM } from './SystemProvider';
 import './android';
 
 async function WKWebViewInvoke(command: string, args: Object) {
@@ -275,7 +275,9 @@ export async function showOfferCodeRedemption(): Promise<void> {
 }
 
 export async function resetOfferCodeRedemptionSuccess(): Promise<void> {
-  await invoke('resetOfferCodeRedemptionSuccess');
+  if (PLATFORM === Platform.iOS) {
+    await invoke('resetOfferCodeRedemptionSuccess');
+  }
 }
 
 export interface UseCommandOptions<CommandArgs extends any[]> {

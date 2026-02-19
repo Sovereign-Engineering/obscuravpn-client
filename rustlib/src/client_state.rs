@@ -2,12 +2,12 @@ use super::{
     errors::{ApiError, TunnelConnectError},
     network_config::TunnelNetworkConfig,
 };
-use crate::config::{ConfigDebug, ConfigHandle};
 use crate::constants::DEFAULT_API_URL;
 use crate::errors::ConfigDirty;
 use crate::manager::TunnelArgs;
 use crate::network_config::DnsContentBlock;
 use crate::tunnel_state::TargetState;
+use crate::{config::ConfigHandle, manager::DebugInfo, net::interface_mtu};
 use crate::{config::KeychainSetSecretKeyFn, net::NetworkInterface, network_config::DnsConfig, quicwg::QuicWgConnHandshaking};
 use crate::{config::PinnedLocation, exit_selection::ExitSelectionState};
 use crate::{config::cached::ConfigCached, exit_selection::ExitSelector};
@@ -277,6 +277,27 @@ impl ClientStateHandle {
     }
 
     pub fn set_network_interface(&self, network_interface: Option<NetworkInterface>) {
+        if let Some(interface) = &network_interface {
+            match interface_mtu(&interface.name) {
+                Ok(mtu) => {
+                    tracing::info!(
+                        message_id = "eePai0oh",
+                        network_interface.mtu = mtu,
+                        network_interface.name = interface.name,
+                        "Interface MTU.",
+                    );
+                }
+                Err(error) => {
+                    tracing::warn!(
+                        message_id = "kah4Ifoh",
+                        ?error,
+                        network_interface.name = interface.name,
+                        "Failed to get interface MTU.",
+                    );
+                }
+            }
+        }
+
         self.change(|inner| {
             inner.network_interface = network_interface;
             inner.cached_api_client = None;
@@ -669,8 +690,13 @@ impl ClientStateHandle {
         })
     }
 
-    pub fn config_debug(&self) -> ConfigDebug {
-        self.borrow().config().clone().into()
+    pub fn get_debug_info(&self) -> DebugInfo {
+        let this = self.borrow();
+        DebugInfo {
+            config: this.config().clone().into(),
+            network_interface: this.network_interface.clone(),
+            network_interface_mtu: this.network_interface.as_ref().and_then(|interface| interface_mtu(&interface.name).ok()),
+        }
     }
 }
 

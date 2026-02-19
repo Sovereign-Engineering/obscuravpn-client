@@ -348,12 +348,12 @@ impl Manager {
     pub async fn create_debug_archive(&self, user_feedback: Option<&str>) -> anyhow::Result<String> {
         let user_feedback = user_feedback.map(ToOwned::to_owned);
         let log_dir = self.log_persistence.as_deref().map(LogPersistence::log_dir).map(ToOwned::to_owned);
-        let config = self.client_state.config_debug();
-        tokio::task::spawn_blocking(move || create_debug_archive(user_feedback.as_deref(), &config, log_dir.as_deref()).map(Into::into)).await?
+        let debug_info = self.get_debug_info();
+        tokio::task::spawn_blocking(move || create_debug_archive(user_feedback.as_deref(), debug_info, log_dir.as_deref()).map(Into::into)).await?
     }
 
     pub fn get_debug_info(&self) -> DebugInfo {
-        DebugInfo { config: self.client_state.config_debug() }
+        self.client_state.get_debug_info()
     }
 
     pub fn wake(&self) {
@@ -389,7 +389,9 @@ impl Manager {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DebugInfo {
-    config: ConfigDebug,
+    pub config: ConfigDebug,
+    pub network_interface: Option<NetworkInterface>,
+    pub network_interface_mtu: Option<i32>,
 }
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]

@@ -1,4 +1,3 @@
-import com.google.firebase.appdistribution.gradle.firebaseAppDistribution
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -7,9 +6,6 @@ plugins {
     alias(libs.plugins.kotlinx.serialization)
 
     id("com.diffplug.spotless")
-
-    id("com.google.gms.google-services")
-    id("com.google.firebase.appdistribution")
 }
 
 android {
@@ -37,10 +33,6 @@ android {
         getByName("debug") {
             isMinifyEnabled = false
             isShrinkResources = false
-            firebaseAppDistribution {
-                artifactType = "APK"
-                groups = "internal-testing"
-            }
         }
 
         getByName("release") {

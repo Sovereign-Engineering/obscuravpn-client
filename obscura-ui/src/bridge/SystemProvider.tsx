@@ -24,6 +24,10 @@ export const IS_HANDHELD_DEVICE = PLATFORM === Platform.iOS ||
   PLATFORM === Platform.Android;
 const platformDefined = Object.values(Platform).includes(PLATFORM);
 
+// TODO: Can we remove iOS by preventing it from failing early?
+// https://linear.app/soveng/issue/OBS-3164/improve-feedback-during-connecting-state
+export const CONNECT_REQUIRES_ONLINE = PLATFORM === Platform.iOS || PLATFORM === Platform.macOS;
+
 export function useSystemChecks() {
   useEffect(() => {
     if (!platformDefined) {

@@ -7,6 +7,7 @@ import { BsChevronDown, BsPinFill } from 'react-icons/bs';
 import { IoIosEyeOff } from 'react-icons/io';
 import { MdLanguage, MdLaptopMac, MdOutlineWifiOff } from 'react-icons/md';
 import { ExitSelector, ExitSelectorCity } from 'src/bridge/commands';
+import { CONNECT_REQUIRES_ONLINE } from '../bridge/SystemProvider';
 import * as ObscuraAccount from '../common/accountUtils';
 import { accountIsExpired, Exit, getContinent, getExitCountry, useReRenderWhenExpired } from '../common/api';
 import { AppContext, ConnectionInProgress, getCityFromStatus, isConnecting, NEVPNStatus, PinnedLocation, useIsConnecting, useIsTransitioning } from '../common/appContext';
@@ -165,7 +166,7 @@ function PrimaryConnectButton() {
 
   const showQuickConnect = !vpnConnected && !connectingToCity && accountInfo !== null && !appStatus.vpnStatus.connecting && osStatus.osVpnStatus !== NEVPNStatus.Disconnecting;
   const qcBtnAction = (_: MouseEvent) => vpnConnected ? vpnDisconnect() : vpnConnect({ any: {} });
-  const qcBtnDisabled = !internetAvailable || connectionTransition;
+  const qcBtnDisabled = (!internetAvailable && CONNECT_REQUIRES_ONLINE) || connectionTransition;
   const primaryBtnDisconnectProps = (vpnConnected && connectionInProgress !== ConnectionInProgress.Reconnecting) ? theme.other.buttonDisconnectProps : {};
 
   if (showQuickConnect) {
@@ -461,7 +462,7 @@ function LocationSelect(): ReactNode {
     }, [isTransitioning, appStatus, connectedExit, lastChosenExit, pinnedLocations]);
 
     // need to disable both combo (forces a collapsed dropdown) and button (non-clickable)
-    const comboDisabled = !internetAvailable || connectionInProgress !== ConnectionInProgress.UNSET;
+    const comboDisabled = (!internetAvailable && CONNECT_REQUIRES_ONLINE) || connectionInProgress !== ConnectionInProgress.UNSET;
     const showLastChosenLabel = lastChosenExit
       && "city" in lastChosenExit
       && selectedCity?.city_code === lastChosenExit.city.city_code

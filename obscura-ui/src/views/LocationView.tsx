@@ -6,7 +6,7 @@ import { MouseEvent, useContext, useMemo, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { BsPin, BsPinFill, BsSearch, BsShieldFillCheck, BsShieldFillExclamation } from 'react-icons/bs';
 import * as commands from '../bridge/commands';
-import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
+import { CONNECT_REQUIRES_ONLINE, IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
 import { accountIsExpired, Exit, getContinent, getExitCountry } from '../common/api';
 import { AppContext, ConnectionInProgress, getCityFromArgs, getCityFromStatus, NEVPNStatus } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
@@ -226,7 +226,7 @@ function LocationCard({ exit, connected, showLastChosen = false, onSelect, toggl
     };
 
     const isAccountExpired = accountInfo ? accountIsExpired(accountInfo) : false;
-    const disableClick = osStatus.osVpnStatus === NEVPNStatus.Disconnecting || showOfflineUI || isAccountExpired;
+    const disableClick = osStatus.osVpnStatus === NEVPNStatus.Disconnecting || (showOfflineUI && CONNECT_REQUIRES_ONLINE) || isAccountExpired;
     const cardClasses = [];
     if (connected) cardClasses.push(classes.locationCardConnected);
     else if (!connected && osStatus.osVpnStatus !== NEVPNStatus.Disconnecting && (exitCityEquals(getCityFromStatus(appStatus.vpnStatus), exit) || exitCityEquals(getCityFromArgs(initiatingExitSelector), exit))) {
@@ -328,7 +328,7 @@ function VpnStatusCard() {
 
     const isAccountExpired = accountInfo ? accountIsExpired(accountInfo) : false;
     const allowCancel = connectionInProgress === ConnectionInProgress.Connecting || connectionInProgress === ConnectionInProgress.Reconnecting;
-    const btnDisabled = !allowCancel && (connectionInProgress === ConnectionInProgress.Disconnecting || connectionInProgress === ConnectionInProgress.ChangingLocations || showOfflineUI || isAccountExpired);
+    const btnDisabled = !allowCancel && (connectionInProgress === ConnectionInProgress.Disconnecting || connectionInProgress === ConnectionInProgress.ChangingLocations || (showOfflineUI && CONNECT_REQUIRES_ONLINE) || isAccountExpired);
     const buttonDisconnectProps = ((allowCancel || vpnConnected) && !btnDisabled) ? theme.other.buttonDisconnectProps : {};
 
     const getButtonContent = () => {

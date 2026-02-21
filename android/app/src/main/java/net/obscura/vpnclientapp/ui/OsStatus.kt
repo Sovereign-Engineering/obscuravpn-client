@@ -103,8 +103,6 @@ class OsStatus(
     preferences.unregisterListener(sharedPreferencesListener)
   }
 
-  // TODO:
-  // https://linear.app/soveng/issue/OBS-2641/investigate-need-for-has-internet-boolean-in-getosstatus Looks like this is only needed for iOS?
   private fun hasInternet() =
       connectivityManager.activeNetwork?.let { network ->
         connectivityManager.getNetworkCapabilities(network)?.run {

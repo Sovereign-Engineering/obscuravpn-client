@@ -5,6 +5,8 @@ use futures::Stream;
 use futures::StreamExt;
 use futures::stream::unfold;
 use obscuravpn_api::relay_protocol::{MessageCode, MessageContext, MessageHeader, PROTOCOL_IDENTIFIER, RelayOpCode, RelayResponseCode};
+use obscuravpn_api::wg_fragment::merge::{ReassembleResult, WgFragmentBuffer};
+use obscuravpn_api::wg_fragment::split::WgMessageFragmenter;
 use quinn::crypto::rustls::QuicClientConfig;
 use quinn::rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
 use quinn::rustls::crypto::{CryptoProvider, verify_tls12_signature, verify_tls13_signature};
@@ -14,6 +16,7 @@ use quinn::{ClientConfig, MtuDiscoveryConfig, rustls};
 use rand::random;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
+use std::iter::once;
 use std::mem;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::num::{NonZeroU32, Saturating};
@@ -48,7 +51,28 @@ const QUIC_STEP_TIMEOUT: Duration = Duration::from_secs(30);
 /// In the boringtun repo they call it at 4Hz, however we have traditionally called it at 1Hz and doesn't seem to have any problems.
 const WG_TIMER_TICK: Duration = Duration::from_secs(1);
 pub const TUNNEL_MTU: u16 = 1280;
+
+/// Max UDP payload size used by default if network MTU allows for it
+pub const DEFAULT_UDP_PAYLOAD_SIZE: u16 = 1350;
+
+pub const IPV4_UDP_OVERHEAD: u16 = 20 + 8;
+
 const LIVENESS_MTU: u16 = 100;
+
+/// Maximum number of fragments in the WireGuard fragment buffer.
+///
+/// 1Gb/s (not counting tunnel overhead) at 1350B per message results in a message frequency below 100k/s.
+/// To cover 100ms of jitter (on top of regular latency) at this speed, the fragment buffer needs to span 10k consecutively sent messages.
+/// At 1kB per fragment (half of a message, including a generous margin for allocation and tunnel overhead), this results in a peak memory consumption of 10MB.
+///
+/// The time span covered (max jitter without packet loss) is inversely proportional to the bandwidth (e.g. at 100Mb/s the 100ms max jitter grows to 1s).
+const WG_FRAGMENT_BUFFER_LEN: NonZeroU32 = NonZeroU32::new(10_000).unwrap();
+
+/// Maximum WireGuard fragment size, to prevent fragment buffer bloat due to malicious large packets.
+///
+/// A 1540B fragment, can hold a 1532B WireGuard message.
+/// With 32B overhead per WireGuard message, this allows a single fragment to hold a 1500B IP packet without requiring the second fragment to carry any data.
+const WG_FRAGMENT_MAX_SIZE: u16 = 1540;
 
 #[derive(Debug, Error)]
 pub enum QuicWgReceiveError {
@@ -145,14 +169,20 @@ struct WgState {
     traffic_stats: QuicWgTrafficStats,
     wg: Tunn,
     liveness_checker: LivenessChecker,
+    fragmenter: WgMessageFragmenter,
+    fragment_buffer: WgFragmentBuffer,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
 struct TickStats {
     ip_tx_count: Saturating<u64>,
     wg_tx_count: Saturating<u64>,
+    wg_tx_fragmented_count: Saturating<u64>,
     ip_rx_count: Saturating<u64>,
     wg_rx_count: Saturating<u64>,
+    wg_rx_fragment_buffered_count: Saturating<u64>,
+    wg_rx_fragment_reassembled_count: Saturating<u64>,
+    wg_rx_fragment_max_message_size: Option<u16>,
     min_ip_tx_size: Option<usize>,
     max_ip_tx_size: Option<usize>,
     min_ip_rx_size: Option<usize>,
@@ -195,6 +225,8 @@ impl QuicWgConn {
             next_liveness_poll: now,
             liveness_checker: LivenessChecker::new(LIVENESS_MTU, client_ip_v4, ping_target_ip_v4),
             tick_stats: Default::default(),
+            fragmenter: Default::default(),
+            fragment_buffer: WgFragmentBuffer::new(WG_FRAGMENT_BUFFER_LEN, WG_FRAGMENT_MAX_SIZE),
         });
         Ok(Self {
             wg_receiver,
@@ -207,10 +239,10 @@ impl QuicWgConn {
         })
     }
 
-    fn build_first_wg_handshake_init(wg: &mut Tunn) -> Result<Vec<u8>, QuicWgWireguardHandshakeError> {
+    fn build_first_wg_handshake_init(wg: &mut Tunn) -> Result<Bytes, QuicWgWireguardHandshakeError> {
         let mut buf = vec![0u8; u16::MAX as usize];
         let data = match wg.format_handshake_initiation(&mut buf, true) {
-            TunnResult::WriteToNetwork(data) => data.to_vec(),
+            TunnResult::WriteToNetwork(data) => Bytes::copy_from_slice(data),
             _ => return Err(QuicWgWireguardHandshakeError::InitMessageConstructError),
         };
         Ok(data)
@@ -256,7 +288,7 @@ impl QuicWgConn {
         let mut resends = resends;
         loop {
             resends -= 1;
-            wg_sender.send_wg_message(&handshake_init);
+            wg_sender.send_wg_message(handshake_init.clone());
             match Self::wait_for_first_handshake_response(wg, wg_receiver, wg_sender).await {
                 Ok(()) => return Ok(()),
                 Err(err) => match err {
@@ -277,14 +309,16 @@ impl QuicWgConn {
         Err(QuicWgWireguardHandshakeError::RespMessageTimeout)
     }
 
-    fn handle_result(wg_sender: &WgSender, res: TunnResult<'_>) -> ControlFlow<Option<Vec<u8>>> {
+    fn handle_result(wg_sender: &WgSender, res: TunnResult<'_>) -> ControlFlow<Option<Bytes>> {
         match res {
             TunnResult::Done => ControlFlow::Break(None),
             TunnResult::WriteToNetwork(wg_message) => {
-                wg_sender.send_wg_message(wg_message);
+                wg_sender.send_wg_message(Bytes::copy_from_slice(wg_message));
                 ControlFlow::Continue(())
             }
-            TunnResult::WriteToTunnelV4(packet, ..) | TunnResult::WriteToTunnelV6(packet, ..) => ControlFlow::Break(Some(packet.to_vec())),
+            TunnResult::WriteToTunnelV4(packet, ..) | TunnResult::WriteToTunnelV6(packet, ..) => {
+                ControlFlow::Break(Some(Bytes::copy_from_slice(packet)))
+            }
             TunnResult::Err(error) => {
                 tracing::warn!(message_id = "uQ0xQcPP", ?error, "wireguard error");
                 ControlFlow::Break(None)
@@ -318,7 +352,15 @@ impl QuicWgConn {
             TunnResult::Err(error) => tracing::warn!(message_id = "MAvGA9tf", ?error, "wireguard error"),
             TunnResult::WriteToNetwork(wg_message) => {
                 wg_state.tick_stats.wg_tx_count += 1;
-                self.wg_sender.send_wg_message(wg_message);
+                let wg_message = Bytes::copy_from_slice(wg_message);
+                let (first, second) = match self.wg_sender.max_wg_message_size() {
+                    Some(max_size) => wg_state.fragmenter.fragment(wg_message, max_size),
+                    None => (wg_message, None),
+                };
+                wg_state.tick_stats.wg_tx_fragmented_count += u64::from(second.is_some());
+                for msg in once(first).chain(second) {
+                    self.wg_sender.send_wg_message(msg);
+                }
             }
             TunnResult::WriteToTunnelV4(_, _) | TunnResult::WriteToTunnelV6(_, _) => {
                 tracing::error!(message_id = "mOwsH8Eu", "WG encapsulate yielded a received ip packet")
@@ -326,7 +368,7 @@ impl QuicWgConn {
         }
     }
 
-    pub async fn receive(&self) -> Result<Vec<u8>, QuicWgReceiveError> {
+    pub async fn receive(&self) -> Result<Bytes, QuicWgReceiveError> {
         loop {
             let next_liveness_poll;
             let next_wg_timers_tick;
@@ -356,9 +398,21 @@ impl QuicWgConn {
                     wg_state.next_wg_timers_tick = Instant::now() + WG_TIMER_TICK;
                 }
                 result = self.wg_receiver.receive_wg_message() => {
-                    let mut wg_message = result.map_err(QuicWgReceiveError::QuicReceiveError)?;
+                    let wg_message = result.map_err(QuicWgReceiveError::QuicReceiveError)?;
                     let mut wg_state = self.wg_state.lock().unwrap();
-                    let WgState {buffer, wg, traffic_stats, tick_stats, liveness_checker, .. } = &mut *wg_state;
+                    let WgState {buffer, wg, traffic_stats, tick_stats, liveness_checker, fragment_buffer, .. } = &mut *wg_state;
+                    let mut wg_message = match fragment_buffer.reassemble(wg_message) {
+                        ReassembleResult::NotFragmented(msg) => msg,
+                        ReassembleResult::Reassembled(msg) => {
+                            tick_stats.wg_rx_fragment_reassembled_count += 1;
+                            msg
+                        }
+                        ReassembleResult::UnmatchedFragment { max_message_size } => {
+                            tick_stats.wg_rx_fragment_buffered_count += 1;
+                            tick_stats.wg_rx_fragment_max_message_size = Some(max_message_size);
+                            continue;
+                        }
+                    };
                     tick_stats.wg_rx_count += 1;
                     loop {
                         let res = wg.decapsulate(None, &wg_message, buffer);
@@ -432,16 +486,20 @@ impl QuicWgConnHandshaking {
         relay_addr: SocketAddr,
         relay_cert: CertificateDer<'static>,
         relay_sni: &str,
-        pad_to_mtu: bool,
+        quic_frame_padding: bool,
+        force_small_mtu: bool,
+        network_interface_mtu: Option<u16>,
     ) -> Result<Self, QuicWgConnectError> {
         let port = relay_addr.port();
         tracing::info!(
             message_id = "AYsfThUG",
+            network_interface_mtu,
             "starting quic wg relay handshake with {} port {}",
             &relay_id,
             port
         );
-        let quic_config = Self::quic_config(relay_cert, pad_to_mtu, TUNNEL_MTU).map_err(QuicWgConnectError::CryptoConfig)?;
+        let quic_config =
+            Self::quic_config(relay_cert, quic_frame_padding, network_interface_mtu, force_small_mtu).map_err(QuicWgConnectError::CryptoConfig)?;
         let connecting = quic_endpoint
             .connect_with(quic_config.clone(), relay_addr, relay_sni)
             .map_err(QuicWgConnectError::QuicConfig)?;
@@ -580,7 +638,12 @@ impl QuicWgConnHandshaking {
         Ok(TlsConnector::from(Arc::new(crypto)))
     }
 
-    fn quic_config(relay_cert: CertificateDer<'static>, pad_to_mtu: bool, tunnel_mtu: u16) -> Result<ClientConfig, anyhow::Error> {
+    fn quic_config(
+        relay_cert: CertificateDer<'static>,
+        quic_frame_padding: bool,
+        network_interface_mtu: Option<u16>,
+        force_small_mtu: bool,
+    ) -> Result<ClientConfig, anyhow::Error> {
         let mut crypto = Self::rustls_config(relay_cert)?;
         crypto.alpn_protocols = vec![b"h3".to_vec()];
         let crypto = QuicClientConfig::try_from(crypto)?;
@@ -588,15 +651,29 @@ impl QuicWgConnHandshaking {
         let mut transport_config = quinn::TransportConfig::default();
         transport_config.max_concurrent_uni_streams(0u8.into());
         transport_config.max_concurrent_bidi_streams(0u8.into());
-        let quic_mtu = tunnel_mtu + 70;
-        transport_config.initial_mtu(quic_mtu);
-        transport_config.min_mtu(quic_mtu);
         let mut mtu_discovery_config = MtuDiscoveryConfig::default();
-        mtu_discovery_config.upper_bound(quic_mtu);
+        if force_small_mtu {
+            tracing::info!(
+                message_id = "To1eYEO2",
+                "constraining outgoing UDP payload size due to small MTU experimental flag being set"
+            );
+            mtu_discovery_config.upper_bound(1200);
+        } else if network_interface_mtu.is_some_and(|network_interface_mtu| network_interface_mtu < DEFAULT_UDP_PAYLOAD_SIZE + IPV4_UDP_OVERHEAD) {
+            tracing::info!(
+                message_id = "7XXBAv2f",
+                network_interface_mtu,
+                "not setting fixed outgoing max UDP payload size, because network MTU is too low"
+            );
+        } else {
+            transport_config.initial_mtu(DEFAULT_UDP_PAYLOAD_SIZE);
+            transport_config.min_mtu(DEFAULT_UDP_PAYLOAD_SIZE);
+            mtu_discovery_config.upper_bound(DEFAULT_UDP_PAYLOAD_SIZE);
+        }
+        mtu_discovery_config.black_hole_cooldown(Duration::from_secs(10));
         transport_config.mtu_discovery_config(Some(mtu_discovery_config));
         transport_config.max_idle_timeout(Some(QUIC_IDLE_TIMEOUT.try_into()?));
         transport_config.congestion_controller_factory(Arc::new(quinn::congestion::BbrConfig::default()));
-        transport_config.pad_to_mtu(pad_to_mtu);
+        transport_config.pad_to_mtu(quic_frame_padding);
         client_cfg.transport_config(Arc::new(transport_config));
         Ok(client_cfg)
     }
@@ -766,10 +843,17 @@ enum WgSender {
 }
 
 impl WgSender {
-    fn send_wg_message(&self, wg_message: &[u8]) {
+    fn max_wg_message_size(&self) -> Option<u16> {
+        match self {
+            WgSender::Quic { conn, .. } => conn.max_datagram_size().and_then(|s| u16::try_from(s).ok()),
+            WgSender::TcpTls { .. } => None,
+        }
+    }
+
+    fn send_wg_message(&self, wg_message: Bytes) {
         match self {
             WgSender::Quic { conn, last_send_err_logged_at } => {
-                if let Err(error) = conn.send_datagram(wg_message.to_vec().into()) {
+                if let Err(error) = conn.send_datagram(wg_message) {
                     // rate-limited logging because this can get VERY noisy and is usually not interesting
                     const SILENCE_SECS: u64 = 1;
                     let mut last_send_err_logged_at = last_send_err_logged_at.lock().unwrap();
@@ -787,11 +871,11 @@ impl WgSender {
             WgSender::TcpTls { traffic_state } => {
                 traffic_state.send_modify(|traffic_state| {
                     if traffic_state.queued_packets.len() < 1000 {
-                        traffic_state.queued_packets.push_back(wg_message.to_vec());
+                        traffic_state.queued_packets.push_back(wg_message.into());
                     }
                 });
             }
-        };
+        }
     }
 }
 

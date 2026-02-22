@@ -1,4 +1,5 @@
 use crate::positive_u31::PositiveU31;
+use crate::quicwg::{DEFAULT_UDP_PAYLOAD_SIZE, IPV4_UDP_OVERHEAD};
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use socket2::{Domain, Protocol, Socket, Type};
@@ -59,8 +60,32 @@ pub fn interface_mtu(name: &str) -> anyhow::Result<i32> {
     }
 }
 
-pub fn new_quic(udp: std::net::UdpSocket) -> anyhow::Result<quinn::Endpoint> {
+pub fn new_quic(udp: std::net::UdpSocket, mtu: Option<u16>, force_small_mtu: bool) -> anyhow::Result<quinn::Endpoint> {
     let runtime = quinn::default_runtime().context("no quinn runtime found")?;
-    let endpoint = quinn::Endpoint::new(Default::default(), None, udp, runtime)?;
+    let mut endpoint_config = quinn::EndpointConfig::default();
+    if mtu.is_some_and(|mtu| mtu < DEFAULT_UDP_PAYLOAD_SIZE + IPV4_UDP_OVERHEAD) || force_small_mtu {
+        match force_small_mtu {
+            true => tracing::info!(
+                message_id = "kq0AuTsT",
+                "forcing relay to use small UDP payload due to small MTU experimental flag being set"
+            ),
+            false => tracing::info!(
+                message_id = "TF51QUHb",
+                mtu,
+                "forcing relay to use small UDP payload due to low network MTU"
+            ),
+        }
+        // TODO: Remove once relays does MTU discovery https://linear.app/soveng/issue/OBS-3201/replace-client-side-max-udp-payload-size-constraint-with-relay-side
+        endpoint_config
+            // A less conservative udp payload size could be calculated as `mtu - IPV4_UDP_OVERHEAD`, but:
+            // - this is an uncommon case (for networks with very low MTU)
+            // - packet size distribution tends to be bimodal, the exact fragmentation threshold doesn't matter much
+            // - technically QUIC and IP overhead aren't fixed
+            // - this will be removed once the relay supports MTU discovery
+            // - 1200 is the hard lower limit for QUIC and easily fits WG fragments and has the best compatibility with low-MTU network environments
+            .max_udp_payload_size(1200)
+            .context("invalid max_udp_payload_size")?;
+    }
+    let endpoint = quinn::Endpoint::new(endpoint_config, None, udp, runtime)?;
     Ok(endpoint)
 }

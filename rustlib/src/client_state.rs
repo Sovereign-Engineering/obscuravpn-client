@@ -51,6 +51,7 @@ pub struct ClientState {
     cached_api_client: Option<Arc<Client>>,
     config: ConfigHandle,
     exit_update_lock: Arc<tokio::sync::Mutex<()>>,
+    mtu: Option<u16>,
     network_interface: Option<NetworkInterface>,
     set_keychain_wg_sk: Option<KeychainSetSecretKeyFn>,
     user_agent: String,
@@ -87,6 +88,7 @@ impl ClientState {
             config,
             cached_api_client: None,
             set_keychain_wg_sk,
+            mtu: None,
             network_interface: None,
             exit_update_lock: Default::default(),
             user_agent,
@@ -277,7 +279,7 @@ impl ClientStateHandle {
     }
 
     pub fn set_network_interface(&self, network_interface: Option<NetworkInterface>) {
-        if let Some(interface) = &network_interface {
+        let mtu = if let Some(interface) = &network_interface {
             match interface_mtu(&interface.name) {
                 Ok(mtu) => {
                     tracing::info!(
@@ -286,6 +288,7 @@ impl ClientStateHandle {
                         network_interface.name = interface.name,
                         "Interface MTU.",
                     );
+                    Some(mtu)
                 }
                 Err(error) => {
                     tracing::warn!(
@@ -294,11 +297,19 @@ impl ClientStateHandle {
                         network_interface.name = interface.name,
                         "Failed to get interface MTU.",
                     );
+                    None
                 }
             }
-        }
+        } else {
+            None
+        };
 
         self.change(|inner| {
+            inner.mtu = mtu.and_then(|mtu| {
+                u16::try_from(mtu)
+                    .inspect_err(|_| tracing::warn!(message_id = "uKFfXGSc", mtu, "MTU out of range"))
+                    .ok()
+            });
             inner.network_interface = network_interface;
             inner.cached_api_client = None;
         })
@@ -485,14 +496,16 @@ impl ClientStateHandle {
             sni = sni,
             "Racing relays",
         );
-        let (use_tcp_tls, pad_to_mtu) = {
+        let (use_tcp_tls, quic_frame_padding, force_small_mtu, mtu) = {
             let this = self.borrow();
             (
                 this.config.feature_flags.tcp_tls_tunnel.unwrap_or(false),
                 this.config.feature_flags.quic_frame_padding.unwrap_or(false),
+                this.config.feature_flags.force_small_mtu.unwrap_or(false),
+                this.mtu,
             )
         };
-        let racing_handshakes = race_relay_handshakes(network_interface, relays, sni, use_tcp_tls, pad_to_mtu)?;
+        let racing_handshakes = race_relay_handshakes(network_interface, relays, sni, use_tcp_tls, quic_frame_padding, force_small_mtu, mtu)?;
 
         let start = Instant::now();
         let mut deadline = start + Duration::from_secs(30);

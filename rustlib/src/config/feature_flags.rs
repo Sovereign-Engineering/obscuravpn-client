@@ -14,6 +14,8 @@ pub struct FeatureFlags {
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub kill_switch: Option<bool>,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
+    pub force_small_mtu: Option<bool>,
+    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub tcp_tls_tunnel: Option<bool>,
     #[serde(flatten)]
     other: Map<String, Value>,
@@ -34,6 +36,7 @@ impl FeatureFlags {
         match flag {
             FeatureFlagKey::QuicFramePadding => self.quic_frame_padding = value,
             FeatureFlagKey::KillSwitch => self.kill_switch = value,
+            FeatureFlagKey::ForceSmallMtu => self.force_small_mtu = value,
             FeatureFlagKey::TcpTlsTunnel => self.tcp_tls_tunnel = value,
         }
     }
@@ -44,6 +47,7 @@ impl FeatureFlags {
 pub enum FeatureFlagKey {
     QuicFramePadding,
     KillSwitch,
+    ForceSmallMtu,
     TcpTlsTunnel,
 }
 

@@ -1,5 +1,6 @@
 /.direnv/
 /.idea/
+/.devcontainer/
 xcuserdata
 .DS_STORE
 

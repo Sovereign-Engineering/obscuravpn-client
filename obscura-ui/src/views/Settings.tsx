@@ -307,6 +307,11 @@ const FEATURE_FLAG_CUSTOM_UI: Partial<Record<FeatureFlagKey, (t: ReturnType<type
       {t('featureFlag-quicFramePadding-BandwidthWarning')}
     </Alert>
   ),
+  [KnownFeatureFlagKey.ForceSmallMtu]: (t) => (
+    <Alert icon={<MdWarning />} color='orange' variant='light'>
+      {t('featureFlag-forceSmallMtu-Warning')}
+    </Alert>
+  ),
   [KnownFeatureFlagKey.TcpTlsTunnel]: (t) => (
     <Alert icon={<MdWarning />} color='orange' variant='light'>
       {t('featureFlag-tcpTlsTunnel-BandwidthWarning')}

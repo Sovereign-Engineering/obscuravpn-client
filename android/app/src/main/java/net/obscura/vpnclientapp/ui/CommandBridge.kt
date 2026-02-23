@@ -107,7 +107,7 @@ class CommandBridge(
       bridge.get()?.also { bridge ->
         if (exception != null) {
           when (exception) {
-            is JsonFfiException -> bridge.reject(exception.data, id)
+            is JsonFfiException -> bridge.reject(exception.error, id)
             else -> throw exception // TODO: reject with error
           }
         } else if (data != null) {
@@ -144,14 +144,14 @@ class CommandBridge(
   }
 
   private fun reject(
-      data: String?,
+      error: String?,
       id: Long,
   ) {
     postMessage(
         Json.encodeToString(
             AndroidCommandMessage(
                 id = id,
-                error = data ?: "null",
+                error = error ?: "other",
             ),
         ),
     )

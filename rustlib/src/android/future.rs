@@ -21,9 +21,9 @@ pub fn signal_json_ffi_future(env: &mut JNIEnv, j_future: &JObject, result: Resu
                 .context("failed to call `complete`")?;
         }
         Err(error) => {
-            let j_error = serde_json::to_string(&error)
-                .context("failed to serialize failed cmd result")
-                .and_then(|error| env.new_string(&error).context("failed to convert `error` to `JString`"))
+            let j_error = env
+                .new_string(error.as_static_str())
+                .context("failed to convert `error` to `JString`")
                 .map(JObject::from)
                 .unwrap_or_else(|error| {
                     tracing::error!(message_id = "2MpsFFGe", ?error, "failed to propagate error message");

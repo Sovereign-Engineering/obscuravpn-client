@@ -16,7 +16,3 @@ enum URLs {
     static let AppAccountPage = URL(string: "obscuravpn:///account")!
     static let AppLocationPage = URL(string: "obscuravpn:///location")!
 }
-
-enum WindowIds {
-    static let RootWindowId = "root-view"
-}

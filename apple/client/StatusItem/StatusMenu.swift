@@ -65,7 +65,7 @@ final class StatusItemManager: ObservableObject {
         let showWindowMenuItem = NSMenuItem(
             title: "Open Obscura Manager...",
             action: #selector(self.showWindow),
-            keyEquivalent: ""
+            keyEquivalent: "o"
         )
         let image = NSImage(named: NSImage.applicationIconName)!
         image.size = NSSize(width: 16.0, height: 16.0)
@@ -124,7 +124,7 @@ final class StatusItemManager: ObservableObject {
 
         let disconnectAndQuitItem = NSMenuItem(
             title: "Quit and Disconnect", action: #selector(self.disconnectAndQuit),
-            keyEquivalent: ""
+            keyEquivalent: "q"
         )
         disconnectAndQuitItem.target = self
 
@@ -295,7 +295,11 @@ final class StatusItemManager: ObservableObject {
     }
 
     @objc func showWindow() {
-        fullyOpenManagerWindow()
+        // Opening the app via the URL increases the probability of NSApp.activate()
+        // actually focusing the app.
+        // With `NSApp.activate(ignoringOtherApps: true)` deprecated,
+        // NSApp.activate() does not guarantee focus
+        NSWorkspace.shared.open(URLs.AppOpenURL)
     }
 
     @objc func openMoreLocations() {

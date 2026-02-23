@@ -143,7 +143,9 @@ class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
         }
 
         #if os(macOS)
-            fullyOpenManagerWindow()
+            if let appDelegate = NSApp.delegate as? AppDelegate {
+                appDelegate.showPrimaryWindow()
+            }
         #else
             self.showModalWebview = false
         #endif

@@ -12,10 +12,10 @@ import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import androidx.activity.addCallback
-import androidx.appcompat.app.AlertDialog
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import net.obscura.vpnclientapp.R
 import net.obscura.vpnclientapp.helpers.logDebug
@@ -28,13 +28,6 @@ import net.obscura.vpnclientapp.ui.OsStatus
 import net.obscura.vpnclientapp.ui.commands.SetColorScheme
 
 class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceChangeListener {
-  enum class RequestCodes(
-      val code: Int,
-  ) {
-    VPN_PREPARE(111111),
-    NOTIFICATIONS(222222),
-  }
-
   private class VpnServiceConnection(
       val activity: MainActivity,
   ) : ServiceConnection {
@@ -65,7 +58,18 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
 
   private var vpnServiceConnection: VpnServiceConnection? = null
 
-  private var permissionAlertDialog: AlertDialog? = null
+    private val vpnPermissionRequestLauncher: ActivityResultLauncher<Intent> = this.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        logDebug("VPN start activity result: $result")
+        if (result.resultCode == RESULT_OK) {
+            this.startVpnService()
+        }
+    }
+    private val notificationPermissionRequestLauncher: ActivityResultLauncher<String> = this.registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        // We don't actually care if we're granted permission, since this is
+        // just the user's preference between "classic" foreground service
+        // notifications vs. the modern Task Manager.
+        logDebug("notification permission request activity result: $isGranted")
+    }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -119,76 +123,35 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
     ui.onResume()
   }
 
-  override fun onPostResume() {
-    super.onPostResume()
-
-    logDebug("onPostResume")
-
-    val vpnIntent = VpnService.prepare(this)
-
-    if (vpnIntent == null) {
-      permissionAlertDialog?.hide()
-      permissionAlertDialog = null
-
-      // ask for notification permissions if they're not available
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        if (ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.POST_NOTIFICATIONS,
-        ) != PackageManager.PERMISSION_GRANTED) {
-          ActivityCompat.requestPermissions(
-              this,
-              arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-              RequestCodes.NOTIFICATIONS.code,
-          )
+    fun startVpnService() {
+        logDebug("starting VPN service")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+            && ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            this.notificationPermissionRequestLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
-      }
-
-      logDebug("starting VPN service (onPostResume)")
-      startForegroundService(Intent(this, ObscuraVpnService::class.java))
-    } else if (permissionAlertDialog == null) {
-      permissionAlertDialog =
-          AlertDialog.Builder(this)
-              .apply {
-                setCancelable(false)
-
-                setTitle(R.string.vpn_dialog_title_grant_permission)
-
-                if (preferences.permissionGiven) {
-                  // user previously gave permission but now it's been revoked
-                  setMessage(R.string.vpn_dialog_message_grant_permission_after_revoke)
-                } else {
-                  setMessage(R.string.vpn_dialog_message_grant_permission)
-                }
-
-                setPositiveButton(android.R.string.ok) { dialog, which ->
-                  permissionAlertDialog?.hide()
-                  permissionAlertDialog = null
-
-                  startActivityForResult(vpnIntent, RequestCodes.VPN_PREPARE.code)
-                }
-              }
-              .show()
-    } else {
-      permissionAlertDialog?.show()
+        this.startForegroundService(Intent(this, ObscuraVpnService::class.java))
     }
-  }
 
-  override fun onActivityResult(
-      requestCode: Int,
-      resultCode: Int,
-      data: Intent?,
-  ) {
-    super.onActivityResult(requestCode, resultCode, data)
+    // TODO: https://linear.app/soveng/issue/OBS-3192/onpostresume-is-the-wrong-place-to-start-the-vpnservice
+    override fun onPostResume() {
+        super.onPostResume()
 
-    logDebug("onActivityResult $requestCode $resultCode $data")
+        logDebug("onPostResume")
 
-    if (requestCode == RequestCodes.VPN_PREPARE.code && resultCode == RESULT_OK) {
-      preferences.permissionGiven = true
-      logDebug("starting VPN service (onActivityResult)")
-      startForegroundService(Intent(this, ObscuraVpnService::class.java))
+        // TODO: https://linear.app/soveng/issue/OBS-3193/vpnserviceprepare-isnt-handled-exhaustively
+        val vpnIntent = VpnService.prepare(this)
+        if (vpnIntent == null) {
+            // We already have VPN permission
+            this.startVpnService()
+        } else {
+            // Request VPN permission
+            this.vpnPermissionRequestLauncher.launch(vpnIntent)
+        }
     }
-  }
 
   override fun onPause() {
     super.onPause()

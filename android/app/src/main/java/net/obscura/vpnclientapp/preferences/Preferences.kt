@@ -33,10 +33,6 @@ class Preferences(
       }
     }
 
-  var permissionGiven: Boolean
-    get() = preferences.getBoolean("permission-given", false)
-    set(value) = preferences.edit { putBoolean("permission-given", value) }
-
   fun registerListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
     preferences.registerOnSharedPreferenceChangeListener(listener)
   }

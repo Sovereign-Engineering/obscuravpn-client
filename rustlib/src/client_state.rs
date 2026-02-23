@@ -127,9 +127,9 @@ impl ClientState {
             account_id,
             &self.user_agent,
             network_interface.as_ref().map(|i| {
-                #[cfg(not(target_os = "windows"))]
+                #[cfg(not(any(target_os = "android", target_os = "windows")))]
                 return i.name.as_str();
-                #[cfg(target_os = "windows")]
+                #[cfg(any(target_os = "android", target_os = "windows"))]
                 return i.ip;
             }),
             Some(handle),

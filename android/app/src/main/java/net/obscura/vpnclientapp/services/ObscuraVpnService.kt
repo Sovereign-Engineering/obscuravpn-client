@@ -143,6 +143,8 @@ class ObscuraVpnService : VpnService() {
     private const val NOTIFICATION_ID = 1
   }
 
+    private data class NetworkInterfaceProps(val name: String, val index: Int, val ip: String)
+
   private lateinit var json: Json
   private lateinit var handler: Handler
 
@@ -425,37 +427,41 @@ class ObscuraVpnService : VpnService() {
             }
   }
 
+    private fun getNetworkInterfaceProps(network: Network?): NetworkInterfaceProps? {
+        val network = network ?: return null
+        val linkProperties = this.connectivityManager.getLinkProperties(network) ?: run {
+            logError("failed to get link properties for network: $network", "W0JKaOGP")
+            return null
+        }
+        val name = linkProperties.interfaceName ?: run {
+            logError("network has no interface name: $network", "ukjpaGLl")
+            return null
+        }
+        val ni = NetworkInterface.getByName(name) ?: run {
+            logError("failed to get interface by name: $name", "JvEt0GtR")
+            return null
+        }
+        // `broadcast` will only be non-null for IPv4 addresses
+        val ipv4 = ni.interfaceAddresses.find { it.broadcast != null } ?: run {
+            logError("failed to find IPv4 address for interface: $ni", "Jybuf9zy")
+            return null
+        }
+        val hostAddress = ipv4.address.hostAddress ?: run {
+            logError("failed to get host address for interface address: $ipv4", "3X2MawwX")
+            return null
+        }
+        logInfo("setting network interface: $name ${ni.index} $ipv4", "pOsKRATd")
+        return NetworkInterfaceProps(name, ni.index, hostAddress)
+    }
+
     private fun updateInterface(network: Network?) {
         logInfo("network interface changed: $network", "crWriIOe")
-        if (network != null) {
-            setUnderlyingNetworks(arrayOf(network))
+        this.setUnderlyingNetworks(if (network != null) arrayOf(network) else emptyArray())
+        val networkInterface = this.getNetworkInterfaceProps(network)
+        if (networkInterface != null) {
+            ObscuraLibrary.setNetworkInterface(networkInterface.name, networkInterface.index, networkInterface.ip)
         } else {
-            setUnderlyingNetworks(emptyArray())
+            ObscuraLibrary.unsetNetworkInterface()
         }
-        val ifIndex: Int? = if (network != null) {
-            val linkProperties = connectivityManager.getLinkProperties(network)
-            if (linkProperties == null) {
-                logError("failed to get link properties", "W0JKaOGP")
-                null
-            } else {
-                val ifName = linkProperties.interfaceName
-                if (ifName == null) {
-                    logError("interface name is not set", "ukjpaGLl")
-                    null
-                } else {
-                    val ifIndex = NetworkInterface.getByName(ifName)?.index
-                    if (ifIndex == null) {
-                        logError("interface lookup by name $ifName failed", "JvEt0GtR")
-                        null
-                    } else {
-                        ifIndex
-                    }
-                }
-            }
-        } else {
-            null
-        }
-        logInfo("setting interface index $ifIndex", "pOsKRATd")
-        ObscuraLibrary.setNetworkInterfaceIndex(ifIndex ?: 0)
     }
 }

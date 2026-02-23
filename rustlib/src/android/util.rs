@@ -66,3 +66,9 @@ impl<'a, 'b> Drop for Utf8JavaStr<'a, 'b> {
         unsafe { JavaStr::from_raw(&self.env, self.obj, self.s.as_ptr() as *const _) };
     }
 }
+
+impl<'a, 'b> std::fmt::Display for Utf8JavaStr<'a, 'b> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.as_str().fmt(f)
+    }
+}

@@ -12,7 +12,6 @@ use jni::{
     objects::{JClass, JObject, JString},
     sys::jint,
 };
-use nix::net::if_::if_indextoname;
 use std::{
     ffi::c_void,
     os::fd::{FromRawFd as _, OwnedFd},
@@ -135,30 +134,46 @@ pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_jsonFfi(mu
     }
 }
 
-fn set_network_interface_index(j_index: jint) -> anyhow::Result<()> {
+fn set_network_interface(env: &mut JNIEnv, j_name: &JString, j_index: jint, j_ip: &JString) -> anyhow::Result<()> {
+    let name = Utf8JavaStr::new(env, j_name, "j_name")?.to_string();
+    let index = u32::try_from(j_index)
+        .and_then(PositiveU31::try_from)
+        .context("network interface index wasn't a positive u32")?;
+    let ip = Utf8JavaStr::new(env, j_ip, "j_ip")?
+        .as_str()
+        .parse()
+        .context("`j_ip` wasn't a valid IP address")?;
     let manager = get_manager()?;
-    let network_interface = (j_index > 0)
-        .then(|| -> anyhow::Result<_> {
-            let index = u32::try_from(j_index)
-                .and_then(PositiveU31::try_from)
-                .context("network interface index wasn't a positive u32")?;
-            let name = if_indextoname(index.into())
-                .context("failed to get network interface name for index")?
-                .into_string()
-                .context("failed to convert network interface name to string")?;
-            Ok(NetworkInterface { name, index })
-        })
-        .transpose()?;
-    manager.set_network_interface(network_interface);
+    manager.set_network_interface(Some(NetworkInterface { name, index, ip }));
     Ok(())
 }
 
 /// cbindgen:ignore
 #[unsafe(no_mangle)]
-pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_setNetworkInterfaceIndex(mut env: JNIEnv, _: JClass, j_index: jint) {
-    if let Err(error) = set_network_interface_index(j_index) {
-        tracing::error!(message_id = "TnqHMA9u", ?error, "`set_network_interface_index` failed");
+pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_setNetworkInterface(
+    mut env: JNIEnv,
+    _: JClass,
+    j_name: JString,
+    j_index: jint,
+    j_ip: JString,
+) {
+    if let Err(error) = set_network_interface(&mut env, &j_name, j_index, &j_ip) {
+        tracing::error!(message_id = "TnqHMA9u", ?error, "`set_network_interface` failed");
         throw_runtime_exception(&mut env, error);
+    }
+}
+
+/// cbindgen:ignore
+#[unsafe(no_mangle)]
+pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_unsetNetworkInterface(mut env: JNIEnv, _: JClass) {
+    match get_manager() {
+        Ok(manager) => {
+            manager.set_network_interface(None);
+        }
+        Err(error) => {
+            tracing::error!(message_id = "gJEv6VGp", ?error, "failed to unset network interface");
+            throw_runtime_exception(&mut env, error);
+        }
     }
 }
 

@@ -24,7 +24,8 @@ public class ObscuraLibrary {
 
     public static native void jsonFfi(String json, CompletableFuture<String> future);
 
-    public static native void setNetworkInterfaceIndex(int index);
+    public static native void setNetworkInterface(String name, int index, String ip);
+    public static native void unsetNetworkInterface();
 
     public static native void setTun(int fd);
 

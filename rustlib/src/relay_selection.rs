@@ -13,12 +13,14 @@ pub fn race_relay_handshakes(
     relays: Vec<OneRelay>,
     sni: String,
     use_tcp_tls: bool,
-    pad_to_mtu: bool,
+    quic_frame_padding: bool,
+    force_small_mtu: bool,
+    mtu: Option<u16>,
 ) -> Result<Receiver<(OneRelay, u16, Duration, QuicWgConnHandshaking)>, RelaySelectionError> {
     let sni = Arc::new(sni);
     let mut tasks = JoinSet::new();
     let udp = new_udp(network_interface).map_err(RelaySelectionError::UdpSetup)?;
-    let quic_endpoint = new_quic(udp).map_err(RelaySelectionError::QuicSetup)?;
+    let quic_endpoint = new_quic(udp, mtu, force_small_mtu).map_err(RelaySelectionError::QuicSetup)?;
 
     // Maximum number of relays to probe. This limit should be high enough that a non-malicious API server won't exceed it.
     // This prevents memory exhaustion issues in case a malicious API server sends a large number of relays.
@@ -35,7 +37,19 @@ pub fn race_relay_handshakes(
                 let result: Result<(QuicWgConnHandshaking, Duration), QuicWgConnectError> = async {
                     let mut handshaking = match use_tcp_tls {
                         true => QuicWgConnHandshaking::start_tcp_tls(relay.id.clone(), relay_addr, relay_cert, &sni).await,
-                        false => QuicWgConnHandshaking::start_quic(relay.id.clone(), &quic_endpoint, relay_addr, relay_cert, &sni, pad_to_mtu).await,
+                        false => {
+                            QuicWgConnHandshaking::start_quic(
+                                relay.id.clone(),
+                                &quic_endpoint,
+                                relay_addr,
+                                relay_cert,
+                                &sni,
+                                quic_frame_padding,
+                                force_small_mtu,
+                                mtu,
+                            )
+                            .await
+                        }
                     }?;
                     let rtt = handshaking.measure_rtt().await?;
                     Ok((handshaking, rtt))

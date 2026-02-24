@@ -117,6 +117,7 @@ export interface AccountStatus {
 export enum KnownFeatureFlagKey {
   QuicFramePadding = "quicFramePadding",
   KillSwitch = "killSwitch",
+  ForceSmallMtu = "forceSmallMtu",
   TcpTlsTunnel = "tcpTlsTunnel",
 }
 

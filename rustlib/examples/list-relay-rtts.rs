@@ -29,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let relays = client_state.api_request(ListRelays {}).await?;
 
-    let connection_stream = race_relay_handshakes(None, relays, "relay.example".into(), true, true)?;
+    let connection_stream = race_relay_handshakes(None, relays, "relay.example".into(), true, true, false, None)?;
     while let Ok((relay, port, rtt, handshaking)) = connection_stream.recv_async().await {
         println!("{}:{:03} rtt={:03}ms", relay.id, port, rtt.as_millis());
         handshaking.abandon().await;

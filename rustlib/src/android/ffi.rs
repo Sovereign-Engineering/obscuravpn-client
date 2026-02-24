@@ -134,17 +134,13 @@ pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_jsonFfi(mu
     }
 }
 
-fn set_network_interface(env: &mut JNIEnv, j_name: &JString, j_index: jint, j_ip: &JString) -> anyhow::Result<()> {
+fn set_network_interface(env: &mut JNIEnv, j_name: &JString, j_index: jint) -> anyhow::Result<()> {
     let name = Utf8JavaStr::new(env, j_name, "j_name")?.to_string();
     let index = u32::try_from(j_index)
         .and_then(PositiveU31::try_from)
         .context("network interface index wasn't a positive u32")?;
-    let ip = Utf8JavaStr::new(env, j_ip, "j_ip")?
-        .as_str()
-        .parse()
-        .context("`j_ip` wasn't a valid IP address")?;
     let manager = get_manager()?;
-    manager.set_network_interface(Some(NetworkInterface { name, index, ip }));
+    manager.set_network_interface(Some(NetworkInterface { name, index }));
     Ok(())
 }
 
@@ -155,9 +151,8 @@ pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_setNetwork
     _: JClass,
     j_name: JString,
     j_index: jint,
-    j_ip: JString,
 ) {
-    if let Err(error) = set_network_interface(&mut env, &j_name, j_index, &j_ip) {
+    if let Err(error) = set_network_interface(&mut env, &j_name, j_index) {
         tracing::error!(message_id = "TnqHMA9u", ?error, "`set_network_interface` failed");
         throw_runtime_exception(&mut env, error);
     }

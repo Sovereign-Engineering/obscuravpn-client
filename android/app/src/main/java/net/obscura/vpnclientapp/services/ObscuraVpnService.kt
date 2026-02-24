@@ -143,7 +143,7 @@ class ObscuraVpnService : VpnService() {
     private const val NOTIFICATION_ID = 1
   }
 
-    private data class NetworkInterfaceProps(val name: String, val index: Int, val ip: String)
+    private data class NetworkInterfaceProps(val name: String, val index: Int)
 
   private lateinit var json: Json
   private lateinit var handler: Handler
@@ -441,17 +441,8 @@ class ObscuraVpnService : VpnService() {
             logError("failed to get interface by name: $name", "JvEt0GtR")
             return null
         }
-        // `broadcast` will only be non-null for IPv4 addresses
-        val ipv4 = ni.interfaceAddresses.find { it.broadcast != null } ?: run {
-            logError("failed to find IPv4 address for interface: $ni", "Jybuf9zy")
-            return null
-        }
-        val hostAddress = ipv4.address.hostAddress ?: run {
-            logError("failed to get host address for interface address: $ipv4", "3X2MawwX")
-            return null
-        }
-        logInfo("setting network interface: $name ${ni.index} $ipv4", "pOsKRATd")
-        return NetworkInterfaceProps(name, ni.index, hostAddress)
+        logInfo("setting network interface: $name ${ni.index}", "pOsKRATd")
+        return NetworkInterfaceProps(name, ni.index)
     }
 
     private fun updateInterface(network: Network?) {
@@ -459,7 +450,7 @@ class ObscuraVpnService : VpnService() {
         this.setUnderlyingNetworks(if (network != null) arrayOf(network) else emptyArray())
         val networkInterface = this.getNetworkInterfaceProps(network)
         if (networkInterface != null) {
-            ObscuraLibrary.setNetworkInterface(networkInterface.name, networkInterface.index, networkInterface.ip)
+            ObscuraLibrary.setNetworkInterface(networkInterface.name, networkInterface.index)
         } else {
             ObscuraLibrary.unsetNetworkInterface()
         }

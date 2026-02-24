@@ -12,7 +12,7 @@ use std::{io, mem, ptr};
 pub struct NetworkInterface {
     pub name: String,
     pub index: PositiveU31,
-    #[cfg(any(target_os = "android", target_os = "windows"))]
+    #[cfg(target_os = "windows")]
     pub ip: std::net::IpAddr,
 }
 
@@ -24,9 +24,13 @@ pub fn new_udp(network_interface: Option<&NetworkInterface>) -> io::Result<std::
     }
     #[allow(unused_mut)]
     let mut bind_addr = SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 0).into();
-    #[cfg(any(target_os = "android", target_os = "windows"))]
+    #[cfg(target_os = "windows")]
     if let Some(interface) = network_interface {
         bind_addr = std::net::SocketAddr::new(interface.ip, 0).into();
+    }
+    #[cfg(target_os = "android")]
+    {
+        _ = network_interface;
     }
     socket.bind(&bind_addr)?;
     Ok(socket.into())

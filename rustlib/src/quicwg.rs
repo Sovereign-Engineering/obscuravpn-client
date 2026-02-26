@@ -493,10 +493,10 @@ impl QuicWgConnHandshaking {
         let port = relay_addr.port();
         tracing::info!(
             message_id = "AYsfThUG",
-            network_interface_mtu,
-            "starting quic wg relay handshake with {} port {}",
-            &relay_id,
-            port
+            network_interface.mtu = network_interface_mtu,
+            port = port,
+            relay.id = relay_id,
+            "starting quic wg relay handshake",
         );
         let quic_config =
             Self::quic_config(relay_cert, quic_frame_padding, network_interface_mtu, force_small_mtu).map_err(QuicWgConnectError::CryptoConfig)?;

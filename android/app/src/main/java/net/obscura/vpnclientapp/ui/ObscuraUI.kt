@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.util.AttributeSet
 import android.widget.FrameLayout
+import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.postDelayed
@@ -72,6 +73,7 @@ constructor(
 
   private lateinit var webViewContainer: FrameLayout
   private lateinit var bottomNavigation: BottomNavigationView
+  private var loggedIn: Boolean = false
 
   private var webView: ObscuraWebView? = null
 
@@ -85,36 +87,66 @@ constructor(
         true
       }
 
-  override fun onFinishInflate() {
-    super.onFinishInflate()
-
-    webViewContainer = findViewById(R.id.web_view_container)
-    bottomNavigation = findViewById(R.id.nav_view)
-
-    bottomNavigation.visibility = GONE
-    bottomNavigation.setOnItemReselectedListener(itemReselectedListener)
-    bottomNavigation.setOnItemSelectedListener(itemSelectedListener)
-
-    ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets ->
-      insets.getInsets(WindowInsetsCompat.Type.systemBars()).let { systemBars ->
-        webViewContainer.setPadding(
-            systemBars.left,
-            systemBars.top,
-            systemBars.right,
-            webViewContainer.paddingBottom,
-        )
-
-        bottomNavigation.setPadding(
-            systemBars.left,
-            bottomNavigation.paddingTop,
-            systemBars.right,
-            systemBars.bottom,
-        )
-      }
-
-      insets
+    private fun setLoggedIn(loggedIn: Boolean) {
+        this.bottomNavigation.visibility = if (loggedIn) VISIBLE else GONE
+        this.loggedIn = loggedIn
     }
-  }
+
+    override fun onFinishInflate() {
+        super.onFinishInflate()
+
+        this.webViewContainer = this.findViewById(R.id.web_view_container)
+        this.bottomNavigation = this.findViewById(R.id.nav_view)
+        this.bottomNavigation.visibility = GONE
+        this.bottomNavigation.setOnItemReselectedListener(itemReselectedListener)
+        this.bottomNavigation.setOnItemSelectedListener(itemSelectedListener)
+
+        // TODO: Synchronize padding with IME animation
+        // https://linear.app/soveng/issue/OBS-3233/android-ime-animation-jank
+        // TODO: Edge-to-edge `WebView`
+        // https://linear.app/soveng/issue/OBS-3237/android-edge-to-edge-webview
+        ViewCompat.setOnApplyWindowInsetsListener(this.webViewContainer) { view, windowInsets ->
+            val insetsMask = WindowInsetsCompat.Type.displayCutout()
+                .or(WindowInsetsCompat.Type.navigationBars())
+                .or(WindowInsetsCompat.Type.statusBars())
+            val insets = windowInsets.getInsets(insetsMask)
+            val imeMask = WindowInsetsCompat.Type.ime()
+            val bottom = if (windowInsets.isVisible(imeMask)) {
+                windowInsets.getInsets(imeMask).bottom
+            } else if (!this.loggedIn) {
+                insets.bottom
+            } else {
+                0
+            }
+            // Only use non-zero insets when there's overlap
+            // https://developer.android.com/develop/ui/views/layout/webapps/understand-window-insets#bounds-overlap
+            view.setPadding(
+                insets.left,
+                insets.top,
+                insets.right,
+                bottom,
+            )
+            // Child `WebView` should ignore any insets we applied here
+            // https://developer.android.com/develop/ui/views/layout/webapps/understand-window-insets#inset-handling
+            WindowInsetsCompat.Builder(windowInsets)
+                .setInsets(insetsMask.or(imeMask), Insets.NONE)
+                .build()
+        }
+        ViewCompat.setOnApplyWindowInsetsListener(this.bottomNavigation) { view, windowInsets ->
+            // Hide bottom nav when IME is visible
+            // https://github.com/software-mansion/react-native-screens/issues/3647
+            val showBottomNav = this.loggedIn && !windowInsets.isVisible(WindowInsetsCompat.Type.ime())
+            view.visibility = if (showBottomNav) VISIBLE else GONE
+            val systemBars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.setPadding(
+                systemBars.left,
+                0,
+                systemBars.right,
+                systemBars.bottom,
+            )
+            WindowInsetsCompat.CONSUMED
+        }
+    }
 
   fun onCreate(
       binder: IObscuraVpnService,
@@ -146,7 +178,7 @@ constructor(
 
           statusObserver?.disable()
           statusObserver = StatusObserver(WeakReference(binder)) {
-              bottomNavigation.visibility = if (it.accountId == null || it.inNewAccountFlow) GONE else VISIBLE
+              this@ObscuraUI.setLoggedIn(it.accountId != null && !it.inNewAccountFlow)
           }.apply { observe() }
         }
   }

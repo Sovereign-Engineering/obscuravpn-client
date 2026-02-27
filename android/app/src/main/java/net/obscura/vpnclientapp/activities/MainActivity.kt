@@ -17,6 +17,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import net.obscura.vpnclientapp.R
 import net.obscura.vpnclientapp.helpers.logDebug
 import net.obscura.vpnclientapp.helpers.requireUIProcess
@@ -75,6 +76,10 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
     super.onCreate(savedInstanceState)
 
     requireUIProcess()
+
+        // Edge-to-edge is the future for Android
+        // https://developer.android.com/develop/ui/views/layout/edge-to-edge
+        WindowCompat.enableEdgeToEdge(this.window)
 
     setContentView(R.layout.activity_main)
 

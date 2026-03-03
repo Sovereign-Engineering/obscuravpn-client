@@ -7,17 +7,19 @@ pluginManagement {
                 includeGroupByRegex("androidx.*")
             }
         }
-        mavenCentral()
         gradlePluginPortal()
+        mavenCentral()
     }
 }
 
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    @Suppress("UnstableApiUsage")
     repositories {
         google()
         mavenCentral()
     }
+    @Suppress("UnstableApiUsage")
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
 }
 
 rootProject.name = "ObscuraVPN"

@@ -1,7 +1,6 @@
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
+// Only declare a plugin here if it must be loaded once rather than per-subproject
+// https://discuss.gradle.org/t/why-duplicate-plugins-in-top-level-build-scripts/49087/2
+// https://www.reddit.com/r/androiddev/comments/1errttm/comment/li1vm93/
 plugins {
     alias(libs.plugins.android.application) apply false
-    alias(libs.plugins.kotlin.android) apply false
-
-    id("com.diffplug.spotless") version "7.2.1"
 }

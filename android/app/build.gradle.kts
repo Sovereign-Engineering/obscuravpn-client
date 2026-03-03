@@ -1,14 +1,14 @@
+import com.android.build.api.dsl.ApplicationExtension
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlinx.serialization)
-
-    id("com.diffplug.spotless")
+    alias(libs.plugins.spotless)
 }
 
-android {
+extensions.configure<ApplicationExtension> {
     buildToolsVersion = "36.0.0"
 
     namespace = "net.obscura.vpnclientapp"
@@ -58,11 +58,11 @@ kotlin {
 }
 
 dependencies {
-    implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
-    implementation(libs.material)
+    implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.webkit)
-    implementation(libs.kotlinx.serializationJson)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.material)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

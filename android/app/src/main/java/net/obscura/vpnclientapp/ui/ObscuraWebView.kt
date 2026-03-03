@@ -10,8 +10,6 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.core.net.toUri
 import androidx.webkit.WebViewAssetLoader
-import net.obscura.vpnclientapp.helpers.alwaysHTTPS
-import net.obscura.vpnclientapp.helpers.whenTrue
 import net.obscura.vpnclientapp.services.IObscuraVpnService
 
 @SuppressLint("SetJavaScriptEnabled", "ViewConstructor")
@@ -52,17 +50,22 @@ constructor(
                 override fun shouldOverrideUrlLoading(
                     view: WebView,
                     request: WebResourceRequest,
-                ) =
-                    (request.url.host != ORIGIN.host).whenTrue {
-                      if (request.isForMainFrame) {
+                ): Boolean {
+                    val shouldOverride = request.url.host != ORIGIN.host
+                    if (shouldOverride && request.isForMainFrame) {
                         context.startActivity(
                             Intent(
                                 Intent.ACTION_VIEW,
-                                request.url.alwaysHTTPS(),
+                                if (request.url.scheme == "http") {
+                                    request.url.buildUpon().scheme("https").build()
+                                } else {
+                                    request.url
+                                },
                             ),
                         )
-                      }
                     }
+                    return shouldOverride
+                }
 
                 override fun shouldInterceptRequest(
                     view: WebView?,

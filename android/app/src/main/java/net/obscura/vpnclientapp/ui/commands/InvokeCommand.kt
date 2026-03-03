@@ -5,10 +5,11 @@ import java.util.concurrent.CompletableFuture
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import net.obscura.vpnclientapp.helpers.completedJsonNullFuture
 import net.obscura.vpnclientapp.services.IObscuraVpnService
 import net.obscura.vpnclientapp.ui.CommandBridge
 import net.obscura.vpnclientapp.ui.OsStatus
+
+private fun completedJsonNullFuture() = CompletableFuture.completedFuture("null")
 
 @Serializable
 data class InvokeCommand(

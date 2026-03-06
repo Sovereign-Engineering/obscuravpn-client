@@ -344,20 +344,6 @@ struct ContentView: View {
                     logger.debug("Screenshot detected during new account flow")
                     self.webviewsController.obscuraWebView?.handleScreenshotDetected()
                 }
-                .overlay(alignment: .topTrailing) {
-                    #if DEBUG
-                        VStack {
-                            Button(action: {
-                                self.webviewsController.tab = .developer
-                            }) {
-                                Image(systemName: "hammer.circle.fill")
-                                    .foregroundColor(.purple)
-                                    .font(.title2)
-                            }
-                            .padding()
-                        }
-                    #endif
-                }
                 .fullScreenCover(isPresented: self.$appState.needsIsEnabledFix) {
                     VStack(spacing: 12) {
                         Text("Obscura VPN was disabled by another VPN app. Click the button below if you want to enable it again. This will close any active VPN tunnels from other apps.").font(.body)

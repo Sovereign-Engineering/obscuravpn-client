@@ -2,7 +2,7 @@ import { Anchor, Button, Card, Code, CopyButton, Group, Image, Loader, Space, St
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { motion, MotionValue, useSpring, useTransform } from 'framer-motion';
-import { ChangeEvent, FormEvent, ForwardedRef, forwardRef, ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { ChangeEvent, FormEvent, ForwardedRef, forwardRef, ReactNode, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { IoArrowForward, IoCard, IoCopy } from 'react-icons/io5';
 
@@ -10,9 +10,11 @@ import AppIcon from '../../../apple/client/Assets.xcassets/AppIcon.appiconset/ic
 import * as commands from '../bridge/commands';
 import { IS_HANDHELD_DEVICE, PLATFORM } from '../bridge/SystemProvider';
 import * as ObscuraAccount from '../common/accountUtils';
+import { AppContext } from '../common/appContext';
 import { HEADER_TITLE, multiRef, normalizeError } from '../common/utils';
 import { ButtonLink } from '../components/ButtonLink';
 import { ConfirmationDialog } from '../components/ConfirmationDialog';
+import DebuggingArchive, { DebuggingArchiveVariant } from '../components/DebuggingArchive';
 import { PaymentManagementSheet } from '../components/PaymentManagementSheet';
 import DecoOrangeTop from '../res/deco/deco-orange-top.svg';
 import DecoOrangeBottom from '../res/deco/deco-signup-mobile.svg';
@@ -31,6 +33,7 @@ const TOP_SPACING = IS_HANDHELD_DEVICE ? '16vh' : '28vh';
 
 export default function LogIn({ accountNumber, accountActive }: LogInProps) {
   const { t } = useTranslation();
+  const { osStatus } = useContext(AppContext);
   const [loginWaiting, setLoginWaiting] = useState(false);
   const [awaitingAccountCreation, setCreatingWaiting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -104,14 +107,18 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
     }
   }
 
+  let loginContainerClasses = `${classes.loginContainer} ${classes.backgroundImage}`;
+  if (IS_HANDHELD_DEVICE) {
+    loginContainerClasses = `${loginContainerClasses} ${classes.loginContainerHandheld}`;
+  }
+
   return (
-    <Stack h='100vh' className={classes.loginContainer} gap={20}>
-      <div style={{ height: '100%', backgroundImage: `url("${BACKGROUND_IMAGE}")`, backgroundPosition: BACKGROUND_POSITION }} className={classes.backgroundImage}>
+    <Stack className={loginContainerClasses} style={{backgroundImage: `url("${BACKGROUND_IMAGE}")`}}>
         <Space h={TOP_SPACING} />
         {
           (!!accountNumber || awaitingAccountCreation) ? <AccountGeneration loading={awaitingAccountCreation} generatedAccountId={accountNumber} accountActive={accountActive} />
             :
-            <Stack h='72vh' gap={20} component='form' onSubmit={handleSubmit} align='center'>
+            <Stack gap={20} component='form' onSubmit={handleSubmit} align='center'>
               <Group>
                 <Image src={AppIcon} w={64} />
                 <Title>{HEADER_TITLE}</Title>
@@ -133,10 +140,10 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
                 <AccountNumberInput ref={inputRef} />
                 <Button disabled={loginWaiting} type='submit' variant='outline'>{loginWaiting ? <Loader size='sm' /> : t('Log In')}</Button>
               </Stack>
+              <DebuggingArchive osStatus={osStatus} variant={DebuggingArchiveVariant.LoginLabel} />
             </Stack >
         }
-      </div>
-    </Stack >
+    </Stack>
   );
 }
 
@@ -220,7 +227,7 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
         <Image src={AppIcon} w={64} />
         <AccountId accountId={value} />
         <Transition mounted={value === generatedAccountId} transition='fade-up' duration={600}>
-          {styles => <Stack style={styles} justify='space-between' align='center' h='40vh' className={classes.sectionContainer}>
+          {styles => <Stack style={styles} justify='space-between' align='center' className={`${classes.sectionContainer} ${classes.copyAccountStack}`}>
             <CopyButton value={ObscuraAccount.accountIdToString(generatedAccountId)}>
               {({ copied, copy }) => (
                 <Button variant={copied ? 'filled' : undefined} color={copied ? 'teal' : undefined} miw={COPY_ACCOUNT_WIDTH}

@@ -25,16 +25,31 @@
 }
 
 .loginContainer {
+    min-height: 100vh;
+    gap: 20px !important;
+    background-position: top;
     @mixin dark {
         background-color: var(--mantine-color-dark-8);
     }
 }
 
-.sectionContainer {
-    background-color: white;
-    padding: 0 0.5em 0.5em 0.5em;
-
-    @mixin dark {
-        background-color: var(--mantine-color-dark-8);
+.loginContainerHandheld {
+    background-position: bottom;
+    @media (orientation: portrait) {
+        /* when the soft keyboard is open,
+           this padding ensures that the background image
+           is below the debugging archive label
+         */
+        padding-bottom: 120px;
     }
+}
+
+.sectionContainer {
+    background-color: light-dark(white, var(--mantine-color-dark-8));
+    padding: 0 0.5em 0.5em 0.5em;
+}
+
+.copyAccountStack {
+    min-height: 32vh;
+    max-height: 42vh;
 }

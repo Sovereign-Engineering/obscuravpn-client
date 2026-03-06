@@ -6,6 +6,11 @@ body {
   -webkit-user-select: none; /* Safari */
   user-select: none; /* Standard  */
   cursor: default;
+  height: 100%;
+}
+
+html, #root {
+    height: 100%;
 }
 
 /* always show scrollbar thumb */

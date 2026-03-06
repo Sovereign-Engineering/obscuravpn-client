@@ -42,8 +42,8 @@ export interface OsStatus {
     strictLeakPrevention: boolean,
     updaterStatus: UpdaterStatus,
     debugBundleStatus: {
-        inProgress?: boolean,
-        latestPath?: string,
+        inProgress: boolean,
+        latestPath: string | null,
         inProgressCounter: number,
     },
     canSendMail: boolean,

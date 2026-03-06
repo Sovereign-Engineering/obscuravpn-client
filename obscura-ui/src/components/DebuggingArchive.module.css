@@ -5,3 +5,28 @@
 .havingTroubleTitle {
     color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-gray-3));
 }
+
+.debugLabel {
+    background-color: light-dark(white, var(--mantine-color-dark-8));
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    max-width: 155px;
+}
+
+.debugLabelHandheld {
+    @media (orientation: portrait) {
+        position: relative;
+        right: auto;
+        top: 50px;
+        bottom: auto;
+        max-width: 170px;
+        text-align: center;
+    }
+
+    @media (orientation: landscape) {
+        top: 16px;
+        right: 16px;
+        bottom: auto;
+    }
+}

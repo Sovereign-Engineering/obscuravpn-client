@@ -178,6 +178,7 @@ constructor(
 
           statusObserver?.disable()
           statusObserver = StatusObserver(WeakReference(binder)) {
+              osStatus.setVpnStatus(it.vpnStatus)
               this@ObscuraUI.setLoggedIn(it.accountId != null && !it.inNewAccountFlow)
           }.apply { observe() }
         }

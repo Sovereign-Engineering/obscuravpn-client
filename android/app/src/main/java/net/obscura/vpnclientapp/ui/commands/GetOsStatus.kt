@@ -9,15 +9,11 @@ import net.obscura.vpnclientapp.ui.OsStatus
 data class GetOsStatus(
     val knownVersion: String? = null,
 ) {
-  companion object {
-    var initialized = false
-  }
-
   @Serializable
   data class Result(
       val version: String,
       val internetAvailable: Boolean,
-      val osVpnStatus: NEVPNStatus?,
+      val osVpnStatus: OsVpnStatus,
       val srcVersion: String,
       val updaterStatus: UpdaterStatus,
       val debugBundleStatus: DebugBundleStatus,
@@ -27,13 +23,10 @@ data class GetOsStatus(
     // TODO https://linear.app/soveng/issue/OBS-2640/change-nevpnstatus-to-be-platform-agnostic Enum
     // should be platform agnostic.
     @Serializable
-    enum class NEVPNStatus {
-      @SerialName("invalid") Invalid,
+    enum class OsVpnStatus {
       @SerialName("disconnected") Disconnected,
       @SerialName("connecting") Connecting,
       @SerialName("connected") Connected,
-      @SerialName("reasserting") Reasserting,
-      @SerialName("disconnecting") Disconnecting,
     }
 
     @Serializable

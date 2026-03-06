@@ -7,7 +7,6 @@ import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.net.ConnectivityManager
 import android.net.ConnectivityManager.NetworkCallback
-import android.net.LinkProperties
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
@@ -32,84 +31,9 @@ import net.obscura.vpnclientapp.helpers.logInfo
 import net.obscura.vpnclientapp.helpers.logError
 import net.obscura.vpnclientapp.helpers.requireVpnServiceProcess
 import net.obscura.vpnclientapp.ui.CommandBridge
-import net.obscura.vpnclientapp.ui.OsStatus
-import net.obscura.vpnclientapp.ui.commands.GetOsStatus
 
 @SuppressLint("VpnServicePolicy")
 class ObscuraVpnService : VpnService() {
-  private class NetworkCallbackHandler(
-      val service: ObscuraVpnService,
-      val exitSelector: String?,
-  ) : NetworkCallback() {
-    override fun onAvailable(network: Network) {
-      super.onAvailable(network)
-
-      logInfo("network is available $network", "sjIGwIBY")
-      if (service.currentNetwork != null) {
-        service.setUnderlyingNetworks(arrayOf(service.currentNetwork))
-      } else {
-        service.setUnderlyingNetworks(emptyArray())
-      }
-      service.setTunnelArgs(exitSelector, true)
-      service.updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Connected)
-    }
-
-    override fun onBlockedStatusChanged(
-        network: Network,
-        blocked: Boolean,
-    ) {
-      super.onBlockedStatusChanged(network, blocked)
-
-      logInfo("network blocked status changed $network $blocked", "dVomhtV1")
-
-      service.updateInterface(network)
-      service.updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Connected)
-    }
-
-    override fun onCapabilitiesChanged(
-        network: Network,
-        networkCapabilities: NetworkCapabilities,
-    ) {
-      super.onCapabilitiesChanged(network, networkCapabilities)
-
-      logInfo("network capabilities changed $network $networkCapabilities", "APRCQ1hd")
-
-      service.updateInterface(network)
-      service.updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Connected)
-    }
-
-    override fun onLinkPropertiesChanged(
-        network: Network,
-        linkProperties: LinkProperties,
-    ) {
-      super.onLinkPropertiesChanged(network, linkProperties)
-
-      logInfo("network link properties changed $network $linkProperties", "GF2XfMPW")
-
-      service.updateInterface(network)
-      service.updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Connected)
-    }
-
-    override fun onLosing(
-        network: Network,
-        maxMsToLive: Int,
-    ) {
-      super.onLosing(network, maxMsToLive)
-
-      logInfo("loosing network $network $maxMsToLive", "Q23Uvo5K")
-
-      service.updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Disconnecting)
-    }
-
-    override fun onLost(network: Network) {
-      super.onLost(network)
-
-      logInfo("lost network $network", "zOCU8MXj")
-
-      service.updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Disconnected)
-    }
-  }
-
   private class Binder(
       val service: ObscuraVpnService,
   ) : IObscuraVpnService.Stub() {
@@ -151,12 +75,7 @@ class ObscuraVpnService : VpnService() {
   private val connectivityManager
     get() = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
 
-  private var networkCallbackHandler: NetworkCallbackHandler? = null
-
   private var vpnStatus: GetStatus.Response.VpnStatus? = null
-
-  private var neVpnStatus: GetOsStatus.Result.NEVPNStatus =
-      GetOsStatus.Result.NEVPNStatus.Disconnected
 
   private var currentNetwork: Network? = null
 
@@ -208,15 +127,11 @@ class ObscuraVpnService : VpnService() {
     } else {
       this.startForeground(NOTIFICATION_ID, this.buildNotification())
     }
-    this.updateNEVPNStatus(neVpnStatus)
     return START_STICKY
   }
 
   override fun onBind(intent: Intent?): IBinder? {
     logInfo("onBind $intent", "lckBR8hX")
-
-    updateNEVPNStatus(neVpnStatus)
-
     return Binder(this)
   }
 
@@ -230,23 +145,14 @@ class ObscuraVpnService : VpnService() {
 
   override fun onRevoke() {
     super.onRevoke()
-
     logInfo("onRevoke", "V3qS5kil")
-
     stopTunnel()
   }
 
   override fun onDestroy() {
     super.onDestroy()
-
     logInfo("onDestroy", "yNLRpqaN")
-
     stopTunnel()
-  }
-
-  private fun updateNEVPNStatus(status: GetOsStatus.Result.NEVPNStatus) {
-    neVpnStatus = status
-    OsStatus.Receiver.broadcast(this, status)
   }
 
   private fun updateNotification() {
@@ -333,34 +239,11 @@ class ObscuraVpnService : VpnService() {
   }
 
   private fun stopTunnel() {
-    networkCallbackHandler?.let {
-      updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Disconnecting)
-
-      connectivityManager.unregisterNetworkCallback(it)
-
-      updateNEVPNStatus(GetOsStatus.Result.NEVPNStatus.Disconnected)
-
-      networkCallbackHandler = null
-    }
     setTunnelArgs(null, false)
   }
 
   private fun startTunnel(exitSelector: String?) {
-    stopTunnel()
-
-    OsStatus.Receiver.broadcast(this, GetOsStatus.Result.NEVPNStatus.Connecting)
-
-    networkCallbackHandler =
-        NetworkCallbackHandler(this, exitSelector).also {
-          connectivityManager.requestNetwork(
-              NetworkRequest.Builder()
-                  .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                  .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
-                  .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
-                  .build(),
-              it,
-          )
-        }
+    setTunnelArgs(exitSelector, true)
   }
 
   private fun setNetworkConfig(vpnStatus: GetStatus.Response.VpnStatus) {

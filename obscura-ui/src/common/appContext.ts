@@ -54,6 +54,7 @@ export interface OsStatus {
     // iOS-specific
     storeKit?: {
       subscriptionProduct?: SubscriptionProductModel,
+      externalPaymentsAllowed: boolean,
     },
     offerCodeRedemptionSuccess?: boolean,
 }

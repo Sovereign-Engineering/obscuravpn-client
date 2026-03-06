@@ -303,6 +303,11 @@ struct ContentView: View {
                         }
                     }
                 }
+                .onChange(of: self.appState.storeKitModel.externalPaymentsAllowed, initial: true) { _, allowed in
+                    _ = self.appState.osStatus.update { value in
+                        value.storeKit.externalPaymentsAllowed = allowed
+                    }
+                }
                 .sheet(
                     isPresented: self.$webviewsController.showModalWebview)
                 {

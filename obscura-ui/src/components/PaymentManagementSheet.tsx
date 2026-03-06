@@ -51,8 +51,9 @@ export function PaymentManagementSheet({ opened, onClose }: PaymentManagementShe
         {appStatus.account?.account_info ? (
           <>
             <AccountInfoOverview accountInfo={appStatus.account.account_info} />
-            {!activeAppleSubscription(appStatus.account.account_info) &&
-              <ButtonLink href={ObscuraAccount.payUrl(appStatus.accountId)}>{t(appStatus.account.account_info.active ? 'manageOnWeb' : 'payOnWeb')}</ButtonLink>}
+            {!activeAppleSubscription(appStatus.account.account_info)
+              && (osStatus.storeKit?.externalPaymentsAllowed || appStatus.account.account_info.active)
+              && <ButtonLink href={ObscuraAccount.payUrl(appStatus.accountId)}>{t(appStatus.account.account_info.active ? 'manageOnWeb' : 'payOnWeb')}</ButtonLink>}
           </>
         ) : (accountLoading ? (
           < Stack align='center' justify='center' h={200} >

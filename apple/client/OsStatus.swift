@@ -25,6 +25,7 @@ class OsStatus: Encodable {
 
         struct StoreKitStatus: Codable {
             var subscriptionProduct: SubscriptionProductModel?
+            var externalPaymentsAllowed: Bool = false
         }
     #endif
 

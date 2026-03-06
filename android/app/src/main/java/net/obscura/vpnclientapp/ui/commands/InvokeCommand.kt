@@ -13,9 +13,6 @@ private fun completedJsonNullFuture() = CompletableFuture.completedFuture("null"
 
 @Serializable
 data class InvokeCommand(
-    // TODO: https://linear.app/soveng/issue/OBS-2643/remove-timeoutms-from-commands-if-not-used Use
-    // timeoutMs properly.
-    val timeoutMs: Long? = null,
     val jsonFfiCmd: JsonFfiCommand? = null,
     val getOsStatus: GetOsStatus? = null,
     val debuggingArchive: DebuggingArchive? = null,

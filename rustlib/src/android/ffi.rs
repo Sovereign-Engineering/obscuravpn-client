@@ -89,9 +89,6 @@ pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_initialize
     }
 }
 
-// TODO: If we fail to signal the future for any reason, then the app will wait
-// forever! It's not possible to make this infallible, so we need timeouts.
-// https://linear.app/soveng/issue/OBS-2643/android-command-timeout-retries
 fn json_ffi(env: &mut JNIEnv, j_json_cmd: &JString, j_future: &JObject) -> anyhow::Result<()> {
     let json_cmd = Utf8JavaStr::new(env, j_json_cmd, "j_json_cmd")?;
     let cmd = serde_json::from_str::<ManagerCmd>(json_cmd.as_str())?;

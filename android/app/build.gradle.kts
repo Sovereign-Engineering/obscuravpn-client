@@ -31,8 +31,10 @@ extensions.configure<ApplicationExtension> {
 
     buildTypes {
         getByName("debug") {
+            applicationIdSuffix = ".debug"
             isMinifyEnabled = false
             isShrinkResources = false
+            resValue("string", "app_name", "Obscura VPN (Debug)")
         }
 
         getByName("release") {

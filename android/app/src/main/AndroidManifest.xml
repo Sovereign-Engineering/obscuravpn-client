@@ -73,9 +73,6 @@
         <receiver android:name=".ui.CommandBridge$Receiver"
             android:exported="false" />
 
-        <receiver android:name=".ui.OsStatus$Receiver"
-            android:exported="false" />
-
         <meta-data
             android:name="android.webkit.WebView.MetricsOptOut"
             android:value="true" />

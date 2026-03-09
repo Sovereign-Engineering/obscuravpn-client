@@ -462,6 +462,9 @@
    "jar": "sha256-eUETcJ2rIbBsJis3lec8twj7rK5hcV80Nh4a9iN6GHA=",
    "pom": "sha256-PZLfn3MWZqVlF4M4DtMuA1y/KTMKqrzHirWuYzURA/o="
   },
+  "com/android/library#com.android.library.gradle.plugin/8.13.0": {
+   "pom": "sha256-dhcDGWYBg4wNlBgLzcP3iinwHhQbAFZ9rV3Gym56yng="
+  },
   "com/android/tools#annotations/31.13.0": {
    "jar": "sha256-O0u5YgwX0Z5b2RrBmICAVTVztMO3Of3ZJBb0Ly2vPng=",
    "pom": "sha256-Iwt9E2YNaI/2m/7LXK/AlXWmHE4G0epZJeij/K2I3ls="
@@ -1242,6 +1245,14 @@
   "org/glassfish/jaxb#txw2/2.3.2": {
    "jar": "sha256-SmqfSDOI1GG4GqmijGhbi3TAWXmTvxiEsE7dvKlfSP4=",
    "pom": "sha256-p53QAvsDgYP/KGomNb4uaMEDuH4OZHF9jUS/0Bf9M+o="
+  },
+  "org/gradle/toolchains#foojay-resolver/1.0.0": {
+   "jar": "sha256-eLhqR9/fdpfJvRXaeJg/2A2nJH1uAvwQa98H4DiLYKg=",
+   "module": "sha256-YZDPDkLmZMEeGsCnhWmasCtUnOo0OSxnnzbYosVQ/Lk=",
+   "pom": "sha256-m8SLSeQi2e2rw5asGNiwQd/CIhLX+ujjVmfShdSBApo="
+  },
+  "org/gradle/toolchains/foojay-resolver-convention#org.gradle.toolchains.foojay-resolver-convention.gradle.plugin/1.0.0": {
+   "pom": "sha256-8TMkmhh1Suah0nAdANhJsa+6ewaD3bX8GxinAHHOwvo="
   },
   "org/jdom#jdom2/2.0.6": {
    "jar": "sha256-E0XxG6YG0VYD1nQFUajCGUfAIVZAdw7GcnH+eL6pfPU=",

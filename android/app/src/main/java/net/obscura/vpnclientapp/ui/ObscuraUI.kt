@@ -12,11 +12,12 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.navigation.NavigationBarView
 import java.lang.ref.WeakReference
 import kotlinx.serialization.json.Json
+import net.obscura.lib.util.Logger
 import net.obscura.vpnclientapp.R
 import net.obscura.vpnclientapp.client.commands.GetStatus
-import net.obscura.vpnclientapp.helpers.logDebug
-import net.obscura.vpnclientapp.helpers.logError
 import net.obscura.vpnclientapp.services.IObscuraVpnService
+
+private val log = Logger(ObscuraUI::class)
 
 class ObscuraUI
 @JvmOverloads
@@ -226,7 +227,7 @@ constructor(
           R.id.nav_settings -> "settings"
           R.id.nav_about -> "about"
           else -> {
-            logError("unrecognized view id: $id")
+            log.error("unrecognized view id: $id")
             return
           }
         }
@@ -234,13 +235,13 @@ constructor(
   }
 
   fun handleObscuraUri(uri: Uri) {
-    logDebug("handling deep link: $uri")
+    log.debug("handling deep link: $uri")
     val id =
         when (uri.path) {
           "/account" -> R.id.nav_account
           "/location" -> R.id.nav_location
           else -> {
-            logError("unrecognized path for deep link: $uri")
+            log.error("unrecognized path for deep link: $uri")
             return
           }
         }

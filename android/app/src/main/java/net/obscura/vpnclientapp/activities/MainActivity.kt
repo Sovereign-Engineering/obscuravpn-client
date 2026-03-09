@@ -18,8 +18,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
+import net.obscura.lib.util.Logger
 import net.obscura.vpnclientapp.R
-import net.obscura.vpnclientapp.helpers.logDebug
 import net.obscura.vpnclientapp.helpers.requireUIProcess
 import net.obscura.vpnclientapp.preferences.Preferences
 import net.obscura.vpnclientapp.services.IObscuraVpnService
@@ -27,6 +27,8 @@ import net.obscura.vpnclientapp.services.ObscuraVpnService
 import net.obscura.vpnclientapp.ui.ObscuraUI
 import net.obscura.vpnclientapp.ui.OsStatus
 import net.obscura.vpnclientapp.ui.commands.SetColorScheme
+
+private val log = Logger(MainActivity::class)
 
 class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceChangeListener {
   private class VpnServiceConnection(
@@ -36,13 +38,13 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
         name: ComponentName?,
         service: IBinder?,
     ) {
-      logDebug("onServiceConnected $name $service")
+      log.debug("onServiceConnected $name $service")
 
       activity.ui.onCreate(IObscuraVpnService.Stub.asInterface(service), activity.osStatus)
     }
 
     override fun onServiceDisconnected(name: ComponentName?) {
-      logDebug("onServiceDisconnected $name")
+      log.debug("onServiceDisconnected $name")
 
       activity.ui.onDestroy()
 
@@ -60,7 +62,7 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
   private var vpnServiceConnection: VpnServiceConnection? = null
 
     private val vpnPermissionRequestLauncher: ActivityResultLauncher<Intent> = this.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        logDebug("VPN start activity result: $result")
+        log.debug("VPN start activity result: $result")
         if (result.resultCode == RESULT_OK) {
             this.startVpnService()
         }
@@ -69,7 +71,7 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
         // We don't actually care if we're granted permission, since this is
         // just the user's preference between "classic" foreground service
         // notifications vs. the modern Task Manager.
-        logDebug("notification permission request activity result: $isGranted")
+        log.debug("notification permission request activity result: $isGranted")
     }
 
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -129,7 +131,7 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
   }
 
     fun startVpnService() {
-        logDebug("starting VPN service")
+        log.debug("starting VPN service")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
             && ContextCompat.checkSelfPermission(
                 this,
@@ -145,7 +147,7 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
     override fun onPostResume() {
         super.onPostResume()
 
-        logDebug("onPostResume")
+        log.debug("onPostResume")
 
         // TODO: https://linear.app/soveng/issue/OBS-3193/vpnserviceprepare-isnt-handled-exhaustively
         val vpnIntent = VpnService.prepare(this)
@@ -181,7 +183,7 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
   override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)
 
-    logDebug("configuration changed: $newConfig")
+    log.debug("configuration changed: $newConfig")
 
     this.ui.invalidate()
   }

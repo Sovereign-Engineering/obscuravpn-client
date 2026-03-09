@@ -23,14 +23,28 @@ import androidx.core.content.ContextCompat
 import java.net.NetworkInterface
 import java.util.concurrent.CompletableFuture
 import kotlinx.serialization.json.Json
+import net.obscura.lib.util.Logger
 import net.obscura.vpnclientapp.R
 import net.obscura.vpnclientapp.client.ObscuraLibrary
 import net.obscura.vpnclientapp.client.commands.GetStatus
 import net.obscura.vpnclientapp.client.commands.SetTunnelArgs
-import net.obscura.vpnclientapp.helpers.logInfo
-import net.obscura.vpnclientapp.helpers.logError
 import net.obscura.vpnclientapp.helpers.requireVpnServiceProcess
 import net.obscura.vpnclientapp.ui.CommandBridge
+
+private val log = Logger(ObscuraVpnService::class) { params ->
+    if (ObscuraLibrary.getIsLoaded()) {
+        ObscuraLibrary.forwardLog(
+            params.level.ordinal,
+            params.tag,
+            params.message,
+            params.messageId ?: "JavaNoID",
+            params.tr?.toString(),
+        )
+    } else {
+        Logger(ObscuraVpnService::class)
+            .error("library not loaded; can't forward log: $params")
+    }
+}
 
 @SuppressLint("VpnServicePolicy")
 class ObscuraVpnService : VpnService() {
@@ -38,13 +52,13 @@ class ObscuraVpnService : VpnService() {
       val service: ObscuraVpnService,
   ) : IObscuraVpnService.Stub() {
     override fun startTunnel(exitSelector: String?) {
-      logInfo("startTunnel $exitSelector", "CddrThRg")
+      log.info("startTunnel $exitSelector", "CddrThRg")
 
       service.startTunnel(exitSelector)
     }
 
     override fun stopTunnel() {
-      logInfo("stopTunnel", "Gf6f2lwW")
+      log.info("stopTunnel", "Gf6f2lwW")
 
       service.stopTunnel()
     }
@@ -53,7 +67,7 @@ class ObscuraVpnService : VpnService() {
         id: Long,
         command: String?,
     ) {
-      logInfo("jsonFfi $id $command", "qMO4l3zd")
+      log.info("jsonFfi $id $command", "qMO4l3zd")
 
       CompletableFuture<String>().also {
         CommandBridge.Receiver.broadcast(service, id, it)
@@ -84,7 +98,7 @@ class ObscuraVpnService : VpnService() {
 
     requireVpnServiceProcess()
 
-    logInfo("onCreate", "vqiGa01f")
+    log.info("onCreate", "vqiGa01f")
 
     json = Json { ignoreUnknownKeys = true }
     handler = Handler(Looper.getMainLooper())
@@ -117,7 +131,7 @@ class ObscuraVpnService : VpnService() {
       flags: Int,
       startId: Int,
   ): Int {
-    logInfo("onStartCommand $intent $flags $startId", "C9rsG0uh")
+    log.info("onStartCommand $intent $flags $startId", "C9rsG0uh")
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
       this.startForeground(
           NOTIFICATION_ID,
@@ -130,13 +144,13 @@ class ObscuraVpnService : VpnService() {
     return START_STICKY
   }
 
-  override fun onBind(intent: Intent?): IBinder? {
-    logInfo("onBind $intent", "lckBR8hX")
+  override fun onBind(intent: Intent?): IBinder {
+    log.info("onBind $intent", "lckBR8hX")
     return Binder(this)
   }
 
   private fun onStatusUpdated(status: GetStatus.Response) {
-      logInfo("status updated $status", "xXx7PxdD")
+      log.info("status updated $status", "xXx7PxdD")
       vpnStatus = status.vpnStatus
       setNetworkConfig(status.vpnStatus)
       loadStatus(status.version)
@@ -145,13 +159,13 @@ class ObscuraVpnService : VpnService() {
 
   override fun onRevoke() {
     super.onRevoke()
-    logInfo("onRevoke", "V3qS5kil")
+    log.info("onRevoke", "V3qS5kil")
     stopTunnel()
   }
 
   override fun onDestroy() {
     super.onDestroy()
-    logInfo("onDestroy", "yNLRpqaN")
+    log.info("onDestroy", "yNLRpqaN")
     stopTunnel()
   }
 
@@ -204,7 +218,7 @@ class ObscuraVpnService : VpnService() {
   }
 
   private fun loadStatus(knownVersion: String?) {
-    logInfo("load status $knownVersion", "8pXipD8h")
+    log.info("load status $knownVersion", "8pXipD8h")
 
     CompletableFuture<String>().also {
       ObscuraLibrary.jsonFfi(
@@ -215,7 +229,7 @@ class ObscuraVpnService : VpnService() {
       )
 
       it.handle { data, tr ->
-        logInfo("getStatus completed $data", "oiAyY4gh", tr)
+        log.info("getStatus completed $data", "oiAyY4gh", tr)
 
         data?.let { data -> onStatusUpdated(json.decodeFromString(data)) }
       }
@@ -250,22 +264,22 @@ class ObscuraVpnService : VpnService() {
       // TODO: we would like to use when here and list variant explicitly, so we can compile-time check completeness (e.g. a disconnecting variant may be added eventually): https://linear.app/soveng/issue/OBS-3132
       if (vpnStatus.disconnected != null) {
           ObscuraLibrary.setTun(-1)
-          logInfo("unset TUN device")
+          log.info("unset TUN device")
           return
       }
       // TODO: check if we need to create a TUN device while connecting to start capturing traffic asap: https://linear.app/soveng/issue/OBS-3133
       if (vpnStatus.connecting != null) {
-          logInfo("skipping TUN device update")
+          log.info("skipping TUN device update")
           return
       }
       val networkConfig = if (vpnStatus.connected != null) {
           vpnStatus.connected.networkConfig
       } else {
           // should be unreachable
-          logError("VpnStatus has no variant")
+          log.error("VpnStatus has no variant")
           return
       }
-      logInfo("updating TUN device")
+      log.info("updating TUN device")
 
         Builder()
             .apply {
@@ -306,30 +320,30 @@ class ObscuraVpnService : VpnService() {
             .establish()
             ?.apply {
               ObscuraLibrary.setTun(detachFd())
-              logInfo("set TUN device", "q9cnmRY1")
+              log.info("set TUN device", "q9cnmRY1")
             }
   }
 
     private fun getNetworkInterfaceProps(network: Network?): NetworkInterfaceProps? {
         val network = network ?: return null
         val linkProperties = this.connectivityManager.getLinkProperties(network) ?: run {
-            logError("failed to get link properties for network: $network", "W0JKaOGP")
+            log.error("failed to get link properties for network: $network", "W0JKaOGP")
             return null
         }
         val name = linkProperties.interfaceName ?: run {
-            logError("network has no interface name: $network", "ukjpaGLl")
+            log.error("network has no interface name: $network", "ukjpaGLl")
             return null
         }
         val ni = NetworkInterface.getByName(name) ?: run {
-            logError("failed to get interface by name: $name", "JvEt0GtR")
+            log.error("failed to get interface by name: $name", "JvEt0GtR")
             return null
         }
-        logInfo("setting network interface: $name ${ni.index}", "pOsKRATd")
+        log.info("setting network interface: $name ${ni.index}", "pOsKRATd")
         return NetworkInterfaceProps(name, ni.index)
     }
 
     private fun updateInterface(network: Network?) {
-        logInfo("network interface changed: $network", "crWriIOe")
+        log.info("network interface changed: $network", "crWriIOe")
         this.setUnderlyingNetworks(if (network != null) arrayOf(network) else emptyArray())
         val networkInterface = this.getNetworkInterfaceProps(network)
         if (networkInterface != null) {

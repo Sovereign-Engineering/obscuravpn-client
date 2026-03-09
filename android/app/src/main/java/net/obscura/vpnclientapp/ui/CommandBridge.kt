@@ -11,12 +11,14 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.function.BiFunction
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import net.obscura.lib.util.Logger
 import net.obscura.vpnclientapp.client.JsonFfiException
-import net.obscura.vpnclientapp.helpers.logDebug
 import net.obscura.vpnclientapp.helpers.requireUIProcess
 import net.obscura.vpnclientapp.helpers.requireVpnServiceProcess
 import net.obscura.vpnclientapp.services.IObscuraVpnService
 import net.obscura.vpnclientapp.ui.commands.InvokeCommand
+
+private val log = Logger(CommandBridge::class)
 
 class CommandBridge(
     val context: Context,
@@ -82,7 +84,7 @@ class CommandBridge(
       val result = intent.getStringExtra(EXTRA_RESULT)
       val exception = intent.getStringExtra(EXTRA_EXCEPTION)
 
-      logDebug("onReceive $id $result $exception")
+      log.debug("onReceive $id $result $exception")
 
       waiting.remove(id)?.let { future ->
         if (exception != null) {

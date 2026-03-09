@@ -12,6 +12,12 @@ pluginManagement {
     }
 }
 
+plugins {
+    // https://kotlinlang.org/docs/gradle-configure-project.html#gradle-java-toolchains-support
+    // (Unfortunately, we can't use the version catalog for this plugin)
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
+}
+
 dependencyResolutionManagement {
     @Suppress("UnstableApiUsage")
     repositories {
@@ -23,4 +29,7 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "ObscuraVPN"
-include(":app")
+include(
+    ":app",
+    ":lib:util",
+)

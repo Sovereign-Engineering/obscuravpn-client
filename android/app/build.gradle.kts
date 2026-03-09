@@ -1,5 +1,4 @@
 import com.android.build.api.dsl.ApplicationExtension
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
@@ -46,17 +45,10 @@ extensions.configure<ApplicationExtension> {
             )
         }
     }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
 }
 
 kotlin {
-    compilerOptions {
-        jvmTarget = JvmTarget.JVM_11
-    }
+    jvmToolchain(21)
 }
 
 dependencies {
@@ -65,6 +57,7 @@ dependencies {
     implementation(libs.androidx.webkit)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.material)
+    implementation(project(":lib:util"))
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -89,21 +82,5 @@ spotless {
         ktfmt()
         trimTrailingWhitespace()
         endWithNewline()
-    }
-}
-
-if (gradle.startParameter.taskNames.contains("nixDownloadDeps")) {
-    configurations.configureEach {
-        // This configuration fails to evaluate.
-        if (name == "implementation") {
-            exclude(module = project.name)
-        }
-    }
-
-    // Some parts of the build are dynamically scheduled so aren't triggered during the dep fetch so we force the dependency.
-    @Suppress("UNUSED_VARIABLE")
-    val lintConfig = configurations.create("nixDynamicDeps")
-    dependencies {
-        "nixDynamicDeps"("com.android.tools.lint:lint-gradle:31.13.0")
     }
 }

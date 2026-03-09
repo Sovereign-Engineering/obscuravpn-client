@@ -221,6 +221,8 @@
                   android/buildSrc/src
                   android/gradle.properties
                   android/gradle/libs.versions.toml
+                  android/lib/util/build.gradle.kts
+                  android/lib/util/src
                   android/settings.gradle.kts
                 ];
               });
@@ -231,6 +233,14 @@
                 pkg = finalAttrs.finalPackage;
                 data = android/deps.json;
               };
+
+              # This is more robust than `nixDownloadDeps`, and will become the default once a Gradle bug is fixed that's only known to impact one project.
+              # https://github.com/NixOS/nixpkgs/issues/365086
+              # https://github.com/NixOS/nixpkgs/pull/383115
+              gradleUpdateScript = ''
+                runHook preBuild
+                gradle --write-verification-metadata sha256
+              '';
 
               ANDROID_USER_HOME = "/tmp/";
               gradleBuildTask = task;

@@ -219,6 +219,7 @@
                   android/buildSrc/build.gradle.kts
                   android/buildSrc/settings.gradle.kts
                   android/buildSrc/src
+                  android/detekt.yml
                   android/gradle.properties
                   android/gradle/libs.versions.toml
                   android/lib/util/build.gradle.kts
@@ -260,7 +261,8 @@
                 done
               '';
 
-              doCheck = false;
+              doCheck = true;
+              gradleCheckTask = "check";
             });
 
         apks = gradleDerivation {
@@ -335,6 +337,7 @@
             packages = [
               pkgs.corepack_20
               pkgs.gnused
+              pkgs.gradle
               pkgs.just
               pkgs.nixfmt-classic
               pkgs.nodejs_20

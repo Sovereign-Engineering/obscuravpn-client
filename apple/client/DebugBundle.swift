@@ -721,7 +721,7 @@ private class DebugBundleBuilder {
     }
 
     func createArchive() throws -> URL {
-        let zipName = "Obscura Debuging Archive \(utcDateFormat.string(from: self.bundleTimestamp)).zip"
+        let zipName = "Obscura Debugging Archive \(utcDateFormat.string(from: self.bundleTimestamp)).zip"
 
         var zipPath: URL?
         var coordinatorError: NSError?

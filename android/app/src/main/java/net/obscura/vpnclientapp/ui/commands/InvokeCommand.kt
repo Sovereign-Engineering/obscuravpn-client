@@ -40,7 +40,7 @@ data class InvokeCommand(
             shareDebugArchive != null -> completedJsonNullFuture().also { shareDebugArchive.run(context) }
             emailDebugArchive != null -> completedJsonNullFuture().also { emailDebugArchive.run(context) }
 
-            revealItemInDir != null -> revealItemInDir.run(context).thenApply { "null" }
+            revealItemInDir != null -> revealItemInDir.run()
 
             startTunnel != null -> completedJsonNullFuture().also { binder.startTunnel(startTunnel.tunnelArgs) }
 

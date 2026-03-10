@@ -23,31 +23,29 @@ data class InvokeCommand(
     val startTunnel: StartTunnel? = null,
     val stopTunnel: JsonObject? = null,
 ) {
-  fun run(
-      context: Context,
-      binder: IObscuraVpnService,
-      osStatus: OsStatus,
-      json: Json,
-  ): CompletableFuture<String> =
-      when {
-        getOsStatus != null -> getOsStatus.run(osStatus).thenApply { json.encodeToString(it) }
+    fun run(
+        context: Context,
+        binder: IObscuraVpnService,
+        osStatus: OsStatus,
+        json: Json,
+    ): CompletableFuture<String> =
+        when {
+            getOsStatus != null -> getOsStatus.run(osStatus).thenApply { json.encodeToString(it) }
 
-        jsonFfiCmd != null ->
-            CommandBridge.Receiver.register { id -> binder.jsonFfi(id, jsonFfiCmd.cmd) }
+            jsonFfiCmd != null -> CommandBridge.Receiver.register { id -> binder.jsonFfi(id, jsonFfiCmd.cmd) }
 
-        setColorScheme != null -> completedJsonNullFuture().also { setColorScheme.run(context) }
+            setColorScheme != null -> completedJsonNullFuture().also { setColorScheme.run(context) }
 
-        debuggingArchive != null -> debuggingArchive.run(context, binder, osStatus, json)
-        shareDebugArchive != null -> completedJsonNullFuture().also { shareDebugArchive.run(context) }
-        emailDebugArchive != null -> completedJsonNullFuture().also { emailDebugArchive.run(context) }
+            debuggingArchive != null -> debuggingArchive.run(context, binder, osStatus, json)
+            shareDebugArchive != null -> completedJsonNullFuture().also { shareDebugArchive.run(context) }
+            emailDebugArchive != null -> completedJsonNullFuture().also { emailDebugArchive.run(context) }
 
-        revealItemInDir != null -> revealItemInDir.run(context).thenApply { "null" }
+            revealItemInDir != null -> revealItemInDir.run(context).thenApply { "null" }
 
-        startTunnel != null ->
-            completedJsonNullFuture().also { binder.startTunnel(startTunnel.tunnelArgs) }
+            startTunnel != null -> completedJsonNullFuture().also { binder.startTunnel(startTunnel.tunnelArgs) }
 
-        stopTunnel != null -> completedJsonNullFuture().also { binder.stopTunnel() }
+            stopTunnel != null -> completedJsonNullFuture().also { binder.stopTunnel() }
 
-        else -> throw NotImplementedError("InvokeCommand not implemented")
-      }
+            else -> throw NotImplementedError("InvokeCommand not implemented")
+        }
 }

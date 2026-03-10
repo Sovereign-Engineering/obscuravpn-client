@@ -3,7 +3,13 @@ package net.obscura.lib.util
 import android.util.Log
 import kotlin.reflect.KClass
 
-enum class LogLevel { TRACE, DEBUG, INFO, WARN, ERROR }
+enum class LogLevel {
+    TRACE,
+    DEBUG,
+    INFO,
+    WARN,
+    ERROR,
+}
 
 data class LogParams(
     val level: LogLevel,

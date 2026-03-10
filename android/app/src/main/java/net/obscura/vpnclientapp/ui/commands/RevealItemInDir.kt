@@ -8,8 +8,8 @@ import kotlinx.serialization.Serializable
 data class RevealItemInDir(
     val path: String,
 ) {
-  fun run(context: Context) =
-      CompletableFuture<String>().thenRun {
-        throw RuntimeException("revealItemInDir command is used only in desktop apps")
-      }
+    fun run(context: Context) =
+        CompletableFuture<String>().thenRun {
+            throw RuntimeException("revealItemInDir command is used only in desktop apps")
+        }
 }

@@ -7,37 +7,27 @@ import kotlinx.serialization.json.Json
 import net.obscura.vpnclientapp.helpers.requireUIProcess
 import net.obscura.vpnclientapp.ui.commands.SetColorScheme
 
-class Preferences(
-    context: Context,
-) {
-  init {
-    requireUIProcess()
-  }
-
-  private val preferences = context.getSharedPreferences("preferences", Context.MODE_PRIVATE)
-
-  var colorScheme: SetColorScheme.ColorScheme
-    get() =
-        Json.decodeFromString<SetColorScheme.ColorScheme>(
-            preferences.getString(
-                "color-scheme",
-                "\"auto\"",
-            )!!,
-        )
-    set(value) {
-      preferences.edit(commit = true) {
-        putString(
-            "color-scheme",
-            Json.encodeToString(value),
-        )
-      }
+class Preferences(context: Context) {
+    init {
+        requireUIProcess()
     }
 
-  fun registerListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
-    preferences.registerOnSharedPreferenceChangeListener(listener)
-  }
+    private val sharedPreferences = context.getSharedPreferences("preferences", Context.MODE_PRIVATE)
 
-  fun unregisterListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
-    preferences.unregisterOnSharedPreferenceChangeListener(listener)
-  }
+    var colorScheme: SetColorScheme.ColorScheme
+        get() =
+            Json.decodeFromString<SetColorScheme.ColorScheme>(
+                this.sharedPreferences.getString("color-scheme", "\"auto\"")!!
+            )
+        set(value) {
+            this.sharedPreferences.edit(commit = true) { putString("color-scheme", Json.encodeToString(value)) }
+        }
+
+    fun registerListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
+        this.sharedPreferences.registerOnSharedPreferenceChangeListener(listener)
+    }
+
+    fun unregisterListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
+        this.sharedPreferences.unregisterOnSharedPreferenceChangeListener(listener)
+    }
 }

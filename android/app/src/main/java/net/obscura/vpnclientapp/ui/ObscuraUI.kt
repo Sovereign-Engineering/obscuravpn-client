@@ -25,68 +25,64 @@ constructor(
     context: Context,
     attrs: AttributeSet? = null,
 ) : FrameLayout(context, attrs) {
-  private class StatusObserver(
-      val binder: WeakReference<IObscuraVpnService>,
-      val onStatusChanged: (GetStatus.Response) -> Unit,
-  ) {
-    private val json = Json { ignoreUnknownKeys = true }
+    private class StatusObserver(
+        val binder: WeakReference<IObscuraVpnService>,
+        val onStatusChanged: (GetStatus.Response) -> Unit,
+    ) {
+        private val json = Json { ignoreUnknownKeys = true }
 
-    private var enabled = true
-    private var knownVersion: String? = null
+        private var enabled = true
+        private var knownVersion: String? = null
 
-    fun observe() {
-      synchronized(this) {
-        binder.get()?.let { binder ->
-          CommandBridge.Receiver.register {
-                binder.jsonFfi(
-                    it,
-                    json.encodeToString(GetStatus(GetStatus.Request(knownVersion = knownVersion))),
-                )
-              }
-              .handle { data, exception ->
-                data?.let { onStatusUpdated(json.decodeFromString(it)) }
-              }
+        fun observe() {
+            synchronized(this) {
+                binder.get()?.let { binder ->
+                    CommandBridge.Receiver.register {
+                            binder.jsonFfi(
+                                it,
+                                json.encodeToString(GetStatus(GetStatus.Request(knownVersion = knownVersion))),
+                            )
+                        }
+                        .handle { data, exception -> data?.let { onStatusUpdated(json.decodeFromString(it)) } }
+                }
+            }
         }
-      }
-    }
 
-    fun disable() {
-      synchronized(this) { enabled = false }
-    }
-
-    private fun onStatusUpdated(status: GetStatus.Response) {
-      synchronized(this) {
-        knownVersion = status.version
-
-        if (enabled) {
-          onStatusChanged(status)
-          observe()
+        fun disable() {
+            synchronized(this) { enabled = false }
         }
-      }
+
+        private fun onStatusUpdated(status: GetStatus.Response) {
+            synchronized(this) {
+                knownVersion = status.version
+
+                if (enabled) {
+                    onStatusChanged(status)
+                    observe()
+                }
+            }
+        }
     }
-  }
 
-  val canGoBack
-    get() =
-        (webView?.canGoBack() ?: false) || (bottomNavigation.selectedItemId != R.id.nav_connection)
+    val canGoBack
+        get() = (webView?.canGoBack() ?: false) || (bottomNavigation.selectedItemId != R.id.nav_connection)
 
-  private var statusObserver: StatusObserver? = null
+    private var statusObserver: StatusObserver? = null
 
-  private lateinit var webViewContainer: FrameLayout
-  private lateinit var bottomNavigation: BottomNavigationView
-  private var loggedIn: Boolean = false
+    private lateinit var webViewContainer: FrameLayout
+    private lateinit var bottomNavigation: BottomNavigationView
+    private var loggedIn: Boolean = false
 
-  private var webView: ObscuraWebView? = null
+    private var webView: ObscuraWebView? = null
 
-  private val itemReselectedListener =
-      NavigationBarView.OnItemReselectedListener { navigateToTab(it.itemId) }
+    private val itemReselectedListener = NavigationBarView.OnItemReselectedListener { navigateToTab(it.itemId) }
 
-  private val itemSelectedListener =
-      NavigationBarView.OnItemSelectedListener {
-        navigateToTab(it.itemId)
+    private val itemSelectedListener =
+        NavigationBarView.OnItemSelectedListener {
+            navigateToTab(it.itemId)
 
-        true
-      }
+            true
+        }
 
     private fun setLoggedIn(loggedIn: Boolean) {
         this.bottomNavigation.visibility = if (loggedIn) VISIBLE else GONE
@@ -107,18 +103,20 @@ constructor(
         // TODO: Edge-to-edge `WebView`
         // https://linear.app/soveng/issue/OBS-3237/android-edge-to-edge-webview
         ViewCompat.setOnApplyWindowInsetsListener(this.webViewContainer) { view, windowInsets ->
-            val insetsMask = WindowInsetsCompat.Type.displayCutout()
-                .or(WindowInsetsCompat.Type.navigationBars())
-                .or(WindowInsetsCompat.Type.statusBars())
+            val insetsMask =
+                WindowInsetsCompat.Type.displayCutout()
+                    .or(WindowInsetsCompat.Type.navigationBars())
+                    .or(WindowInsetsCompat.Type.statusBars())
             val insets = windowInsets.getInsets(insetsMask)
             val imeMask = WindowInsetsCompat.Type.ime()
-            val bottom = if (windowInsets.isVisible(imeMask)) {
-                windowInsets.getInsets(imeMask).bottom
-            } else if (!this.loggedIn) {
-                insets.bottom
-            } else {
-                0
-            }
+            val bottom =
+                if (windowInsets.isVisible(imeMask)) {
+                    windowInsets.getInsets(imeMask).bottom
+                } else if (!this.loggedIn) {
+                    insets.bottom
+                } else {
+                    0
+                }
             // Only use non-zero insets when there's overlap
             // https://developer.android.com/develop/ui/views/layout/webapps/understand-window-insets#bounds-overlap
             view.setPadding(
@@ -129,9 +127,7 @@ constructor(
             )
             // Child `WebView` should ignore any insets we applied here
             // https://developer.android.com/develop/ui/views/layout/webapps/understand-window-insets#inset-handling
-            WindowInsetsCompat.Builder(windowInsets)
-                .setInsets(insetsMask.or(imeMask), Insets.NONE)
-                .build()
+            WindowInsetsCompat.Builder(windowInsets).setInsets(insetsMask.or(imeMask), Insets.NONE).build()
         }
         ViewCompat.setOnApplyWindowInsetsListener(this.bottomNavigation) { view, windowInsets ->
             // Hide bottom nav when IME is visible
@@ -149,102 +145,104 @@ constructor(
         }
     }
 
-  fun onCreate(
-      binder: IObscuraVpnService,
-      osStatus: OsStatus,
-  ) {
-    onDestroy()
+    fun onCreate(
+        binder: IObscuraVpnService,
+        osStatus: OsStatus,
+    ) {
+        onDestroy()
 
-    webView =
-        ObscuraWebView(context, binder, osStatus).apply {
-          webViewContainer.addView(
-              this,
-              LayoutParams(
-                  LayoutParams.MATCH_PARENT,
-                  LayoutParams.MATCH_PARENT,
-              ),
-          )
+        webView =
+            ObscuraWebView(context, binder, osStatus).apply {
+                webViewContainer.addView(
+                    this,
+                    LayoutParams(
+                        LayoutParams.MATCH_PARENT,
+                        LayoutParams.MATCH_PARENT,
+                    ),
+                )
 
-          onPageLoadedCallback = {
-            if (bottomNavigation.selectedItemId != R.id.nav_connection) {
-              // TODO: make sure UI picks this up correctly
+                onPageLoadedCallback = {
+                    if (bottomNavigation.selectedItemId != R.id.nav_connection) {
+                        // TODO: make sure UI picks this up correctly
 
-              var delay = 0L
-              while (delay < 100L) {
-                postDelayed(delay) { navigateToTab(bottomNavigation.selectedItemId) }
-                delay += 10
-              }
+                        var delay = 0L
+                        while (delay < 100L) {
+                            postDelayed(delay) { navigateToTab(bottomNavigation.selectedItemId) }
+                            delay += 10
+                        }
+                    }
+                }
+
+                statusObserver?.disable()
+                statusObserver =
+                    StatusObserver(WeakReference(binder)) {
+                            osStatus.setVpnStatus(it.vpnStatus)
+                            this@ObscuraUI.setLoggedIn(it.accountId != null && !it.inNewAccountFlow)
+                        }
+                        .apply { observe() }
             }
-          }
-
-          statusObserver?.disable()
-          statusObserver = StatusObserver(WeakReference(binder)) {
-              osStatus.setVpnStatus(it.vpnStatus)
-              this@ObscuraUI.setLoggedIn(it.accountId != null && !it.inNewAccountFlow)
-          }.apply { observe() }
-        }
-  }
-
-  fun onResume() {
-    webView?.onResume()
-  }
-
-  fun onPause() {
-    webView?.onPause()
-  }
-
-  fun onDestroy() {
-    statusObserver?.disable()
-    statusObserver = null
-
-    bottomNavigation.visibility = GONE
-    webViewContainer.removeAllViews()
-
-    webView?.destroy()
-    webView = null
-  }
-
-  override fun invalidate() {
-    super.invalidate()
-
-    this.webView?.invalidate()
-  }
-
-  fun goBack() {
-    if (webView?.canGoBack() ?: false) {
-      webView?.goBack()
-    } else if (bottomNavigation.selectedItemId != R.id.nav_connection) {
-      bottomNavigation.selectedItemId = R.id.nav_connection
     }
-  }
 
-  private fun navigateToTab(id: Int) {
-    val path =
-        when (id) {
-          R.id.nav_connection -> ""
-          R.id.nav_location -> "location"
-          R.id.nav_account -> "account"
-          R.id.nav_settings -> "settings"
-          R.id.nav_about -> "about"
-          else -> {
-            log.error("unrecognized view id: $id")
-            return
-          }
-        }
-    this.webView?.navigate(path)
-  }
+    fun onResume() {
+        webView?.onResume()
+    }
 
-  fun handleObscuraUri(uri: Uri) {
-    log.debug("handling deep link: $uri")
-    val id =
-        when (uri.path) {
-          "/account" -> R.id.nav_account
-          "/location" -> R.id.nav_location
-          else -> {
-            log.error("unrecognized path for deep link: $uri")
-            return
-          }
+    fun onPause() {
+        webView?.onPause()
+    }
+
+    fun onDestroy() {
+        statusObserver?.disable()
+        statusObserver = null
+
+        bottomNavigation.visibility = GONE
+        webViewContainer.removeAllViews()
+
+        webView?.destroy()
+        webView = null
+    }
+
+    override fun invalidate() {
+        super.invalidate()
+
+        this.webView?.invalidate()
+    }
+
+    fun goBack() {
+        if (webView?.canGoBack() ?: false) {
+            webView?.goBack()
+        } else if (bottomNavigation.selectedItemId != R.id.nav_connection) {
+            bottomNavigation.selectedItemId = R.id.nav_connection
         }
-    this.bottomNavigation.selectedItemId = id
-  }
+    }
+
+    private fun navigateToTab(id: Int) {
+        val path =
+            when (id) {
+                R.id.nav_connection -> ""
+                R.id.nav_location -> "location"
+                R.id.nav_account -> "account"
+                R.id.nav_settings -> "settings"
+                R.id.nav_about -> "about"
+                else -> {
+                    log.error("unrecognized view id: $id")
+                    return
+                }
+            }
+        this.webView?.navigate(path)
+    }
+
+    fun handleObscuraUri(uri: Uri) {
+        log.debug("handling deep link: $uri")
+        val id =
+            when (uri.path) {
+                "/account" -> R.id.nav_account
+                "/location" -> R.id.nav_location
+                else -> {
+                    log.error("unrecognized path for deep link: $uri")
+                    return
+                }
+            }
+        this.bottomNavigation.selectedItemId = id
+    }
 }

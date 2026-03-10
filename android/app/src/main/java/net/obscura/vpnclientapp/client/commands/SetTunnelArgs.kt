@@ -7,9 +7,9 @@ import kotlinx.serialization.json.JsonObject
 data class SetTunnelArgs(
     val setTunnelArgs: Request,
 ) {
-  @Serializable
-  data class Request(
-      val args: Map<String, JsonObject>? = null,
-      val active: Boolean? = null,
-  )
+    @Serializable
+    data class Request(
+        val args: Map<String, JsonObject>? = null,
+        val active: Boolean? = null,
+    )
 }

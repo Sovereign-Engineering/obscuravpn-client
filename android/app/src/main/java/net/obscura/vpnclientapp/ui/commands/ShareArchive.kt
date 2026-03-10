@@ -7,5 +7,5 @@ import kotlinx.serialization.Serializable
 data class ShareArchive(
     val path: String,
 ) {
-  fun run(context: Context) = shareDebugArchive(context, path, false)
+    fun run(context: Context) = shareDebugArchive(context, path, false)
 }

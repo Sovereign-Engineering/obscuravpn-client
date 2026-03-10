@@ -8,16 +8,10 @@ plugins {
 extensions.configure<LibraryExtension> {
     buildToolsVersion = "36.0.0"
     compileSdk = 36
-    defaultConfig {
-        minSdk = 31
-    }
+    defaultConfig { minSdk = 31 }
     namespace = "net.obscura.lib.util"
 }
 
-kotlin {
-    jvmToolchain(21)
-}
+kotlin { jvmToolchain(21) }
 
-dependencies {
-    implementation(libs.kotlin.stdlib)
-}
+dependencies { implementation(libs.kotlin.stdlib) }

@@ -31,112 +31,115 @@ import net.obscura.vpnclientapp.ui.commands.SetColorScheme
 private val log = Logger(MainActivity::class)
 
 class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceChangeListener {
-  private class VpnServiceConnection(
-      val activity: MainActivity,
-  ) : ServiceConnection {
-    override fun onServiceConnected(
-        name: ComponentName?,
-        service: IBinder?,
-    ) {
-      log.debug("onServiceConnected $name $service")
+    private class VpnServiceConnection(
+        val activity: MainActivity,
+    ) : ServiceConnection {
+        override fun onServiceConnected(
+            name: ComponentName?,
+            service: IBinder?,
+        ) {
+            log.debug("onServiceConnected $name $service")
 
-      activity.ui.onCreate(IObscuraVpnService.Stub.asInterface(service), activity.osStatus)
-    }
+            activity.ui.onCreate(IObscuraVpnService.Stub.asInterface(service), activity.osStatus)
+        }
 
-    override fun onServiceDisconnected(name: ComponentName?) {
-      log.debug("onServiceDisconnected $name")
+        override fun onServiceDisconnected(name: ComponentName?) {
+            log.debug("onServiceDisconnected $name")
 
-      activity.ui.onDestroy()
+            activity.ui.onDestroy()
 
-      if (activity.vpnServiceConnection === this) {
-        activity.vpnServiceConnection = null
-      }
-    }
-  }
-
-  private lateinit var preferences: Preferences
-  private lateinit var osStatus: OsStatus
-
-  private lateinit var ui: ObscuraUI
-
-  private var vpnServiceConnection: VpnServiceConnection? = null
-
-    private val vpnPermissionRequestLauncher: ActivityResultLauncher<Intent> = this.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        log.debug("VPN start activity result: $result")
-        if (result.resultCode == RESULT_OK) {
-            this.startVpnService()
+            if (activity.vpnServiceConnection === this) {
+                activity.vpnServiceConnection = null
+            }
         }
     }
-    private val notificationPermissionRequestLauncher: ActivityResultLauncher<String> = this.registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-        // We don't actually care if we're granted permission, since this is
-        // just the user's preference between "classic" foreground service
-        // notifications vs. the modern Task Manager.
-        log.debug("notification permission request activity result: $isGranted")
-    }
 
-  override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(savedInstanceState)
+    private lateinit var preferences: Preferences
+    private lateinit var osStatus: OsStatus
 
-    requireUIProcess()
+    private lateinit var ui: ObscuraUI
+
+    private var vpnServiceConnection: VpnServiceConnection? = null
+
+    private val vpnPermissionRequestLauncher: ActivityResultLauncher<Intent> =
+        this.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            log.debug("VPN start activity result: $result")
+            if (result.resultCode == RESULT_OK) {
+                this.startVpnService()
+            }
+        }
+    private val notificationPermissionRequestLauncher: ActivityResultLauncher<String> =
+        this.registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            // We don't actually care if we're granted permission, since this is
+            // just the user's preference between "classic" foreground service
+            // notifications vs. the modern Task Manager.
+            log.debug("notification permission request activity result: $isGranted")
+        }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        requireUIProcess()
 
         // Edge-to-edge is the future for Android
         // https://developer.android.com/develop/ui/views/layout/edge-to-edge
         WindowCompat.enableEdgeToEdge(this.window)
 
-    setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_main)
 
-    ui = findViewById(R.id.ui)
+        ui = findViewById(R.id.ui)
 
-    onBackPressedDispatcher.addCallback {
-      if (ui.canGoBack) {
-        ui.goBack()
-      } else {
-        isEnabled = false
-        onBackPressedDispatcher.onBackPressed()
-        isEnabled = true
-      }
-    }
-
-    osStatus = OsStatus(this)
-    preferences = Preferences(this).apply { registerListener(this@MainActivity) }
-    vpnServiceConnection =
-        VpnServiceConnection(this).also {
-          bindService(
-              Intent(this, ObscuraVpnService::class.java),
-              it,
-              BIND_AUTO_CREATE or BIND_IMPORTANT,
-          )
+        onBackPressedDispatcher.addCallback {
+            if (ui.canGoBack) {
+                ui.goBack()
+            } else {
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
+                isEnabled = true
+            }
         }
 
-    applyColorScheme()
-  }
+        osStatus = OsStatus(this)
+        preferences = Preferences(this).apply { registerListener(this@MainActivity) }
+        vpnServiceConnection =
+            VpnServiceConnection(this).also {
+                bindService(
+                    Intent(this, ObscuraVpnService::class.java),
+                    it,
+                    BIND_AUTO_CREATE or BIND_IMPORTANT,
+                )
+            }
 
-  override fun onStart() {
-    super.onStart()
+        applyColorScheme()
+    }
 
-    osStatus.registerCallbacks()
-    osStatus.update()
-  }
+    override fun onStart() {
+        super.onStart()
 
-  override fun onNewIntent(intent: Intent) {
-    super.onNewIntent(intent)
+        osStatus.registerCallbacks()
+        osStatus.update()
+    }
 
-    intent.data?.let { uri -> this.ui.handleObscuraUri(uri) }
-  }
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
 
-  override fun onResume() {
-    super.onResume()
+        intent.data?.let { uri -> this.ui.handleObscuraUri(uri) }
+    }
 
-    ui.onResume()
-  }
+    override fun onResume() {
+        super.onResume()
+
+        ui.onResume()
+    }
 
     fun startVpnService() {
         log.debug("starting VPN service")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-            && ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.POST_NOTIFICATIONS,
-            ) != PackageManager.PERMISSION_GRANTED
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS,
+                ) != PackageManager.PERMISSION_GRANTED
         ) {
             this.notificationPermissionRequestLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -160,50 +163,50 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
         }
     }
 
-  override fun onPause() {
-    super.onPause()
+    override fun onPause() {
+        super.onPause()
 
-    ui.onPause()
-  }
-
-  override fun onStop() {
-    super.onStop()
-
-    osStatus.deregisterCallbacks()
-    osStatus.update()
-  }
-
-  override fun onDestroy() {
-    super.onDestroy()
-
-    preferences.unregisterListener(this)
-    vpnServiceConnection?.let { unbindService(it) }
-  }
-
-  override fun onConfigurationChanged(newConfig: Configuration) {
-    super.onConfigurationChanged(newConfig)
-
-    log.debug("configuration changed: $newConfig")
-
-    this.ui.invalidate()
-  }
-
-  override fun onSharedPreferenceChanged(
-      sharedPreferences: SharedPreferences?,
-      key: String?,
-  ) {
-    if (key == "color-scheme") {
-      applyColorScheme()
+        ui.onPause()
     }
-  }
 
-  private fun applyColorScheme() {
-    AppCompatDelegate.setDefaultNightMode(
-        when (preferences.colorScheme) {
-          SetColorScheme.ColorScheme.Auto -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
-          SetColorScheme.ColorScheme.Dark -> AppCompatDelegate.MODE_NIGHT_YES
-          SetColorScheme.ColorScheme.Light -> AppCompatDelegate.MODE_NIGHT_NO
-        },
-    )
-  }
+    override fun onStop() {
+        super.onStop()
+
+        osStatus.deregisterCallbacks()
+        osStatus.update()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+
+        preferences.unregisterListener(this)
+        vpnServiceConnection?.let { unbindService(it) }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+
+        log.debug("configuration changed: $newConfig")
+
+        this.ui.invalidate()
+    }
+
+    override fun onSharedPreferenceChanged(
+        sharedPreferences: SharedPreferences?,
+        key: String?,
+    ) {
+        if (key == "color-scheme") {
+            applyColorScheme()
+        }
+    }
+
+    private fun applyColorScheme() {
+        AppCompatDelegate.setDefaultNightMode(
+            when (preferences.colorScheme) {
+                SetColorScheme.ColorScheme.Auto -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+                SetColorScheme.ColorScheme.Dark -> AppCompatDelegate.MODE_NIGHT_YES
+                SetColorScheme.ColorScheme.Light -> AppCompatDelegate.MODE_NIGHT_NO
+            },
+        )
+    }
 }

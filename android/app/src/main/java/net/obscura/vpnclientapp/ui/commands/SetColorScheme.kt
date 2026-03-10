@@ -9,14 +9,14 @@ import net.obscura.vpnclientapp.preferences.Preferences
 data class SetColorScheme(
     val value: ColorScheme,
 ) {
-  @Serializable
-  enum class ColorScheme {
-    @SerialName("dark") Dark,
-    @SerialName("light") Light,
-    @SerialName("auto") Auto,
-  }
+    @Serializable
+    enum class ColorScheme {
+        @SerialName("dark") Dark,
+        @SerialName("light") Light,
+        @SerialName("auto") Auto,
+    }
 
-  fun run(context: Context) {
-    Preferences(context).colorScheme = value
-  }
+    fun run(context: Context) {
+        Preferences(context).colorScheme = value
+    }
 }

@@ -7,7 +7,7 @@ data class SetFeatureFlag(
     val flag: String?,
     val active: Boolean?,
 ) {
-  fun run(): Any {
-    TODO()
-  }
+    fun run(): Any {
+        TODO()
+    }
 }

@@ -17,14 +17,13 @@ use tokio_util::sync::{CancellationToken, DropGuard};
 use uuid::Uuid;
 
 use super::ffi_helpers::*;
-use crate::cached_value::CachedValue;
 use crate::client_state::ClientStateHandle;
 use crate::errors::{ConfigDirty, ConfigDirtyOrApiError};
 use crate::manager_cmd::{ManagerCmdErrorCode, ManagerCmdOk};
 use crate::{
     backoff::Backoff,
     client_state::{AccountStatus, ClientState},
-    config::{Config, ConfigDebug, ConfigLoadError, KeychainSetSecretKeyFn, PinnedLocation, feature_flags::FeatureFlags},
+    config::{Config, ConfigLoadError, KeychainSetSecretKeyFn, PinnedLocation, feature_flags::FeatureFlags},
     debug_archive::create_debug_archive,
     errors::{ApiError, ConnectErrorCode},
     exit_selection::ExitSelector,
@@ -35,6 +34,7 @@ use crate::{
     quicwg::TransportKind,
     tunnel_state::TunnelState,
 };
+use crate::{cached_value::CachedValue, debug_archive::info::DebugInfo};
 
 pub struct Manager {
     background_taks_cancellation_token: CancellationToken,
@@ -348,12 +348,12 @@ impl Manager {
     pub async fn create_debug_archive(&self, user_feedback: Option<&str>) -> anyhow::Result<String> {
         let user_feedback = user_feedback.map(ToOwned::to_owned);
         let log_dir = self.log_persistence.as_deref().map(LogPersistence::log_dir).map(ToOwned::to_owned);
-        let debug_info = self.get_debug_info();
+        let debug_info = self.get_debug_info().await;
         tokio::task::spawn_blocking(move || create_debug_archive(user_feedback.as_deref(), debug_info, log_dir.as_deref()).map(Into::into)).await?
     }
 
-    pub fn get_debug_info(&self) -> DebugInfo {
-        self.client_state.get_debug_info()
+    pub async fn get_debug_info(&self) -> DebugInfo {
+        self.client_state.get_debug_info().await
     }
 
     pub fn wake(&self) {
@@ -385,13 +385,6 @@ impl Manager {
         f(&self.client_state);
         Ok(ManagerCmdOk::Empty)
     }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct DebugInfo {
-    pub config: ConfigDebug,
-    pub network_interface: Option<NetworkInterface>,
-    pub network_interface_mtu: Option<i32>,
 }
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]

@@ -9,19 +9,18 @@ use obscuravpn_api::{
     types::{AccountId, AccountInfo},
 };
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 use strum::IntoStaticStr;
 use tokio::spawn;
 use uuid::Uuid;
 
-use crate::client_state::ClientStateHandle;
 use crate::errors::ApiError;
 use crate::errors::{ConfigDirty, ConfigDirtyOrApiError};
 use crate::network_config::DnsContentBlock;
 use crate::{
     cached_value::CachedValue,
-    manager::{DebugInfo, Manager, ManagerTrafficStats, Status},
+    manager::{Manager, ManagerTrafficStats, Status},
 };
+use crate::{client_state::ClientStateHandle, debug_archive::info::DebugInfo};
 use crate::{config::PinnedLocation, manager::TunnelArgs};
 
 /// High-level json command error codes, which are actionable for frontends.
@@ -247,7 +246,7 @@ impl ManagerCmd {
                     tracing::error!(?error, "failed to create debug archive");
                     ManagerCmdErrorCode::Other
                 }),
-            Self::GetDebugInfo {} => Ok(ManagerCmdOk::GetDebugInfo(manager.get_debug_info())),
+            Self::GetDebugInfo {} => Ok(ManagerCmdOk::GetDebugInfo(manager.get_debug_info().await)),
             Self::GetExitList { known_version } => manager.get_exit_list(known_version).await.map(ManagerCmdOk::GetExitList),
             Self::GetStatus { known_version } => manager
                 .subscribe()

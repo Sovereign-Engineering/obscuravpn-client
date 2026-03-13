@@ -2,12 +2,11 @@ use super::{
     errors::{ApiError, TunnelConnectError},
     network_config::TunnelNetworkConfig,
 };
-use crate::constants::DEFAULT_API_URL;
 use crate::errors::ConfigDirty;
 use crate::manager::TunnelArgs;
 use crate::network_config::DnsContentBlock;
 use crate::tunnel_state::TargetState;
-use crate::{config::ConfigHandle, manager::DebugInfo, net::interface_mtu};
+use crate::{config::ConfigHandle, net::interface_mtu};
 use crate::{config::KeychainSetSecretKeyFn, net::NetworkInterface, network_config::DnsConfig, quicwg::QuicWgConnHandshaking};
 use crate::{config::PinnedLocation, exit_selection::ExitSelectionState};
 use crate::{config::cached::ConfigCached, exit_selection::ExitSelector};
@@ -15,6 +14,10 @@ use crate::{
     config::{self, Config, ConfigLoadError},
     errors::RelaySelectionError,
     quicwg::QuicWgConn,
+};
+use crate::{
+    constants::DEFAULT_API_URL,
+    debug_archive::{dns::debug_dns, info::DebugInfo, task::debug_panic_error},
 };
 use crate::{quicwg::TUNNEL_MTU, relay_selection::race_relay_handshakes};
 use boringtun::x25519::{PublicKey, StaticSecret};
@@ -703,12 +706,28 @@ impl ClientStateHandle {
         })
     }
 
-    pub fn get_debug_info(&self) -> DebugInfo {
-        let this = self.borrow();
+    pub async fn get_debug_info(&self) -> DebugInfo {
+        let config;
+        let network_interface;
+        let network_interface_mtu;
+        {
+            let this = self.borrow();
+            config = this.config().clone().into();
+            network_interface = this.network_interface.clone();
+            network_interface_mtu = this.network_interface.as_ref().and_then(|interface| interface_mtu(&interface.name).ok());
+        }
+
+        let dns_apple = tokio::spawn(debug_dns("www.apple.com:443"));
+        let dns_google = tokio::spawn(debug_dns("google.com:443"));
+        let dns_obscura = tokio::spawn(debug_dns("v1.api.prod.obscura.net:443"));
+
         DebugInfo {
-            config: this.config().clone().into(),
-            network_interface: this.network_interface.clone(),
-            network_interface_mtu: this.network_interface.as_ref().and_then(|interface| interface_mtu(&interface.name).ok()),
+            config,
+            dns_apple: dns_apple.await.unwrap_or_else(debug_panic_error),
+            dns_google: dns_google.await.unwrap_or_else(debug_panic_error),
+            dns_obscura: dns_obscura.await.unwrap_or_else(debug_panic_error),
+            network_interface,
+            network_interface_mtu,
         }
     }
 }

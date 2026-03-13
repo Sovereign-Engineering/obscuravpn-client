@@ -1,8 +1,10 @@
 mod builder;
+pub mod dns;
+pub mod info;
+pub mod task;
 mod zipper;
-
 use self::builder::DebugArchiveBuilder;
-use crate::manager::DebugInfo;
+use crate::debug_archive::info::DebugInfo;
 use camino::{Utf8Path, Utf8PathBuf};
 
 // TODO: https://linear.app/soveng/issue/OBS-3095/cross-platform-debug-archive-story

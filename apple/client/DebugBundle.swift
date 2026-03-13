@@ -27,7 +27,7 @@ private class BundleTask {
     private var lastPing: SuspendingClock.Instant
     private var done: SuspendingClock.Instant?
 
-    private var timeout = Duration.seconds(60)
+    private var timeout = Duration.seconds(70)
 
     /// Create and start the task.
     @discardableResult
@@ -543,7 +543,7 @@ private class DebugBundleBuilder {
             return
         }
         do {
-            let neDebugInfoJsonString = try await runNeJsonCommand(manager, NeManagerCmd.getDebugInfo.json(), name: "getDebugInfo", attemptTimeout: .seconds(10))
+            let neDebugInfoJsonString = try await runNeJsonCommand(manager, NeManagerCmd.getDebugInfo.json(), name: "getDebugInfo", attemptTimeout: .seconds(70))
             let value = try JSONSerialization.jsonObject(with: Data(neDebugInfoJsonString.utf8))
             let json = try JSONSerialization.data(
                 withJSONObject: value,

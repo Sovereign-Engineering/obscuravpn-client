@@ -54,9 +54,9 @@ type Connected = (Arc<QuicWgConn>, TunnelNetworkConfig, OneExit, OneRelay);
 
 impl TunnelState {
     /// The constructed `TunnelState` can not be dropped due to spawned tasks, which hold references.
-    pub fn new(runtime: &tokio::runtime::Handle, client_state: ClientStateHandle, os_impl: Arc<impl Os>) -> Receiver<TunnelState> {
+    pub fn new(client_state: ClientStateHandle, os_impl: Arc<impl Os>) -> Receiver<TunnelState> {
         let (tunnel_state_send, tunnel_state_recv) = channel(TunnelState::Disconnected);
-        runtime.spawn(Self::maintain(tunnel_state_send, client_state, os_impl));
+        tokio::spawn(Self::maintain(tunnel_state_send, client_state, os_impl));
         tunnel_state_recv
     }
 

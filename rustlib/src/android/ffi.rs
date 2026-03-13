@@ -14,15 +14,14 @@ use once_cell::sync::OnceCell;
 use std::{
     ffi::c_void,
     os::fd::{FromRawFd as _, OwnedFd},
-    sync::{Arc, LazyLock},
+    sync::Arc,
 };
 use tokio::runtime::Runtime;
-
-pub(super) static RUNTIME: LazyLock<Runtime> = LazyLock::new(|| Runtime::new().unwrap());
 
 pub struct Global {
     pub manager: Arc<Manager>,
     pub os_impl: Arc<AndroidOsImpl>,
+    pub runtime: Runtime,
 }
 
 static GLOBAL: OnceCell<Global> = OnceCell::new();
@@ -62,6 +61,8 @@ pub extern "C" fn JNI_OnLoad(vm: *mut jni::sys::JavaVM, _reserved: *mut c_void) 
 }
 
 fn initialize(env: &mut JNIEnv, j_config_dir: &JString, j_user_agent: &JString) -> anyhow::Result<Global> {
+    let runtime = Runtime::new().expect("Failed to create tokio runtime");
+    let _runtime_guard = runtime.enter();
     let config_dir = Utf8JavaStr::new(env, j_config_dir, "j_config_dir")?;
     let user_agent = Utf8JavaStr::new(env, j_user_agent, "j_user_agent")?;
     let log_dir = config_dir.as_path().join(RUST_LOG_DIR_NAME);
@@ -75,13 +76,12 @@ fn initialize(env: &mut JNIEnv, j_config_dir: &JString, j_user_agent: &JString) 
         config_dir.as_path().into(),
         None, // TODO: https://linear.app/soveng/issue/OBS-2699/android-keychain-equivalent
         user_agent.as_str().into(),
-        RUNTIME.handle().clone(),
         os_impl.clone(),
         None, // TODO: https://linear.app/soveng/issue/OBS-2699/android-keychain-equivalent
         log_persistence,
         true,
     )?;
-    Ok(Global { manager, os_impl })
+    Ok(Global { manager, os_impl, runtime })
 }
 
 /// cbindgen:ignore
@@ -111,8 +111,9 @@ fn json_ffi(env: &mut JNIEnv, j_json_cmd: &JString, j_future: &JObject) -> anyho
     // This extends the Java object's lifetime until dropped.
     let j_future = env.new_global_ref(&j_future)?;
     let manager = &global()?.manager;
+    let _runtime_guard = global()?.runtime.enter();
     let jvm = env.get_java_vm()?;
-    RUNTIME.spawn(async move {
+    tokio::spawn(async move {
         let result = cmd.run(manager).await;
         // This attaches the current thread to the JVM for the entire life of
         // the thread, which is significantly more performant than

@@ -1,5 +1,5 @@
 use std::ffi::c_void;
-use std::sync::{Arc, LazyLock, OnceLock};
+use std::sync::{Arc, OnceLock};
 use tokio::runtime::Runtime;
 
 use super::os_impl::AppleOsImpl;
@@ -35,12 +35,10 @@ pub extern "C" fn initialize_apple_system_logging(log_dir: FfiStr) -> *mut c_voi
     guard_ptr
 }
 
-/// cbindgen:ignore
-static RUNTIME: LazyLock<Runtime> = LazyLock::new(|| Runtime::new().unwrap());
-
 struct Global {
     manager: Arc<Manager>,
     os_impl: Arc<AppleOsImpl>,
+    runtime: Runtime,
 }
 
 static GLOBAL: OnceLock<Global> = OnceLock::new();
@@ -52,7 +50,6 @@ fn global() -> &'static Global {
 /// SAFETY:
 /// - `log_persistence` must be a pointer returned by `initialize_apple_system_logging`
 /// - there is no other global function of this name
-/// - (TODO)
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn initialize(
     config_dir: FfiStr,
@@ -69,6 +66,9 @@ pub unsafe extern "C" fn initialize(
             .install_default()
             .expect("Failed to install aws-lc crypto provider");
 
+        let runtime = Runtime::new().expect("Failed to create tokio runtime");
+        let _runtime_guard = runtime.enter();
+
         let config_dir = config_dir.to_string().into();
         let user_agent = user_agent.to_string();
         let keychain_wg_sk = Some(keychain_wg_secret_key.to_vec()).filter(|v| !v.is_empty());
@@ -84,7 +84,6 @@ pub unsafe extern "C" fn initialize(
             config_dir,
             keychain_wg_sk.as_deref(),
             user_agent,
-            RUNTIME.handle().clone(),
             os_impl.clone(),
             Some(keychain_set_wg_secret_key),
             log_persistence,
@@ -93,7 +92,7 @@ pub unsafe extern "C" fn initialize(
             Ok(manager) => {
                 first_init = true;
                 tracing::info!("ffi initialized");
-                Global { manager, os_impl }
+                Global { manager, os_impl, runtime }
             }
             Err(err) => panic!("ffi initialization failed: could not load config: {}", err),
         }
@@ -169,7 +168,7 @@ pub unsafe extern "C" fn wake() {
 pub unsafe extern "C" fn json_ffi_cmd(context: usize, json_cmd: FfiBytes, cb: extern "C" fn(context: usize, json_ret: FfiStr, json_err: FfiStr)) {
     let json_cmd = json_cmd.to_vec();
 
-    RUNTIME.spawn(async move {
+    global().runtime.spawn(async move {
         let manager = &global().manager;
 
         let json_result: Result<String, ManagerCmdErrorCode> = async move {

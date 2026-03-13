@@ -33,7 +33,6 @@ pub struct Manager {
     client_state: ClientStateHandle,
     tunnel_state: Receiver<TunnelState>,
     status_watch: Sender<Status>,
-    runtime: tokio::runtime::Handle,
     log_persistence: Option<Box<LogPersistence>>,
 }
 
@@ -149,20 +148,18 @@ impl Manager {
         config_dir: PathBuf,
         keychain_wg_sk: Option<&[u8]>,
         user_agent: String,
-        runtime: tokio::runtime::Handle,
         os_impl: Arc<impl Os>,
         set_keychain_wg_sk: Option<KeychainSetSecretKeyFn>,
         log_persistence: Option<Box<LogPersistence>>,
         force_init_inactive: bool,
     ) -> Result<Arc<Self>, ConfigLoadError> {
         let client_state = ClientState::new(config_dir, keychain_wg_sk, user_agent, set_keychain_wg_sk, force_init_inactive)?;
-        let tunnel_state = TunnelState::new(&runtime, client_state.clone(), os_impl.clone());
+        let tunnel_state = TunnelState::new(client_state.clone(), os_impl.clone());
         let initial_status = Status::new(Uuid::new_v4(), VpnStatus::Disconnected {}, &client_state.borrow());
-        let this = Arc::new(Self { tunnel_state, client_state, status_watch: channel(initial_status).0, runtime, log_persistence });
-        this.runtime.spawn(Self::wireguard_key_registraction_task(this.clone(), ()));
-        this.runtime.spawn(Self::propagate_updates_to_status_task(this.clone(), ()));
-        this.runtime
-            .spawn(Self::preferred_network_interface_task(this.clone(), os_impl.network_interface()));
+        let this = Arc::new(Self { tunnel_state, client_state, status_watch: channel(initial_status).0, log_persistence });
+        tokio::spawn(Self::wireguard_key_registraction_task(this.clone(), ()));
+        tokio::spawn(Self::propagate_updates_to_status_task(this.clone(), ()));
+        tokio::spawn(Self::preferred_network_interface_task(this.clone(), os_impl.network_interface()));
         Ok(this)
     }
 

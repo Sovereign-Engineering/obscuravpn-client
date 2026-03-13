@@ -1,4 +1,3 @@
-use super::ffi::RUNTIME;
 use crate::{manager::Manager, quicwg::TUNNEL_MTU, tokio::AbortOnDrop};
 use nix::{errno::Errno, unistd};
 use std::{os::fd::OwnedFd, sync::Arc};
@@ -19,7 +18,7 @@ impl Tun {
                 return Err(Self { fd, _read_loop_task: None });
             }
         };
-        let read_loop_task = RUNTIME.spawn(async move {
+        let read_loop_task = tokio::spawn(async move {
             let mut buf = Box::new([0; TUNNEL_MTU as _]);
             loop {
                 match fd_watcher.readable().await {

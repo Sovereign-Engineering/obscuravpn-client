@@ -23,7 +23,6 @@ pub async fn run(args: ServiceArgs) -> Result<Infallible, Box<dyn Error>> {
         args.config_dir.into(),
         None,
         format!("obscura.net/{}/v0.0-alpha", std::env::consts::OS),
-        tokio::runtime::Handle::current(),
         os_impl.clone(),
         None,
         None,

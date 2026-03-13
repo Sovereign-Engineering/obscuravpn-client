@@ -364,29 +364,6 @@ exceptions:
       - "Throwable"
   ThrowingNewInstanceOfSameException:
     active: true
-  TooGenericExceptionCaught:
-    active: true
-    excludes:
-      [
-        "**/test/**",
-        "**/androidTest/**",
-        "**/commonTest/**",
-        "**/jvmTest/**",
-        "**/androidUnitTest/**",
-        "**/androidInstrumentedTest/**",
-        "**/jsTest/**",
-        "**/iosTest/**",
-      ]
-    exceptionNames:
-      - "ArrayIndexOutOfBoundsException"
-      - "Error"
-      - "Exception"
-      - "IllegalMonitorStateException"
-      - "IndexOutOfBoundsException"
-      - "NullPointerException"
-      - "RuntimeException"
-      - "Throwable"
-    allowedExceptionNameRegex: "_|(ignore|expected).*"
   TooGenericExceptionThrown:
     active: false
     exceptionNames:

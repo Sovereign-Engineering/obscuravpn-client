@@ -75,6 +75,7 @@ impl PartialEq for AccountStatus {
 }
 
 impl ClientState {
+    /// The constructed `ClientState` can not be dropped due to cyclical references.
     #[allow(clippy::new_ret_no_self)]
     pub fn new(
         config_dir: PathBuf,
@@ -104,6 +105,10 @@ impl ClientState {
             tunnel_args: self.config.tunnel_active.then_some(self.config.tunnel_args.clone()),
             network_interface: self.network_interface.clone(),
             dns_content_block: self.config.dns_content_block,
+            use_system_dns: match self.config.dns {
+                DnsConfig::Default => false,
+                DnsConfig::System => true,
+            },
         }
     }
 

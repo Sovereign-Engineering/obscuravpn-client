@@ -1,6 +1,6 @@
 use ipnetwork::IpNetwork;
 use obscuravpn_client::net::NetworkInterface;
-use obscuravpn_client::network_config::TunnelNetworkConfig;
+use obscuravpn_client::network_config::{DnsContentBlock, OsNetworkConfig};
 use semver::Version;
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr};
@@ -78,7 +78,7 @@ pub async fn detect() -> bool {
     version >= MIN_VERSION
 }
 
-pub async fn set_dns_and_routes(tun: &NetworkInterface, network_config: &TunnelNetworkConfig, routes: &[IpNetwork]) -> Result<(), ()> {
+pub async fn set_dns_and_routes(tun: &NetworkInterface, network_config: &OsNetworkConfig, routes: &[IpNetwork]) -> Result<(), ()> {
     let (nm_proxy, _nm_version) = NetworkManagerProxy::connect().await?;
     let proxy = nm_proxy.device_proxy(tun).await?;
     apply_device_settings(tun, &proxy, network_config, routes, true).await
@@ -87,14 +87,14 @@ pub async fn set_dns_and_routes(tun: &NetworkInterface, network_config: &TunnelN
 pub async fn reset_dns_and_routes(tun: &NetworkInterface) -> Result<(), ()> {
     let (nm_proxy, _nm_version) = NetworkManagerProxy::connect().await?;
     let proxy = nm_proxy.device_proxy(tun).await?;
-    let network_config = TunnelNetworkConfig::dummy();
+    let network_config = OsNetworkConfig::dummy(DnsContentBlock::default(), false);
     apply_device_settings(tun, &proxy, &network_config, &[], false).await
 }
 
 async fn apply_device_settings(
     tun: &NetworkInterface,
     proxy: &DeviceProxy<'static>,
-    network_config: &TunnelNetworkConfig,
+    network_config: &OsNetworkConfig,
     routes: &[IpNetwork],
     enable_dns: bool,
 ) -> Result<(), ()> {
@@ -123,7 +123,7 @@ async fn apply_device_settings(
 
 fn build_device_settings(
     tun: &NetworkInterface,
-    network_config: &TunnelNetworkConfig,
+    network_config: &OsNetworkConfig,
     routes: &[IpNetwork],
     enable_dns: bool,
 ) -> Result<HashMap<String, HashMap<String, zbus::zvariant::OwnedValue>>, zbus::zvariant::Error> {
@@ -184,11 +184,13 @@ fn build_device_settings(
     ]);
 
     //  NetworkManager 1.52.1 on Debian 13 will generate an empty /etc/resolv.conf if these settings are specified (after previously applying a non-empty tunnel DNS configuration correctly), but don't contain any DNS server addresses. Both some older and newer versions do not have this problem.
-    if enable_dns {
+    if let Some(dns_ips) = &network_config.dns
+        && enable_dns
+    {
         let dns_search = vec!["~"];
         let mut dns_addresses_v4 = vec![];
         let mut dns_addresses_v6 = vec![];
-        for dns_ip in &network_config.dns {
+        for dns_ip in dns_ips {
             match dns_ip {
                 IpAddr::V4(dns_ip) => dns_addresses_v4.push(ipv4_to_u32(*dns_ip)),
                 IpAddr::V6(dns_ip) => dns_addresses_v6.push(dns_ip.octets().to_vec()),

@@ -8,16 +8,15 @@ use strum::EnumIs;
 use tokio::select;
 use tokio::sync::watch::{Receiver, Sender, channel};
 use tokio::time::{Instant, sleep_until};
-use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 use crate::client_state::ClientStateHandle;
 use crate::errors::{ErrorAt, TunnelConnectError};
 use crate::exit_selection::ExitSelectionState;
-use crate::ffi_helpers::{FfiBytes, FfiBytesExt};
 use crate::manager::ManagerTrafficStats;
 use crate::net::NetworkInterface;
-use crate::network_config::{DnsContentBlock, TunnelNetworkConfig};
+use crate::network_config::{DnsContentBlock, OsNetworkConfig, TunnelNetworkConfig};
+use crate::os::os_trait::Os;
 use crate::quicwg::{QuicWgReceiveError, QuicWgTrafficStats};
 use crate::{client_state::ClientState, manager::TunnelArgs, quicwg::QuicWgConn};
 
@@ -26,6 +25,7 @@ pub struct TargetState {
     pub tunnel_args: Option<TunnelArgs>,
     pub network_interface: Option<NetworkInterface>,
     pub dns_content_block: DnsContentBlock,
+    pub use_system_dns: bool,
 }
 
 #[derive(derive_more::Debug, EnumIs)]
@@ -47,25 +47,16 @@ pub enum TunnelState {
         exit: OneExit,
         offset_traffic_stats: ManagerTrafficStats,
         network_interface: NetworkInterface,
-        dns_content_block: DnsContentBlock,
     },
 }
 
 type Connected = (Arc<QuicWgConn>, TunnelNetworkConfig, OneExit, OneRelay);
 
 impl TunnelState {
-    pub fn new(
-        runtime: &tokio::runtime::Handle,
-        client_state: ClientStateHandle,
-        receive_cb: extern "C" fn(FfiBytes),
-        cancel: CancellationToken,
-    ) -> Receiver<TunnelState> {
+    /// The constructed `TunnelState` can not be dropped due to spawned tasks, which hold references.
+    pub fn new(runtime: &tokio::runtime::Handle, client_state: ClientStateHandle, os_impl: Arc<impl Os>) -> Receiver<TunnelState> {
         let (tunnel_state_send, tunnel_state_recv) = channel(TunnelState::Disconnected);
-        runtime.spawn(async move {
-            cancel
-                .run_until_cancelled(Self::maintain(tunnel_state_send, client_state, receive_cb))
-                .await;
-        });
+        runtime.spawn(Self::maintain(tunnel_state_send, client_state, os_impl));
         tunnel_state_recv
     }
 
@@ -116,7 +107,6 @@ impl TunnelState {
         network_config: TunnelNetworkConfig,
         relay: OneRelay,
         exit: OneExit,
-        dns_content_block: DnsContentBlock,
     ) {
         *self = Self::Connected {
             args: args.clone(),
@@ -126,7 +116,6 @@ impl TunnelState {
             relay,
             exit,
             offset_traffic_stats: self.traffic_stats(),
-            dns_content_block,
         };
     }
 
@@ -169,7 +158,7 @@ impl TunnelState {
         }
     }
 
-    async fn maintain(tunnel_state: Sender<TunnelState>, client_state: ClientStateHandle, receive_cb: extern "C" fn(FfiBytes)) -> ! {
+    async fn maintain(tunnel_state: Sender<TunnelState>, client_state: ClientStateHandle, os_impl: Arc<impl Os>) -> ! {
         let mut client_state_watch = client_state.subscribe();
 
         // Delay processing new states or retrying after error for at least this long.
@@ -206,19 +195,35 @@ impl TunnelState {
                 || disconnect_reason.is_some()
             {
                 tunnel_state.send_modify(|tunnel_state| match &target_state {
-                    TargetState { tunnel_args: None, network_interface: _, dns_content_block: _ } => tunnel_state.set_disconnected(),
-                    TargetState { tunnel_args: Some(target_args), network_interface, dns_content_block: _ } => {
+                    TargetState { tunnel_args: None, network_interface: _, dns_content_block: _, use_system_dns: _ } => {
+                        tunnel_state.set_disconnected()
+                    }
+                    TargetState { tunnel_args: Some(target_args), network_interface, dns_content_block: _, use_system_dns: _ } => {
                         tunnel_state.set_connecting(target_args, network_interface, disconnect_reason.take())
                     }
                 });
             }
 
             match &target_state {
-                TargetState { tunnel_args: Some(target_args), network_interface: Some(target_network_interface), dns_content_block } => {
-                    let connected = tunnel_state.borrow().get_connected();
-                    let cf: ControlFlow<(), Connected> = match connected {
-                        None => {
-                            // Not connected, but target state indicates that this is possible and desired. Connect.
+                TargetState {
+                    tunnel_args: Some(target_args),
+                    network_interface: Some(target_network_interface),
+                    dns_content_block,
+                    use_system_dns,
+                } => {
+                    let cf: ControlFlow<(), Connected> = if let Some(connected) = tunnel_state.borrow().get_connected() {
+                        // Already connected, continue with next steps
+                        ControlFlow::Continue(connected)
+                    } else {
+                        // Not connected, but target state indicates that this is possible and desired. Start capturing traffic and connect.
+                        if let Err(()) = os_impl
+                            .set_os_network_config(OsNetworkConfig::dummy(*dns_content_block, *use_system_dns))
+                            .await
+                        {
+                            tracing::error!(message_id = "eTwAHomq", "failed to set dummy network config");
+                            tunnel_state.send_modify(|tunnel_state| tunnel_state.set_connect_error(TunnelConnectError::SetOsNetworkConfig));
+                            ControlFlow::Break(())
+                        } else {
                             match poll_until_change(
                                 &mut client_state_watch,
                                 &target_state,
@@ -234,58 +239,55 @@ impl TunnelState {
                                     ControlFlow::Break(())
                                 }
                                 Some(Err(error)) => {
-                                    tracing::info!(message_id = "OfLfwKhf", ?error, "failed to connect");
+                                    tracing::error!(message_id = "OfLfwKhf", ?error, "failed to connect");
                                     tunnel_state.send_modify(|tunnel_state| tunnel_state.set_connect_error(error));
                                     ControlFlow::Break(())
                                 }
                                 Some(Ok((conn, network_config, exit, relay))) => {
-                                    tracing::info!(message_id = "icGquatl", "connected successfully, setting connected state");
+                                    tracing::info!(message_id = "icGquatl", "connected successfully");
                                     selection_state = ExitSelectionState::default();
                                     ControlFlow::Continue((Arc::new(conn), network_config, exit, relay))
                                 }
                             }
                         }
-                        Some((conn, network_config, exit, relay)) => {
-                            // Already connected. Extract relevant info for next steps
-                            ControlFlow::Continue((conn, network_config, exit, relay))
-                        }
                     };
-                    if let ControlFlow::Continue((conn, mut network_config, exit, relay)) = cf {
-                        // reached connected state, apply DNS content block and update tunnel state
-                        network_config.apply_dns_content_block(&exit.provider_name, *dns_content_block);
-                        tunnel_state.send_modify(|tunnel_state| {
-                            tunnel_state.set_connected(
-                                target_args,
-                                target_network_interface,
-                                conn.clone(),
-                                network_config,
-                                relay,
-                                exit,
-                                *dns_content_block,
-                            )
-                        });
-                        // forward traffic until target state changes or the tunnel fails
-                        disconnect_reason = poll_until_change(&mut client_state_watch, &target_state, async {
-                            loop {
-                                match conn.receive().await {
-                                    Ok(packet) => receive_cb(packet.ffi()),
-                                    Err(error) => {
-                                        tracing::error!(message_id = "tls1cZot", ?error, "tunnel failed");
-                                        break error;
+                    if let ControlFlow::Continue((conn, network_config, exit, relay)) = cf {
+                        // Reached connected state, set OS network config and update published tunnel state
+                        let os_network_config = OsNetworkConfig::new(&network_config, &exit.provider_name, *dns_content_block, *use_system_dns);
+                        if let Err(()) = os_impl.set_os_network_config(os_network_config).await {
+                            tracing::error!(message_id = "t7QzSTGu", "failed to set network config");
+                            tunnel_state.send_modify(|tunnel_state| tunnel_state.set_connect_error(TunnelConnectError::SetOsNetworkConfig));
+                        } else {
+                            tunnel_state.send_modify(|tunnel_state| {
+                                tunnel_state.set_connected(target_args, target_network_interface, conn.clone(), network_config, relay, exit)
+                            });
+                            // forward traffic until target state changes or the tunnel fails
+                            disconnect_reason = poll_until_change(&mut client_state_watch, &target_state, async {
+                                loop {
+                                    match conn.receive().await {
+                                        Ok(packet) => os_impl.packet_for_os(packet),
+                                        Err(error) => {
+                                            tracing::error!(message_id = "tls1cZot", ?error, "tunnel failed");
+                                            break error;
+                                        }
                                     }
                                 }
-                            }
-                        })
-                        .await;
+                            })
+                            .await;
+                        }
                     }
                 }
-                TargetState { tunnel_args: None, network_interface: _, dns_content_block: _ } => {
-                    tracing::info!(message_id = "axfILRQy", "reached disconnected target state");
+                TargetState { tunnel_args: None, network_interface: _, dns_content_block: _, use_system_dns: _ } => {
                     selection_state = ExitSelectionState::default();
-                    // nothing to do until target args change
-                    poll_until_change(&mut client_state_watch, &target_state, pending::<Infallible>()).await;
+                    tracing::info!(message_id = "axfILRQy", "reached disconnected target state");
+                    if let Err(()) = os_impl.unset_os_network_config().await {
+                        tracing::error!(message_id = "PEgDYAz0", "failed to unset network config");
+                    } else {
+                        // nothing to do until target args change
+                        poll_until_change(&mut client_state_watch, &target_state, pending::<Infallible>()).await;
+                    }
                 }
-                TargetState { tunnel_args: Some(_), network_interface: None, dns_content_block: _ } => {
+                TargetState { tunnel_args: Some(_), network_interface: None, dns_content_block: _, use_system_dns: _ } => {
                     tracing::warn!(message_id = "0K9Nep8g", "stuck in connecting state without target interface");
                     selection_state = ExitSelectionState::default();
                     tunnel_state.send_modify(|tunnel_state| tunnel_state.set_connect_error(TunnelConnectError::NoInternet));

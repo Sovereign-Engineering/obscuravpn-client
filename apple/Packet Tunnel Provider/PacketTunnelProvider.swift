@@ -48,7 +48,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         let userAgent = "obscura.net/" + userAgentPlatform + "/" + sourceVersion()
         ffiLog(.Info, "config dir \(configDir)")
         ffiLog(.Info, "user agent \(userAgent)")
-        ffiInitialize(configDir: configDir, userAgent: userAgent, logFlushGuard: logFlushGuard, receiveCallback)
+        ffiInitialize(configDir: configDir, userAgent: userAgent, logFlushGuard: logFlushGuard, receiveCallback, setNetworkConfigCallback)
 
         self.nwPathMonitor.pathUpdateHandler = { path in
             if path.status != .satisfied {
@@ -125,8 +125,6 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
                 throw "tunnel already active"
             }
 
-            let networkConfig = OsNetworkConfig(tunnelNetworkConfig: TunnelNetworkConfig(ipv4: "10.75.76.77", dns: ["10.64.0.99"], ipv6: "fc00:bbbb:bbbb:bb01::c:4c4d/128", mtu: 1280), useSystemDns: false)
-            try await self.setTunnelNetworkSettings(NEPacketTunnelNetworkSettings.build(networkConfig))
             let _: Empty = try await runManagerCmd(.setTunnelArgs(args: tunnelArgs, active: true))
 
             ffiLog(.Info, "set tunnel active flag \(self.providerId)")
@@ -297,30 +295,37 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
                         self.reasserting = true
                     }
                 }
-            case .connected(_, _, let networkConfig, _, _, _):
+            case .connected:
                 if isActiveGuard.value {
-                    do {
-                        try await self.ensureNetworkConfig(newNetworkConfig: OsNetworkConfig(tunnelNetworkConfig: networkConfig, useSystemDns: status.useSystemDns))
-                        self.reasserting = false
-                    } catch {
-                        ffiLog(.Error, "setting network config failed \(error)")
-                    }
+                    self.reasserting = false
                 }
             }
         }
         ffiLog(.Info, "finished processing status update \(status.version)")
     }
 
-    func ensureNetworkConfig(newNetworkConfig: OsNetworkConfig) async throws {
-        try await self.networkConfig.withLock { networkConfigGuard in
-            // This check isn't needed for correctness, but skipping unnecessary calls to `setTunnelNetworkSettings` does prevent brief periods with packet loss and lot of OS activity visible in the system log.
-            if networkConfigGuard.value != newNetworkConfig {
-                ffiLog(.Info, "setting network config \(newNetworkConfig)")
-                let networkSettings = NEPacketTunnelNetworkSettings.build(newNetworkConfig)
-                try await self.setTunnelNetworkSettings(networkSettings)
-                networkConfigGuard.value = newNetworkConfig
-            } else {
-                ffiLog(.Info, "keeping existing network config \(newNetworkConfig)")
+    func ensureNetworkConfig(newNetworkConfig: OsNetworkConfig) async -> Bool {
+        return await self.isActive.withLock { isActiveGuard in
+            if !isActiveGuard.value {
+                ffiLog(.Error, "Not active, ignoring new network config.")
+                return false
+            }
+            return await self.networkConfig.withLock { networkConfigGuard in
+                // This check isn't needed for correctness, but skipping unnecessary calls to `setTunnelNetworkSettings` does prevent brief periods with packet loss and lot of OS activity visible in the system log.
+                if networkConfigGuard.value != newNetworkConfig {
+                    ffiLog(.Info, "Setting network config: \(newNetworkConfig)")
+                    let networkSettings = NEPacketTunnelNetworkSettings.build(newNetworkConfig)
+                    do {
+                        try await self.setTunnelNetworkSettings(networkSettings)
+                    } catch {
+                        ffiLog(.Error, "Setting network config failed: \(error)")
+                        return false
+                    }
+                    networkConfigGuard.value = newNetworkConfig
+                } else {
+                    ffiLog(.Info, "Unchanged, keeping existing network config: \(newNetworkConfig)")
+                }
+                return true
             }
         }
     }
@@ -367,6 +372,27 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
                     ffiLog(.Error, "Failed to apply network settings. User is probably offline \(error)")
                 }
             }
+        }
+    }
+}
+
+// `done` is always non-null, but cbindgen can't emit _Nonnull for function pointers in typedefs.
+private func setNetworkConfigCallback(networkConfigJson: FfiBytes, context: UnsafeMutableRawPointer?, done: (@convention(c) (UnsafeMutableRawPointer?, Bool) -> Void)!) {
+    guard let inst = PacketTunnelProvider.shared else {
+        ffiLog(.Error, "setNetworkConfigCallback called with no active PacketTunnelProvider")
+        done(context, false)
+        return
+    }
+
+    let networkConfigData = networkConfigJson.data()
+    Task {
+        do {
+            let networkConfig = try JSONDecoder().decode(OsNetworkConfig.self, from: networkConfigData)
+            let success = await inst.ensureNetworkConfig(newNetworkConfig: networkConfig)
+            done(context, success)
+        } catch {
+            ffiLog(.Error, "failed to decode OsNetworkConfig: \(error)")
+            done(context, false)
         }
     }
 }

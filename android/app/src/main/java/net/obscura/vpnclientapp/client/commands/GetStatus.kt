@@ -22,21 +22,8 @@ data class GetStatus(
         @Serializable
         data class VpnStatus(
             val disconnected: JsonObject? = null,
-            val connected: Connected? = null,
+            val connected: JsonObject? = null,
             val connecting: JsonObject? = null,
-        ) {
-            @Serializable
-            data class Connected(
-                val networkConfig: NetworkConfig,
-            ) {
-                @Serializable
-                data class NetworkConfig(
-                    val dns: ArrayList<String?>? = null,
-                    val ipv4: String? = null,
-                    val ipv6: String? = null,
-                    val mtu: Int? = null,
-                )
-            }
-        }
+        )
     }
 }

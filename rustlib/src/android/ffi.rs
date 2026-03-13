@@ -1,33 +1,47 @@
 use super::{
-    MANAGER, RUNTIME,
     future::signal_json_ffi_future,
-    get_manager,
-    tunnel::Tun,
+    os_impl::{AndroidOsImpl, SetNetworkConfigSender},
     util::{Utf8JavaStr, throw_runtime_exception},
 };
-use crate::{ffi_helpers::FfiBytes, manager::Manager, manager_cmd::ManagerCmd, net::NetworkInterface, positive_u31::PositiveU31};
+use crate::{manager::Manager, manager_cmd::ManagerCmd, net::NetworkInterface, positive_u31::PositiveU31};
 use anyhow::Context as _;
 use jni::{
     JNIEnv, JavaVM,
-    objects::{JClass, JObject, JString},
-    sys::jint,
+    objects::{JClass, JObject, JString, JValue},
+    sys::{jint, jlong},
 };
+use once_cell::sync::OnceCell;
 use std::{
     ffi::c_void,
     os::fd::{FromRawFd as _, OwnedFd},
-    sync::{Arc, Mutex},
+    sync::{Arc, LazyLock},
 };
+use tokio::runtime::Runtime;
+
+pub(super) static RUNTIME: LazyLock<Runtime> = LazyLock::new(|| Runtime::new().unwrap());
+
+pub struct Global {
+    pub manager: Arc<Manager>,
+    pub os_impl: Arc<AndroidOsImpl>,
+}
+
+static GLOBAL: OnceCell<Global> = OnceCell::new();
+
+pub(super) fn global() -> anyhow::Result<&'static Global> {
+    GLOBAL.get().context("ffi global not initialized")
+}
+
+fn jlong_from_ptr(ptr: *mut c_void) -> jlong {
+    const _: () = assert!(jlong::BITS == usize::BITS, "jlong and pointer size mismatch");
+    ptr as jlong
+}
+
+fn ptr_from_jlong(val: jlong) -> *mut c_void {
+    const _: () = assert!(jlong::BITS == usize::BITS, "jlong and pointer size mismatch");
+    val as *mut c_void
+}
 
 const RUST_LOG_DIR_NAME: &str = "rust-log";
-
-static TUN: Mutex<Option<Tun>> = Mutex::new(None);
-
-/// cbindgen:ignore
-extern "C" fn receive_cb(ffi_bytes: FfiBytes) {
-    if let Some(tun) = &*TUN.lock().unwrap() {
-        tun.write(&ffi_bytes.as_slice());
-    }
-}
 
 /// cbindgen:ignore
 #[unsafe(no_mangle)]
@@ -47,7 +61,7 @@ pub extern "C" fn JNI_OnLoad(vm: *mut jni::sys::JavaVM, _reserved: *mut c_void) 
     jni::sys::JNI_VERSION_1_6
 }
 
-fn initialize(env: &mut JNIEnv, j_config_dir: &JString, j_user_agent: &JString) -> anyhow::Result<Arc<Manager>> {
+fn initialize(env: &mut JNIEnv, j_config_dir: &JString, j_user_agent: &JString) -> anyhow::Result<Global> {
     let config_dir = Utf8JavaStr::new(env, j_config_dir, "j_config_dir")?;
     let user_agent = Utf8JavaStr::new(env, j_user_agent, "j_user_agent")?;
     let log_dir = config_dir.as_path().join(RUST_LOG_DIR_NAME);
@@ -55,17 +69,19 @@ fn initialize(env: &mut JNIEnv, j_config_dir: &JString, j_user_agent: &JString) 
     rustls::crypto::aws_lc_rs::default_provider()
         .install_default()
         .map_err(|_| anyhow::format_err!("failed to install crypto provider"))?;
-    Manager::new(
+    let jvm = env.get_java_vm().context("failed to get JavaVM")?;
+    let os_impl = Arc::new(AndroidOsImpl::new(jvm));
+    let manager = Manager::new(
         config_dir.as_path().into(),
         None, // TODO: https://linear.app/soveng/issue/OBS-2699/android-keychain-equivalent
         user_agent.as_str().into(),
         RUNTIME.handle().clone(),
-        receive_cb,
+        os_impl.clone(),
         None, // TODO: https://linear.app/soveng/issue/OBS-2699/android-keychain-equivalent
         log_persistence,
         true,
-    )
-    .map_err(Into::into)
+    )?;
+    Ok(Global { manager, os_impl })
 }
 
 /// cbindgen:ignore
@@ -77,10 +93,10 @@ pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_initialize
     j_user_agent: JString,
 ) {
     let mut first_init = false;
-    if let Err(error) = MANAGER.get_or_try_init(|| -> anyhow::Result<_> {
-        let manager = initialize(&mut env, &j_config_dir, &j_user_agent).context("`initialize` failed")?;
+    if let Err(error) = GLOBAL.get_or_try_init(|| -> anyhow::Result<_> {
+        let global = initialize(&mut env, &j_config_dir, &j_user_agent).context("`initialize` failed")?;
         first_init = true;
-        Ok(manager)
+        Ok(global)
     }) {
         throw_runtime_exception(&mut env, error);
     }
@@ -94,11 +110,10 @@ fn json_ffi(env: &mut JNIEnv, j_json_cmd: &JString, j_future: &JObject) -> anyho
     let cmd = serde_json::from_str::<ManagerCmd>(json_cmd.as_str())?;
     // This extends the Java object's lifetime until dropped.
     let j_future = env.new_global_ref(&j_future)?;
-    let manager = get_manager()?;
+    let manager = &global()?.manager;
     let jvm = env.get_java_vm()?;
     RUNTIME.spawn(async move {
-        let manager = manager.clone();
-        let result = cmd.run(&manager).await;
+        let result = cmd.run(manager).await;
         // This attaches the current thread to the JVM for the entire life of
         // the thread, which is significantly more performant than
         // attaching/detaching on each use. This will be a no-op if already
@@ -131,16 +146,6 @@ pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_jsonFfi(mu
     }
 }
 
-fn set_network_interface(env: &mut JNIEnv, j_name: &JString, j_index: jint) -> anyhow::Result<()> {
-    let name = Utf8JavaStr::new(env, j_name, "j_name")?.to_string();
-    let index = u32::try_from(j_index)
-        .and_then(PositiveU31::try_from)
-        .context("network interface index wasn't a positive u32")?;
-    let manager = get_manager()?;
-    manager.set_network_interface(Some(NetworkInterface { name, index }));
-    Ok(())
-}
-
 /// cbindgen:ignore
 #[unsafe(no_mangle)]
 pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_setNetworkInterface(
@@ -149,42 +154,35 @@ pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_setNetwork
     j_name: JString,
     j_index: jint,
 ) {
-    if let Err(error) = set_network_interface(&mut env, &j_name, j_index) {
-        tracing::error!(message_id = "TnqHMA9u", ?error, "`set_network_interface` failed");
-        throw_runtime_exception(&mut env, error);
+    let Ok(name) = Utf8JavaStr::new(&mut env, &j_name, "j_name").map(|s| s.to_string()).inspect_err(|error| {
+        tracing::error!(
+            message_id = "Quz8O0qu",
+            ?error,
+            "failed to get UTF8 string for network interface name: {error}"
+        );
+    }) else {
+        return;
+    };
+    let Ok(index) = u32::try_from(j_index).and_then(PositiveU31::try_from) else {
+        tracing::error!(message_id = "qvDcd36g", "network interface index wasn't a positive u32");
+        return;
+    };
+    match global() {
+        Ok(global) => global.os_impl.set_network_interface(Some(NetworkInterface { name, index })),
+        Err(error) => tracing::error!(message_id = "zrtAAFEw", ?error, "failed to get Os impl to set network interface: {error}"),
     }
 }
 
 /// cbindgen:ignore
 #[unsafe(no_mangle)]
-pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_unsetNetworkInterface(mut env: JNIEnv, _: JClass) {
-    match get_manager() {
-        Ok(manager) => {
-            manager.set_network_interface(None);
-        }
-        Err(error) => {
-            tracing::error!(message_id = "gJEv6VGp", ?error, "failed to unset network interface");
-            throw_runtime_exception(&mut env, error);
-        }
-    }
-}
-
-/// cbindgen:ignore
-#[unsafe(no_mangle)]
-pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_setTun(mut env: JNIEnv, _: JClass, j_fd: jint) {
-    // SAFETY:
-    // - `detachFd` surrenders ownership of the FD on the Kotlin side
-    // - No cleanup required besides `close`
-    let fd = (j_fd >= 0).then(|| unsafe { OwnedFd::from_raw_fd(j_fd) });
-    match fd {
-        Some(fd) => match Tun::spawn(fd) {
-            Ok(tun) => *TUN.lock().unwrap() = Some(tun),
-            Err(error) => {
-                tracing::error!(message_id = "VjGxw5uw", ?error, "failed to spawn tun reader");
-                throw_runtime_exception(&mut env, error);
-            }
-        },
-        None => *TUN.lock().unwrap() = None,
+pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_unsetNetworkInterface(_env: JNIEnv, _: JClass) {
+    match global() {
+        Ok(global) => global.os_impl.set_network_interface(None),
+        Err(error) => tracing::error!(
+            message_id = "gJEv6VGp",
+            ?error,
+            "failed to get Os impl to unset network interface: {error}"
+        ),
     }
 }
 
@@ -233,4 +231,48 @@ pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_forwardLog
     if let Err(error) = forward_log(&mut env, j_level, &j_tag, &j_message, &j_message_id, &j_throwable_string) {
         tracing::error!(message_id = "Cgb1qGM7", ?error, "failed to forward Java logging");
     }
+}
+
+pub(super) fn call_set_network_config(jvm: &JavaVM, json: &str, tx: SetNetworkConfigSender) -> Result<(), ()> {
+    let mut env = jvm
+        .attach_current_thread_as_daemon()
+        .map_err(|error| tracing::error!(message_id = "c5B2cENp", ?error, "failed to attach thread to JVM: {error}"))?;
+    let class = super::class_cache::get().map_err(|error| tracing::error!(message_id = "JvCqA8Jf", ?error, "failed to get class cache: {error}"))?;
+    let json_str = env
+        .new_string(json)
+        .map_err(|error| tracing::error!(message_id = "H6mOZNvn", ?error, "failed to create JNI string: {error}"))?;
+    let context = Box::into_raw(Box::new(tx)).cast::<c_void>();
+    env.call_static_method(
+        class.vpn_service(),
+        "ffiSetNetworkConfig",
+        "(Ljava/lang/String;J)V",
+        &[JValue::Object(&json_str.into()), JValue::Long(jlong_from_ptr(context))],
+    )
+    .map_err(|error| {
+        tracing::error!(message_id = "oP7aSb3t", ?error, "failed to call ffiSetNetworkConfig: {error}");
+        // SAFETY: `context` was created via `Box<SetNetworkConfigSender>::into_raw` and ownership was not transferred to Java.
+        unsafe { drop(Box::from_raw(context.cast::<SetNetworkConfigSender>())) };
+    })?;
+    Ok(())
+}
+
+/// Must be called exactly once per call to call_set_network_config with the same `context` as `j_context`.
+/// `j_fd >= 0` means success and transfers fd ownership to Rust. `j_fd < 0` means failure.
+///
+/// cbindgen:ignore
+#[unsafe(no_mangle)]
+pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_setNetworkConfigDone(_env: JNIEnv, _: JClass, j_context: jlong, j_fd: jint) {
+    // SAFETY: `j_context` was created via `Box<SetNetworkConfigSender>::into_raw` in `call_set_network_config`
+    let sender = unsafe {
+        let context = ptr_from_jlong(j_context);
+        Box::from_raw(context.cast::<SetNetworkConfigSender>())
+    };
+
+    let result = (j_fd >= 0)
+        .then(|| {
+            // SAFETY: `detachFd` surrendered ownership of the FD on the Kotlin side. No cleanup required besides `close`.
+            unsafe { OwnedFd::from_raw_fd(j_fd) }
+        })
+        .ok_or(());
+    let _ = sender.send(result);
 }

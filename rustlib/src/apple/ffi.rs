@@ -2,6 +2,7 @@ use std::ffi::c_void;
 use std::sync::{Arc, LazyLock, OnceLock};
 use tokio::runtime::Runtime;
 
+use super::os_impl::AppleOsImpl;
 use crate::config::KeychainSetSecretKeyFn;
 use crate::ffi_helpers::*;
 use crate::manager::Manager;
@@ -36,10 +37,16 @@ pub extern "C" fn initialize_apple_system_logging(log_dir: FfiStr) -> *mut c_voi
 
 /// cbindgen:ignore
 static RUNTIME: LazyLock<Runtime> = LazyLock::new(|| Runtime::new().unwrap());
-static GLOBAL: OnceLock<Arc<Manager>> = OnceLock::new();
 
-fn global_manager() -> Arc<Manager> {
-    GLOBAL.get().expect("ffi global manager not initialized").clone()
+struct Global {
+    manager: Arc<Manager>,
+    os_impl: Arc<AppleOsImpl>,
+}
+
+static GLOBAL: OnceLock<Global> = OnceLock::new();
+
+fn global() -> &'static Global {
+    GLOBAL.get().expect("ffi global not initialized")
 }
 
 /// SAFETY:
@@ -52,6 +59,7 @@ pub unsafe extern "C" fn initialize(
     user_agent: FfiStr,
     keychain_wg_secret_key: FfiBytes,
     receive_cb: extern "C" fn(FfiBytes),
+    set_network_config_cb: super::os_impl::SetNetworkConfigCb,
     keychain_set_wg_secret_key: extern "C" fn(FfiBytes) -> bool,
     log_persistence: *mut c_void,
 ) {
@@ -71,20 +79,21 @@ pub unsafe extern "C" fn initialize(
             // - Caller guarantees that `log_persistence` originates from a
             //   matching `into_raw` call
             unsafe { Box::from_raw(log_persistence.as_ptr() as _) });
+        let os_impl = Arc::new(AppleOsImpl::new(receive_cb, set_network_config_cb));
         match Manager::new(
             config_dir,
             keychain_wg_sk.as_deref(),
             user_agent,
             RUNTIME.handle().clone(),
-            receive_cb,
+            os_impl.clone(),
             Some(keychain_set_wg_secret_key),
             log_persistence,
             true, // persistent tunnel activation must be handled by the on-demand OS feature on Apple platforms
         ) {
-            Ok(c) => {
+            Ok(manager) => {
                 first_init = true;
                 tracing::info!("ffi initialized");
-                c
+                Global { manager, os_impl }
             }
             Err(err) => panic!("ffi initialization failed: could not load config: {}", err),
         }
@@ -123,8 +132,7 @@ pub extern "C" fn forward_log(level: LogLevel, message: FfiStr, file_id: FfiStr,
 /// - there is no other global function of this name
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn send_packet(packet: FfiBytes) {
-    let packet = packet.to_vec();
-    global_manager().send_packet(&packet);
+    global().manager.packets_for_relay(std::iter::once(packet.as_slice()));
 }
 
 /// Set the network interface to use by index and name.
@@ -143,7 +151,7 @@ pub unsafe extern "C" fn set_network_interface(index: u32, name: FfiStr) {
             .ok(),
     }
     .map(|index| NetworkInterface { index, name: name.as_str().to_string() });
-    global_manager().set_network_interface(network_interface);
+    global().os_impl.set_network_interface(network_interface);
 }
 
 /// Call after wake.
@@ -152,7 +160,7 @@ pub unsafe extern "C" fn set_network_interface(index: u32, name: FfiStr) {
 /// - there is no other global function of this name
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn wake() {
-    global_manager().wake();
+    global().manager.wake();
 }
 
 /// SAFETY:
@@ -162,10 +170,10 @@ pub unsafe extern "C" fn json_ffi_cmd(context: usize, json_cmd: FfiBytes, cb: ex
     let json_cmd = json_cmd.to_vec();
 
     RUNTIME.spawn(async move {
-        let manager = global_manager();
+        let manager = &global().manager;
 
         let json_result: Result<String, ManagerCmdErrorCode> = async move {
-            let ok = ManagerCmd::from_json(&json_cmd)?.run(&manager).await?;
+            let ok = ManagerCmd::from_json(&json_cmd)?.run(manager).await?;
             serde_json::to_string(&ok).map_err(|error| {
                 tracing::error!(message_id = "TFqFKASM", ?error, "could not serialize successful json cmd result: {error}");
                 ManagerCmdErrorCode::Other

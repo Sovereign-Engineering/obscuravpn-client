@@ -1,4 +1,4 @@
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::{Args, Parser, Subcommand};
 use derive_more::From;
 use std::process::exit;
 use strum::EnumIs;
@@ -6,27 +6,18 @@ use tracing_subscriber::EnvFilter;
 
 #[cfg(target_os = "linux")]
 mod add_operator;
-#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android", target_os = "windows")))]
+#[cfg(target_os = "linux")]
 mod client;
-#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android")))]
+#[cfg(any(target_os = "windows", target_os = "linux"))]
 mod service;
-
-#[derive(Debug, Clone, Copy, ValueEnum)]
-pub enum DnsManagerArg {
-    Auto,
-    Disabled,
-    #[cfg(target_os = "linux")]
-    NetworkManager,
-    #[cfg(target_os = "linux")]
-    Resolved,
-}
 
 #[derive(Args, Debug)]
 pub struct ServiceArgs {
     #[clap(long, default_value = "/var/lib/obscura")]
     pub config_dir: String,
-    #[arg(long, value_enum, default_value_t = DnsManagerArg::Auto)]
-    pub dns: DnsManagerArg,
+    #[cfg(target_os = "linux")]
+    #[arg(long, value_enum, default_value_t = service::os::linux::dns::DnsManagerArg::Auto)]
+    pub dns: service::os::linux::dns::DnsManagerArg,
 }
 
 #[derive(Args, Debug)]
@@ -120,20 +111,20 @@ async fn main() {
     run_client(cli.global_args, client_command).await
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android")))]
+#[cfg(any(target_os = "windows", target_os = "linux"))]
 async fn run_service(args: ServiceArgs) -> ! {
     let Err(error) = service::run(args).await;
     eprintln!("failed to start service: {}", error);
     exit(1)
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
+#[cfg(not(any(target_os = "windows", target_os = "linux")))]
 async fn run_service(_args: ServiceArgs) -> ! {
     eprintln!("unsupported OS");
     exit(1)
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android", target_os = "windows")))]
+#[cfg(target_os = "linux")]
 async fn run_client(global_args: GlobalArgs, args: ClientCommand) {
     if let Err(error) = client::run(global_args, args).await {
         eprintln!("{}", error);
@@ -141,7 +132,7 @@ async fn run_client(global_args: GlobalArgs, args: ClientCommand) {
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "android", target_os = "windows"))]
+#[cfg(not(target_os = "linux"))]
 async fn run_client(_global_args: GlobalArgs, _args: ClientCommand) {
     eprintln!("unsupported OS");
     exit(1)

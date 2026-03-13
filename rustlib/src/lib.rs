@@ -1,3 +1,6 @@
+#[macro_use]
+pub mod rate_limited_log;
+
 pub mod backoff;
 pub mod client_state;
 pub mod config;
@@ -26,4 +29,5 @@ mod constants;
 mod debug_archive;
 mod liveness;
 mod logging;
+pub mod os;
 pub mod positive_u31;

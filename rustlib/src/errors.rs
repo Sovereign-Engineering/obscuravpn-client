@@ -79,6 +79,7 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
             TunnelConnectError::NoInternet => Self::NoInternet,
             TunnelConnectError::NetworkConfig(_)
             | TunnelConnectError::NoExit
+            | TunnelConnectError::SetOsNetworkConfig
             | TunnelConnectError::TunnelConnect(_)
             | TunnelConnectError::InvalidTunnelId
             | TunnelConnectError::UnexpectedRelay
@@ -106,6 +107,8 @@ pub enum TunnelConnectError {
     NoInternet,
     #[error("relay selection failed: {0}")]
     RelaySelection(#[from] RelaySelectionError),
+    #[error("failed to set os network config")]
+    SetOsNetworkConfig,
     #[error("tunnel connect: {0}")]
     TunnelConnect(#[from] QuicWgConnectError),
     #[error("tunnel is in unexpected internal lifecycle state")]

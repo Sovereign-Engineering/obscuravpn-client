@@ -73,7 +73,7 @@ struct PinnedLocation: Codable, Equatable {
 
 enum NeVpnStatus: Codable {
     case connecting(tunnelArgs: TunnelArgs, connectError: String?, reconnecting: Bool)
-    case connected(tunnelArgs: TunnelArgs, exit: ExitInfo, networkConfig: TunnelNetworkConfig, exitPublicKey: String, clientPublicKey: String, transport: TransportKind)
+    case connected(tunnelArgs: TunnelArgs, exit: ExitInfo, exitPublicKey: String, clientPublicKey: String, transport: TransportKind)
     case disconnected
 }
 
@@ -89,23 +89,14 @@ enum TransportKind: String, Codable, Equatable {
     case tcpTls
 }
 
+// Keep synchronized with rustlib/src/network_config.rs
 struct OsNetworkConfig: Codable, CustomStringConvertible, Equatable {
     var description: String {
-        return "tunnelNetworkConfig: \(self.tunnelNetworkConfig.description), useSystemDns: \(self.useSystemDns)"
-    }
-
-    var tunnelNetworkConfig: TunnelNetworkConfig
-    var useSystemDns: Bool
-}
-
-// Keep synchronized with rustlib/src/apple/network_config.rs
-struct TunnelNetworkConfig: Codable, CustomStringConvertible, Equatable {
-    var description: String {
-        return "ipv4: \(self.ipv4), dns: \(self.dns), ipv6: \(self.ipv6)"
+        return "ipv4: \(self.ipv4), dns: \(self.dns ?? ["system"]), ipv6: \(self.ipv6)"
     }
 
     var ipv4: String
-    var dns: [String]
+    var dns: [String]?
     var ipv6: String
     var mtu: UInt16
 }

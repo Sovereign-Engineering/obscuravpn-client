@@ -15,6 +15,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.ParcelFileDescriptor
 import android.system.OsConstants
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
@@ -79,6 +80,40 @@ class ObscuraVpnService : VpnService() {
     companion object {
         private const val NOTIFICATION_CHANNEL_ID = "vpn_channel"
         private const val NOTIFICATION_ID = 1
+
+        private val instance = java.util.concurrent.atomic.AtomicReference<ObscuraVpnService?>(null)
+
+        @androidx.annotation.Keep
+        @JvmStatic
+        fun ffiSetNetworkConfig(json: String, context: Long) {
+            val service = instance.get()
+            if (service == null) {
+                log.error("ffiSetNetworkConfig called with no active service", "wK3xLm9p")
+                ObscuraLibrary.setNetworkConfigDone(context, -1)
+                return
+            }
+            val config: OsNetworkConfig =
+                try {
+                    service.json.decodeFromString(json)
+                } catch (e: Exception) {
+                    log.error("failed to parse os network config: $e", "yN4zPn0q", e)
+                    ObscuraLibrary.setNetworkConfigDone(context, -1)
+                    return
+                }
+            val pfd =
+                try {
+                    service.applyNetworkConfig(config)
+                } catch (e: Exception) {
+                    log.error("failed to apply os network config: $e", "U6hVQEJR", e)
+                    ObscuraLibrary.setNetworkConfigDone(context, -1)
+                    return
+                }
+            if (pfd == null) {
+                ObscuraLibrary.setNetworkConfigDone(context, -1)
+            } else {
+                ObscuraLibrary.setNetworkConfigDone(context, pfd.detachFd())
+            }
+        }
     }
 
     private data class NetworkInterfaceProps(val name: String, val index: Int)
@@ -96,6 +131,9 @@ class ObscuraVpnService : VpnService() {
     override fun onCreate() {
         super.onCreate()
 
+        if (instance.getAndSet(this) != null) {
+            log.error("instance already initialized", "xR4mNb7c")
+        }
         requireVpnServiceProcess()
 
         log.info("onCreate", "vqiGa01f")
@@ -158,7 +196,6 @@ class ObscuraVpnService : VpnService() {
     private fun onStatusUpdated(status: GetStatus.Response) {
         log.info("status updated $status", "xXx7PxdD")
         vpnStatus = status.vpnStatus
-        setNetworkConfig(status.vpnStatus)
         loadStatus(status.version)
         updateNotification()
     }
@@ -171,6 +208,9 @@ class ObscuraVpnService : VpnService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        if (instance.getAndSet(null) == null) {
+            log.error("instance already cleared", "bQ5wKr8d")
+        }
         log.info("onDestroy", "yNLRpqaN")
         stopTunnel()
     }
@@ -267,71 +307,34 @@ class ObscuraVpnService : VpnService() {
         setTunnelArgs(exitSelector, true)
     }
 
-    private fun setNetworkConfig(vpnStatus: GetStatus.Response.VpnStatus) {
-        // TODO: we would like to use when here and list variant explicitly, so we can compile-time check completeness
-        // (e.g. a disconnecting variant may be added eventually): https://linear.app/soveng/issue/OBS-3132
-        if (vpnStatus.disconnected != null) {
-            ObscuraLibrary.setTun(-1)
-            log.info("unset TUN device")
-            return
-        }
-        // TODO: check if we need to create a TUN device while connecting to start capturing traffic asap:
-        // https://linear.app/soveng/issue/OBS-3133
-        if (vpnStatus.connecting != null) {
-            log.info("skipping TUN device update")
-            return
-        }
-        val networkConfig =
-            if (vpnStatus.connected != null) {
-                vpnStatus.connected.networkConfig
-            } else {
-                // should be unreachable
-                log.error("VpnStatus has no variant")
-                return
-            }
-        log.info("updating TUN device")
+    private fun applyNetworkConfig(networkConfig: OsNetworkConfig): ParcelFileDescriptor? {
+        log.info("applying network config", "q9cnmRY0")
 
-        Builder()
-            .apply {
-                // always disallow current app so it doesn't get routed through the VPN
-                addDisallowedApplication(applicationInfo.packageName)
+        val pfd =
+            Builder()
+                .apply {
+                    // always disallow current app so it doesn't get routed through the VPN
+                    addDisallowedApplication(applicationInfo.packageName)
 
-                networkConfig.mtu?.let { setMtu(it) }
-                networkConfig.dns?.forEach { it?.let { dns -> addDnsServer(dns) } }
+                    setMtu(networkConfig.mtu)
+                    networkConfig.dns?.forEach { addDnsServer(it) }
 
-                networkConfig.ipv4?.split("/")?.let {
-                    addAddress(
-                        it[0],
-                        if (it.size == 2) {
-                            it[1].toInt()
-                        } else {
-                            32
-                        },
-                    )
+                    networkConfig.ipv4.split("/").let { addAddress(it[0], if (it.size == 2) it[1].toInt() else 32) }
+
+                    networkConfig.ipv6.split("/").let { addAddress(it[0], if (it.size == 2) it[1].toInt() else 128) }
+
+                    addRoute("0.0.0.0", 0)
+                    addRoute("::", 0)
+
+                    allowFamily(OsConstants.AF_INET)
+                    allowFamily(OsConstants.AF_INET6)
                 }
+                .establish()
 
-                networkConfig.ipv6?.split("/")?.let {
-                    addAddress(
-                        it[0],
-                        if (it.size == 2) {
-                            it[1].toInt()
-                        } else {
-                            128
-                        },
-                    )
-                }
-
-                addRoute("0.0.0.0", 0)
-                addRoute("::", 0)
-
-                allowFamily(OsConstants.AF_INET)
-                allowFamily(OsConstants.AF_INET6)
-            }
-            .establish()
-            ?.apply {
-                ObscuraLibrary.setTun(detachFd())
-                log.info("set TUN device", "q9cnmRY1")
-            }
+        if (pfd == null) {
+            log.error("VpnService.Builder.establish() returned null", "tR7uWe2x")
+        }
+        return pfd
     }
 
     private fun getNetworkInterfaceProps(network: Network?): NetworkInterfaceProps? {

@@ -33,7 +33,7 @@ struct ObscuraToggle: View {
 
     func getCityName() -> String? {
         switch self.getVpnStatus()?.vpnStatus {
-        case .connected(_, let exit, _, _, _, _):
+        case .connected(_, let exit, _, _, _):
             return exit.city_name
         default:
             return nil

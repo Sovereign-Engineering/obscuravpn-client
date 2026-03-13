@@ -20,7 +20,7 @@ pub struct WindowsOsImpl {
 }
 
 impl WindowsOsImpl {
-    pub async fn new(_: DnsManagerArg) -> Result<Self, WindowsServiceStartError> {
+    pub async fn new() -> Result<Self, WindowsServiceStartError> {
         let tun = Tun::new();
         Ok(Self { tun, sent_start_command: Default::default() })
     }
@@ -33,7 +33,7 @@ impl Os for WindowsOsImpl {
         tokio::sync::watch::channel(None).1
     }
 
-    async fn set_tunnel_network_config(&mut self, network_config: TunnelNetworkConfig) -> Result<(), ()> {
+    async fn set_tunnel_network_config(&mut self, network_config: OsNetworkConfig) -> Result<(), ()> {
         tracing::info!("manager called set_tunnel_network_config: {:?}", network_config);
         Ok(())
     }

@@ -27,7 +27,7 @@ public class ObscuraLibrary {
     public static native void setNetworkInterface(String name, int index);
     public static native void unsetNetworkInterface();
 
-    public static native void setTun(int fd);
-
     public static native void forwardLog(int level, String tag, String message, String messageId, String throwableString);
+
+    public static native void setNetworkConfigDone(long context, int fd);
 }

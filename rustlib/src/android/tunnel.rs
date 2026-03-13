@@ -1,19 +1,24 @@
-use super::{RUNTIME, get_manager};
-use crate::{quicwg::TUNNEL_MTU, tokio::AbortOnDrop};
-use anyhow::Context as _;
+use super::ffi::RUNTIME;
+use crate::{manager::Manager, quicwg::TUNNEL_MTU, tokio::AbortOnDrop};
 use nix::{errno::Errno, unistd};
-use std::os::fd::{AsRawFd as _, OwnedFd};
+use std::{os::fd::OwnedFd, sync::Arc};
 use tokio::io::unix::AsyncFd;
 
 pub struct Tun {
-    fd: OwnedFd,
-    _read_loop_task: AbortOnDrop,
+    fd: Arc<OwnedFd>,
+    _read_loop_task: Option<AbortOnDrop>,
 }
 
 impl Tun {
-    pub fn spawn(fd: OwnedFd) -> anyhow::Result<Self> {
-        let fd_watcher = AsyncFd::new(fd.as_raw_fd()).context("failed to watch tun")?;
-        let manager = get_manager()?.clone();
+    pub fn spawn(fd: OwnedFd, manager: Arc<Manager>) -> Result<Self, Self> {
+        let fd = Arc::new(fd);
+        let fd_watcher = match AsyncFd::new(fd.clone()) {
+            Ok(fd_watcher) => fd_watcher,
+            Err(error) => {
+                tracing::error!(message_id = "sPCZix4J", ?error, "failed to create fd watcher for tun reader: {error}");
+                return Err(Self { fd, _read_loop_task: None });
+            }
+        };
         let read_loop_task = RUNTIME.spawn(async move {
             let mut buf = Box::new([0; TUNNEL_MTU as _]);
             loop {
@@ -21,7 +26,7 @@ impl Tun {
                     Ok(mut guard) => match unistd::read(&fd_watcher, &mut buf[..]) {
                         Ok(n) => {
                             if n > 0 {
-                                manager.send_packet(&mut buf[..n]);
+                                manager.packets_for_relay(std::iter::once(&buf[..n]));
                             }
                         }
                         Err(Errno::EAGAIN) => {
@@ -39,7 +44,7 @@ impl Tun {
                 }
             }
         });
-        Ok(Self { fd, _read_loop_task: read_loop_task.into() })
+        Ok(Self { fd, _read_loop_task: Some(read_loop_task.into()) })
     }
 
     pub fn write(&self, packet: &[u8]) {

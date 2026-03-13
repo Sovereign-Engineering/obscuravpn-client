@@ -326,7 +326,7 @@ impl QuicWgConn {
         }
     }
 
-    pub fn send(&self, packets: &[&[u8]]) {
+    pub fn send<'a>(&self, packets: impl Iterator<Item = &'a [u8]>) {
         let mut wg_state = self.wg_state.lock().unwrap();
         if let Some(packet) = wg_state.liveness_checker.sent_traffic() {
             self.send_single_packet(&mut wg_state, &packet);
@@ -760,12 +760,7 @@ impl Transport {
     fn into_wg_send_recv(self) -> (WgSender, WgReceiver, Option<(quinn::SendStream, quinn::RecvStream)>, Option<AbortOnDrop>) {
         let tls_stream = match self {
             Transport::Quic { conn, send, recv } => {
-                return (
-                    WgSender::Quic { conn: conn.clone(), last_send_err_logged_at: None.into() },
-                    WgReceiver::Quic(conn),
-                    Some((send, recv)),
-                    None,
-                );
+                return (WgSender::Quic { conn: conn.clone() }, WgReceiver::Quic(conn), Some((send, recv)), None);
             }
             Transport::TcpTls(tls_stream) => tls_stream,
         };
@@ -833,13 +828,8 @@ impl Transport {
 }
 
 enum WgSender {
-    Quic {
-        conn: quinn::Connection,
-        last_send_err_logged_at: Mutex<Option<Instant>>,
-    },
-    TcpTls {
-        traffic_state: watch::Sender<WgTrafficState>,
-    },
+    Quic { conn: quinn::Connection },
+    TcpTls { traffic_state: watch::Sender<WgTrafficState> },
 }
 
 impl WgSender {
@@ -852,20 +842,12 @@ impl WgSender {
 
     fn send_wg_message(&self, wg_message: Bytes) {
         match self {
-            WgSender::Quic { conn, last_send_err_logged_at } => {
+            WgSender::Quic { conn } => {
                 if let Err(error) = conn.send_datagram(wg_message) {
-                    // rate-limited logging because this can get VERY noisy and is usually not interesting
-                    const SILENCE_SECS: u64 = 1;
-                    let mut last_send_err_logged_at = last_send_err_logged_at.lock().unwrap();
-                    if !last_send_err_logged_at.is_some_and(|last_log_at| last_log_at.elapsed().as_secs() < SILENCE_SECS) {
-                        *last_send_err_logged_at = Some(Instant::now());
-                        drop(last_send_err_logged_at);
-                        tracing::error!(
-                            message_id = "8EkAaj9z",
-                            ?error,
-                            "error while sending quic datagram packet, silencing this log for {SILENCE_SECS}s"
-                        );
-                    }
+                    rate_limited_log!(
+                        Duration::from_secs(1),
+                        tracing::error!(message_id = "8EkAaj9z", ?error, "error while sending quic datagram packet")
+                    );
                 }
             }
             WgSender::TcpTls { traffic_state } => {

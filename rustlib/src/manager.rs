@@ -1,9 +1,4 @@
-use std::{
-    future::Future,
-    path::PathBuf,
-    sync::{Arc, Weak},
-    time::Duration,
-};
+use std::{path::PathBuf, sync::Arc, time::Duration};
 
 use obscuravpn_api::cmd::ExitList;
 use obscuravpn_api::{
@@ -13,13 +8,12 @@ use obscuravpn_api::{
 use serde::{Deserialize, Serialize};
 use tokio::select;
 use tokio::sync::watch::{Receiver, Sender, channel};
-use tokio_util::sync::{CancellationToken, DropGuard};
 use uuid::Uuid;
 
-use super::ffi_helpers::*;
 use crate::client_state::ClientStateHandle;
 use crate::errors::{ConfigDirty, ConfigDirtyOrApiError};
 use crate::manager_cmd::{ManagerCmdErrorCode, ManagerCmdOk};
+use crate::os::os_trait::Os;
 use crate::{
     backoff::Backoff,
     client_state::{AccountStatus, ClientState},
@@ -30,19 +24,16 @@ use crate::{
     logging::LogPersistence,
     net::NetworkInterface,
     network_config::DnsContentBlock,
-    network_config::TunnelNetworkConfig,
     quicwg::TransportKind,
     tunnel_state::TunnelState,
 };
 use crate::{cached_value::CachedValue, debug_archive::info::DebugInfo};
 
 pub struct Manager {
-    background_taks_cancellation_token: CancellationToken,
     client_state: ClientStateHandle,
     tunnel_state: Receiver<TunnelState>,
     status_watch: Sender<Status>,
     runtime: tokio::runtime::Handle,
-    _background_task_drop_guard: DropGuard,
     log_persistence: Option<Box<LogPersistence>>,
 }
 
@@ -114,7 +105,6 @@ pub enum VpnStatus {
         tunnel_args: TunnelArgs,
         exit: OneExit,
         relay: OneRelay,
-        network_config: TunnelNetworkConfig,
         client_public_key: WgPubkey,
         exit_public_key: WgPubkey,
         transport: TransportKind,
@@ -139,54 +129,40 @@ impl VpnStatus {
                     reconnecting: disconnect_reason.is_some(),
                 }
             }
-            TunnelState::Connected {
-                args,
-                conn,
-                relay,
-                exit,
-                network_config,
-                offset_traffic_stats: _,
-                network_interface: _,
-                dns_content_block: _,
-            } => VpnStatus::Connected {
-                tunnel_args: args.clone(),
-                relay: relay.clone(),
-                exit: exit.clone(),
-                network_config: network_config.clone(),
-                client_public_key: WgPubkey(conn.client_public_key().to_bytes()),
-                exit_public_key: WgPubkey(conn.exit_public_key().to_bytes()),
-                transport: conn.transport(),
-            },
+            TunnelState::Connected { args, conn, relay, exit, network_config: _, offset_traffic_stats: _, network_interface: _ } => {
+                VpnStatus::Connected {
+                    tunnel_args: args.clone(),
+                    relay: relay.clone(),
+                    exit: exit.clone(),
+                    client_public_key: WgPubkey(conn.client_public_key().to_bytes()),
+                    exit_public_key: WgPubkey(conn.exit_public_key().to_bytes()),
+                    transport: conn.transport(),
+                }
+            }
         }
     }
 }
 
 impl Manager {
+    /// The constructed `Arc<Manager>` can not be dropped due to spawned tasks, which hold references.
     pub fn new(
         config_dir: PathBuf,
         keychain_wg_sk: Option<&[u8]>,
         user_agent: String,
         runtime: tokio::runtime::Handle,
-        receive_cb: extern "C" fn(FfiBytes),
+        os_impl: Arc<impl Os>,
         set_keychain_wg_sk: Option<KeychainSetSecretKeyFn>,
         log_persistence: Option<Box<LogPersistence>>,
         force_init_inactive: bool,
     ) -> Result<Arc<Self>, ConfigLoadError> {
-        let cancellation_token = CancellationToken::new();
         let client_state = ClientState::new(config_dir, keychain_wg_sk, user_agent, set_keychain_wg_sk, force_init_inactive)?;
-        let tunnel_state = TunnelState::new(&runtime, client_state.clone(), receive_cb, cancellation_token.clone());
+        let tunnel_state = TunnelState::new(&runtime, client_state.clone(), os_impl.clone());
         let initial_status = Status::new(Uuid::new_v4(), VpnStatus::Disconnected {}, &client_state.borrow());
-        let this = Arc::new(Self {
-            tunnel_state,
-            client_state,
-            status_watch: channel(initial_status).0,
-            runtime,
-            _background_task_drop_guard: cancellation_token.clone().drop_guard(),
-            background_taks_cancellation_token: cancellation_token,
-            log_persistence,
-        });
-        this.spawn_child_task(Self::wireguard_key_registraction_task);
-        this.spawn_child_task(Self::propagate_updates_to_status_task);
+        let this = Arc::new(Self { tunnel_state, client_state, status_watch: channel(initial_status).0, runtime, log_persistence });
+        this.runtime.spawn(Self::wireguard_key_registraction_task(this.clone(), ()));
+        this.runtime.spawn(Self::propagate_updates_to_status_task(this.clone(), ()));
+        this.runtime
+            .spawn(Self::preferred_network_interface_task(this.clone(), os_impl.network_interface()));
         Ok(this)
     }
 
@@ -198,13 +174,9 @@ impl Manager {
         self.status_watch.subscribe()
     }
 
-    pub fn set_network_interface(&self, network_interface: Option<NetworkInterface>) {
-        self.client_state.set_network_interface(network_interface);
-    }
-
-    pub fn send_packet(&self, packet: &[u8]) {
+    pub fn packets_for_relay<'a>(&self, packets: impl Iterator<Item = &'a [u8]>) {
         if let Some(conn) = self.tunnel_state.borrow().get_conn() {
-            conn.send(&[packet]);
+            conn.send(packets);
         }
     }
 
@@ -261,26 +233,9 @@ impl Manager {
         Ok(account_info)
     }
 
-    fn spawn_child_task<F>(self: &Arc<Self>, constructor: impl FnOnce(Weak<Self>) -> F)
-    where
-        F: Future<Output = ()> + Send + Sync + 'static,
-    {
-        let cancellation_token = self.background_taks_cancellation_token.clone();
-        let this = Arc::downgrade(self);
-        let task = constructor(this);
-        self.runtime.spawn(async move {
-            cancellation_token.run_until_cancelled(task).await;
-        });
-    }
-
-    async fn propagate_updates_to_status_task(this: Weak<Self>) {
-        let (mut tunnel_state_recv, mut client_state_recv) = {
-            let Some(this) = this.upgrade() else {
-                tracing::error!(message_id = "rkWUIljV", "could not start propagate_updates_to_status_task task");
-                return;
-            };
-            (this.tunnel_state.clone(), this.client_state.subscribe())
-        };
+    async fn propagate_updates_to_status_task(this: Arc<Self>, _: ()) {
+        let mut tunnel_state_recv = this.tunnel_state.clone();
+        let mut client_state_recv = this.client_state.subscribe();
         tunnel_state_recv.mark_changed();
         loop {
             let cont = select! {
@@ -290,7 +245,6 @@ impl Manager {
             if !cont {
                 break;
             };
-            let Some(this) = this.upgrade() else { break };
             this.status_watch.send_if_modified(|status| {
                 let vpn_status = VpnStatus::from_tunnel_state(&tunnel_state_recv.borrow_and_update());
                 let client_state = client_state_recv.borrow_and_update();
@@ -306,16 +260,10 @@ impl Manager {
         tracing::info!(message_id = "NUeloeKe", "propagate_updates_to_status_task stops")
     }
 
-    async fn wireguard_key_registraction_task(this: Weak<Self>) {
-        let mut status_subscription = {
-            let Some(this) = this.upgrade() else {
-                tracing::error!(message_id = "9UObgSBK", "could not start wireguard_key_registraction_task task");
-                return;
-            };
-            this.subscribe()
-        };
+    async fn wireguard_key_registraction_task(this: Arc<Self>, _: ()) {
+        let mut status_subscription = this.subscribe();
         let mut last_status_version = None;
-        'outer: loop {
+        loop {
             {
                 let status_result = status_subscription
                     .wait_for(|status| {
@@ -333,16 +281,23 @@ impl Manager {
             }
             let mut backoff = Backoff::BACKGROUND.take(10);
             while backoff.wait().await {
-                let Some(this) = this.upgrade() else {
-                    break 'outer;
-                };
                 let Err(error) = this.client_state.register_cached_wireguard_key_if_new().await else {
                     continue;
                 };
                 tracing::warn!(?error, "failed attempt to register cached wireguard key");
             }
         }
-        tracing::info!(message_id = "RG0S8UvK", "wireguard_key_registraction_task stops");
+    }
+
+    pub async fn preferred_network_interface_task(this: Arc<Self>, mut network_interface_watch: Receiver<Option<NetworkInterface>>) {
+        loop {
+            let preferred_network_interface = network_interface_watch.borrow_and_update().clone();
+            this.client_state.set_network_interface(preferred_network_interface);
+            if network_interface_watch.changed().await.is_err() {
+                tracing::error!(message_id = "ybeBsPfE", "status subscription closed unexpectedly");
+                return;
+            }
+        }
     }
 
     pub async fn create_debug_archive(&self, user_feedback: Option<&str>) -> anyhow::Result<String> {

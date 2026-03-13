@@ -10,12 +10,12 @@ func ffiInitializeSystemLogging(_ logDir: String?) -> UnsafeMutableRawPointer? {
     return logFlushGuard
 }
 
-func ffiInitialize(configDir: String, userAgent: String, logFlushGuard: UnsafeMutableRawPointer?, _ receiveCallback: (@convention(c) (FfiBytes) -> Void)!) {
+func ffiInitialize(configDir: String, userAgent: String, logFlushGuard: UnsafeMutableRawPointer?, _ receiveCallback: @convention(c) (FfiBytes) -> Void, _ setNetworkConfigCallback: @convention(c) (FfiBytes, UnsafeMutableRawPointer?, (@convention(c) (UnsafeMutableRawPointer?, Bool) -> Void)?) -> Void) {
     let wgSecretKey = keychainGetWgSecretKey() ?? Data()
     configDir.withFfiStr { ffiConfigDir in
         userAgent.withFfiStr { ffiUserAgent in
             wgSecretKey.withFfiBytes { ffiWgSecretKey in
-                libobscuravpn_client.initialize(ffiConfigDir, ffiUserAgent, ffiWgSecretKey, receiveCallback, keychainSetWgSecretKeyCallback, logFlushGuard)
+                libobscuravpn_client.initialize(ffiConfigDir, ffiUserAgent, ffiWgSecretKey, receiveCallback, setNetworkConfigCallback, keychainSetWgSecretKeyCallback, logFlushGuard)
             }
         }
     }

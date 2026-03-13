@@ -1,7 +1,15 @@
-use crate::DnsManagerArg;
 use crate::service::os::linux::network_manager;
+use clap::ValueEnum;
 
 pub mod resolved;
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum DnsManagerArg {
+    Auto,
+    Disabled,
+    NetworkManager,
+    Resolved,
+}
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, strum::EnumIs)]
 pub enum DnsManager {

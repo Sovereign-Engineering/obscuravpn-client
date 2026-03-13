@@ -115,7 +115,7 @@ export default function Connection() {
             <Mascot />
             <Stack align='center' gap={primaryButtonShown ? 0 : 20} mt={primaryButtonShown ? 0 : 20} justify='space-around'>
                 <Title order={2} fw={600}>{getTitle()}</Title>
-                <Title order={4} mt={5} h='xl' fw={350} className={classes.subtitle}>{Subtitle()}</Title>
+                <Title order={4} ta='center' mt={5} mih='xl' fw={350} className={classes.subtitle}>{Subtitle()}</Title>
             </Stack>
             <Space h='xs' />
             <PrimaryConnectButton />

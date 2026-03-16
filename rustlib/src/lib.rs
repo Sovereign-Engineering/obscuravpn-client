@@ -27,6 +27,7 @@ pub mod apple;
 mod cached_value;
 mod constants;
 mod debug_archive;
+mod dns;
 mod liveness;
 mod logging;
 pub mod os;

@@ -29,7 +29,7 @@ anyhow = { version = "1.0.98", features = ["backtrace"] }
 base64 = "0.21.7"
 bytes = "1"
 camino = "1.2.2"
-chrono = "0.4.37"
+chrono = "0.4.44"
 clap = { version = "4.5.53", features = ["derive"] }
 const_format = "0.2.35"
 derive_more = {  version = "2.0.1", features = ["full"] }
@@ -72,7 +72,7 @@ rev = "ff3b5555b5b1c4f85ae23d8d4aaf00bea2cd2bf0"
 
 [dependencies.obscuravpn-api]
 git = "https://github.com/Sovereign-Engineering/obscuravpn-api.git"
-rev = "ac010f36122c0bab9d815123799f404e85220d5b"
+rev = "53d25d0ea86190ce815f7db3e6b299442623cf2d"
 
 [dependencies.quinn]
 git = "https://github.com/Sovereign-Engineering/quinn.git"

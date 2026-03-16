@@ -2,6 +2,9 @@ use super::{
     errors::{ApiError, TunnelConnectError},
     network_config::TunnelNetworkConfig,
 };
+use crate::constants::{DEFAULT_API_BACKUP_DOMAIN, DEFAULT_API_URL, DEFAULT_RELAY_SNI};
+use crate::debug_archive::{dns::debug_dns, info::DebugInfo, task::debug_panic_error};
+use crate::dns::DnsResolver;
 use crate::errors::ConfigDirty;
 use crate::manager::TunnelArgs;
 use crate::network_config::DnsContentBlock;
@@ -15,17 +18,13 @@ use crate::{
     errors::RelaySelectionError,
     quicwg::QuicWgConn,
 };
-use crate::{
-    constants::DEFAULT_API_URL,
-    debug_archive::{dns::debug_dns, info::DebugInfo, task::debug_panic_error},
-};
 use crate::{quicwg::TUNNEL_MTU, relay_selection::race_relay_handshakes};
 use boringtun::x25519::{PublicKey, StaticSecret};
 use chrono::Utc;
 use obscuravpn_api::cmd::{CacheWgKey, ETagCmd, ExitList, ListExits2};
 use obscuravpn_api::types::{AccountId, AccountInfo, AuthToken, OneExit};
 use obscuravpn_api::{
-    Client, ClientError, ResolverFallbackCache,
+    Client, ClientError,
     cmd::{ApiErrorKind, Cmd, CreateTunnel, DeleteTunnel, ListRelays, ListTunnels},
     types::{ObfuscatedTunnelConfig, OneRelay, TunnelConfig, WgPubkey},
 };
@@ -33,7 +32,7 @@ use rand::{seq::SliceRandom, thread_rng};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::net::SocketAddr;
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 use std::{cmp::min, path::PathBuf, time::Instant};
 use std::{
     mem,
@@ -43,14 +42,12 @@ use tokio::sync::watch::{Receiver, Sender};
 use tokio::{spawn, time::timeout_at};
 use uuid::Uuid;
 
-const DEFAULT_API_BACKUP: &str = "crimsonlance.net";
-const DEFAULT_RELAY_SNI: &str = "example.com";
-
 // A convenience wrapper to act as message receiver (reevaluate when https://rust-lang.github.io/rfcs//3519-arbitrary-self-types-v2.html is stable)
 #[derive(Clone)]
-pub struct ClientStateHandle(Sender<ClientState>);
+pub struct ClientStateHandle(Arc<Sender<ClientState>>);
 
 pub struct ClientState {
+    this: WeakClientStateHandle,
     cached_api_client: Option<Arc<Client>>,
     config: ConfigHandle,
     exit_update_lock: Arc<tokio::sync::Mutex<()>>,
@@ -75,7 +72,6 @@ impl PartialEq for AccountStatus {
 }
 
 impl ClientState {
-    /// The constructed `ClientState` can not be dropped due to cyclical references.
     #[allow(clippy::new_ret_no_self)]
     pub fn new(
         config_dir: PathBuf,
@@ -88,16 +84,19 @@ impl ClientState {
         if force_init_inactive {
             config.change(|config| config.tunnel_active = false)
         }
-        let this = ClientState {
-            config,
-            cached_api_client: None,
-            set_keychain_wg_sk,
-            mtu: None,
-            network_interface: None,
-            exit_update_lock: Default::default(),
-            user_agent,
-        };
-        Ok(ClientStateHandle(tokio::sync::watch::channel(this).0))
+        Ok(ClientStateHandle(Arc::new_cyclic(|weak| {
+            tokio::sync::watch::channel(ClientState {
+                this: WeakClientStateHandle(weak.clone()),
+                config,
+                cached_api_client: None,
+                set_keychain_wg_sk,
+                mtu: None,
+                network_interface: None,
+                exit_update_lock: Default::default(),
+                user_agent,
+            })
+            .0
+        })))
     }
 
     pub fn target_state(&self) -> TargetState {
@@ -120,10 +119,10 @@ impl ClientState {
         self.config.api_url.clone().unwrap_or(DEFAULT_API_URL.to_string())
     }
 
-    fn make_api_client(&self, handle: Arc<ClientStateHandle>, account_id: AccountId) -> Result<Client, ApiError> {
+    fn make_api_client(&self, account_id: AccountId) -> Result<Client, ApiError> {
         let base_url = self.base_url();
         let network_interface = self.network_interface.clone();
-        let alternative_hosts = vec![self.config.api_host_alternate.clone().unwrap_or_else(|| DEFAULT_API_BACKUP.into())];
+        let alternative_hosts = vec![self.config.api_host_alternate.clone().unwrap_or_else(|| DEFAULT_API_BACKUP_DOMAIN.into())];
         tracing::info!(
             message_id = "By9iMtd5",
             ?network_interface,
@@ -142,7 +141,7 @@ impl ClientState {
             network_interface.as_ref().map(|i| i.ip),
             #[cfg(target_os = "android")]
             None,
-            Some(handle),
+            Some(DnsResolver::new(self.this.clone())),
         )
         .map_err(ClientError::from)
         .map_err(ApiError::from)
@@ -570,7 +569,7 @@ impl ClientStateHandle {
     }
 
     pub fn make_api_client(&self, account_id: AccountId) -> Result<Client, ApiError> {
-        self.borrow().make_api_client(Arc::new(self.clone()), account_id)
+        self.borrow().make_api_client(account_id)
     }
 
     fn api_client(&self) -> Result<Arc<Client>, ApiError> {
@@ -582,7 +581,7 @@ impl ClientStateHandle {
             if let Some(api_client) = inner.cached_api_client.clone() {
                 Ok(api_client)
             } else {
-                let api_client = Arc::new(inner.make_api_client(Arc::new(self.clone()), account_id)?);
+                let api_client = Arc::new(inner.make_api_client(account_id)?);
                 if let Some(auth_token) = inner.config.cached_auth_token.clone() {
                     api_client.set_auth_token(Some(auth_token.into()));
                 }
@@ -735,16 +734,19 @@ impl ClientStateHandle {
             network_interface_mtu,
         }
     }
+
+    pub fn update_dns_cache(&self, name: &str, addrs: &[SocketAddr]) {
+        self.change_config(|config| {
+            config.dns_cache.set(name, addrs);
+        })
+    }
 }
 
-impl ResolverFallbackCache for ClientStateHandle {
-    fn get(&self, name: &str) -> Vec<SocketAddr> {
-        self.borrow().config.dns_cache.get(name)
-    }
+#[derive(Clone)]
+pub struct WeakClientStateHandle(Weak<Sender<ClientState>>);
 
-    fn set(&self, name: &str, addr: &[SocketAddr]) {
-        self.change_config(|config| {
-            config.dns_cache.set(name, addr);
-        })
+impl WeakClientStateHandle {
+    pub fn upgrade(&self) -> Option<ClientStateHandle> {
+        self.0.upgrade().map(ClientStateHandle)
     }
 }

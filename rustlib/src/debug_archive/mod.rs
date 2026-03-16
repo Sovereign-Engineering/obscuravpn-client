@@ -1,5 +1,6 @@
 mod builder;
 pub mod dns;
+pub mod http;
 pub mod info;
 pub mod task;
 mod zipper;

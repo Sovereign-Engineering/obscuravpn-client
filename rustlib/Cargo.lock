@@ -2232,6 +2232,7 @@ dependencies = [
  "oslog",
  "quinn 0.11.8 (git+https://github.com/Sovereign-Engineering/quinn.git?rev=8f690a22535dcf2d76c369cadd3f0bec93667a4d)",
  "rand 0.8.5",
+ "reqwest",
  "ring",
  "rtnetlink",
  "rustls",

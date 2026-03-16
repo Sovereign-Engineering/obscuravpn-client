@@ -40,6 +40,7 @@ futures = "0.3.29"
 ipnetwork = { version = "0.21.1", features = ["serde"] }
 libc = "0.2.178"
 rand = "0.8.5"
+reqwest = { version = "0.13.2", default-features = false }
 ring = "0.17.14"
 rustls = "0.23.28"
 semver = "1.0.27"

@@ -5,9 +5,9 @@ use serde::Serialize;
 use std::net::IpAddr;
 use tokio::net::lookup_host;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DnsTask {
-    addrs: Vec<IpAddr>,
+    pub addrs: Vec<IpAddr>,
 }
 
 pub async fn debug_dns(host_port: &'static str) -> DebugTask<DnsTask> {

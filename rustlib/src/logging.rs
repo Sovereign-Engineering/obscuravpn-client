@@ -56,7 +56,7 @@ fn filter() -> EnvFilter {
     EnvFilter::from_default_env().add_directive(LevelFilter::INFO.into())
 }
 
-pub fn init(base_layer: impl Layer<Registry> + Send + Sync, persistence_dir: Option<&Utf8Path>) -> Option<Box<LogPersistence>> {
+pub fn init(base_layer: impl Layer<Registry> + Send + Sync, persistence_dir: Option<&Utf8Path>) -> Option<LogPersistence> {
     let registry = registry().with(base_layer.with_filter(filter()));
     let persistence = if let Some((writer, persistence)) = persistence_dir.and_then(|log_dir| {
         build_log_roller(log_dir)
@@ -67,7 +67,7 @@ pub fn init(base_layer: impl Layer<Registry> + Send + Sync, persistence_dir: Opt
     }) {
         let fs_layer = tracing_subscriber::fmt::Layer::default().json().with_writer(writer).with_filter(filter());
         tracing::subscriber::set_global_default(registry.with(fs_layer)).expect("failed to set global subscriber");
-        Some(Box::new(persistence))
+        Some(persistence)
     } else {
         tracing::subscriber::set_global_default(registry).expect("failed to set global subscriber");
         None

@@ -5,29 +5,22 @@ import android.content.Context;
 import java.util.concurrent.CompletableFuture;
 
 public class ObscuraLibrary {
-    private static boolean isLoaded = false;
-
-    public static void load(Context context, String userAgent) {
-        // Using this class outside of the :vpnservice process is not allowed.
-        if (Application.getProcessName().endsWith(":vpnservice")) {
-            System.loadLibrary("obscuravpn_client");
-            ObscuraLibrary.initialize(context.getFilesDir().getAbsolutePath(), userAgent);
-            ObscuraLibrary.isLoaded = true;
+    static long load(Context context, String userAgent) {
+        if (!Application.getProcessName().endsWith(":vpnservice")) {
+            throw new IllegalStateException("Using this class outside of the :vpnservice process is not allowed.");
         }
+        System.loadLibrary("obscuravpn_client");
+        return ObscuraLibrary.initialize(context.getFilesDir().getAbsolutePath(), userAgent);
     }
 
-    public static boolean getIsLoaded() {
-        return ObscuraLibrary.isLoaded;
-    }
+    static native long initialize(String configDir, String userAgent);
 
-    public static native void initialize(String configDir, String userAgent);
+    static native void jsonFfi(long rustFfiContext, String json, CompletableFuture<String> future);
 
-    public static native void jsonFfi(String json, CompletableFuture<String> future);
+    static native void setNetworkInterface(long rustFfiContext, String name, int index);
+    static native void unsetNetworkInterface(long rustFfiContext);
 
-    public static native void setNetworkInterface(String name, int index);
-    public static native void unsetNetworkInterface();
+    static native void forwardLog(int level, String tag, String message, String messageId, String throwableString);
 
-    public static native void forwardLog(int level, String tag, String message, String messageId, String throwableString);
-
-    public static native void setNetworkConfigDone(long context, int fd);
+    static native void setNetworkConfigDone(long context, int fd);
 }

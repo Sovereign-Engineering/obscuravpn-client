@@ -16,7 +16,7 @@ use obscuravpn_client::manager_cmd::{ManagerCmd, ManagerCmdErrorCode, ManagerCmd
 use obscuravpn_client::net::NetworkInterface;
 use obscuravpn_client::network_config::OsNetworkConfig;
 use obscuravpn_client::os::os_trait::Os;
-use obscuravpn_client::os::packet_buffer::PacketBuffer;
+use obscuravpn_client::quicwg::QuicWgConnPacketSender;
 pub use start_error::LinuxServiceStartError;
 use tokio::sync::watch::Receiver;
 
@@ -52,7 +52,7 @@ impl Os for LinuxOsImpl {
         self.preferred_network_interface.clone()
     }
 
-    async fn set_os_network_config(&self, network_config: OsNetworkConfig) -> Result<(), ()> {
+    async fn set_os_network_config(&self, network_config: OsNetworkConfig, tunnel: QuicWgConnPacketSender) -> Result<(), ()> {
         let mut current_network_config = self.current_network_config.lock().await;
         let tun = self.tun.interface();
 
@@ -72,6 +72,8 @@ impl Os for LinuxOsImpl {
         }
         result = result.and(self.tun.set_config(network_config.mtu, network_config.ipv4, network_config.ipv6));
         *current_network_config = result.map(|_| Some(network_config));
+
+        self.tun.spawn_read_task(tunnel);
         result
     }
 
@@ -98,11 +100,6 @@ impl Os for LinuxOsImpl {
 }
 
 impl LinuxOsImpl {
-    /// Read packets for relay from TUN device into `packet_buffer`. Blocks until at least one packet is available.
-    pub async fn packets_for_relay(&self, packet_buffer: &mut PacketBuffer) {
-        self.tun.receive(packet_buffer).await;
-    }
-
     /// Returns next manager command. Blocks until a command is available. The response function is called with the command result.
     pub async fn next_manager_command(&self) -> (ManagerCmd, Box<dyn FnOnce(Result<ManagerCmdOk, ManagerCmdErrorCode>) + Send>) {
         loop {

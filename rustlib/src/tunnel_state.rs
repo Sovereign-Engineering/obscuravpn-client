@@ -17,7 +17,7 @@ use crate::manager::ManagerTrafficStats;
 use crate::net::NetworkInterface;
 use crate::network_config::{DnsContentBlock, OsNetworkConfig, TunnelNetworkConfig};
 use crate::os::os_trait::Os;
-use crate::quicwg::{QuicWgReceiveError, QuicWgTrafficStats};
+use crate::quicwg::{QuicWgConnPacketSender, QuicWgReceiveError, QuicWgTrafficStats};
 use crate::{client_state::ClientState, manager::TunnelArgs, quicwg::QuicWgConn};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -217,7 +217,10 @@ impl TunnelState {
                     } else {
                         // Not connected, but target state indicates that this is possible and desired. Start capturing traffic and connect.
                         if let Err(()) = os_impl
-                            .set_os_network_config(OsNetworkConfig::dummy(*dns_content_block, *use_system_dns))
+                            .set_os_network_config(
+                                OsNetworkConfig::dummy(*dns_content_block, *use_system_dns),
+                                QuicWgConnPacketSender::new(None),
+                            )
                             .await
                         {
                             tracing::error!(message_id = "eTwAHomq", "failed to set dummy network config");
@@ -254,7 +257,10 @@ impl TunnelState {
                     if let ControlFlow::Continue((conn, network_config, exit, relay)) = cf {
                         // Reached connected state, set OS network config and update published tunnel state
                         let os_network_config = OsNetworkConfig::new(&network_config, &exit.provider_name, *dns_content_block, *use_system_dns);
-                        if let Err(()) = os_impl.set_os_network_config(os_network_config).await {
+                        if let Err(()) = os_impl
+                            .set_os_network_config(os_network_config, QuicWgConnPacketSender::new(Some(&conn)))
+                            .await
+                        {
                             tracing::error!(message_id = "t7QzSTGu", "failed to set network config");
                             tunnel_state.send_modify(|tunnel_state| tunnel_state.set_connect_error(TunnelConnectError::SetOsNetworkConfig));
                         } else {

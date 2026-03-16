@@ -1,3 +1,4 @@
+use super::class_cache::ClassCache;
 use crate::manager_cmd::{ManagerCmdErrorCode, ManagerCmdOk};
 use anyhow::Context as _;
 use jni::{
@@ -5,7 +6,12 @@ use jni::{
     objects::{JObject, JValue},
 };
 
-pub fn signal_json_ffi_future(env: &mut JNIEnv, j_future: &JObject, result: Result<ManagerCmdOk, ManagerCmdErrorCode>) -> anyhow::Result<()> {
+pub fn signal_json_ffi_future(
+    class_cache: &ClassCache,
+    env: &mut JNIEnv,
+    j_future: &JObject,
+    result: Result<ManagerCmdOk, ManagerCmdErrorCode>,
+) -> anyhow::Result<()> {
     match result.and_then(|ok| {
         serde_json::to_string(&ok).map_err(|error| {
             tracing::error!(message_id = "hP0R8zXa", ?error, "failed to serialize successful cmd result");
@@ -30,11 +36,7 @@ pub fn signal_json_ffi_future(env: &mut JNIEnv, j_future: &JObject, result: Resu
                     JObject::null()
                 });
             let j_exception = env
-                .new_object(
-                    super::class_cache::get()?.json_ffi_exception(),
-                    "(Ljava/lang/String;)V",
-                    &[JValue::Object(&j_error)],
-                )
+                .new_object(class_cache.json_ffi_exception(), "(Ljava/lang/String;)V", &[JValue::Object(&j_error)])
                 .unwrap_or_else(|error| {
                     tracing::error!(message_id = "T3tXX3yk", ?error, "failed to create `JsonFfiException`");
                     JObject::null()

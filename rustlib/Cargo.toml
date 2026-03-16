@@ -39,9 +39,6 @@ flume = { version = "0.11.1", features = ["async"] }
 futures = "0.3.29"
 ipnetwork = { version =  "0.21.1", features = ["serde"] }
 libc = "0.2.178"
-# We can remove this dep once `get_or_try_init` is stable in `std`:
-# https://github.com/rust-lang/rust/issues/109737
-once_cell = "1.21.3"
 rand = "0.8.5"
 ring = "0.17.14"
 rustls = "0.23.28"

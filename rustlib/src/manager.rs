@@ -33,7 +33,7 @@ pub struct Manager {
     client_state: ClientStateHandle,
     tunnel_state: Receiver<TunnelState>,
     status_watch: Sender<Status>,
-    log_persistence: Option<Box<LogPersistence>>,
+    log_persistence: Option<LogPersistence>,
 }
 
 // Keep synchronized with ../../apple/shared/NetworkExtensionIpc.swift
@@ -150,7 +150,7 @@ impl Manager {
         user_agent: String,
         os_impl: Arc<impl Os>,
         set_keychain_wg_sk: Option<KeychainSetSecretKeyFn>,
-        log_persistence: Option<Box<LogPersistence>>,
+        log_persistence: Option<LogPersistence>,
         force_init_inactive: bool,
     ) -> Result<Arc<Self>, ConfigLoadError> {
         let client_state = ClientState::new(config_dir, keychain_wg_sk, user_agent, set_keychain_wg_sk, force_init_inactive)?;
@@ -169,12 +169,6 @@ impl Manager {
 
     pub fn subscribe(&self) -> Receiver<Status> {
         self.status_watch.subscribe()
-    }
-
-    pub fn packets_for_relay<'a>(&self, packets: impl Iterator<Item = &'a [u8]>) {
-        if let Some(conn) = self.tunnel_state.borrow().get_conn() {
-            conn.send(packets);
-        }
     }
 
     pub fn traffic_stats(&self) -> ManagerTrafficStats {
@@ -299,7 +293,7 @@ impl Manager {
 
     pub async fn create_debug_archive(&self, user_feedback: Option<&str>) -> anyhow::Result<String> {
         let user_feedback = user_feedback.map(ToOwned::to_owned);
-        let log_dir = self.log_persistence.as_deref().map(LogPersistence::log_dir).map(ToOwned::to_owned);
+        let log_dir = self.log_persistence.as_ref().map(LogPersistence::log_dir).map(ToOwned::to_owned);
         let debug_info = self.get_debug_info().await;
         tokio::task::spawn_blocking(move || create_debug_archive(user_feedback.as_deref(), debug_info, log_dir.as_deref()).map(Into::into)).await?
     }

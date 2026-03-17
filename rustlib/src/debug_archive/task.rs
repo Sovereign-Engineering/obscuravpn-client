@@ -11,22 +11,31 @@ const TASK_TIMEOUT: Duration = Duration::from_secs(60);
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DebugTask<T> {
     total_s: f32,
-    result: TaskResult<T>,
+    pub result: TaskResult<T>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-enum TaskResult<T> {
+pub enum TaskResult<T> {
     Failure(String),
     Panic(String),
     Success(T),
     Timeout,
 }
 
+impl<T> TaskResult<T> {
+    pub fn get(&self) -> Option<&T> {
+        match self {
+            TaskResult::Success(v) => Some(v),
+            _ => None,
+        }
+    }
+}
+
 pub async fn run_debug_task<T>(task: impl Future<Output = Result<T, Box<dyn Error>>>) -> DebugTask<T> {
     let start = Instant::now();
     let result = match timeout(TASK_TIMEOUT, task).await {
         Ok(Ok(r)) => TaskResult::Success(r),
-        Ok(Err(err)) => TaskResult::Failure(err.to_string()),
+        Ok(Err(err)) => TaskResult::Failure(format!("{:?}", err)),
         Err(_) => TaskResult::Timeout,
     };
 

@@ -2,7 +2,6 @@ use super::{
     errors::{ApiError, TunnelConnectError},
     network_config::TunnelNetworkConfig,
 };
-use crate::constants::{DEFAULT_API_BACKUP_DOMAIN, DEFAULT_API_URL, DEFAULT_RELAY_SNI};
 use crate::debug_archive::{dns::debug_dns, info::DebugInfo, task::debug_panic_error};
 use crate::dns::DnsResolver;
 use crate::errors::ConfigDirty;
@@ -17,6 +16,10 @@ use crate::{
     config::{self, Config, ConfigLoadError},
     errors::RelaySelectionError,
     quicwg::QuicWgConn,
+};
+use crate::{
+    constants::{DEFAULT_API_BACKUP_DOMAIN, DEFAULT_API_URL, DEFAULT_RELAY_SNI},
+    debug_archive::http::debug_http,
 };
 use crate::{quicwg::TUNNEL_MTU, relay_selection::race_relay_handshakes};
 use boringtun::x25519::{PublicKey, StaticSecret};
@@ -721,15 +724,35 @@ impl ClientStateHandle {
             network_interface_mtu = this.network_interface.as_ref().and_then(|interface| interface_mtu(&interface.name).ok());
         }
 
+        let dns_obscura = tokio::spawn(debug_dns("v1.api.prod.obscura.net:443"));
+
         let dns_apple = tokio::spawn(debug_dns("www.apple.com:443"));
         let dns_google = tokio::spawn(debug_dns("google.com:443"));
-        let dns_obscura = tokio::spawn(debug_dns("v1.api.prod.obscura.net:443"));
+
+        let dns_obscura = dns_obscura.await.unwrap_or_else(debug_panic_error);
+
+        let http_apple = tokio::spawn(debug_http("https://apple.com/api/ping", dns_obscura.result.get().cloned(), true));
+        let http_google = tokio::spawn(debug_http("https://google.com/api/ping", dns_obscura.result.get().cloned(), true));
+        let http_nosni = tokio::spawn(debug_http(
+            "https://v1.api.prod.obscura.net/api/ping",
+            dns_obscura.result.get().cloned(),
+            false,
+        ));
+        let http_obscura = tokio::spawn(debug_http(
+            "https://v1.api.prod.obscura.net/api/ping",
+            dns_obscura.result.get().cloned(),
+            true,
+        ));
 
         DebugInfo {
             config,
             dns_apple: dns_apple.await.unwrap_or_else(debug_panic_error),
             dns_google: dns_google.await.unwrap_or_else(debug_panic_error),
-            dns_obscura: dns_obscura.await.unwrap_or_else(debug_panic_error),
+            dns_obscura,
+            http_apple: http_apple.await.unwrap_or_else(debug_panic_error),
+            http_google: http_google.await.unwrap_or_else(debug_panic_error),
+            http_nosni: http_nosni.await.unwrap_or_else(debug_panic_error),
+            http_obscura: http_obscura.await.unwrap_or_else(debug_panic_error),
             network_interface,
             network_interface_mtu,
         }

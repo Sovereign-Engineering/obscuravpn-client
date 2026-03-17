@@ -1,5 +1,11 @@
 pub struct AbortOnDrop(pub tokio::task::AbortHandle);
 
+impl AbortOnDrop {
+    pub fn spawn<F: Future<Output = ()> + Send + 'static>(f: F) -> Self {
+        tokio::spawn(f).into()
+    }
+}
+
 impl Drop for AbortOnDrop {
     fn drop(&mut self) {
         self.0.abort();

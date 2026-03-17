@@ -5,7 +5,6 @@ use std::convert::Infallible;
 
 use anyhow::Context;
 use obscuravpn_client::manager::Manager;
-use obscuravpn_client::os::packet_buffer::PacketBuffer;
 use std::error::Error;
 use std::sync::Arc;
 
@@ -29,18 +28,6 @@ pub async fn run(args: ServiceArgs) -> Result<Infallible, Box<dyn Error>> {
         false,
     )
     .context("failed to create manager")?;
-
-    {
-        let os_impl = os_impl.clone();
-        let manager = manager.clone();
-        tokio::spawn(async move {
-            let mut packet_buffer = PacketBuffer::default();
-            loop {
-                os_impl.packets_for_relay(&mut packet_buffer).await;
-                manager.packets_for_relay(packet_buffer.take_iter());
-            }
-        });
-    }
 
     loop {
         let (cmd, response_fn) = os_impl.next_manager_command().await;

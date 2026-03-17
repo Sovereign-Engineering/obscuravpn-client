@@ -2,7 +2,7 @@ import Foundation
 import libobscuravpn_client
 import Network
 
-func ffiInitializeSystemLogging(_ logDir: String?) -> UnsafeMutableRawPointer? {
+func ffiInitializeSystemLogging(_ logDir: String?) -> OpaquePointer? {
     let logDir: String = logDir ?? ""
     let logFlushGuard = logDir.withFfiStr { ffiLogDir in
         libobscuravpn_client.initialize_apple_system_logging(ffiLogDir)
@@ -10,14 +10,63 @@ func ffiInitializeSystemLogging(_ logDir: String?) -> UnsafeMutableRawPointer? {
     return logFlushGuard
 }
 
-func ffiInitialize(configDir: String, userAgent: String, logFlushGuard: UnsafeMutableRawPointer?, _ receiveCallback: @convention(c) (FfiBytes) -> Void, _ setNetworkConfigCallback: @convention(c) (FfiBytes, UnsafeMutableRawPointer?, (@convention(c) (UnsafeMutableRawPointer?, Bool) -> Void)?) -> Void) {
-    let wgSecretKey = keychainGetWgSecretKey() ?? Data()
-    configDir.withFfiStr { ffiConfigDir in
-        userAgent.withFfiStr { ffiUserAgent in
-            wgSecretKey.withFfiBytes { ffiWgSecretKey in
-                libobscuravpn_client.initialize(ffiConfigDir, ffiUserAgent, ffiWgSecretKey, receiveCallback, setNetworkConfigCallback, keychainSetWgSecretKeyCallback, logFlushGuard)
+class RustFfi {
+    private let ptr: OpaquePointer
+
+    init(configDir: String, userAgent: String, logFlushGuard: OpaquePointer?, _ receiveCallback: @convention(c) (FfiBytes) -> Void, _ setNetworkConfigCallback: @convention(c) (FfiBytes, UnsafeMutableRawPointer?, (@convention(c) (UnsafeMutableRawPointer?, Bool) -> Void)?) -> Void) {
+        let wgSecretKey = keychainGetWgSecretKey() ?? Data()
+        let p = configDir.withFfiStr { ffiConfigDir in
+            userAgent.withFfiStr { ffiUserAgent in
+                wgSecretKey.withFfiBytes { ffiWgSecretKey in
+                    libobscuravpn_client.initialize(ffiConfigDir, ffiUserAgent, ffiWgSecretKey, receiveCallback, setNetworkConfigCallback, keychainSetWgSecretKeyCallback, logFlushGuard)
+                }
             }
         }
+        self.ptr = p!
+    }
+
+    func jsonManagerCmd(_ jsonCmd: Data) async -> NeManagerCmdResult {
+        return await withCheckedContinuation { continuation in
+            let context = FfiCb.wrap { (ok_json: FfiStr, err: FfiStr) in
+                if let err = err.nonEmptyString() {
+                    continuation.resume(returning: .error(err))
+                    return
+                }
+                continuation.resume(returning: .ok_json(ok_json.string()))
+            }
+            jsonCmd.withFfiBytes {
+                libobscuravpn_client.json_ffi_cmd(self.ptr, context, $0) { FfiCb.call($0, ($1, $2)) }
+            }
+        }
+    }
+
+    func sendPacket(_ packet: Data) {
+        packet.withFfiBytes {
+            libobscuravpn_client.send_packet(self.ptr, $0)
+        }
+    }
+
+    func setNetworkInterface(_ networkInterface: (Int, String)?) {
+        if let (index, name): (Int, String) = networkInterface {
+            if index <= 0 || Int64(index) > Int64(UInt32.max) {
+                ffiLog(.Error, "network interface index out of range \(index)")
+                "".withFfiStr { ffiEmptyName in
+                    libobscuravpn_client.set_network_interface(self.ptr, 0, ffiEmptyName)
+                }
+            } else {
+                name.withFfiStr { ffiName in
+                    libobscuravpn_client.set_network_interface(self.ptr, UInt32(index), ffiName)
+                }
+            }
+        } else {
+            "".withFfiStr { ffiEmptyName in
+                libobscuravpn_client.set_network_interface(self.ptr, 0, ffiEmptyName)
+            }
+        }
+    }
+
+    func wake() {
+        libobscuravpn_client.wake(self.ptr)
     }
 }
 
@@ -43,44 +92,6 @@ func ffiLog(
             }
         }
     }
-}
-
-func ffiJsonManagerCmd(_ jsonCmd: Data) async -> NeManagerCmdResult {
-    return await withCheckedContinuation { continuation in
-        let context = FfiCb.wrap { (ok_json: FfiStr, err: FfiStr) in
-            if let err = err.nonEmptyString() {
-                continuation.resume(returning: .error(err))
-                return
-            }
-            continuation.resume(returning: .ok_json(ok_json.string()))
-        }
-        jsonCmd.withFfiBytes {
-            libobscuravpn_client.json_ffi_cmd(context, $0) { FfiCb.call($0, ($1, $2)) }
-        }
-    }
-}
-
-func ffiSetNetworkInterface(_ network_interface: (Int, String)?) {
-    if let (index, name): (Int, String) = network_interface {
-        if index <= 0 || Int64(index) > Int64(UInt32.max) {
-            ffiLog(.Error, "network interface index out of range \(index)")
-            "".withFfiStr { ffiEmptyName in
-                libobscuravpn_client.set_network_interface(0, ffiEmptyName)
-            }
-        } else {
-            name.withFfiStr { ffiName in
-                libobscuravpn_client.set_network_interface(UInt32(index), ffiName)
-            }
-        }
-    } else {
-        "".withFfiStr { ffiEmptyName in
-            libobscuravpn_client.set_network_interface(0, ffiEmptyName)
-        }
-    }
-}
-
-func ffiWake() {
-    libobscuravpn_client.wake()
 }
 
 private func keychainSetWgSecretKeyCallback(key: FfiBytes) -> Bool {

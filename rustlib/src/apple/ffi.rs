@@ -1,10 +1,10 @@
-use std::ffi::c_void;
 use std::sync::{Arc, OnceLock};
 use tokio::runtime::Runtime;
 
 use super::os_impl::AppleOsImpl;
 use crate::config::KeychainSetSecretKeyFn;
 use crate::ffi_helpers::*;
+use crate::logging::LogPersistence;
 use crate::manager::Manager;
 use crate::manager_cmd::ManagerCmd;
 use crate::manager_cmd::ManagerCmdErrorCode;
@@ -22,30 +22,25 @@ static APPLE_LOG_INIT: std::sync::Once = std::sync::Once::new();
 /// SAFETY:
 /// - there is no other global function of this name
 #[unsafe(no_mangle)]
-pub extern "C" fn initialize_apple_system_logging(log_dir: FfiStr) -> *mut c_void {
-    let mut guard_ptr = std::ptr::null_mut();
+pub extern "C" fn initialize_apple_system_logging(log_dir: FfiStr) -> *mut LogPersistence {
+    let mut log_persistence: Option<LogPersistence> = None;
     APPLE_LOG_INIT.call_once(|| {
-        if let Some(guard) = crate::logging::init(
+        log_persistence = crate::logging::init(
             tracing_oslog::OsLogger::new("net.obscura.rust-apple", "default"),
             cfg!(target_os = "ios").then(|| log_dir.as_str().as_ref()),
-        ) {
-            guard_ptr = Box::into_raw(guard) as *mut _;
-        };
+        )
     });
-    guard_ptr
+    log_persistence.map(Box::new).map(Box::into_raw).unwrap_or(std::ptr::null_mut())
 }
 
-struct Global {
+pub struct Global {
     manager: Arc<Manager>,
     os_impl: Arc<AppleOsImpl>,
     runtime: Runtime,
 }
 
+/// cbindgen:ignore
 static GLOBAL: OnceLock<Global> = OnceLock::new();
-
-fn global() -> &'static Global {
-    GLOBAL.get().expect("ffi global not initialized")
-}
 
 /// SAFETY:
 /// - `log_persistence` must be a pointer returned by `initialize_apple_system_logging`
@@ -58,10 +53,11 @@ pub unsafe extern "C" fn initialize(
     receive_cb: extern "C" fn(FfiBytes),
     set_network_config_cb: super::os_impl::SetNetworkConfigCb,
     keychain_set_wg_secret_key: extern "C" fn(FfiBytes) -> bool,
-    log_persistence: *mut c_void,
-) {
+    log_persistence: *mut LogPersistence,
+) -> *const Global {
+    tracing::info!(message_id = "PRXlxa85", "starting ffi initialization");
     let mut first_init = false;
-    GLOBAL.get_or_init(|| {
+    let global: &'static Global = GLOBAL.get_or_init(|| {
         rustls::crypto::aws_lc_rs::default_provider()
             .install_default()
             .expect("Failed to install aws-lc crypto provider");
@@ -78,7 +74,7 @@ pub unsafe extern "C" fn initialize(
             // - `log_persistence` was checked to be non-null
             // - Caller guarantees that `log_persistence` originates from a
             //   matching `into_raw` call
-            unsafe { Box::from_raw(log_persistence.as_ptr() as _) });
+            *unsafe { Box::from_raw(log_persistence.as_ptr()) });
         let os_impl = Arc::new(AppleOsImpl::new(receive_cb, set_network_config_cb));
         match Manager::new(
             config_dir,
@@ -91,15 +87,16 @@ pub unsafe extern "C" fn initialize(
         ) {
             Ok(manager) => {
                 first_init = true;
-                tracing::info!("ffi initialized");
+                tracing::info!(message_id = "Y6cNkZXW", "ffi initialized");
                 Global { manager, os_impl, runtime }
             }
             Err(err) => panic!("ffi initialization failed: could not load config: {}", err),
         }
     });
     if !first_init {
-        tracing::info!("ffi already initialized")
+        tracing::error!(message_id = "GQRW1s5V", "ffi was already initialized")
     }
+    std::ptr::from_ref(global)
 }
 
 #[allow(dead_code)]
@@ -128,10 +125,13 @@ pub extern "C" fn forward_log(level: LogLevel, message: FfiStr, file_id: FfiStr,
 }
 
 /// SAFETY:
+/// - `global` must be a pointer returned by `initialize`
 /// - there is no other global function of this name
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn send_packet(packet: FfiBytes) {
-    global().manager.packets_for_relay(std::iter::once(packet.as_slice()));
+pub unsafe extern "C" fn send_packet(global: *const Global, packet: FfiBytes) {
+    // SAFETY: `global` was created by a matching call to `std::ptr::from_ref`
+    let global = unsafe { &*global };
+    global.os_impl.send_packet(packet.as_slice());
 }
 
 /// Set the network interface to use by index and name.
@@ -140,9 +140,12 @@ pub unsafe extern "C" fn send_packet(packet: FfiBytes) {
 /// Name is ignored if index is 0.
 ///
 /// SAFETY:
+/// - `global` must be a pointer returned by `initialize`
 /// - there is no other global function of this name
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn set_network_interface(index: u32, name: FfiStr) {
+pub unsafe extern "C" fn set_network_interface(global: *const Global, index: u32, name: FfiStr) {
+    // SAFETY: `global` was created by a matching call to `std::ptr::from_ref`
+    let global = unsafe { &*global };
     let network_interface = match index {
         0 => None,
         index => PositiveU31::try_from(index)
@@ -150,26 +153,37 @@ pub unsafe extern "C" fn set_network_interface(index: u32, name: FfiStr) {
             .ok(),
     }
     .map(|index| NetworkInterface { index, name: name.as_str().to_string() });
-    global().os_impl.set_network_interface(network_interface);
+    global.os_impl.set_network_interface(network_interface);
 }
 
 /// Call after wake.
 ///
 /// SAFETY:
+/// - `global` must be a pointer returned by `initialize`
 /// - there is no other global function of this name
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn wake() {
-    global().manager.wake();
+pub unsafe extern "C" fn wake(global: *const Global) {
+    // SAFETY: `global` was created by a matching call to `std::ptr::from_ref`
+    let global = unsafe { &*global };
+    global.manager.wake();
 }
 
 /// SAFETY:
+/// - `global` must be a pointer returned by `initialize`
 /// - there is no other global function of this name
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn json_ffi_cmd(context: usize, json_cmd: FfiBytes, cb: extern "C" fn(context: usize, json_ret: FfiStr, json_err: FfiStr)) {
+pub unsafe extern "C" fn json_ffi_cmd(
+    global: *const Global,
+    context: usize,
+    json_cmd: FfiBytes,
+    cb: extern "C" fn(context: usize, json_ret: FfiStr, json_err: FfiStr),
+) {
+    // SAFETY: `global` was created by a matching call to `std::ptr::from_ref`
+    let global = unsafe { &*global };
     let json_cmd = json_cmd.to_vec();
 
-    global().runtime.spawn(async move {
-        let manager = &global().manager;
+    global.runtime.spawn(async move {
+        let manager = &global.manager;
 
         let json_result: Result<String, ManagerCmdErrorCode> = async move {
             let ok = ManagerCmd::from_json(&json_cmd)?.run(manager).await?;

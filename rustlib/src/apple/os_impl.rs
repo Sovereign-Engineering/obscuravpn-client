@@ -1,4 +1,5 @@
 use std::ffi::c_void;
+use std::sync::Mutex;
 
 use bytes::Bytes;
 use tokio::sync::{oneshot, watch};
@@ -7,6 +8,7 @@ use crate::ffi_helpers::*;
 use crate::net::NetworkInterface;
 use crate::network_config::OsNetworkConfig;
 use crate::os::os_trait::Os;
+use crate::quicwg::QuicWgConnPacketSender;
 
 pub type SetNetworkConfigCb =
     extern "C" fn(network_config_json: FfiBytes, context: *mut c_void, done: extern "C" fn(context: *mut c_void, success: bool));
@@ -27,15 +29,25 @@ pub struct AppleOsImpl {
     receive_cb: extern "C" fn(FfiBytes),
     set_network_config_cb: SetNetworkConfigCb,
     network_interface: watch::Sender<Option<NetworkInterface>>,
+    tunnel: Mutex<QuicWgConnPacketSender>,
 }
 
 impl AppleOsImpl {
     pub fn new(receive_cb: extern "C" fn(FfiBytes), set_network_config_cb: SetNetworkConfigCb) -> Self {
-        Self { receive_cb, set_network_config_cb, network_interface: watch::channel(None).0 }
+        Self {
+            receive_cb,
+            set_network_config_cb,
+            network_interface: watch::channel(None).0,
+            tunnel: Mutex::new(QuicWgConnPacketSender::new(None)),
+        }
     }
 
     pub fn set_network_interface(&self, network_interface: Option<NetworkInterface>) {
         self.network_interface.send_replace(network_interface);
+    }
+
+    pub fn send_packet(&self, packet: &[u8]) {
+        self.tunnel.lock().unwrap().send(std::iter::once(packet));
     }
 }
 
@@ -44,7 +56,9 @@ impl Os for AppleOsImpl {
         self.network_interface.subscribe()
     }
 
-    async fn set_os_network_config(&self, network_config: OsNetworkConfig) -> Result<(), ()> {
+    async fn set_os_network_config(&self, network_config: OsNetworkConfig, tunnel: QuicWgConnPacketSender) -> Result<(), ()> {
+        *self.tunnel.lock().unwrap() = tunnel;
+
         let json = serde_json::to_vec(&network_config).map_err(|error| {
             tracing::error!(message_id = "aP7xKm2q", ?error, "failed to serialize OsNetworkConfig");
         })?;

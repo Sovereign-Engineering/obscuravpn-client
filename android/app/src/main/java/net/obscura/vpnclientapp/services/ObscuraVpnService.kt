@@ -25,27 +25,13 @@ import java.net.NetworkInterface
 import java.util.concurrent.CompletableFuture
 import kotlinx.serialization.json.Json
 import net.obscura.lib.util.Logger
+import net.obscura.vpnclientapp.BuildConfig
 import net.obscura.vpnclientapp.R
-import net.obscura.vpnclientapp.client.ObscuraLibrary
+import net.obscura.vpnclientapp.client.RustFfi
 import net.obscura.vpnclientapp.client.commands.GetStatus
 import net.obscura.vpnclientapp.client.commands.SetTunnelArgs
 import net.obscura.vpnclientapp.helpers.requireVpnServiceProcess
 import net.obscura.vpnclientapp.ui.CommandBridge
-
-private val log =
-    Logger(ObscuraVpnService::class) { params ->
-        if (ObscuraLibrary.getIsLoaded()) {
-            ObscuraLibrary.forwardLog(
-                params.level.ordinal,
-                params.tag,
-                params.message,
-                params.messageId ?: "JavaNoID",
-                params.tr?.toString(),
-            )
-        } else {
-            Logger(ObscuraVpnService::class).error("library not loaded; can't forward log: $params")
-        }
-    }
 
 @SuppressLint("VpnServicePolicy")
 class ObscuraVpnService : VpnService() {
@@ -53,26 +39,23 @@ class ObscuraVpnService : VpnService() {
         val service: ObscuraVpnService,
     ) : IObscuraVpnService.Stub() {
         override fun startTunnel(exitSelector: String?) {
-            log.info("startTunnel $exitSelector", "CddrThRg")
-
+            service.log.info("startTunnel $exitSelector", "CddrThRg")
             service.startTunnel(exitSelector)
         }
 
         override fun stopTunnel() {
-            log.info("stopTunnel", "Gf6f2lwW")
-
+            service.log.info("stopTunnel", "Gf6f2lwW")
             service.stopTunnel()
         }
 
         override fun jsonFfi(
             id: Long,
-            command: String?,
+            command: String,
         ) {
-            log.info("jsonFfi $id $command", "qMO4l3zd")
-
+            service.log.info("jsonFfi $id $command", "qMO4l3zd")
             CompletableFuture<String>().also {
                 CommandBridge.Receiver.broadcast(service, id, it)
-                ObscuraLibrary.jsonFfi(command!!, it)
+                service.rustFfi.jsonFfi(command, it)
             }
         }
     }
@@ -88,36 +71,38 @@ class ObscuraVpnService : VpnService() {
         fun ffiSetNetworkConfig(json: String, context: Long) {
             val service = instance.get()
             if (service == null) {
-                log.error("ffiSetNetworkConfig called with no active service", "wK3xLm9p")
-                ObscuraLibrary.setNetworkConfigDone(context, -1)
+                Logger(ObscuraVpnService::class).error("ffiSetNetworkConfig called with no active service", "wK3xLm9p")
+                RustFfi.setNetworkConfigDone(context, -1)
                 return
             }
             val config: OsNetworkConfig =
                 try {
                     service.json.decodeFromString(json)
                 } catch (e: Exception) {
-                    log.error("failed to parse os network config: $e", "yN4zPn0q", e)
-                    ObscuraLibrary.setNetworkConfigDone(context, -1)
+                    service.log.error("failed to parse os network config: $e", "yN4zPn0q", e)
+                    RustFfi.setNetworkConfigDone(context, -1)
                     return
                 }
             val pfd =
                 try {
                     service.applyNetworkConfig(config)
                 } catch (e: Exception) {
-                    log.error("failed to apply os network config: $e", "U6hVQEJR", e)
-                    ObscuraLibrary.setNetworkConfigDone(context, -1)
+                    service.log.error("failed to apply os network config: $e", "U6hVQEJR", e)
+                    RustFfi.setNetworkConfigDone(context, -1)
                     return
                 }
             if (pfd == null) {
-                ObscuraLibrary.setNetworkConfigDone(context, -1)
+                RustFfi.setNetworkConfigDone(context, -1)
             } else {
-                ObscuraLibrary.setNetworkConfigDone(context, pfd.detachFd())
+                RustFfi.setNetworkConfigDone(context, pfd.detachFd())
             }
         }
     }
 
     private data class NetworkInterfaceProps(val name: String, val index: Int)
 
+    private lateinit var rustFfi: RustFfi
+    private lateinit var log: Logger
     private lateinit var json: Json
     private lateinit var handler: Handler
 
@@ -130,6 +115,10 @@ class ObscuraVpnService : VpnService() {
 
     override fun onCreate() {
         super.onCreate()
+
+        Logger(ObscuraVpnService::class).info("ObscuraVpnService onCreate entry")
+        rustFfi = RustFfi(this, "obscura.net/android/${BuildConfig.VERSION_NAME}")
+        log = rustFfi.logger(ObscuraVpnService::class)
 
         if (instance.getAndSet(this) != null) {
             log.error("instance already initialized", "xR4mNb7c")
@@ -268,7 +257,7 @@ class ObscuraVpnService : VpnService() {
         log.info("load status $knownVersion", "8pXipD8h")
 
         CompletableFuture<String>().also {
-            ObscuraLibrary.jsonFfi(
+            rustFfi.jsonFfi(
                 json.encodeToString(
                     GetStatus(GetStatus.Request(knownVersion = knownVersion)),
                 ),
@@ -277,7 +266,6 @@ class ObscuraVpnService : VpnService() {
 
             it.handle { data, tr ->
                 log.info("getStatus completed $data", "oiAyY4gh", tr)
-
                 data?.let { data -> onStatusUpdated(json.decodeFromString(data)) }
             }
         }
@@ -285,7 +273,7 @@ class ObscuraVpnService : VpnService() {
 
     private fun setTunnelArgs(exit: String?, active: Boolean?) {
         CompletableFuture<String>().also {
-            ObscuraLibrary.jsonFfi(
+            rustFfi.jsonFfi(
                 json.encodeToString(
                     SetTunnelArgs(
                         SetTunnelArgs.Request(
@@ -366,9 +354,9 @@ class ObscuraVpnService : VpnService() {
         this.setUnderlyingNetworks(if (network != null) arrayOf(network) else emptyArray())
         val networkInterface = this.getNetworkInterfaceProps(network)
         if (networkInterface != null) {
-            ObscuraLibrary.setNetworkInterface(networkInterface.name, networkInterface.index)
+            rustFfi.setNetworkInterface(networkInterface.name, networkInterface.index)
         } else {
-            ObscuraLibrary.unsetNetworkInterface()
+            rustFfi.unsetNetworkInterface()
         }
     }
 }

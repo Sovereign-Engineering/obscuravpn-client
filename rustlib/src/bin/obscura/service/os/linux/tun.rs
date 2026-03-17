@@ -7,8 +7,10 @@ use obscuravpn_client::positive_u31::PositiveU31;
 use obscuravpn_client::rate_limited_log;
 use std::io::ErrorKind::{AlreadyExists, WouldBlock};
 use std::net::{IpAddr, Ipv4Addr};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
+use obscuravpn_client::quicwg::QuicWgConnPacketSender;
+use obscuravpn_client::tokio::AbortOnDrop;
 use std::time::Duration;
 
 const TUN_MIN_LOG_SILENCE: Duration = Duration::from_secs(5);
@@ -17,6 +19,7 @@ const TUN_NAME: &str = "obscuravpn";
 pub struct Tun {
     dev: Arc<tun_rs::AsyncDevice>,
     interface_index: PositiveU31,
+    read_task: Mutex<Option<AbortOnDrop>>,
 }
 
 impl Tun {
@@ -32,7 +35,7 @@ impl Tun {
                 .build_async()?,
         );
         let interface_index = dev.if_index()?.try_into()?;
-        Ok(Self { dev, interface_index })
+        Ok(Self { dev, interface_index, read_task: Mutex::new(None) })
     }
 
     pub fn interface(&self) -> NetworkInterface {
@@ -50,15 +53,15 @@ impl Tun {
         }
     }
 
-    pub async fn receive(&self, packet_buffer: &mut PacketBuffer) {
-        if let Err(error) = self.dev.readable().await {
+    async fn receive(dev: &tun_rs::AsyncDevice, packet_buffer: &mut PacketBuffer) {
+        if let Err(error) = dev.readable().await {
             rate_limited_log!(
                 TUN_MIN_LOG_SILENCE,
                 tracing::error!(message_id = "YRah33os", ?error, "failed to wait for packet on tun device")
             )
         }
         while let Some(buffer) = packet_buffer.buffer() {
-            match self.dev.try_recv(buffer) {
+            match dev.try_recv(buffer) {
                 Ok(n) => match u16::try_from(n) {
                     Ok(n) => packet_buffer.commit(n),
                     Err(_) => rate_limited_log!(
@@ -119,5 +122,17 @@ impl Tun {
             }
         }
         result
+    }
+
+    pub fn spawn_read_task(&self, tunnel: QuicWgConnPacketSender) {
+        let mut read_task = self.read_task.lock().unwrap();
+        let dev = self.dev.clone();
+        *read_task = Some(AbortOnDrop::spawn(async move {
+            let mut packet_buffer = PacketBuffer::default();
+            loop {
+                Self::receive(&dev, &mut packet_buffer).await;
+                tunnel.send(packet_buffer.take_iter());
+            }
+        }));
     }
 }

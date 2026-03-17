@@ -1,4 +1,7 @@
-use crate::{manager::Manager, quicwg::TUNNEL_MTU, tokio::AbortOnDrop};
+use crate::{
+    quicwg::{QuicWgConnPacketSender, TUNNEL_MTU},
+    tokio::AbortOnDrop,
+};
 use nix::{errno::Errno, unistd};
 use std::{os::fd::OwnedFd, sync::Arc};
 use tokio::io::unix::AsyncFd;
@@ -9,7 +12,7 @@ pub struct Tun {
 }
 
 impl Tun {
-    pub fn spawn(fd: OwnedFd, manager: Arc<Manager>) -> Result<Self, Self> {
+    pub fn spawn(fd: OwnedFd, tunnel: QuicWgConnPacketSender) -> Result<Self, Self> {
         let fd = Arc::new(fd);
         let fd_watcher = match AsyncFd::new(fd.clone()) {
             Ok(fd_watcher) => fd_watcher,
@@ -25,7 +28,7 @@ impl Tun {
                     Ok(mut guard) => match unistd::read(&fd_watcher, &mut buf[..]) {
                         Ok(n) => {
                             if n > 0 {
-                                manager.packets_for_relay(std::iter::once(&buf[..n]));
+                                tunnel.send(std::iter::once(&buf[..n]))
                             }
                         }
                         Err(Errno::EAGAIN) => {

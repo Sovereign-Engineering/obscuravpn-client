@@ -22,7 +22,7 @@ use std::net::{Ipv4Addr, SocketAddr};
 use std::num::{NonZeroU32, Saturating};
 use std::ops::ControlFlow;
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Weak};
 use strum::Display;
 use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadHalf};
@@ -196,6 +196,21 @@ pub enum TransportKind {
     TcpTls,
 }
 
+#[derive(Clone)]
+pub struct QuicWgConnPacketSender(Weak<QuicWgConn>);
+
+impl QuicWgConnPacketSender {
+    pub fn new(conn: Option<&Arc<QuicWgConn>>) -> Self {
+        Self(conn.map(Arc::downgrade).unwrap_or_default())
+    }
+
+    pub fn send<'a>(&self, packets: impl Iterator<Item = &'a [u8]>) {
+        if let Some(conn) = self.0.upgrade() {
+            conn.send(packets)
+        }
+    }
+}
+
 impl QuicWgConn {
     pub async fn connect(
         relay_handshaking: QuicWgConnHandshaking,
@@ -326,7 +341,7 @@ impl QuicWgConn {
         }
     }
 
-    pub fn send<'a>(&self, packets: impl Iterator<Item = &'a [u8]>) {
+    fn send<'a>(&self, packets: impl Iterator<Item = &'a [u8]>) {
         let mut wg_state = self.wg_state.lock().unwrap();
         if let Some(packet) = wg_state.liveness_checker.sent_traffic() {
             self.send_single_packet(&mut wg_state, &packet);

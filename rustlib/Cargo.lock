@@ -2229,7 +2229,6 @@ dependencies = [
  "nix 0.30.1",
  "nix 0.31.1",
  "obscuravpn-api",
- "once_cell",
  "oslog",
  "quinn 0.11.8 (git+https://github.com/Sovereign-Engineering/quinn.git?rev=8f690a22535dcf2d76c369cadd3f0bec93667a4d)",
  "rand 0.8.5",

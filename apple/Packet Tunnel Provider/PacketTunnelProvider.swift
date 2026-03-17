@@ -13,6 +13,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     private let isConnected = WatchableValue(false)
     private let networkConfig: AsyncMutex<OsNetworkConfig?> = AsyncMutex(.none)
     private let nwPathMonitor: NWPathMonitor = .init()
+    private let rustFfi: RustFfi
 
     var selfObservation: NSKeyValueObservation?
 
@@ -48,21 +49,22 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         let userAgent = "obscura.net/" + userAgentPlatform + "/" + sourceVersion()
         ffiLog(.Info, "config dir \(configDir)")
         ffiLog(.Info, "user agent \(userAgent)")
-        ffiInitialize(configDir: configDir, userAgent: userAgent, logFlushGuard: logFlushGuard, receiveCallback, setNetworkConfigCallback)
+        let rustFfi = RustFfi(configDir: configDir, userAgent: userAgent, logFlushGuard: logFlushGuard, receiveCallback, setNetworkConfigCallback)
+        self.rustFfi = rustFfi
 
         self.nwPathMonitor.pathUpdateHandler = { path in
             if path.status != .satisfied {
                 ffiLog(.Info, "network path not satisfied")
-                ffiSetNetworkInterface(.none)
+                rustFfi.setNetworkInterface(.none)
                 return
             }
             switch path.availableInterfaces.first {
             case .some(let preferredInterface):
                 ffiLog(.Info, "preferred network path interface name: \(preferredInterface.name), index: \(preferredInterface.index)")
-                ffiSetNetworkInterface(.some((preferredInterface.index, preferredInterface.name)))
+                rustFfi.setNetworkInterface(.some((preferredInterface.index, preferredInterface.name)))
             case .none:
                 ffiLog(.Info, "no available network path interface")
-                ffiSetNetworkInterface(.none)
+                rustFfi.setNetworkInterface(.none)
             }
         }
         self.nwPathMonitor.start(queue: .main)
@@ -125,7 +127,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
                 throw "tunnel already active"
             }
 
-            let _: Empty = try await runManagerCmd(.setTunnelArgs(args: tunnelArgs, active: true))
+            let _: Empty = try await runManagerCmd(self.rustFfi, .setTunnelArgs(args: tunnelArgs, active: true))
 
             ffiLog(.Info, "set tunnel active flag \(self.providerId)")
             isActiveGuard.value = true
@@ -179,7 +181,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
             ffiLog(.Info, "stopping tunnel \(self.providerId)")
             do {
-                let _: Empty = try await runManagerCmd(.setTunnelArgs(args: .none, active: false))
+                let _: Empty = try await runManagerCmd(self.rustFfi, .setTunnelArgs(args: .none, active: false))
             } catch {
                 ffiLog(.Error, "setting empty tunnel args failed: \(error)")
             }
@@ -201,7 +203,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             return
         }
         Task {
-            let json_result = try! await ffiJsonManagerCmd(msg).json()
+            let json_result = try! await self.rustFfi.jsonManagerCmd(msg).json()
             completionHandler(json_result.data(using: .utf8))
         }
     }
@@ -213,7 +215,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
     override func wake() {
         ffiLog(.Info, "wake entry \(self.providerId)")
-        ffiWake()
+        self.rustFfi.wake()
         ffiLog(.Info, "wake exit \(self.providerId)")
     }
 
@@ -240,9 +242,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             }
 
             for packet in packets {
-                packet.withFfiBytes {
-                    libobscuravpn_client.send_packet($0)
-                }
+                self.rustFfi.sendPacket(packet)
             }
 
             self.packetFlow.readPackets(completionHandler: handle!)
@@ -252,13 +252,14 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
     func startStatusLoop() {
         let providerId = self.providerId
+        let rustFfi = self.rustFfi
         Task { [weak self] in
             let taskId = genTaskId()
             ffiLog(.Info, "status loop entry \(taskId)")
 
             var knownVersion: UUID? = .none
             while true {
-                let status = await getRustStatus(knownVersion: knownVersion)
+                let status = await getRustStatus(rustFfi, knownVersion: knownVersion)
                 knownVersion = status.version
                 guard let self = self else {
                     ffiLog(.Error, "status loop for deallocated PacketTunnelProvider \(providerId) exiting")
@@ -412,10 +413,10 @@ private func genTaskId() -> String {
     Data((1 ... 5).map { _ in UInt8.random(in: 65 ... 90) }).reduce("") { $0 + String(format: "%c", $1) }
 }
 
-func getRustStatus(knownVersion: UUID?) async -> NeStatus {
+func getRustStatus(_ rustFfi: RustFfi, knownVersion: UUID?) async -> NeStatus {
     while true {
         do {
-            return try await runManagerCmd(.getStatus(knownVersion: knownVersion))
+            return try await runManagerCmd(rustFfi, .getStatus(knownVersion: knownVersion))
         } catch {
             ffiLog(.Error, "error getting rust status \(error)")
         }
@@ -423,9 +424,9 @@ func getRustStatus(knownVersion: UUID?) async -> NeStatus {
     }
 }
 
-func runManagerCmd<O: Codable>(_ cmd: NeManagerCmd) async throws -> O {
+func runManagerCmd<O: Codable>(_ rustFfi: RustFfi, _ cmd: NeManagerCmd) async throws -> O {
     let jsonCmd = try cmd.json()
-    switch await ffiJsonManagerCmd(Data(jsonCmd.utf8)) {
+    switch await rustFfi.jsonManagerCmd(Data(jsonCmd.utf8)) {
     case .ok_json(let ok):
         return try O(json: ok)
     case .error(let err):

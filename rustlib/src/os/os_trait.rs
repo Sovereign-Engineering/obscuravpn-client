@@ -1,5 +1,6 @@
 use crate::net::NetworkInterface;
 use crate::network_config::OsNetworkConfig;
+use crate::quicwg::QuicWgConnPacketSender;
 use bytes::Bytes;
 
 pub trait Os: Sync + Send + 'static {
@@ -9,7 +10,7 @@ pub trait Os: Sync + Send + 'static {
     /// Set the network state. Returning `Ok()` implies that the OS will route traffic to the tunnel. May be called repeatedly before the tunnel is functional or after the tunnel started relaying traffic to reflect changing IP Address or DNS configuration. Regardless of errors that may occur, the implementation should set up as much routing/filtering as possible to avoid leaking traffic.
     /// Will not be called concurrently with itself or `unset_os_network_config`.
     // TODO: Consider moving this to its own trait with `&mut` receiver and remove sentence above.
-    fn set_os_network_config(&self, network_config: OsNetworkConfig) -> impl Future<Output = Result<(), ()>> + Send;
+    fn set_os_network_config(&self, network_config: OsNetworkConfig, tunnel: QuicWgConnPacketSender) -> impl Future<Output = Result<(), ()>> + Send;
 
     /// Reset the network state. Returning `Ok()` implies that the OS will stop routing traffic to the tunnel soon.
     fn unset_os_network_config(&self) -> impl Future<Output = Result<(), ()>> + Send;

@@ -1,6 +1,6 @@
 use anyhow::Context as _;
 use camino::Utf8Path;
-use jni::{JNIEnv, objects::JString, strings::JavaStr};
+use jni::{JNIEnv, objects::JString, strings::JavaStr, sys::jlong};
 use std::{borrow::Cow, ffi::CStr, fmt::Display};
 
 pub fn throw_runtime_exception(env: &mut JNIEnv, msg: impl Display) {
@@ -19,7 +19,7 @@ pub struct Utf8JavaStr<'a, 'b> {
 
 impl<'a, 'b> Utf8JavaStr<'a, 'b> {
     /// `name` is only used for error messages.
-    pub fn new(env: &mut JNIEnv<'b>, obj: &'a JString<'a>, name: &str) -> anyhow::Result<Self> {
+    pub fn new(env: &mut JNIEnv<'b>, obj: &'a JString<'a>, name: &str, message_id: &'static str) -> anyhow::Result<Self> {
         // We unfortunately can't safely use `get_string_unchecked`, since the
         // Java/Kotlin build will still succeed even if we're passed an argument
         // of the wrong type for our function signatures.
@@ -27,7 +27,10 @@ impl<'a, 'b> Utf8JavaStr<'a, 'b> {
         // Either method is really just `GetStringUTFChars`, which converts from
         // UTF-16 to Modified UTF-8 (this is the only unavoidable alloc):
         // https://developer.android.com/ndk/guides/jni-tips#utf-8-and-utf-16-strings
-        let java_str = env.get_string(obj).with_context(|| format!("{name:?} wasn't a `java.lang.String`"))?;
+        let java_str = env.get_string(obj).with_context(|| {
+            tracing::error!(message_id, ?name, "not a `java.lang.String`");
+            format!("{message_id}: {name:?} wasn't a `java.lang.String`")
+        })?;
         // Leak the result of `GetStringUTFChars`
         let ptr = java_str.into_raw();
         // SAFETY: We've taken ownership of the result of `GetStringUTFChars`,
@@ -39,14 +42,17 @@ impl<'a, 'b> Utf8JavaStr<'a, 'b> {
         // UTF-8 for anything in the Basic Multilingual Plane, so this will
         // almost never need to allocate:
         // https://en.wikipedia.org/wiki/CESU-8
-        let s = cesu8::from_java_cesu8(c_str.to_bytes()).with_context(|| format!("{name:?} couldn't be converted to UTF-8"))?;
+        let s = cesu8::from_java_cesu8(c_str.to_bytes()).with_context(|| {
+            tracing::error!(message_id, ?name, "Java string could not be converted to UTF-8");
+            format!("{message_id}: {name:?} could not be converted to UTF-8")
+        })?;
         // SAFETY: Only used to release refs
         let env = unsafe { env.unsafe_clone() };
         Ok(Self { s, obj, env })
     }
 
-    pub fn from_nullable(env: &mut JNIEnv<'b>, obj: &'a JString<'a>, name: &str) -> anyhow::Result<Option<Self>> {
-        (!obj.as_raw().is_null()).then(|| Self::new(env, obj, name)).transpose()
+    pub fn from_nullable(env: &mut JNIEnv<'b>, obj: &'a JString<'a>, name: &str, message_id: &'static str) -> anyhow::Result<Option<Self>> {
+        (!obj.as_raw().is_null()).then(|| Self::new(env, obj, name, message_id)).transpose()
     }
 
     pub fn as_str(&self) -> &str {
@@ -71,4 +77,19 @@ impl<'a, 'b> std::fmt::Display for Utf8JavaStr<'a, 'b> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.as_str().fmt(f)
     }
+}
+
+pub fn jlong_from_ptr<T>(ptr: *const T) -> jlong {
+    const _: () = assert!(jlong::BITS == usize::BITS, "jlong and pointer size mismatch");
+    ptr as jlong
+}
+
+pub unsafe fn box_from_jlong<T>(ptr: jlong) -> Box<T> {
+    const _: () = assert!(jlong::BITS == usize::BITS, "jlong and pointer size mismatch");
+    unsafe { Box::from_raw(ptr as *mut T) }
+}
+
+pub unsafe fn ref_from_jlong<'a, T>(ptr: jlong) -> &'a T {
+    const _: () = assert!(jlong::BITS == usize::BITS, "jlong and pointer size mismatch");
+    unsafe { &*(ptr as *const T) }
 }

@@ -5,19 +5,13 @@
 @_check-in-obscura-nix-shell:
 	./contrib/bin/check-in-obscura-nix-shell.bash
 
-# check formatting
-format-check: _check-in-obscura-nix-shell
-	cd android && gradle ktfmtCheck
-	swiftformat --lint .
-	cd rustlib && cargo --offline fmt --check
-	./contrib/bin/nixfmt-auto-files.bash --check
-
 # fix formatting
 format-fix: _check-in-obscura-nix-shell
 	cd android && gradle ktfmtFormat
 	swiftformat .
 	cd rustlib && cargo --offline fmt
 	./contrib/bin/nixfmt-auto-files.bash
+	taplo format
 
 # lint checks
 lint: _check-in-obscura-nix-shell

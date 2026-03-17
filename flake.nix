@@ -298,6 +298,17 @@
 
         checks = {
           inherit apks aab-release hash licenses rust rust-android web-android web-ios web-macos;
+          taplo = pkgs.runCommand "taplo-check" {
+            nativeBuildInputs = [ pkgs.taplo ];
+            src = lib.sources.cleanSourceWith {
+              src = self;
+              filter = path: type: type == "directory" || lib.hasSuffix ".toml" path;
+            };
+          } ''
+            cd $src
+            taplo format --check
+            touch $out
+          '';
         } // lib.optionalAttrs pkgs.stdenv.isLinux { inherit rust-static; } // {
           clippy =
             craneLib.cargoClippy (rustArgs // { cargoClippyExtraArgs = "--all-features --all-targets -- -Dwarnings"; });
@@ -343,6 +354,7 @@
               pkgs.nodejs_20
               pkgs.shellcheck
               pkgs.swiftformat
+              pkgs.taplo
               rustToolchain.passthru.availableComponents.rustfmt # Just rustfmt, nothing else
             ] ++ rustArgs.nativeBuildInputs ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.create-dmg ];
 
@@ -360,7 +372,7 @@
           };
 
           android = pkgs.mkShellNoCC (androidGradleEnv // androidRustEnv // {
-            buildInputs = [ pkgs.libiconv ] ++ rustArgs-android.buildInputs;
+            buildInputs = [ pkgs.libiconv pkgs.taplo ] ++ rustArgs-android.buildInputs;
             nativeBuildInputs = [
               android.cmake
               android.emulator

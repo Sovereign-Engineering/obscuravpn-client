@@ -193,7 +193,7 @@ nix develop --print-build-logs --command just lint
 #### Checking
 
 ```bash
-nix develop --print-build-logs --command just format-check
+nix flake check
 ```
 
 #### Auto-fixing

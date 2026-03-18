@@ -3,20 +3,18 @@ use crate::quicwg::QuicWgConnPacketSender;
 use crate::{net::NetworkInterface, network_config::OsNetworkConfig, os::os_trait::Os};
 use bytes::Bytes;
 use jni::JavaVM;
-use std::{os::fd::OwnedFd, sync::Mutex};
-use tokio::sync::{oneshot, watch};
-
-pub(super) type SetNetworkConfigSender = oneshot::Sender<Result<OwnedFd, ()>>;
+use std::sync::{Arc, Mutex};
+use tokio::sync::watch;
 
 pub struct AndroidOsImpl {
     tun: Mutex<Option<Tun>>,
     network_interface: watch::Sender<Option<NetworkInterface>>,
-    jvm: JavaVM,
-    pub class_cache: ClassCache,
+    jvm: Arc<JavaVM>,
+    class_cache: Arc<ClassCache>,
 }
 
 impl AndroidOsImpl {
-    pub fn new(jvm: JavaVM, class_cache: ClassCache) -> Self {
+    pub fn new(jvm: Arc<JavaVM>, class_cache: Arc<ClassCache>) -> Self {
         Self { tun: Mutex::new(None), network_interface: watch::channel(None).0, jvm, class_cache }
     }
 
@@ -35,20 +33,7 @@ impl Os for AndroidOsImpl {
             tracing::error!(message_id = "dK2xNm3q", ?error, "failed to serialize OsNetworkConfig: {error}");
         })?;
 
-        let (tx, rx): (SetNetworkConfigSender, _) = oneshot::channel();
-        super::ffi::call_set_network_config(&self.class_cache, &self.jvm, &json, tx)?;
-
-        let fd = match rx.await {
-            Ok(Ok(fd)) => Ok(fd),
-            Ok(Err(())) => {
-                tracing::error!(message_id = "Ivp77dfC", "setting Android network config failed");
-                Err(())
-            }
-            Err(_) => {
-                tracing::error!(message_id = "qR8bTc4u", "SetNetworkConfigSender dropped without send");
-                Err(())
-            }
-        }?;
+        let fd = super::ffi::call_set_network_config(self.class_cache.clone(), self.jvm.clone(), json).await?;
 
         let (tun, result) = match Tun::spawn(fd, tunnel) {
             Ok(tun) => {

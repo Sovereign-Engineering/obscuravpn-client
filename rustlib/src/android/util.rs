@@ -1,6 +1,6 @@
 use anyhow::Context as _;
 use camino::Utf8Path;
-use jni::{JNIEnv, objects::JString, strings::JavaStr, sys::jlong};
+use jni::{JNIEnv, objects::JString, strings::JavaStr};
 use std::{borrow::Cow, ffi::CStr, fmt::Display};
 
 pub fn throw_runtime_exception(env: &mut JNIEnv, msg: impl Display) {
@@ -77,19 +77,4 @@ impl<'a, 'b> std::fmt::Display for Utf8JavaStr<'a, 'b> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.as_str().fmt(f)
     }
-}
-
-pub fn jlong_from_ptr<T>(ptr: *const T) -> jlong {
-    const _: () = assert!(jlong::BITS == usize::BITS, "jlong and pointer size mismatch");
-    ptr as jlong
-}
-
-pub unsafe fn box_from_jlong<T>(ptr: jlong) -> Box<T> {
-    const _: () = assert!(jlong::BITS == usize::BITS, "jlong and pointer size mismatch");
-    unsafe { Box::from_raw(ptr as *mut T) }
-}
-
-pub unsafe fn ref_from_jlong<'a, T>(ptr: jlong) -> &'a T {
-    const _: () = assert!(jlong::BITS == usize::BITS, "jlong and pointer size mismatch");
-    unsafe { &*(ptr as *const T) }
 }

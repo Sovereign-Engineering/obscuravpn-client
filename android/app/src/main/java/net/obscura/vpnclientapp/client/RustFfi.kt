@@ -6,15 +6,11 @@ import kotlin.reflect.KClass
 import net.obscura.lib.util.Logger
 
 class RustFfi(context: Context, userAgent: String) {
-    private val rustFfiContext: Long
-
-    init {
-        rustFfiContext =
-            ObscuraLibrary.load(
-                context,
-                userAgent,
-            )
-    }
+    private val handle: ObscuraLibrary.FfiHandle =
+        ObscuraLibrary.load(
+            context,
+            userAgent,
+        )
 
     fun logger(tag: KClass<*>): Logger {
         return Logger(tag) { params ->
@@ -29,20 +25,14 @@ class RustFfi(context: Context, userAgent: String) {
     }
 
     fun jsonFfi(json: String, future: CompletableFuture<String>) {
-        ObscuraLibrary.jsonFfi(rustFfiContext, json, future)
+        ObscuraLibrary.jsonFfi(handle, json, future)
     }
 
     fun setNetworkInterface(name: String, index: Int) {
-        ObscuraLibrary.setNetworkInterface(rustFfiContext, name, index)
+        ObscuraLibrary.setNetworkInterface(handle, name, index)
     }
 
     fun unsetNetworkInterface() {
-        ObscuraLibrary.unsetNetworkInterface(rustFfiContext)
-    }
-
-    companion object {
-        fun setNetworkConfigDone(context: Long, fd: Int) {
-            ObscuraLibrary.setNetworkConfigDone(context, fd)
-        }
+        ObscuraLibrary.unsetNetworkInterface(handle)
     }
 }

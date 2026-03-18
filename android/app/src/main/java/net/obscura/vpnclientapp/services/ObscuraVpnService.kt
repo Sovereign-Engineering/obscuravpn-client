@@ -68,34 +68,27 @@ class ObscuraVpnService : VpnService() {
 
         @androidx.annotation.Keep
         @JvmStatic
-        fun ffiSetNetworkConfig(json: String, context: Long) {
+        fun ffiSetNetworkConfig(json: String): Int {
             val service = instance.get()
             if (service == null) {
                 Logger(ObscuraVpnService::class).error("ffiSetNetworkConfig called with no active service", "wK3xLm9p")
-                RustFfi.setNetworkConfigDone(context, -1)
-                return
+                return -1
             }
             val config: OsNetworkConfig =
                 try {
                     service.json.decodeFromString(json)
                 } catch (e: Exception) {
                     service.log.error("failed to parse os network config: $e", "yN4zPn0q", e)
-                    RustFfi.setNetworkConfigDone(context, -1)
-                    return
+                    return -1
                 }
             val pfd =
                 try {
                     service.applyNetworkConfig(config)
                 } catch (e: Exception) {
                     service.log.error("failed to apply os network config: $e", "U6hVQEJR", e)
-                    RustFfi.setNetworkConfigDone(context, -1)
-                    return
+                    return -1
                 }
-            if (pfd == null) {
-                RustFfi.setNetworkConfigDone(context, -1)
-            } else {
-                RustFfi.setNetworkConfigDone(context, pfd.detachFd())
-            }
+            return pfd?.detachFd() ?: -1
         }
     }
 

@@ -112,6 +112,7 @@ private class BundleTask {
 private class DebugBundleBuilder {
     let tmpFolder: URL
     let archiveFolder: URL
+    let bootTimestamp: Date?
     let bundleTimestamp = Date()
     let jsonEncoder = JSONEncoder()
     let logStartTimestamp: Date
@@ -140,17 +141,28 @@ private class DebugBundleBuilder {
             withIntermediateDirectories: false
         )
 
+        #if os(iOS)
+            self.bootTimestamp = nil
+        #else
+            do {
+                let tv = try Sysctl.value(ofType: timeval.self, forName: "kern.boottime")
+                self.bootTimestamp = Date(timeIntervalSince1970: Double(tv.tv_sec) + Double(tv.tv_usec) / 1_000_000.0)
+            } catch {
+                logger.error("Failed to read kern.boottime \(error, privacy: .public)")
+                self.bootTimestamp = nil
+            }
+        #endif
+
         self.jsonEncoder.outputFormatting = [
             .prettyPrinted,
             .sortedKeys,
         ]
 
-        let uptime = ProcessInfo.processInfo.systemUptime
-        self.logStartTimestamp = if uptime < 24 * 3600 {
-            // If booted for less than 24h get all logs since boot.
-            self.bundleTimestamp - uptime - 10 * 60
+        self.logStartTimestamp = if let boot = self.bootTimestamp, ProcessInfo.processInfo.systemUptime < 24 * 3600 {
+            // If awake for less than 24h get all logs since boot.
+            boot - 10
         } else {
-            // Otherwise just got back 12h.
+            // Otherwise just go back 12h.
             self.bundleTimestamp - 12 * 3600
         }
     }
@@ -247,6 +259,7 @@ private class DebugBundleBuilder {
         struct Info: Encodable {
             let AppVersion = sourceVersion()
             let BuildNumber = buildVersion()
+            let BootTimestamp: String?
             let BundleTimestamp: String
             let LogStartTimestamp: String
             let LowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
@@ -274,6 +287,11 @@ private class DebugBundleBuilder {
             let UptimeHours = ProcessInfo.processInfo.systemUptime / 3600
 
             init(_ this: DebugBundleBuilder) {
+                self.BootTimestamp = if let boot = this.bootTimestamp {
+                    utcDateFormat.string(from: boot)
+                } else {
+                    nil
+                }
                 self.BundleTimestamp = utcDateFormat.string(from: this.bundleTimestamp)
                 self.LogStartTimestamp = utcDateFormat.string(from: this.logStartTimestamp)
                 self.ThermalState = switch ProcessInfo.processInfo.thermalState {

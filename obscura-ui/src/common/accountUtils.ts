@@ -126,7 +126,7 @@ export function formatPartialAccountId(accountId: string): string {
   return accountId.replace(ACCOUNT_ID_CHUNK_RE, "$& - ");
 }
 
-export const OBSCURA_WEBPAGE = 'https://obscura.net';
+export const OBSCURA_WEBPAGE = 'https://obscura.com';
 export const CHECK_STATUS_WEBPAGE = `${OBSCURA_WEBPAGE}/check`;
 export const LEGAL_WEBPAGE = `${OBSCURA_WEBPAGE}/legal`;
 export const APP_ACCOUNT_TAB = 'obscuravpn:///account';

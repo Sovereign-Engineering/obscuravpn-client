@@ -75,7 +75,7 @@ class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
                 return
             }
 
-            // Check that it is a staging.obscura.net or obscura.net url
+            // Check that it is a staging.obscura.com or obscura.com url
             guard
                 let components = NSURLComponents(
                     url: url,

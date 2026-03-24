@@ -251,7 +251,7 @@ function buildSections(accountInfo: AccountInfo): Section[] {
     sections.push([
       <InfoRow title={t('subscribedOnWeb')} importance='high' />,
       <InfoRow title={t('Status')} importance='medium' data={t(`stripeStatus-${sub.status}`)} dataColor={getStripeStatusColor(sub.status)} />,
-      <InfoRow title={t('Source')} importance='medium' data='obscura.net' />,
+      <InfoRow title={t('Source')} importance='medium' data={new URL(ObscuraAccount.OBSCURA_WEBPAGE).hostname} />,
       <InfoRow title={t('Period Start')} importance='medium' data={new Date(sub.current_period_start * 1000).toLocaleDateString()} />,
       <InfoRow title={t('Period End')} importance='medium' data={new Date(sub.current_period_end * 1000).toLocaleDateString()} />,
       <InfoRow title={t('cancelAtEnd')} importance='medium' data={sub.cancel_at_period_end ? t('Yes') : t('No')} />,

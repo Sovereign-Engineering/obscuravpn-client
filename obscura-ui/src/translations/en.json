@@ -152,6 +152,7 @@
   "Error": "Error",
   "Error Connecting": "Error Connecting",
   "Error Logging In": "Error Logging In",
+  "error-timeoutDisconnect": "Timed out waiting for disconnect",
   "errorFetchingOsStatus": "Error Fetching OsStatus",
   "errorFetchingStatus": "Error Fetching Status",
   "exitInfoLoading": "Exit info loading",

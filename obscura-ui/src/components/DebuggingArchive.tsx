@@ -12,6 +12,9 @@ import { EMAIL } from '../common/links';
 import useMailto from '../common/useMailto';
 import { ConfirmationDialog } from './ConfirmationDialog';
 import classes from './DebuggingArchive.module.css';
+import { fmtErrorI18n } from '../translations/i18n';
+import { normalizeError } from '../common/utils';
+import { notifications } from '@mantine/notifications';
 
 const ICON_SIZE = 20;
 
@@ -25,7 +28,7 @@ export default function DebuggingArchive({ osStatus, variant = DebuggingArchiveV
   const { t } = useTranslation();
   const createDebuggingArchive = useDebuggingArchive();
   const [opened, { open, close }] = useDisclosure(false);
-  const { execute: disconnect } = commands.useCommand({ command: commands.disconnect, showNotification: true, rethrow: true });
+  const { execute: disconnect } = commands.useCommand({ command: commands.disconnect, showNotification: false, rethrow: true });
   const [disconnectInProgress, setDisableButtons] = useState(false);
   const [userFeedback, setUserFeedback] = useState('');
 
@@ -71,17 +74,32 @@ export default function DebuggingArchive({ osStatus, variant = DebuggingArchiveV
             osStatus.osVpnStatus !== NEVPNStatus.Disconnected &&
             <Button disabled={disconnectInProgress} miw={130} onClick={async () => {
               setDisableButtons(true);
-              await disconnect();
-              let knownOsStatusId = null;
-              while (true) {
-                const newOsStatus = commands.osStatus(knownOsStatusId);
-                if ((await newOsStatus).osVpnStatus === NEVPNStatus.Disconnected) {
-                  break;
+              try {
+                await disconnect();
+                let knownOsStatusId = osStatus.version;
+                const startTime = Date.now();
+                while (true) {
+                  if (Date.now() - startTime >= 60_000) {
+                    throw new Error(t('error-timeoutDisconnect'));
+                  }
+                  const newOsStatus = await commands.osStatus(knownOsStatusId);
+                  knownOsStatusId = newOsStatus.version;
+                  if (newOsStatus.osVpnStatus === NEVPNStatus.Disconnected) break;
                 }
+                onContinue();
+              } catch (err) {
+                console.error('failed to disconnect before creating debugging archive');
+                const error = normalizeError(err);
+                const message = error instanceof commands.CommandError
+                  ? fmtErrorI18n(t, error) : error.message;
+                notifications.show({
+                  color: 'red',
+                  title: t('Error'),
+                  message
+                });
+                setDisableButtons(false);
               }
-              onContinue();
-            }}>{
-                disconnectInProgress ? <Loader size={ICON_SIZE} /> : t('Disconnect')}</Button>
+            }}>{disconnectInProgress ? <Loader size={ICON_SIZE} /> : t('Disconnect')}</Button>
           }
         </Group>
         {variant === DebuggingArchiveVariant.LoginLabel && showStatus && (
@@ -109,7 +127,7 @@ export default function DebuggingArchive({ osStatus, variant = DebuggingArchiveV
         <>
           {modal}
           <Text className={`${classes.debugLabel} ${classes.debugLabelHandheld}`} p='xs' size='xs' c='dimmed'>
-              <Trans i18nKey='experiencingIssues' components={[<wbr />, <Anchor component='button' type='button' c='orange' onClick={open} style={{ cursor: 'pointer' }} />]} />
+            <Trans i18nKey='experiencingIssues' components={[<wbr />, <Anchor component='button' type='button' c='orange' onClick={open} style={{ cursor: 'pointer' }} />]} />
           </Text>
         </>
       );

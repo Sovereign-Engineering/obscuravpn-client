@@ -222,6 +222,8 @@
                   android/detekt.yml
                   android/gradle.properties
                   android/gradle/libs.versions.toml
+                  android/lib/billing/build.gradle.kts
+                  android/lib/billing/src
                   android/lib/util/build.gradle.kts
                   android/lib/util/src
                   android/settings.gradle.kts
@@ -232,15 +234,17 @@
 
               mitmCache = pkgs.gradle.fetchDeps {
                 pkg = finalAttrs.finalPackage;
-                data = android/deps.json;
+                data = android/gradle/mitm-cache/deps.json;
               };
 
+              # Accounts for every flavor + check-only dependencies
+              gradleUpdateTask = "check";
               # This is more robust than `nixDownloadDeps`, and will become the default once a Gradle bug is fixed that's only known to impact one project.
               # https://github.com/NixOS/nixpkgs/issues/365086
               # https://github.com/NixOS/nixpkgs/pull/383115
               gradleUpdateScript = ''
                 runHook preBuild
-                gradle --write-verification-metadata sha256
+                gradle ${finalAttrs.gradleUpdateTask} --write-verification-metadata sha256
               '';
 
               ANDROID_USER_HOME = "/tmp/";
@@ -262,23 +266,30 @@
               '';
 
               doCheck = true;
+              # Checking a specific flavor is impossible:
+              # https://issuetracker.google.com/issues/63810920
               gradleCheckTask = "check";
             });
 
-        apks = gradleDerivation {
-          name = "apks";
-          task = "assemble";
-          appOutputs = [ "apk/debug/app-debug.apk" "apk/release/app-release-unsigned.apk" ];
+        apks-foss = gradleDerivation {
+          name = "apks-foss";
+          task = "assembleFoss";
+          appOutputs = [ "apk/foss/debug/app-foss-debug.apk" "apk/foss/release/app-foss-release-unsigned.apk" ];
         };
-        aab-debug = gradleDerivation {
-          name = "aab-debug";
-          task = "bundleDebug";
-          appOutputs = [ "bundle/debug/app-debug.aab" ];
+        apks-play = gradleDerivation {
+          name = "apks-play";
+          task = "assemblePlay";
+          appOutputs = [ "apk/play/debug/app-play-debug.apk" "apk/play/release/app-play-release-unsigned.apk" ];
         };
-        aab-release = gradleDerivation {
-          name = "aab-release";
-          task = "bundleRelease";
-          appOutputs = [ "bundle/release/app-release.aab" ];
+        aab-play-debug = gradleDerivation {
+          name = "aab-play-debug";
+          task = "bundlePlayDebug";
+          appOutputs = [ "bundle/playDebug/app-play-debug.aab" ];
+        };
+        aab-play-release = gradleDerivation {
+          name = "aab-play-release";
+          task = "bundlePlayRelease";
+          appOutputs = [ "bundle/playRelease/app-play-release.aab" ];
         };
 
         nixFiles = lib.sources.sourceFilesBySuffices evaluatedSource [ ".nix" ];
@@ -292,12 +303,12 @@
         apps = {
           gradle-deps-update = {
             type = "app";
-            program = toString apks.mitmCache.updateScript;
+            program = toString apks-foss.mitmCache.updateScript;
           };
         };
 
         checks = {
-          inherit apks aab-release hash licenses rust rust-android web-android web-ios web-macos;
+          inherit apks-foss aab-play-release hash licenses rust rust-android web-android web-ios web-macos;
           taplo = pkgs.runCommand "taplo-check" {
             nativeBuildInputs = [ pkgs.taplo ];
             src = lib.sources.cleanSourceWith {
@@ -398,8 +409,8 @@
         };
 
         packages = {
-          inherit apks aab-debug aab-release hash licenses licenses-node licenses-rust rust web-android web-ios
-            web-macos;
+          inherit apks-foss apks-play aab-play-debug aab-play-release hash licenses licenses-node licenses-rust rust
+            web-android web-ios web-macos;
         } // lib.optionalAttrs pkgs.stdenv.isLinux { inherit rust-static; };
       });
 }

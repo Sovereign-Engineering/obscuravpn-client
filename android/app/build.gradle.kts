@@ -2,8 +2,10 @@ import com.android.build.api.dsl.ApplicationExtension
 
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.hilt.android)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlinx.serialization)
+    alias(libs.plugins.ksp)
 }
 
 extensions.configure<ApplicationExtension> {
@@ -44,6 +46,17 @@ extensions.configure<ApplicationExtension> {
             )
         }
     }
+
+    flavorDimensions += listOf("billing")
+
+    productFlavors {
+        create("foss") {
+            dimension = "billing"
+            isDefault = true
+        }
+
+        create("play") { dimension = "billing" }
+    }
 }
 
 kotlin { jvmToolchain(21) }
@@ -51,10 +64,16 @@ kotlin { jvmToolchain(21) }
 dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle)
     implementation(libs.androidx.webkit)
+    implementation(libs.hilt.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.material)
     implementation(project(":lib:util"))
+
+    "playImplementation"(project(":lib:billing"))
+
+    ksp(libs.hilt.android.compiler)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

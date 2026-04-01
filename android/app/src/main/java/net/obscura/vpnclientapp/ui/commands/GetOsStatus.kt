@@ -6,9 +6,7 @@ import kotlinx.serialization.Serializable
 import net.obscura.vpnclientapp.ui.OsStatus
 
 @Serializable
-data class GetOsStatus(
-    val knownVersion: String? = null,
-) {
+data class GetOsStatus(val knownVersion: String? = null) {
     @Serializable
     data class Result(
         val version: String,
@@ -19,8 +17,10 @@ data class GetOsStatus(
         val debugBundleStatus: DebugBundleStatus,
         val canSendMail: Boolean,
         val loginItemStatus: LoginItemStatus?,
+        val playBilling: Boolean,
     ) {
-        // TODO https://linear.app/soveng/issue/OBS-2640/change-nevpnstatus-to-be-platform-agnostic Enum
+        // TODO https://linear.app/soveng/issue/OBS-2640/change-nevpnstatus-to-be-platform-agnostic
+        // Enum
         // should be platform agnostic.
         @Serializable
         enum class OsVpnStatus {
@@ -29,11 +29,7 @@ data class GetOsStatus(
             @SerialName("connected") Connected,
         }
 
-        @Serializable
-        data class LoginItemStatus(
-            val registered: Boolean,
-            val error: String?,
-        )
+        @Serializable data class LoginItemStatus(val registered: Boolean, val error: String?)
 
         @Serializable
         data class DebugBundleStatus(

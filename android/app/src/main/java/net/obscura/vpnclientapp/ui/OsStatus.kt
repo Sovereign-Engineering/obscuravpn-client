@@ -12,9 +12,7 @@ import net.obscura.vpnclientapp.helpers.requireUIProcess
 import net.obscura.vpnclientapp.preferences.Preferences
 import net.obscura.vpnclientapp.ui.commands.GetOsStatus
 
-class OsStatus(
-    context: Context,
-) {
+class OsStatus(context: Context) {
     init {
         requireUIProcess()
     }
@@ -89,6 +87,9 @@ class OsStatus(
                     debugBundleStatus,
                     canSendMail = true,
                     loginItemStatus = null,
+                    playBilling =
+                        @Suppress("KotlinConstantConditions", "SimplifyBooleanWithConstants")
+                        (BuildConfig.FLAVOR == "play"),
                 )
 
             current = Pair(version, result)

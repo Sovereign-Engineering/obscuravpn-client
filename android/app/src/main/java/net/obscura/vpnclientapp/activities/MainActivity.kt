@@ -18,7 +18,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 import net.obscura.lib.util.Logger
+import net.obscura.vpnclientapp.BillingFacade
 import net.obscura.vpnclientapp.R
 import net.obscura.vpnclientapp.helpers.requireUIProcess
 import net.obscura.vpnclientapp.preferences.Preferences
@@ -30,17 +33,19 @@ import net.obscura.vpnclientapp.ui.commands.SetColorScheme
 
 private val log = Logger(MainActivity::class)
 
+@AndroidEntryPoint
 class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceChangeListener {
-    private class VpnServiceConnection(
-        val activity: MainActivity,
-    ) : ServiceConnection {
-        override fun onServiceConnected(
-            name: ComponentName?,
-            service: IBinder?,
-        ) {
+    @Inject lateinit var billingFacade: BillingFacade
+
+    private class VpnServiceConnection(val activity: MainActivity) : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             log.debug("onServiceConnected $name $service")
 
-            activity.ui.onCreate(IObscuraVpnService.Stub.asInterface(service), activity.osStatus)
+            activity.ui.onCreate(
+                IObscuraVpnService.Stub.asInterface(service),
+                activity,
+                activity.osStatus,
+            )
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -136,23 +141,23 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
         log.debug("starting VPN service")
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.POST_NOTIFICATIONS,
-                ) != PackageManager.PERMISSION_GRANTED
+                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+                    PackageManager.PERMISSION_GRANTED
         ) {
             this.notificationPermissionRequestLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
         this.startForegroundService(Intent(this, ObscuraVpnService::class.java))
     }
 
-    // TODO: https://linear.app/soveng/issue/OBS-3192/onpostresume-is-the-wrong-place-to-start-the-vpnservice
+    // TODO:
+    // https://linear.app/soveng/issue/OBS-3192/onpostresume-is-the-wrong-place-to-start-the-vpnservice
     override fun onPostResume() {
         super.onPostResume()
 
         log.debug("onPostResume")
 
-        // TODO: https://linear.app/soveng/issue/OBS-3193/vpnserviceprepare-isnt-handled-exhaustively
+        // TODO:
+        // https://linear.app/soveng/issue/OBS-3193/vpnserviceprepare-isnt-handled-exhaustively
         val vpnIntent = VpnService.prepare(this)
         if (vpnIntent == null) {
             // We already have VPN permission
@@ -191,10 +196,7 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
         this.ui.invalidate()
     }
 
-    override fun onSharedPreferenceChanged(
-        sharedPreferences: SharedPreferences?,
-        key: String?,
-    ) {
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         if (key == "color-scheme") {
             applyColorScheme()
         }
@@ -206,7 +208,7 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
                 SetColorScheme.ColorScheme.Auto -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
                 SetColorScheme.ColorScheme.Dark -> AppCompatDelegate.MODE_NIGHT_YES
                 SetColorScheme.ColorScheme.Light -> AppCompatDelegate.MODE_NIGHT_NO
-            },
+            }
         )
     }
 }

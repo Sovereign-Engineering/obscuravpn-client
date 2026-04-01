@@ -14,17 +14,13 @@ import java.lang.ref.WeakReference
 import kotlinx.serialization.json.Json
 import net.obscura.lib.util.Logger
 import net.obscura.vpnclientapp.R
+import net.obscura.vpnclientapp.activities.MainActivity
 import net.obscura.vpnclientapp.client.commands.GetStatus
 import net.obscura.vpnclientapp.services.IObscuraVpnService
 
 private val log = Logger(ObscuraUI::class)
 
-class ObscuraUI
-@JvmOverloads
-constructor(
-    context: Context,
-    attrs: AttributeSet? = null,
-) : FrameLayout(context, attrs) {
+class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null) : FrameLayout(context, attrs) {
     private class StatusObserver(
         val binder: WeakReference<IObscuraVpnService>,
         val onStatusChanged: (GetStatus.Response) -> Unit,
@@ -119,12 +115,7 @@ constructor(
                 }
             // Only use non-zero insets when there's overlap
             // https://developer.android.com/develop/ui/views/layout/webapps/understand-window-insets#bounds-overlap
-            view.setPadding(
-                insets.left,
-                insets.top,
-                insets.right,
-                bottom,
-            )
+            view.setPadding(insets.left, insets.top, insets.right, bottom)
             // Child `WebView` should ignore any insets we applied here
             // https://developer.android.com/develop/ui/views/layout/webapps/understand-window-insets#inset-handling
             WindowInsetsCompat.Builder(windowInsets).setInsets(insetsMask.or(imeMask), Insets.NONE).build()
@@ -135,30 +126,19 @@ constructor(
             val showBottomNav = this.loggedIn && !windowInsets.isVisible(WindowInsetsCompat.Type.ime())
             view.visibility = if (showBottomNav) VISIBLE else GONE
             val systemBars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-            view.setPadding(
-                systemBars.left,
-                0,
-                systemBars.right,
-                systemBars.bottom,
-            )
+            view.setPadding(systemBars.left, 0, systemBars.right, systemBars.bottom)
             WindowInsetsCompat.CONSUMED
         }
     }
 
-    fun onCreate(
-        binder: IObscuraVpnService,
-        osStatus: OsStatus,
-    ) {
+    fun onCreate(binder: IObscuraVpnService, mainActivity: MainActivity, osStatus: OsStatus) {
         onDestroy()
 
         webView =
-            ObscuraWebView(context, binder, osStatus).apply {
+            ObscuraWebView(context, binder, mainActivity, osStatus).apply {
                 webViewContainer.addView(
                     this,
-                    LayoutParams(
-                        LayoutParams.MATCH_PARENT,
-                        LayoutParams.MATCH_PARENT,
-                    ),
+                    LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT),
                 )
 
                 onPageLoadedCallback = {

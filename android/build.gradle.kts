@@ -8,7 +8,9 @@ plugins {
     // https://www.reddit.com/r/androiddev/comments/1errttm/comment/li1vm93/
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.library) apply false
+    alias(libs.plugins.hilt.android) apply false
     alias(libs.plugins.kotlin.android) apply false
+    alias(libs.plugins.ksp) apply false
 
     // These are only here for the `subprojects` block to work
     alias(libs.plugins.detekt) apply false
@@ -26,7 +28,8 @@ subprojects {
     }
 
     extensions.configure<KtfmtExtension> {
-        kotlinLangStyle()
+        blockIndent.set(4)
+        continuationIndent.set(4)
         maxWidth.set(120)
         removeUnusedImports.set(true)
         trailingCommaManagementStrategy.set(TrailingCommaManagementStrategy.ONLY_ADD)

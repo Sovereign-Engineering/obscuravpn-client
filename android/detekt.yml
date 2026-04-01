@@ -364,6 +364,8 @@ exceptions:
       - "Throwable"
   ThrowingNewInstanceOfSameException:
     active: true
+  TooGenericExceptionCaught:
+    active: false
   TooGenericExceptionThrown:
     active: false
     exceptionNames:

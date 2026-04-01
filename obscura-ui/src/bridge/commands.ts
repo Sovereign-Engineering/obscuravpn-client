@@ -280,6 +280,10 @@ export async function resetOfferCodeRedemptionSuccess(): Promise<void> {
   }
 }
 
+export async function playPurchaseSubscription(): Promise<boolean> {
+  return await invoke('purchaseSubscription', {}) as boolean;
+}
+
 export interface UseCommandOptions<CommandArgs extends any[]> {
   command: (...args: CommandArgs) => Promise<void>;
   /** Whether to show a notification on error. Default: false */

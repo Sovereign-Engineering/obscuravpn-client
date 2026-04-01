@@ -5,6 +5,7 @@ import java.util.concurrent.CompletableFuture
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import net.obscura.vpnclientapp.activities.MainActivity
 import net.obscura.vpnclientapp.services.IObscuraVpnService
 import net.obscura.vpnclientapp.ui.CommandBridge
 import net.obscura.vpnclientapp.ui.OsStatus
@@ -19,6 +20,7 @@ data class InvokeCommand(
     val shareDebugArchive: ShareArchive? = null,
     val emailDebugArchive: EmailArchive? = null,
     val revealItemInDir: RevealItemInDir? = null,
+    val purchaseSubscription: PurchaseSubscription? = null,
     val setColorScheme: SetColorScheme? = null,
     val startTunnel: StartTunnel? = null,
     val stopTunnel: JsonObject? = null,
@@ -26,6 +28,7 @@ data class InvokeCommand(
     fun run(
         context: Context,
         binder: IObscuraVpnService,
+        mainActivity: MainActivity,
         osStatus: OsStatus,
         json: Json,
     ): CompletableFuture<String> =
@@ -33,6 +36,8 @@ data class InvokeCommand(
             getOsStatus != null -> getOsStatus.run(osStatus).thenApply { json.encodeToString(it) }
 
             jsonFfiCmd != null -> CommandBridge.Receiver.register { id -> binder.jsonFfi(id, jsonFfiCmd.cmd) }
+
+            purchaseSubscription != null -> purchaseSubscription.run(mainActivity)
 
             setColorScheme != null -> completedJsonNullFuture().also { setColorScheme.run(context) }
 

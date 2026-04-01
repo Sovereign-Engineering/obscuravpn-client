@@ -10,6 +10,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.core.net.toUri
 import androidx.webkit.WebViewAssetLoader
+import net.obscura.vpnclientapp.activities.MainActivity
 import net.obscura.vpnclientapp.services.IObscuraVpnService
 
 @SuppressLint("SetJavaScriptEnabled", "ViewConstructor")
@@ -18,6 +19,7 @@ class ObscuraWebView
 constructor(
     context: Context,
     binder: IObscuraVpnService,
+    mainActivity: MainActivity,
     osStatus: OsStatus,
     attrs: AttributeSet? = null,
 ) : WebView(context, attrs) {
@@ -28,7 +30,7 @@ constructor(
     }
 
     val commandBridge =
-        CommandBridge(context, binder, osStatus) { data ->
+        CommandBridge(context, binder, mainActivity, osStatus) { data ->
             post { postWebMessage(WebMessage("android/$data"), ORIGIN) }
         }
 
@@ -61,7 +63,7 @@ constructor(
                                         } else {
                                             request.url
                                         },
-                                    ),
+                                    )
                                 )
                             }
                             return shouldOverride
@@ -72,10 +74,7 @@ constructor(
                             request: WebResourceRequest,
                         ) = assetLoader.shouldInterceptRequest(request.url)
 
-                        override fun onPageFinished(
-                            view: WebView?,
-                            url: String,
-                        ) {
+                        override fun onPageFinished(view: WebView?, url: String) {
                             super.onPageFinished(view, url)
 
                             onPageLoadedCallback?.invoke(url)

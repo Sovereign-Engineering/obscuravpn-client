@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="KtfmtSettings">
-    <option name="customTrailingCommaManagementStrategy" value="OnlyAdd" />
+    <option name="customBlockIndent" value="4" />
     <option name="customMaxLineLength" value="120" />
-    <option name="customRemoveUnusedImports" value="true" />
+    <option name="customTrailingCommaManagementStrategy" value="Only add" />
     <option name="enableKtfmt" value="Enabled" />
-    <option name="uiFormatterStyle" value="Kotlinlang" />
+    <option name="uiFormatterStyle" value="Custom" />
   </component>
 </project>

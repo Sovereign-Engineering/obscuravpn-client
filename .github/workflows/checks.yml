@@ -33,7 +33,7 @@ jobs:
       - name: Nix Build
         shell: bash
         run: |
-          nix build '.#apks' \
+          nix build '.#apks-foss' \
             --no-update-lock-file \
             --print-build-logs \
             --show-trace
@@ -41,7 +41,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: obscura-debug.apk
-          path: result/app-debug.apk
+          path: result/app-foss-debug.apk
           retention-days: 30
 
   flake_check_macos:

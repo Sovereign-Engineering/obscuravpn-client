@@ -98,12 +98,12 @@ The network extension manages the virtual device and maintains the tunnel using 
 Nix builds provide an easy way to get a fully built APK. They are hermetic and reliable. However, they provide only coarse grained caching so if you are iterating during development you may prefer to use [Incremental Builds](#incremental-builds).
 
 ```sh
-nix build '.#apks'
-apksigner sign --ks your-keystore.jks --ks-pass pass:hunter2 --out=obscura-signed.apk result/app-release-unsigned.apk # Sign.
+nix build '.#apks-foss'
+apksigner sign --ks your-keystore.jks --ks-pass pass:hunter2 --out=obscura-signed.apk result/app-foss-release-unsigned.apk # Sign.
 adb install obscura-signed.apk # Push to your device.
 ```
 
-Instead of `app-release-unsigned` you can also use `app-debug` for the debug build. Note that just the Android portion is a debug build, the Rust core and UI are still release builds.
+Instead of `app-foss-release-unsigned` you can also use `app-foss-debug` for the debug build. Note that just the Android portion is a debug build, the Rust core and UI are still release builds.
 
 #### Incremental Builds
 

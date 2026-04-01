@@ -6,9 +6,12 @@ import * as commands from '../bridge/commands';
 import * as ObscuraAccount from '../common/accountUtils';
 import { AccountInfo, activeAppleSubscription, AppleSubscriptionStatus, hasAppleSubscription, SubscriptionStatus } from '../common/api';
 import { AppContext, SubscriptionProductModel } from '../common/appContext';
-import { TranslationKey } from '../translations/i18n';
+import { fmtErrorI18n, TranslationKey } from '../translations/i18n';
 import { ButtonLink } from './ButtonLink';
 import { ConfirmationDialog } from './ConfirmationDialog';
+import { normalizeError } from '../common/utils';
+import { CommandError } from '../bridge/commands';
+import { TFunction } from 'i18next';
 
 interface PaymentManagementSheetProps {
   opened: boolean;
@@ -39,6 +42,8 @@ export function PaymentManagementSheet({ opened, onClose }: PaymentManagementShe
     return <ProcessingPaymentSheet opened={true} />;
   }
 
+  const externalPaymentsAllowed = osStatus.storeKit?.externalPaymentsAllowed || osStatus.playBilling === false
+
   return (
     <ConfirmationDialog
       opened={opened}
@@ -52,7 +57,7 @@ export function PaymentManagementSheet({ opened, onClose }: PaymentManagementShe
           <>
             <AccountInfoOverview accountInfo={appStatus.account.account_info} />
             {!activeAppleSubscription(appStatus.account.account_info)
-              && (osStatus.storeKit?.externalPaymentsAllowed || appStatus.account.account_info.active)
+              && (externalPaymentsAllowed || appStatus.account.account_info.active)
               && <ButtonLink href={ObscuraAccount.payUrl(appStatus.accountId)}>{t(appStatus.account.account_info.active ? 'manageOnWeb' : 'payOnWeb')}</ButtonLink>}
           </>
         ) : (accountLoading ? (
@@ -98,7 +103,7 @@ interface AccountInfoOverviewProps {
 }
 
 function AccountInfoOverview({ accountInfo }: AccountInfoOverviewProps) {
-  const sections = buildSections(accountInfo);
+  const sections = useBuildSections(accountInfo);
 
   return (
     <Stack gap='md'>
@@ -166,14 +171,11 @@ function AppleSubscriptionProductCard({ product, subscribed }: SubscriptionProdu
         console.log('Purchase flow completed, show payment processing UI.');
         setPaymentProcessing(true);
         await pollAccount();
+      } else {
+        return; // user dismissed payment sheet
       }
-      // else: user dismissed payment sheet
-    } catch {
-      notifications.show({
-        color: 'red',
-        title: t('purchaseFailed'),
-        message: t('purchaseFailedMessage')
-      });
+    } catch (e) {
+      showErrorNotification(t, e);
     }
   }
 
@@ -225,7 +227,46 @@ function AppleSubscriptionProductCard({ product, subscribed }: SubscriptionProdu
   );
 }
 
-function buildSections(accountInfo: AccountInfo): Section[] {
+function AndroidSubscriptionProductCard() {
+  const { t } = useTranslation();
+  const { pollAccount, setPaymentProcessing } = useContext(AppContext);
+
+  const handlePurchase = async () => {
+    try {
+      const purchaseSuccessful = await commands.playPurchaseSubscription();
+      if (purchaseSuccessful) {
+        console.log('Purchase flow completed, show payment processing UI.');
+        setPaymentProcessing(true);
+        await pollAccount();
+      } else {
+        return; // user dismissed payment sheet
+      }
+    } catch (e) {
+      showErrorNotification(t, e);
+    }
+  }
+
+  return (
+    <Stack ta='center' p='0'>
+      <Button onClick={handlePurchase}>
+        {t('Subscribe In-app')}
+      </Button>
+    </Stack>
+  );
+}
+
+function showErrorNotification(t: TFunction, e: unknown) {
+  const error = normalizeError(e);
+  const message = error instanceof CommandError
+    ? fmtErrorI18n(t, error) : error.message;
+  notifications.show({
+    color: 'red',
+    title: t('purchaseFailed'),
+    message,
+  });
+}
+
+function useBuildSections(accountInfo: AccountInfo): Section[] {
   const { t } = useTranslation();
   const { osStatus } = useContext(AppContext);
   const appleSubscriptionProduct = osStatus.storeKit?.subscriptionProduct;
@@ -278,6 +319,12 @@ function buildSections(accountInfo: AccountInfo): Section[] {
     // Show subscription product if account is inactive
     sections.push([
       <AppleSubscriptionProductCard product={appleSubscriptionProduct} subscribed={false} />,
+    ]);
+  }
+
+  if (osStatus.playBilling) {
+    sections.push([
+      <AndroidSubscriptionProductCard />,
     ]);
   }
 

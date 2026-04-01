@@ -31,5 +31,6 @@ dependencyResolutionManagement {
 rootProject.name = "ObscuraVPN"
 include(
     ":app",
+    ":lib:billing",
     ":lib:util",
 )

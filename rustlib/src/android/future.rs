@@ -27,20 +27,14 @@ pub fn signal_json_ffi_future(
                 .context("failed to call `complete`")?;
         }
         Err(error) => {
-            let j_error = env
-                .new_string(error.as_static_str())
-                .context("failed to convert `error` to `JString`")
-                .map(JObject::from)
-                .unwrap_or_else(|error| {
-                    tracing::error!(message_id = "2MpsFFGe", ?error, "failed to propagate error message");
-                    JObject::null()
-                });
+            let j_error = env.new_string(error.as_static_str()).context("failed to convert `error` to `JString`")?;
             let j_exception = env
-                .new_object(class_cache.json_ffi_exception(), "(Ljava/lang/String;)V", &[JValue::Object(&j_error)])
-                .unwrap_or_else(|error| {
-                    tracing::error!(message_id = "T3tXX3yk", ?error, "failed to create `JsonFfiException`");
-                    JObject::null()
-                });
+                .new_object(
+                    class_cache.error_code_exception(),
+                    "(Ljava/lang/String;)V",
+                    &[JValue::Object(&j_error.into())],
+                )
+                .context("failed to create `ErrorCodeException`")?;
             env.call_method(
                 j_future,
                 "completeExceptionally",

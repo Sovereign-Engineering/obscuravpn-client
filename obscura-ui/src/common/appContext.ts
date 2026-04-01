@@ -57,6 +57,8 @@ export interface OsStatus {
       externalPaymentsAllowed: boolean,
     },
     offerCodeRedemptionSuccess?: boolean,
+    // Android-specific
+    playBilling?: boolean,
 }
 
 export interface SubscriptionProductModel {

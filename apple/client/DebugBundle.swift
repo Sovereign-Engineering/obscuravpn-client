@@ -712,6 +712,7 @@ private class DebugBundleBuilder {
             self.bundleCmd("scutil-rank", ["/usr/sbin/scutil", "--rank", ""])
             self.bundleCmd("skywalk-status", ["/usr/sbin/skywalkctl", "status"])
             self.bundleCmd("sysctl", ["/usr/sbin/sysctl", "-a"])
+            self.bundleCmd("system-profiles", ["/usr/sbin/system_profiler", "-json", "-detailLevel", "full", "SPAirPortDataType", "SPConfigurationProfileDataType", "SPDiagnosticsDataType", "SPEthernetDataType", "SPFibreChannelDataType", "SPFirewallDataType", "SPHardwareDataType", "SPInternationalDataType", "SPManagedClientDataType", "SPMemoryDataType", "SPNetworkDataType", "SPNetworkLocationDataType", "SPNVMeDataType", "SPPowerDataType", "SPSoftwareDataType", "SPStorageDataType", "SPUniversalAccessDataType"])
             self.bundleCmd("vpn-connections", ["/usr/sbin/scutil", "--nc", "list"])
 
             self.bundlePlist(path: URL(filePath: "/Library/Preferences/SystemConfiguration/NetworkInterfaces.plist"))

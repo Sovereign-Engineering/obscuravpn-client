@@ -238,6 +238,11 @@ class AppState: ObservableObject {
             // Remove once onDemand is unconditional ( https://linear.app/soveng/issue/OBS-2428 )
             let tunnelEnabled: Bool = self.manager.connection.status != .disconnected
 
+            if !self.osStatus.get().internetAvailable {
+                Self.logger.log("Failed to connect due to no network connectivity")
+                throw errorConnectDeviceOffline
+            }
+
             // Iff tunnel is already enabled update tunnel args without startVPNTunnel. Doing this unconditionally without returning would be correct as well, but NE round-trips can be a bit slow.
             if tunnelEnabled || onDemandEnabled {
                 do {

@@ -83,15 +83,19 @@ impl DnsContentBlock {
     }
 }
 
-// Keep synchronized with ../apple/system-network-extension/RustFfi.swift
+// Keep synchronized with:
+// - android/app/src/main/java/net/obscura/vpnclientapp/services/OsNetworkConfig.kt
+// - apple/shared/NetworkExtensionIpc.swift
+//
 // Avoid adding information with high-frequency of change to this type, to prevent triggering frequent changes OS network configuration, which can't be deduplicated by checking for changes.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OsNetworkConfig {
-    pub dns: Option<Vec<IpAddr>>, // None: use system DNS
+    pub dns: Vec<IpAddr>,
     pub ipv4: Ipv4Addr,
     pub ipv6: Ipv6Network,
     pub mtu: u16,
+    pub use_system_dns: bool,
 }
 
 impl OsNetworkConfig {
@@ -101,17 +105,20 @@ impl OsNetworkConfig {
         dns_content_block: DnsContentBlock,
         use_system_dns: bool,
     ) -> Self {
-        let mullvad_block_dns = dns_content_block.mullvad_dns_ip();
-        let dns = match (use_system_dns, exit_provider_name, mullvad_block_dns) {
-            (true, _, _) => None,
-            (false, MULLVAD_EXIT_PROVIDER_NAME, Some(dns)) => Some(vec![IpAddr::from(dns)]),
-            (false, _, _) => Some(tunnel_network_config.dns.clone()),
+        let dns = if exit_provider_name == MULLVAD_EXIT_PROVIDER_NAME
+            && let Some(dns) = dns_content_block.mullvad_dns_ip()
+        {
+            vec![IpAddr::from(dns)]
+        } else {
+            tunnel_network_config.dns.clone()
         };
+
         Self {
             dns,
             ipv4: tunnel_network_config.ipv4,
             ipv6: tunnel_network_config.ipv6,
             mtu: tunnel_network_config.mtu,
+            use_system_dns,
         }
     }
 

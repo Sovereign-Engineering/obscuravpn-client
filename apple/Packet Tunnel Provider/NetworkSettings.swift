@@ -1,9 +1,6 @@
 import Foundation
 import NetworkExtension
 
-// Placeholder DNS IP for intentionally broken DNS configurations
-let dummyDns = "10.64.0.99"
-
 extension NEPacketTunnelNetworkSettings {
     static func build(_ osNetworkConfig: OsNetworkConfig) -> NEPacketTunnelNetworkSettings {
         let networkSettings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
@@ -34,15 +31,15 @@ extension NEPacketTunnelNetworkSettings {
         ipv6Settings.includedRoutes = [NEIPv6Route.default()]
         networkSettings.ipv6Settings = ipv6Settings
 
-        let dns_settings: NEDNSSettings
+        let dns_settings = NEDNSSettings(servers: osNetworkConfig.dns)
 
-        switch osNetworkConfig.dns {
-        case .none:
-            dns_settings = NEDNSSettings(servers: [dummyDns])
+        if osNetworkConfig.useSystemDns {
             // Contrary to apple documentation this is not ignored if the VPN tunnel is the default route and allows us to fall back on configured DNS profiles. (https://developer.apple.com/documentation/networkextension/nednssettings/matchdomains (2025-11-15))
             dns_settings.matchDomains = ["invalid.obscura.net"]
-        case .some(let dns):
-            dns_settings = NEDNSSettings(servers: dns)
+            if #available(iOS 26.0, macOS 26.0, *) {
+                dns_settings.allowFailover = true
+            }
+        } else {
             // This is not necessary to match everything if the VPN tunnel is the default route, but is harmless either way. (https://developer.apple.com/documentation/networkextension/nednssettings/matchdomains (2025-11-15))
             dns_settings.matchDomains = [""]
         }

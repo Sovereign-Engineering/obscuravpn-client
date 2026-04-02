@@ -63,9 +63,10 @@ impl Os for LinuxOsImpl {
             dns_manager => {
                 result = result.and(netlink::add_routes(&tun, &ROUTES).await);
                 if dns_manager.is_resolved() {
-                    match &network_config.dns {
-                        Some(dns) => result = result.and(resolved::set_dns(&tun, dns).await),
-                        None => result = result.and(resolved::reset_dns(&tun).await),
+                    if network_config.use_system_dns {
+                        result = result.and(resolved::reset_dns(&tun).await);
+                    } else {
+                        result = result.and(resolved::set_dns(&tun, &network_config.dns).await);
                     }
                 }
             }

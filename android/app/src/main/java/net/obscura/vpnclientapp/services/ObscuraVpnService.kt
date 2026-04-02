@@ -298,7 +298,9 @@ class ObscuraVpnService : VpnService() {
                     addDisallowedApplication(applicationInfo.packageName)
 
                     setMtu(networkConfig.mtu)
-                    networkConfig.dns?.forEach { addDnsServer(it) }
+                    if (!networkConfig.useSystemDns) {
+                        networkConfig.dns.forEach { addDnsServer(it) }
+                    }
 
                     networkConfig.ipv4.split("/").let { addAddress(it[0], if (it.size == 2) it[1].toInt() else 32) }
 

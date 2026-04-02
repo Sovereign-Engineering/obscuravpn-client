@@ -184,15 +184,13 @@ fn build_device_settings(
     ]);
 
     //  NetworkManager 1.52.1 on Debian 13 will generate an empty /etc/resolv.conf if these settings are specified (after previously applying a non-empty tunnel DNS configuration correctly), but don't contain any DNS server addresses. Both some older and newer versions do not have this problem.
-    if let Some(dns_ips) = &network_config.dns
-        && enable_dns
-    {
+    if enable_dns && !network_config.use_system_dns {
         let dns_search = vec!["~"];
         let mut dns_addresses_v4 = vec![];
         let mut dns_addresses_v6 = vec![];
-        for dns_ip in dns_ips {
+        for &dns_ip in &network_config.dns {
             match dns_ip {
-                IpAddr::V4(dns_ip) => dns_addresses_v4.push(ipv4_to_u32(*dns_ip)),
+                IpAddr::V4(dns_ip) => dns_addresses_v4.push(ipv4_to_u32(dns_ip)),
                 IpAddr::V6(dns_ip) => dns_addresses_v6.push(dns_ip.octets().to_vec()),
             }
         }

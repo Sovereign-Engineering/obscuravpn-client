@@ -92,13 +92,14 @@ enum TransportKind: String, Codable, Equatable {
 // Keep synchronized with rustlib/src/network_config.rs
 struct OsNetworkConfig: Codable, CustomStringConvertible, Equatable {
     var description: String {
-        return "ipv4: \(self.ipv4), dns: \(self.dns ?? ["system"]), ipv6: \(self.ipv6)"
+        return "ipv4: \(self.ipv4), use system dns: \(self.useSystemDns), dns: \(self.dns), ipv6: \(self.ipv6)"
     }
 
+    var dns: [String]
     var ipv4: String
-    var dns: [String]?
     var ipv6: String
     var mtu: UInt16
+    var useSystemDns: Bool
 }
 
 // We must use NSError to communicate errors via startTunnel.

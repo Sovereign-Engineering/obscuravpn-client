@@ -12,4 +12,10 @@ fun errorCodePurchaseFailed() = ErrorCodeException("purchaseFailed")
 
 fun errorCodePurchaseFailedAlreadyOwned() = ErrorCodeException("purchaseFailedAlreadyOwned")
 
+fun errorCodeLegacyAlwaysOn() = ErrorCodeException("errorLegacyAlwaysOn")
+
+fun errorCodeOtherAppAlwaysOn() = ErrorCodeException("errorOtherAppAlwaysOn")
+
+fun errorCodePermissionNotGranted() = ErrorCodeException("errorPermissionNotGranted")
+
 fun errorCodeUnsupportedOnOS() = ErrorCodeException("errorUnsupportedOnOS")

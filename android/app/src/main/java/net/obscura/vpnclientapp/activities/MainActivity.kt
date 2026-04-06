@@ -1,22 +1,15 @@
 package net.obscura.vpnclientapp.activities
 
-import android.Manifest
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.SharedPreferences
-import android.content.pm.PackageManager
 import android.content.res.Configuration
-import android.net.VpnService
-import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import androidx.activity.addCallback
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -26,60 +19,26 @@ import net.obscura.vpnclientapp.R
 import net.obscura.vpnclientapp.helpers.requireUIProcess
 import net.obscura.vpnclientapp.preferences.Preferences
 import net.obscura.vpnclientapp.services.IObscuraVpnService
-import net.obscura.vpnclientapp.services.ObscuraVpnService
+import net.obscura.vpnclientapp.services.bindVpnService
+import net.obscura.vpnclientapp.services.unbindVpnService
 import net.obscura.vpnclientapp.ui.ObscuraUI
 import net.obscura.vpnclientapp.ui.OsStatus
+import net.obscura.vpnclientapp.ui.VpnPermissionRequestManager
 import net.obscura.vpnclientapp.ui.commands.SetColorScheme
 
 private val log = Logger(MainActivity::class)
 
 @AndroidEntryPoint
-class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceChangeListener {
+class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.OnSharedPreferenceChangeListener {
     @Inject lateinit var billingFacade: BillingFacade
-
-    private class VpnServiceConnection(val activity: MainActivity) : ServiceConnection {
-        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            log.debug("onServiceConnected $name $service")
-
-            activity.ui.onCreate(
-                IObscuraVpnService.Stub.asInterface(service),
-                activity,
-                activity.osStatus,
-            )
-        }
-
-        override fun onServiceDisconnected(name: ComponentName?) {
-            log.debug("onServiceDisconnected $name")
-
-            activity.ui.onDestroy()
-
-            if (activity.vpnServiceConnection === this) {
-                activity.vpnServiceConnection = null
-            }
-        }
-    }
+    @Inject lateinit var vpnPermissionRequestManager: VpnPermissionRequestManager
 
     private lateinit var preferences: Preferences
     private lateinit var osStatus: OsStatus
 
     private lateinit var ui: ObscuraUI
 
-    private var vpnServiceConnection: VpnServiceConnection? = null
-
-    private val vpnPermissionRequestLauncher: ActivityResultLauncher<Intent> =
-        this.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            log.debug("VPN start activity result: $result")
-            if (result.resultCode == RESULT_OK) {
-                this.startVpnService()
-            }
-        }
-    private val notificationPermissionRequestLauncher: ActivityResultLauncher<String> =
-        this.registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-            // We don't actually care if we're granted permission, since this is
-            // just the user's preference between "classic" foreground service
-            // notifications vs. the modern Task Manager.
-            log.debug("notification permission request activity result: $isGranted")
-        }
+    private var isVpnServiceBound: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -106,16 +65,10 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
 
         osStatus = OsStatus(this)
         preferences = Preferences(this).apply { registerListener(this@MainActivity) }
-        vpnServiceConnection =
-            VpnServiceConnection(this).also {
-                bindService(
-                    Intent(this, ObscuraVpnService::class.java),
-                    it,
-                    BIND_AUTO_CREATE or BIND_IMPORTANT,
-                )
-            }
 
         applyColorScheme()
+
+        this.isVpnServiceBound = this.bindVpnService(this)
     }
 
     override fun onStart() {
@@ -137,37 +90,6 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
         ui.onResume()
     }
 
-    fun startVpnService() {
-        log.debug("starting VPN service")
-        if (
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
-                    PackageManager.PERMISSION_GRANTED
-        ) {
-            this.notificationPermissionRequestLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
-        this.startForegroundService(Intent(this, ObscuraVpnService::class.java))
-    }
-
-    // TODO:
-    // https://linear.app/soveng/issue/OBS-3192/onpostresume-is-the-wrong-place-to-start-the-vpnservice
-    override fun onPostResume() {
-        super.onPostResume()
-
-        log.debug("onPostResume")
-
-        // TODO:
-        // https://linear.app/soveng/issue/OBS-3193/vpnserviceprepare-isnt-handled-exhaustively
-        val vpnIntent = VpnService.prepare(this)
-        if (vpnIntent == null) {
-            // We already have VPN permission
-            this.startVpnService()
-        } else {
-            // Request VPN permission
-            this.vpnPermissionRequestLauncher.launch(vpnIntent)
-        }
-    }
-
     override fun onPause() {
         super.onPause()
 
@@ -183,9 +105,10 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
 
     override fun onDestroy() {
         super.onDestroy()
-
-        preferences.unregisterListener(this)
-        vpnServiceConnection?.let { unbindService(it) }
+        this.preferences.unregisterListener(this)
+        if (this.isVpnServiceBound) {
+            this.unbindVpnService(this)
+        }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -194,6 +117,20 @@ class MainActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceCh
         log.debug("configuration changed: $newConfig")
 
         this.ui.invalidate()
+    }
+
+    override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+        log.debug("onServiceConnected $name $service")
+        this.ui.onCreate(
+            IObscuraVpnService.Stub.asInterface(service),
+            this,
+            this.osStatus,
+        )
+    }
+
+    override fun onServiceDisconnected(name: ComponentName?) {
+        log.debug("onServiceDisconnected $name")
+        this.ui.onDestroy()
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {

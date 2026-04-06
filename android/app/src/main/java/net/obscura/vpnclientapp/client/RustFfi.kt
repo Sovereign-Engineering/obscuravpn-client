@@ -2,7 +2,6 @@ package net.obscura.vpnclientapp.client
 
 import android.content.Context
 import java.util.concurrent.CompletableFuture
-import kotlin.reflect.KClass
 import net.obscura.lib.util.Logger
 
 class RustFfi(context: Context, userAgent: String) {
@@ -12,8 +11,8 @@ class RustFfi(context: Context, userAgent: String) {
             userAgent,
         )
 
-    fun logger(tag: KClass<*>): Logger {
-        return Logger(tag) { params ->
+    fun logger(tag: String) =
+        Logger(tag) { params ->
             ObscuraLibrary.forwardLog(
                 params.level.ordinal,
                 params.tag,
@@ -22,7 +21,6 @@ class RustFfi(context: Context, userAgent: String) {
                 params.tr?.toString(),
             )
         }
-    }
 
     fun jsonFfi(json: String, future: CompletableFuture<String>) {
         ObscuraLibrary.jsonFfi(handle, json, future)

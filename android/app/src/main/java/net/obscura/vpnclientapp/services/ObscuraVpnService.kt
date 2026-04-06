@@ -33,6 +33,8 @@ import net.obscura.vpnclientapp.client.commands.SetTunnelArgs
 import net.obscura.vpnclientapp.helpers.requireVpnServiceProcess
 import net.obscura.vpnclientapp.ui.CommandBridge
 
+private val logNoFfi = Logger(ObscuraVpnService::class)
+
 @SuppressLint("VpnServicePolicy")
 class ObscuraVpnService : VpnService() {
     private class Binder(
@@ -71,7 +73,7 @@ class ObscuraVpnService : VpnService() {
         fun ffiSetNetworkConfig(json: String): Int {
             val service = instance.get()
             if (service == null) {
-                Logger(ObscuraVpnService::class).error("ffiSetNetworkConfig called with no active service", "wK3xLm9p")
+                logNoFfi.error("ffiSetNetworkConfig called with no active service", "wK3xLm9p")
                 return -1
             }
             val config: OsNetworkConfig =
@@ -109,9 +111,9 @@ class ObscuraVpnService : VpnService() {
     override fun onCreate() {
         super.onCreate()
 
-        Logger(ObscuraVpnService::class).info("ObscuraVpnService onCreate entry")
+        logNoFfi.info("ObscuraVpnService onCreate entry")
         rustFfi = RustFfi(this, "obscura.net/android/${BuildConfig.VERSION_NAME}")
-        log = rustFfi.logger(ObscuraVpnService::class)
+        log = rustFfi.logger(logNoFfi.tag)
 
         if (instance.getAndSet(this) != null) {
             log.error("instance already initialized", "xR4mNb7c")
@@ -152,12 +154,7 @@ class ObscuraVpnService : VpnService() {
         loadStatus(null)
     }
 
-    override fun onStartCommand(
-        intent: Intent?,
-        flags: Int,
-        startId: Int,
-    ): Int {
-        log.info("onStartCommand $intent $flags $startId", "C9rsG0uh")
+    private fun start() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             this.startForeground(
                 NOTIFICATION_ID,
@@ -167,12 +164,48 @@ class ObscuraVpnService : VpnService() {
         } else {
             this.startForeground(NOTIFICATION_ID, this.buildNotification())
         }
+    }
+
+    override fun onStartCommand(
+        intent: Intent?,
+        flags: Int,
+        startId: Int,
+    ): Int {
+        log.info("onStartCommand $intent ${intent?.action} $flags $startId", "C9rsG0uh")
+        this.start()
+        if (intent?.action == SERVICE_INTERFACE) {
+            log.info("onStartCommand was system-initiated", "sktWFegO")
+            this.startTunnel(null)
+        }
         return START_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder {
-        log.info("onBind $intent", "lckBR8hX")
+        log.info("onBind $intent ${intent?.action}", "lckBR8hX")
+        if (intent?.action == SERVICE_INTERFACE) {
+            log.info("onBind was system-initiated", "4olaayXf")
+            this.start()
+        }
         return Binder(this)
+    }
+
+    override fun onRebind(intent: Intent?) {
+        log.info("onRebind $intent ${intent?.action}", "AcVtL2Ub")
+        super.onRebind(intent)
+        if (intent?.action == SERVICE_INTERFACE) {
+            log.info("onRebind was system-initiated", "YsdxJ7Ni")
+            this.start()
+        }
+    }
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        log.info("onUnbind $intent ${intent?.action}", "woAdA7g2")
+        if (intent?.action == SERVICE_INTERFACE) {
+            log.info("onUnbind was system-initiated", "oNOWQoPR")
+            this.stopTunnel()
+            this.stopForeground(STOP_FOREGROUND_DETACH)
+        }
+        return true
     }
 
     private fun onStatusUpdated(status: GetStatus.Response) {
@@ -185,7 +218,8 @@ class ObscuraVpnService : VpnService() {
     override fun onRevoke() {
         super.onRevoke()
         log.info("onRevoke", "V3qS5kil")
-        stopTunnel()
+        this.stopTunnel()
+        this.stopForeground(STOP_FOREGROUND_DETACH)
     }
 
     override fun onDestroy() {

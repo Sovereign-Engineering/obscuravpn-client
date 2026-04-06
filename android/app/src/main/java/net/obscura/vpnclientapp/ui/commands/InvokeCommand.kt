@@ -47,7 +47,7 @@ data class InvokeCommand(
 
             revealItemInDir != null -> revealItemInDir.run()
 
-            startTunnel != null -> completedJsonNullFuture().also { binder.startTunnel(startTunnel.tunnelArgs) }
+            startTunnel != null -> startTunnel.run(binder, mainActivity)
 
             stopTunnel != null -> completedJsonNullFuture().also { binder.stopTunnel() }
 

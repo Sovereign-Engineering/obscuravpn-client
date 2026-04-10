@@ -1,11 +1,11 @@
-package net.obscura.vpnclientapp.ui.commands
+package net.obscura.vpnclientapp.ui.bridge
 
 import android.content.Context
 import android.content.Intent
 import java.io.File
 import net.obscura.vpnclientapp.sharing.DebugArchiveFileProvider
 
-fun shareDebugArchive(
+internal fun shareDebugArchive(
     context: Context,
     path: String,
     email: Boolean,

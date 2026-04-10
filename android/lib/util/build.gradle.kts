@@ -3,6 +3,7 @@ import com.android.build.api.dsl.LibraryExtension
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlinx.serialization)
 }
 
 extensions.configure<LibraryExtension> {
@@ -14,4 +15,7 @@ extensions.configure<LibraryExtension> {
 
 kotlin { jvmToolchain(21) }
 
-dependencies { implementation(libs.kotlin.stdlib) }
+dependencies {
+    implementation(libs.kotlin.stdlib)
+    implementation(libs.kotlinx.serialization.json)
+}

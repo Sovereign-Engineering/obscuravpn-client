@@ -22,9 +22,8 @@ import net.obscura.vpnclientapp.services.IObscuraVpnService
 import net.obscura.vpnclientapp.services.bindVpnService
 import net.obscura.vpnclientapp.services.unbindVpnService
 import net.obscura.vpnclientapp.ui.ObscuraUI
-import net.obscura.vpnclientapp.ui.OsStatus
+import net.obscura.vpnclientapp.ui.OsStatusManager
 import net.obscura.vpnclientapp.ui.VpnPermissionRequestManager
-import net.obscura.vpnclientapp.ui.commands.SetColorScheme
 
 private val log = Logger(MainActivity::class)
 
@@ -34,7 +33,7 @@ class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.O
     @Inject lateinit var vpnPermissionRequestManager: VpnPermissionRequestManager
 
     private lateinit var preferences: Preferences
-    private lateinit var osStatus: OsStatus
+    private lateinit var osStatusManager: OsStatusManager
 
     private lateinit var ui: ObscuraUI
 
@@ -63,7 +62,7 @@ class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.O
             }
         }
 
-        osStatus = OsStatus(this)
+        osStatusManager = OsStatusManager(this)
         preferences = Preferences(this).apply { registerListener(this@MainActivity) }
 
         applyColorScheme()
@@ -74,8 +73,8 @@ class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.O
     override fun onStart() {
         super.onStart()
 
-        osStatus.registerCallbacks()
-        osStatus.update()
+        osStatusManager.registerCallbacks()
+        osStatusManager.update()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -99,8 +98,8 @@ class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.O
     override fun onStop() {
         super.onStop()
 
-        osStatus.deregisterCallbacks()
-        osStatus.update()
+        osStatusManager.deregisterCallbacks()
+        osStatusManager.update()
     }
 
     override fun onDestroy() {
@@ -124,7 +123,7 @@ class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.O
         this.ui.onCreate(
             IObscuraVpnService.Stub.asInterface(service),
             this,
-            this.osStatus,
+            this.osStatusManager,
         )
     }
 
@@ -141,10 +140,10 @@ class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.O
 
     private fun applyColorScheme() {
         AppCompatDelegate.setDefaultNightMode(
-            when (preferences.colorScheme) {
-                SetColorScheme.ColorScheme.Auto -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
-                SetColorScheme.ColorScheme.Dark -> AppCompatDelegate.MODE_NIGHT_YES
-                SetColorScheme.ColorScheme.Light -> AppCompatDelegate.MODE_NIGHT_NO
+            when (this.preferences.colorScheme) {
+                Preferences.ColorScheme.Auto -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+                Preferences.ColorScheme.Dark -> AppCompatDelegate.MODE_NIGHT_YES
+                Preferences.ColorScheme.Light -> AppCompatDelegate.MODE_NIGHT_NO
             }
         )
     }

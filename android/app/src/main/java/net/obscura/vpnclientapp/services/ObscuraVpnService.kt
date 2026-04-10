@@ -23,15 +23,15 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import java.net.NetworkInterface
 import java.util.concurrent.CompletableFuture
-import kotlinx.serialization.json.Json
 import net.obscura.lib.util.Logger
 import net.obscura.vpnclientapp.BuildConfig
 import net.obscura.vpnclientapp.R
+import net.obscura.vpnclientapp.client.ManagerCmd
+import net.obscura.vpnclientapp.client.ManagerCmdOk
 import net.obscura.vpnclientapp.client.RustFfi
-import net.obscura.vpnclientapp.client.commands.GetStatus
-import net.obscura.vpnclientapp.client.commands.SetTunnelArgs
+import net.obscura.vpnclientapp.client.jsonConfig
 import net.obscura.vpnclientapp.helpers.requireVpnServiceProcess
-import net.obscura.vpnclientapp.ui.CommandBridge
+import net.obscura.vpnclientapp.ui.bridge.WebCmdBridge
 
 private val logNoFfi = Logger(ObscuraVpnService::class)
 
@@ -56,7 +56,7 @@ class ObscuraVpnService : VpnService() {
         ) {
             service.log.info("jsonFfi $id $command", "qMO4l3zd")
             CompletableFuture<String>().also {
-                CommandBridge.Receiver.broadcast(service, id, it)
+                WebCmdBridge.Receiver.broadcast(service, id, it)
                 service.rustFfi.jsonFfi(command, it)
             }
         }
@@ -78,7 +78,7 @@ class ObscuraVpnService : VpnService() {
             }
             val config: OsNetworkConfig =
                 try {
-                    service.json.decodeFromString(json)
+                    jsonConfig.decodeFromString(json)
                 } catch (e: Exception) {
                     service.log.error("failed to parse os network config: $e", "yN4zPn0q", e)
                     return -1
@@ -98,13 +98,12 @@ class ObscuraVpnService : VpnService() {
 
     private lateinit var rustFfi: RustFfi
     private lateinit var log: Logger
-    private lateinit var json: Json
     private lateinit var handler: Handler
 
     private val connectivityManager
         get() = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
 
-    private var vpnStatus: GetStatus.Response.VpnStatus? = null
+    private var vpnStatus: ManagerCmdOk.GetStatus.VpnStatus? = null
 
     private var currentNetwork: Network? = null
 
@@ -122,7 +121,6 @@ class ObscuraVpnService : VpnService() {
 
         log.info("onCreate", "vqiGa01f")
 
-        json = Json { ignoreUnknownKeys = true }
         handler = Handler(Looper.getMainLooper())
 
         val networkRequest =
@@ -208,7 +206,7 @@ class ObscuraVpnService : VpnService() {
         return true
     }
 
-    private fun onStatusUpdated(status: GetStatus.Response) {
+    private fun onStatusUpdated(status: ManagerCmdOk.GetStatus) {
         log.info("status updated $status", "xXx7PxdD")
         vpnStatus = status.vpnStatus
         loadStatus(status.version)
@@ -250,13 +248,13 @@ class ObscuraVpnService : VpnService() {
             .setContentText(
                 getString(
                     R.string.notification_vpn_text,
-                    vpnStatus.let {
-                        when {
-                            it?.connected != null -> getString(R.string.notification_vpn_status_connected)
-                            it?.connecting != null -> getString(R.string.notification_vpn_status_connecting)
-
-                            else -> getString(R.string.notification_vpn_status_disconnected)
-                        }
+                    when (this.vpnStatus) {
+                        is ManagerCmdOk.GetStatus.VpnStatus.Connected ->
+                            getString(R.string.notification_vpn_status_connected)
+                        is ManagerCmdOk.GetStatus.VpnStatus.Connecting ->
+                            getString(R.string.notification_vpn_status_connecting)
+                        is ManagerCmdOk.GetStatus.VpnStatus.Disconnected,
+                        null -> getString(R.string.notification_vpn_status_disconnected)
                     },
                 ),
             )
@@ -285,15 +283,13 @@ class ObscuraVpnService : VpnService() {
 
         CompletableFuture<String>().also {
             rustFfi.jsonFfi(
-                json.encodeToString(
-                    GetStatus(GetStatus.Request(knownVersion = knownVersion)),
-                ),
+                jsonConfig.encodeToString(ManagerCmd.GetStatus(knownVersion)),
                 it,
             )
 
             it.handle { data, tr ->
                 log.info("getStatus completed $data", "oiAyY4gh", tr)
-                data?.let { data -> onStatusUpdated(json.decodeFromString(data)) }
+                data?.let { data -> onStatusUpdated(jsonConfig.decodeFromString(data)) }
             }
         }
     }
@@ -301,12 +297,10 @@ class ObscuraVpnService : VpnService() {
     private fun setTunnelArgs(exit: String?, active: Boolean?) {
         CompletableFuture<String>().also {
             rustFfi.jsonFfi(
-                json.encodeToString(
-                    SetTunnelArgs(
-                        SetTunnelArgs.Request(
-                            args = exit?.let { exit -> json.decodeFromString(exit) },
-                            active,
-                        ),
+                jsonConfig.encodeToString(
+                    ManagerCmd.SetTunnelArgs(
+                        args = exit?.let { exit -> jsonConfig.decodeFromString(exit) },
+                        active,
                     ),
                 ),
                 it,

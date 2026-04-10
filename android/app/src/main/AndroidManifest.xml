@@ -73,7 +73,7 @@
         </service>
 
         <receiver
-            android:name=".ui.CommandBridge$Receiver"
+            android:name=".ui.bridge.WebCmdBridge$Receiver"
             android:exported="false" />
 
         <meta-data

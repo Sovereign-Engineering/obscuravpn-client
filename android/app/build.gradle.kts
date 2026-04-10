@@ -59,7 +59,10 @@ extensions.configure<ApplicationExtension> {
     }
 }
 
-kotlin { jvmToolchain(21) }
+kotlin {
+    compilerOptions { freeCompilerArgs.add("-opt-in=kotlinx.serialization.ExperimentalSerializationApi") }
+    jvmToolchain(21)
+}
 
 dependencies {
     implementation(libs.androidx.appcompat)

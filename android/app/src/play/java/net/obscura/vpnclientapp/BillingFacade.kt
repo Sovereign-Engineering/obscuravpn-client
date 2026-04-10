@@ -4,11 +4,11 @@ import android.content.Context
 import androidx.lifecycle.lifecycleScope
 import java.util.concurrent.CompletableFuture
 import kotlinx.coroutines.future.future
-import kotlinx.serialization.json.Json
 import net.obscura.lib.billing.BillingManager
 import net.obscura.vpnclientapp.activities.MainActivity
 import net.obscura.vpnclientapp.client.errorCodePurchaseFailed
 import net.obscura.vpnclientapp.client.errorCodePurchaseFailedAlreadyOwned
+import net.obscura.vpnclientapp.client.jsonConfig
 
 class BillingFacade(context: Context) {
     private val billingManager = BillingManager(context)
@@ -20,7 +20,7 @@ class BillingFacade(context: Context) {
                 BillingManager.PurchaseResult.Canceled -> false
                 BillingManager.PurchaseResult.AlreadyOwned -> throw errorCodePurchaseFailedAlreadyOwned()
                 BillingManager.PurchaseResult.Failed -> throw errorCodePurchaseFailed()
-            }.let { Json.encodeToString(it) }
+            }.let { jsonConfig.encodeToString(it) }
         }
 
     fun destroy() = this.billingManager.destroy()

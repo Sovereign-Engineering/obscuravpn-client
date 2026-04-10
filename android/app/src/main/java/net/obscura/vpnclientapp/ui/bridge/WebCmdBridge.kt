@@ -1,4 +1,4 @@
-package net.obscura.vpnclientapp.ui
+package net.obscura.vpnclientapp.ui.bridge
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -10,23 +10,23 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import java.util.function.BiFunction
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import net.obscura.lib.util.Logger
 import net.obscura.vpnclientapp.activities.MainActivity
 import net.obscura.vpnclientapp.client.ErrorCodeException
 import net.obscura.vpnclientapp.client.errorCodeOther
+import net.obscura.vpnclientapp.client.jsonConfig
 import net.obscura.vpnclientapp.helpers.requireUIProcess
 import net.obscura.vpnclientapp.helpers.requireVpnServiceProcess
 import net.obscura.vpnclientapp.services.IObscuraVpnService
-import net.obscura.vpnclientapp.ui.commands.InvokeCommand
+import net.obscura.vpnclientapp.ui.OsStatusManager
 
-private val log = Logger(CommandBridge::class)
+private val log = Logger(WebCmdBridge::class)
 
-class CommandBridge(
+class WebCmdBridge(
     private val context: Context,
     private val binder: IObscuraVpnService,
     private val mainActivity: MainActivity,
-    private val osStatus: OsStatus,
+    private val osStatusManager: OsStatusManager,
     private val postMessage: (data: String) -> Unit,
 ) {
     /**
@@ -94,7 +94,7 @@ class CommandBridge(
         }
     }
 
-    private class Handler(val bridge: WeakReference<CommandBridge>, val id: Long) :
+    private class Handler(val bridge: WeakReference<WebCmdBridge>, val id: Long) :
         BiFunction<String?, Throwable?, Unit> {
         override fun apply(data: String?, exception: Throwable?) {
             bridge.get()?.also { bridge ->
@@ -114,29 +114,30 @@ class CommandBridge(
     }
 
     @Serializable
-    private data class AndroidCommandMessage(
+    private data class Accept(
         val id: Long,
-        val error: String? = null,
-        val data: String? = null,
+        val data: String,
     )
 
-    val json = Json {
-        encodeDefaults = true
-        ignoreUnknownKeys = true
-    }
+    @Serializable
+    private data class Reject(
+        val id: Long,
+        val error: String,
+    )
 
     private fun accept(data: String, id: Long) {
-        postMessage(Json.encodeToString(AndroidCommandMessage(id = id, data = data)))
+        this.postMessage(jsonConfig.encodeToString(Accept(id, data)))
     }
 
     private fun reject(exception: ErrorCodeException, id: Long) {
-        postMessage(Json.encodeToString(AndroidCommandMessage(id = id, error = exception.errorCode)))
+        this.postMessage(jsonConfig.encodeToString(Reject(id, exception.errorCode)))
     }
 
     @JavascriptInterface
     fun invoke(data: String, id: Long) {
-        val invokeData = json.decodeFromString<InvokeCommand>(data)
-
-        invokeData.run(context, binder, this.mainActivity, osStatus, json).handle(Handler(WeakReference(this), id))
+        jsonConfig
+            .decodeFromString<WebCmd>(data)
+            .run(WebCmd.Args(context, binder, this.mainActivity, osStatusManager))
+            .handle(Handler(WeakReference(this), id))
     }
 }

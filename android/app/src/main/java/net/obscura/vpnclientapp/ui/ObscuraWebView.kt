@@ -12,6 +12,7 @@ import androidx.core.net.toUri
 import androidx.webkit.WebViewAssetLoader
 import net.obscura.vpnclientapp.activities.MainActivity
 import net.obscura.vpnclientapp.services.IObscuraVpnService
+import net.obscura.vpnclientapp.ui.bridge.WebCmdBridge
 
 @SuppressLint("SetJavaScriptEnabled", "ViewConstructor")
 class ObscuraWebView
@@ -20,7 +21,7 @@ constructor(
     context: Context,
     binder: IObscuraVpnService,
     mainActivity: MainActivity,
-    osStatus: OsStatus,
+    osStatusManager: OsStatusManager,
     attrs: AttributeSet? = null,
 ) : WebView(context, attrs) {
     companion object {
@@ -29,8 +30,8 @@ constructor(
         val HOME = "$ORIGIN/assets/index.html"
     }
 
-    val commandBridge =
-        CommandBridge(context, binder, mainActivity, osStatus) { data ->
+    val bridge =
+        WebCmdBridge(context, binder, mainActivity, osStatusManager) { data ->
             post { postWebMessage(WebMessage("android/$data"), ORIGIN) }
         }
 
@@ -40,7 +41,7 @@ constructor(
         settings.domStorageEnabled = true
         settings.javaScriptEnabled = true
 
-        addJavascriptInterface(commandBridge, "obscuraAndroidCommandBridge")
+        addJavascriptInterface(bridge, "obscuraAndroidCommandBridge")
 
         WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(context))

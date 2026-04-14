@@ -3,6 +3,7 @@ package net.obscura.vpnclientapp.ui.bridge
 import android.content.Context
 import androidx.lifecycle.lifecycleScope
 import java.util.concurrent.CompletableFuture
+import kotlinx.coroutines.future.asCompletableFuture
 import kotlinx.coroutines.future.future
 import kotlinx.serialization.KeepGeneratedSerializer
 import kotlinx.serialization.Serializable
@@ -97,8 +98,7 @@ internal sealed interface WebCmd {
         internal object Serializer :
             ExternallyTaggedEnumVariantSerializer<GetOsStatus>("getOsStatus", generatedSerializer())
 
-        override fun run(args: Args): CompletableFuture<String> =
-            args.osStatusManager.getStatus(this.knownVersion).thenApply { jsonConfig.encodeToString(it) }
+        override fun run(args: Args) = args.osStatusManager.wait(this.knownVersion).asCompletableFuture()
     }
 
     @KeepGeneratedSerializer

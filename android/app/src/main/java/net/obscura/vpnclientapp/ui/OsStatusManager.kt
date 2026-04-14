@@ -1,79 +1,54 @@
 package net.obscura.vpnclientapp.ui
 
 import android.content.Context
-import android.content.SharedPreferences
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.UUID
-import java.util.concurrent.CompletableFuture
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.completeWith
+import net.obscura.lib.util.Logger
 import net.obscura.vpnclientapp.BuildConfig
-import net.obscura.vpnclientapp.client.ManagerCmdOk
-import net.obscura.vpnclientapp.helpers.requireUIProcess
-import net.obscura.vpnclientapp.preferences.Preferences
+import net.obscura.vpnclientapp.client.jsonConfig
 
-class OsStatusManager(context: Context) {
+private val log = Logger(OsStatusManager::class)
+
+@Singleton // Prevents loss of state on activity destruction
+class OsStatusManager @Inject constructor(@ApplicationContext context: Context) : NetworkStatusObserver.Callback {
+    data class State(
+        var debugBundleStatus: OsStatus.DebugBundleStatus =
+            OsStatus.DebugBundleStatus(
+                inProgress = false,
+                latestPath = null,
+                inProgressCounter = 0,
+            ),
+        var internetAvailable: Boolean = false,
+        var vpnStatus: OsStatus.OsVpnStatus = OsStatus.OsVpnStatus.Disconnected,
+    )
+
+    private data class VersionedState(val version: UUID, val state: State)
+
+    private var current = VersionedState(UUID.randomUUID(), State())
+    private val waiting = ArrayList<CompletableDeferred<String>>()
+
     init {
-        requireUIProcess()
+        NetworkStatusObserver(context, this)
     }
 
-    private val preferences = Preferences(context)
-    private val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-
-    private val waiting = ArrayList<CompletableFuture<OsStatus>>()
-
-    private var current: Pair<String, OsStatus>? = null
-
-    private var vpnStatus: OsStatus.OsVpnStatus = OsStatus.OsVpnStatus.Disconnected
-
-    fun setVpnStatus(vpnStatus: ManagerCmdOk.GetStatus.VpnStatus) {
-        this.update {
-            this.vpnStatus =
-                when (vpnStatus) {
-                    is ManagerCmdOk.GetStatus.VpnStatus.Connected -> OsStatus.OsVpnStatus.Connected
-                    is ManagerCmdOk.GetStatus.VpnStatus.Connecting -> OsStatus.OsVpnStatus.Connecting
-                    is ManagerCmdOk.GetStatus.VpnStatus.Disconnected -> OsStatus.OsVpnStatus.Disconnected
-                }
-        }
+    override fun onAvailableNetworksChanged(availableNetworks: Int) {
+        this.update { this.internetAvailable = availableNetworks > 0 }
     }
 
-    var debugBundleStatus: OsStatus.DebugBundleStatus =
-        OsStatus.DebugBundleStatus(
-            inProgress = false,
-            latestPath = null,
-            inProgressCounter = 0,
-        )
-
-    private val sharedPreferencesListener =
-        SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key == "strict-leak-prevention") {
-                this.update()
-            }
-        }
-
-    fun registerCallbacks() {
-        this.preferences.registerListener(sharedPreferencesListener)
-    }
-
-    fun deregisterCallbacks() {
-        this.preferences.unregisterListener(sharedPreferencesListener)
-    }
-
-    private fun hasInternet() =
-        this.connectivityManager.activeNetwork?.let { network ->
-            this.connectivityManager.getNetworkCapabilities(network)?.run {
-                hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                    hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-            } ?: false
-        } ?: false
-
-    fun update(block: OsStatusManager.() -> Unit = {}) {
-        synchronized(this) {
-            block(this)
-            val status =
-                OsStatus(
-                    version = UUID.randomUUID().toString(),
-                    internetAvailable = hasInternet(),
-                    osVpnStatus = this.vpnStatus,
+    @Synchronized
+    fun update(block: State.() -> Unit = {}) {
+        val version = UUID.randomUUID()
+        val result = runCatching {
+            block(this.current.state)
+            OsStatus(
+                    version = version.toString(),
+                    internetAvailable = this.current.state.internetAvailable,
+                    osVpnStatus = this.current.state.vpnStatus,
                     srcVersion = BuildConfig.VERSION_NAME,
                     updaterStatus =
                         OsStatus.UpdaterStatus(
@@ -82,26 +57,27 @@ class OsStatusManager(context: Context) {
                             error = null,
                             errorCode = null,
                         ),
-                    debugBundleStatus = this.debugBundleStatus,
+                    debugBundleStatus = this.current.state.debugBundleStatus,
                     canSendMail = true,
                     loginItemStatus = null,
                     playBilling =
                         @Suppress("KotlinConstantConditions", "SimplifyBooleanWithConstants")
                         (BuildConfig.FLAVOR == "play"),
                 )
-            this.current = Pair(status.version, status)
-            this.waiting.forEach { it.complete(status) }
-            this.waiting.clear()
+                .let { jsonConfig.encodeToString(it) }
         }
+        this.current = VersionedState(version, this.current.state)
+        log.debug("updated OS status: ${this.current}")
+        this.waiting.forEach { it.completeWith(result) }
+        this.waiting.clear()
     }
 
-    fun getStatus(knownVersion: String?): CompletableFuture<OsStatus> =
-        synchronized(this) {
-            CompletableFuture<OsStatus>().also {
-                this.waiting.add(it)
-                if (knownVersion == null || this.current == null || this.current?.first != knownVersion) {
-                    this.update()
-                }
+    @Synchronized
+    fun wait(knownVersion: String?): Deferred<String> =
+        CompletableDeferred<String>().also {
+            this.waiting.add(it)
+            if (this.current.version.toString() != knownVersion) {
+                this.update()
             }
         }
 }

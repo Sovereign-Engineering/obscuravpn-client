@@ -30,10 +30,10 @@ private val log = Logger(MainActivity::class)
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.OnSharedPreferenceChangeListener {
     @Inject lateinit var billingFacade: BillingFacade
+    @Inject lateinit var osStatusManager: OsStatusManager
     @Inject lateinit var vpnPermissionRequestManager: VpnPermissionRequestManager
 
     private lateinit var preferences: Preferences
-    private lateinit var osStatusManager: OsStatusManager
 
     private lateinit var ui: ObscuraUI
 
@@ -62,19 +62,11 @@ class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.O
             }
         }
 
-        osStatusManager = OsStatusManager(this)
         preferences = Preferences(this).apply { registerListener(this@MainActivity) }
 
         applyColorScheme()
 
         this.isVpnServiceBound = this.bindVpnService(this)
-    }
-
-    override fun onStart() {
-        super.onStart()
-
-        osStatusManager.registerCallbacks()
-        osStatusManager.update()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -93,13 +85,6 @@ class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.O
         super.onPause()
 
         ui.onPause()
-    }
-
-    override fun onStop() {
-        super.onStop()
-
-        osStatusManager.deregisterCallbacks()
-        osStatusManager.update()
     }
 
     override fun onDestroy() {

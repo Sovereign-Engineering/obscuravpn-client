@@ -156,7 +156,16 @@ class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet?
                 statusObserver?.disable()
                 statusObserver =
                     StatusObserver(WeakReference(binder)) {
-                            osStatusManager.setVpnStatus(it.vpnStatus)
+                            osStatusManager.update {
+                                this.vpnStatus =
+                                    when (it.vpnStatus) {
+                                        is ManagerCmdOk.GetStatus.VpnStatus.Connected -> OsStatus.OsVpnStatus.Connected
+                                        is ManagerCmdOk.GetStatus.VpnStatus.Connecting ->
+                                            OsStatus.OsVpnStatus.Connecting
+                                        is ManagerCmdOk.GetStatus.VpnStatus.Disconnected ->
+                                            OsStatus.OsVpnStatus.Disconnected
+                                    }
+                            }
                             this@ObscuraUI.setLoggedIn(it.accountId != null && !it.inNewAccountFlow)
                         }
                         .apply { observe() }

@@ -11,9 +11,25 @@ mod client;
 #[cfg(any(target_os = "windows", target_os = "linux"))]
 mod service;
 
+#[cfg(not(target_os = "windows"))]
+fn get_data_dir() -> String {
+    "/var/lib/obscura".to_string()
+}
+
+#[cfg(target_os = "windows")]
+fn get_data_dir() -> String {
+    use standard_paths::{LocationType, StandardPaths};
+
+    let sp = StandardPaths::new("Obscura", "");
+    sp.writable_location(LocationType::AppDataLocation)
+        .expect("failed to determine config directory")
+        .to_string_lossy()
+        .into_owned()
+}
+
 #[derive(Args, Debug)]
 pub struct ServiceArgs {
-    #[clap(long, default_value = "/var/lib/obscura")]
+    #[clap(long, default_value_t = get_data_dir())]
     pub config_dir: String,
     #[cfg(target_os = "linux")]
     #[arg(long, value_enum, default_value_t = service::os::linux::dns::DnsManagerArg::Auto)]

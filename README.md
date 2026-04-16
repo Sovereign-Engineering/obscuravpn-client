@@ -10,12 +10,12 @@ No support is provided for this code directly. However, if you are experiencing 
 
 At this time we are unable to accept external contributions. This is something that we plan to resolve soon. However until we finish the paperwork we are unable to look at any patches and will close all PRs without looking at them.
 
-# macOS App
+## macOS App
 
 On macOS the app installs and manages a [network extension](https://developer.apple.com/documentation/networkextension) (system extension).
 The network extension manages the virtual device and maintains the tunnel using the Rust code as library.
 
-## Setup
+### Setup
 
 1. [Setup Nix](#nix-setup)
 1. Install dependencies: `nix-env -iA nixpkgs.{cmake,rustup}`
@@ -132,6 +132,27 @@ To ensure hermetic builds we pin our Gradle dependencies. If you change the depe
 ```
 bin/gradle-deps-update.sh
 ```
+
+### For Windows
+
+Install [Visual Studio](https://visualstudio.microsoft.com/downloads/) with the following Workloads:
+
+- Desktop development with C++
+- WinUI application development
+
+On Windows, definitely ARM64 machines, you need to add `C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\Llvm\ARM64\bin` to path.
+
+Download the signed [wintun 0.14.1 DLLs](https://www.wintun.net/).
+
+You can use `Get-FileHash -Path .\wintun-0.14.1.zip -Algorithm SHA256` to verify the hash against `SHA2-256: 07c256185d6ee3652e09fa55c0b673e2624b565e02c4b9091c79ca7d2f24ef51`.
+
+Extract to `windows/wintun-0.14.1` such that `windows/wintun-0.14.1/bin/arm64/wintun.dll` is a file.
+
+To test the service, run `sudo cargo run service`. You need to enable `sudo` under System > Advanced settings. Alternatively, you can run `cargo run service` in an administrative terminal.
+
+The default config directory is `%APPDATA%\Obscura`. When testing the service, you may find it beneficial to manually add in an account number.
+
+A helpful command to clean DNS query manually is `Remove-DnsClientNrptRule -Name "{fb157da8-6578-4f53-81ea-0a9168e96c1f}"`.
 
 ## Swift unit tests
 

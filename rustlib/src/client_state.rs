@@ -290,7 +290,7 @@ impl ClientStateHandle {
 
     pub fn set_network_interface(&self, network_interface: Option<NetworkInterface>) {
         let mtu = if let Some(interface) = &network_interface {
-            match interface_mtu(&interface.name) {
+            match interface_mtu(interface) {
                 Ok(mtu) => {
                     tracing::info!(
                         message_id = "eePai0oh",
@@ -721,7 +721,7 @@ impl ClientStateHandle {
             let this = self.borrow();
             config = this.config().clone().into();
             network_interface = this.network_interface.clone();
-            network_interface_mtu = this.network_interface.as_ref().and_then(|interface| interface_mtu(&interface.name).ok());
+            network_interface_mtu = this.network_interface.as_ref().and_then(|interface| interface_mtu(interface).ok());
         }
 
         let dns_obscura = tokio::spawn(debug_dns("v1.api.prod.obscura.net:443"));

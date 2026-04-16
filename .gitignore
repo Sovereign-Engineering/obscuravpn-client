@@ -3,6 +3,7 @@
 /.devcontainer/
 xcuserdata
 .DS_STORE
+/.claude/
 
 # Nix
 result
@@ -22,3 +23,6 @@ result-*
 *.rpm
 *.pkg.tar.zst
 *.deb
+
+# Windows
+windows/wintun*/*

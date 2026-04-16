@@ -6,9 +6,10 @@ mod service_lock;
 pub mod start_error;
 pub mod tun;
 
+use crate::service::os::ROUTES;
 use crate::service::os::linux::dns::{DnsManager, DnsManagerArg, choose_dns_manager, resolved};
 use crate::service::os::linux::ipc::ServiceIpc;
-use crate::service::os::linux::routes::{ROUTES, netlink};
+use crate::service::os::linux::routes::netlink;
 use crate::service::os::linux::service_lock::ServiceLock;
 use crate::service::os::linux::tun::Tun;
 use bytes::Bytes;

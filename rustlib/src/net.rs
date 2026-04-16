@@ -3,10 +3,14 @@ use crate::quicwg::{DEFAULT_UDP_PAYLOAD_SIZE, IPV4_UDP_OVERHEAD};
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use socket2::{Domain, Protocol, Socket, Type};
+use std::io;
 use std::net::{Ipv4Addr, SocketAddrV4};
+#[cfg(not(target_os = "windows"))]
 use std::os::fd::AsRawFd;
+#[cfg(not(target_os = "windows"))]
 use std::ptr::addr_of_mut;
-use std::{io, mem, ptr};
+#[cfg(not(target_os = "windows"))]
+use std::{mem, ptr};
 
 #[derive(PartialEq, Eq, Clone, Debug, Deserialize, Serialize)]
 pub struct NetworkInterface {
@@ -14,6 +18,8 @@ pub struct NetworkInterface {
     pub index: PositiveU31,
     #[cfg(target_os = "windows")]
     pub ip: std::net::IpAddr,
+    #[cfg(target_os = "windows")]
+    pub mtu: i32,
 }
 
 pub fn new_udp(network_interface: Option<&NetworkInterface>) -> io::Result<std::net::UdpSocket> {
@@ -36,13 +42,15 @@ pub fn new_udp(network_interface: Option<&NetworkInterface>) -> io::Result<std::
     Ok(socket.into())
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "macos")))]
+#[cfg(not(any(target_os = "ios", target_os = "macos", target_os = "windows")))]
 const SIOCGIFMTU: libc::Ioctl = libc::SIOCGIFMTU as libc::Ioctl;
 
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 const SIOCGIFMTU: libc::c_ulong = 3223349555; // From sys/sockio.h.
 
-pub fn interface_mtu(name: &str) -> anyhow::Result<i32> {
+#[cfg(not(target_os = "windows"))]
+pub fn interface_mtu(interface: &NetworkInterface) -> anyhow::Result<i32> {
+    let name = &interface.name;
     let socket = Socket::new_raw(Domain::IPV4, Type::DGRAM, None)?;
 
     let mut name_buf: [u8; libc::IFNAMSIZ] = [0; _];
@@ -62,6 +70,11 @@ pub fn interface_mtu(name: &str) -> anyhow::Result<i32> {
             Ok(ifreq.assume_init().ifr_ifru.ifru_mtu)
         }
     }
+}
+
+#[cfg(target_os = "windows")]
+pub fn interface_mtu(interface: &NetworkInterface) -> anyhow::Result<i32> {
+    Ok(interface.mtu)
 }
 
 pub fn new_quic(udp: std::net::UdpSocket, mtu: Option<u16>, force_small_mtu: bool) -> anyhow::Result<quinn::Endpoint> {

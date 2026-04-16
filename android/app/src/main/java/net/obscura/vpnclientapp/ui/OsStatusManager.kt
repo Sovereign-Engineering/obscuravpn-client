@@ -73,7 +73,7 @@ class OsStatusManager @Inject constructor(@ApplicationContext context: Context) 
     }
 
     @Synchronized
-    fun wait(knownVersion: String?): Deferred<String> =
+    fun waitForUpdate(knownVersion: String?): Deferred<String> =
         CompletableDeferred<String>().also {
             this.waiting.add(it)
             if (this.current.version.toString() != knownVersion) {

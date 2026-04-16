@@ -31,7 +31,6 @@ import net.obscura.vpnclientapp.client.ManagerCmdOk
 import net.obscura.vpnclientapp.client.RustFfi
 import net.obscura.vpnclientapp.client.jsonConfig
 import net.obscura.vpnclientapp.helpers.requireVpnServiceProcess
-import net.obscura.vpnclientapp.ui.bridge.WebCmdBridge
 
 private val logNoFfi = Logger(ObscuraVpnService::class)
 
@@ -54,9 +53,8 @@ class ObscuraVpnService : VpnService() {
             id: Long,
             command: String,
         ) {
-            service.log.info("jsonFfi $id $command", "qMO4l3zd")
             CompletableFuture<String>().also {
-                WebCmdBridge.Receiver.broadcast(service, id, it)
+                JsonFfiBroadcastReceiver.broadcast(service, id, it)
                 service.rustFfi.jsonFfi(command, it)
             }
         }

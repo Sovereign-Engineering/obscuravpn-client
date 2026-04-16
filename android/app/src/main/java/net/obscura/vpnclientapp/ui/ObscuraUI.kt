@@ -10,60 +10,19 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.postDelayed
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.navigation.NavigationBarView
-import java.lang.ref.WeakReference
 import net.obscura.lib.util.Logger
 import net.obscura.vpnclientapp.R
 import net.obscura.vpnclientapp.activities.MainActivity
-import net.obscura.vpnclientapp.client.ManagerCmd
 import net.obscura.vpnclientapp.client.ManagerCmdOk
-import net.obscura.vpnclientapp.client.jsonConfig
 import net.obscura.vpnclientapp.services.IObscuraVpnService
-import net.obscura.vpnclientapp.ui.bridge.WebCmdBridge
 
 private val log = Logger(ObscuraUI::class)
 
 class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null) : FrameLayout(context, attrs) {
-    private class StatusObserver(
-        val binder: WeakReference<IObscuraVpnService>,
-        val onStatusChanged: (ManagerCmdOk.GetStatus) -> Unit,
-    ) {
-        private var enabled = true
-        private var knownVersion: String? = null
-
-        fun observe() {
-            synchronized(this) {
-                binder.get()?.let { binder ->
-                    WebCmdBridge.Receiver.register {
-                            binder.jsonFfi(
-                                it,
-                                jsonConfig.encodeToString(ManagerCmd.GetStatus(knownVersion)),
-                            )
-                        }
-                        .handle { data, _ -> data?.let { onStatusUpdated(jsonConfig.decodeFromString(it)) } }
-                }
-            }
-        }
-
-        fun disable() {
-            synchronized(this) { enabled = false }
-        }
-
-        private fun onStatusUpdated(status: ManagerCmdOk.GetStatus) {
-            synchronized(this) {
-                knownVersion = status.version
-
-                if (enabled) {
-                    onStatusChanged(status)
-                    observe()
-                }
-            }
-        }
-    }
+    private lateinit var vpnStatusObserver: VpnStatusObserver
 
     val canGoBack
         get() = (webView?.canGoBack() ?: false) || (bottomNavigation.selectedItemId != R.id.nav_connection)
-
-    private var statusObserver: StatusObserver? = null
 
     private lateinit var webViewContainer: FrameLayout
     private lateinit var bottomNavigation: BottomNavigationView
@@ -131,8 +90,32 @@ class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet?
         }
     }
 
-    fun onCreate(binder: IObscuraVpnService, mainActivity: MainActivity, osStatusManager: OsStatusManager) {
+    fun onCreate(
+        binder: IObscuraVpnService,
+        mainActivity: MainActivity,
+        osStatusManager: OsStatusManager,
+    ) {
         onDestroy()
+
+        this.vpnStatusObserver =
+            VpnStatusObserver(
+                binder,
+                object : VpnStatusObserver.Callback {
+                    override suspend fun onStatusChanged(status: ManagerCmdOk.GetStatus) {
+                        osStatusManager.update {
+                            this.vpnStatus =
+                                when (status.vpnStatus) {
+                                    is ManagerCmdOk.GetStatus.VpnStatus.Connected -> OsStatus.OsVpnStatus.Connected
+                                    is ManagerCmdOk.GetStatus.VpnStatus.Connecting -> OsStatus.OsVpnStatus.Connecting
+                                    is ManagerCmdOk.GetStatus.VpnStatus.Disconnected ->
+                                        OsStatus.OsVpnStatus.Disconnected
+                                }
+                        }
+                        this@ObscuraUI.setLoggedIn(status.accountId != null && !status.inNewAccountFlow)
+                    }
+                },
+            )
+        mainActivity.lifecycle.addObserver(this.vpnStatusObserver)
 
         webView =
             ObscuraWebView(context, binder, mainActivity, osStatusManager).apply {
@@ -152,23 +135,6 @@ class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet?
                         }
                     }
                 }
-
-                statusObserver?.disable()
-                statusObserver =
-                    StatusObserver(WeakReference(binder)) {
-                            osStatusManager.update {
-                                this.vpnStatus =
-                                    when (it.vpnStatus) {
-                                        is ManagerCmdOk.GetStatus.VpnStatus.Connected -> OsStatus.OsVpnStatus.Connected
-                                        is ManagerCmdOk.GetStatus.VpnStatus.Connecting ->
-                                            OsStatus.OsVpnStatus.Connecting
-                                        is ManagerCmdOk.GetStatus.VpnStatus.Disconnected ->
-                                            OsStatus.OsVpnStatus.Disconnected
-                                    }
-                            }
-                            this@ObscuraUI.setLoggedIn(it.accountId != null && !it.inNewAccountFlow)
-                        }
-                        .apply { observe() }
             }
     }
 
@@ -181,14 +147,12 @@ class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet?
     }
 
     fun onDestroy() {
-        statusObserver?.disable()
-        statusObserver = null
-
         bottomNavigation.visibility = GONE
         webViewContainer.removeAllViews()
 
-        webView?.destroy()
-        webView = null
+        this.webView?.bridge?.cancel()
+        this.webView?.destroy()
+        this.webView = null
     }
 
     override fun invalidate() {

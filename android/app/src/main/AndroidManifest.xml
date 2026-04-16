@@ -73,7 +73,7 @@
         </service>
 
         <receiver
-            android:name=".ui.bridge.WebCmdBridge$Receiver"
+            android:name=".services.JsonFfiBroadcastReceiver"
             android:exported="false" />
 
         <meta-data

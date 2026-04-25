@@ -995,7 +995,7 @@
    "pom": "sha256-GLgPNKXp+hpe7CJQ/XHlRl8utLTQnhgZQOOPG24GRFI="
   },
   "play-sdk/index/snapshot": {
-   "gz": "sha256-ACfdVkNvU34uYUebF2FeUij9AFzWqmYt//Iol2KJkfM="
+   "gz": "sha256-diKD49vssUtAkUrn43dOta96MaH3dbrl91EGuD0YIgI="
   }
  },
  "https://maven.google.com": {
@@ -1003,10 +1003,10 @@
    "xml": "sha256-LT+K2N/VngichuNdmoMoh5WWU/8I9Q6hmGfrrJFkXM4="
   },
   "androidx/core/group-index": {
-   "xml": "sha256-u8ECpSd9S5OuixPSMsLTI9LvtZ4chDkYossB+zLPPOI="
+   "xml": "sha256-aLalfzRbcmPCjqZ5IaIGgnZH4jzan2IzXhTkbjhRFok="
   },
   "androidx/lifecycle/group-index": {
-   "xml": "sha256-1NzFJOMdmR0AheDgk5+xXMlTXkhhR5DEWfqav3Z4g4o="
+   "xml": "sha256-DCdp8GfPGMLKvfLOfx78IWnlxuR1IFXJBHDnqKhD5aY="
   },
   "androidx/test/espresso/group-index": {
    "xml": "sha256-VH9IdTDYv2xU/oHOJSdsm+Gezglak/89uyuPnN93FPs="
@@ -1015,19 +1015,19 @@
    "xml": "sha256-38frJzVfH+SLmRTjmy4jx/L+as/ycSNbiwbxKlbyZts="
   },
   "androidx/webkit/group-index": {
-   "xml": "sha256-Nr7Lhb+qa++oA8XN9/gMFfPMVjk3Ap1FWZFqWRpvWSM="
+   "xml": "sha256-1jwUkdJ3Vsiml33x2YF6LF9uQGeUZ9y67H1KKqruuOM="
   },
   "com/android/application/group-index": {
-   "xml": "sha256-Bij37YPrdTFKB8RNIbFrdR/75Gffy3c7SLH88g/3giw="
+   "xml": "sha256-8HH2IXzMh3I1hi23HOcpl/35TQDR90fdI8IcD+Ybv94="
   },
   "com/android/billingclient/group-index": {
    "xml": "sha256-YIOcfzCCA7uSYBeJC4UtmO7zEIzzVGWJoFLAT3yMTaI="
   },
   "com/android/library/group-index": {
-   "xml": "sha256-mVUZ8Zlw5A0EBm/0ELovkayBBsUBPdHSauQjXrdG03Y="
+   "xml": "sha256-1XSactrj4a3zFBUKLxKiMHRoeTCjoadhqe/2s5NSAMs="
   },
   "com/google/android/gms/group-index": {
-   "xml": "sha256-PxEZ7P4Z71xaHMOrNheG639W95662qZA3sxzK5jTiwA="
+   "xml": "sha256-C9c0iDi/je1Tn9a1cKQ/lRwyw/l7gm+vugxtyNx2CQw="
   },
   "com/google/android/material/group-index": {
    "xml": "sha256-dokSqs+xTVmPAibnA6pgu3GvofhWcPf/9cc3kMIP5VE="
@@ -1658,8 +1658,8 @@
   "org/jetbrains/kotlin/android/org.jetbrains.kotlin.android.gradle.plugin/maven-metadata": {
    "xml": {
     "groupId": "org.jetbrains.kotlin.android",
-    "lastUpdated": "20260331105925",
-    "release": "2.4.0-Beta1"
+    "lastUpdated": "20260422092400",
+    "release": "2.4.0-Beta2"
    }
   },
   "org/jetbrains/kotlin/jvm#org.jetbrains.kotlin.jvm.gradle.plugin/2.3.10": {
@@ -1668,8 +1668,8 @@
   "org/jetbrains/kotlin/jvm/org.jetbrains.kotlin.jvm.gradle.plugin/maven-metadata": {
    "xml": {
     "groupId": "org.jetbrains.kotlin.jvm",
-    "lastUpdated": "20260331105929",
-    "release": "2.4.0-Beta1"
+    "lastUpdated": "20260422092404",
+    "release": "2.4.0-Beta2"
    }
   },
   "org/jetbrains/kotlin/plugin/serialization#org.jetbrains.kotlin.plugin.serialization.gradle.plugin/2.3.10": {
@@ -1678,8 +1678,8 @@
   "org/jetbrains/kotlin/plugin/serialization/org.jetbrains.kotlin.plugin.serialization.gradle.plugin/maven-metadata": {
    "xml": {
     "groupId": "org.jetbrains.kotlin.plugin.serialization",
-    "lastUpdated": "20260331105952",
-    "release": "2.4.0-Beta1"
+    "lastUpdated": "20260422092426",
+    "release": "2.4.0-Beta2"
    }
   },
   "org/jetbrains/kotlinx#kotlinx-coroutines-bom/1.8.0": {

@@ -324,6 +324,12 @@ class ObscuraVpnService : VpnService() {
                     addDisallowedApplication(applicationInfo.packageName)
 
                     setMtu(networkConfig.mtu)
+
+                    // Inherit meteredness from the underlying network (set via setUnderlyingNetworks).
+                    // Without this, VpnService.Builder defaults to always marking the VPN as metered,
+                    // regardless of the underlying network.
+                    setMetered(false)
+
                     if (!networkConfig.useSystemDns) {
                         networkConfig.dns.forEach { addDnsServer(it) }
                     }

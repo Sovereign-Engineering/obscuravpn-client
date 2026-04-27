@@ -16,7 +16,7 @@ dependencies {
 }
 
 extensions.configure<DetektExtension> {
-    config.setFrom(rootProject.file("detekt.yml"))
+    config.setFrom(rootProject.file("../detekt.yml"))
     parallel = true
 }
 

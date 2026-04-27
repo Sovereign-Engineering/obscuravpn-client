@@ -2,6 +2,7 @@ package net.obscura.vpnclientapp.services
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
@@ -26,6 +27,7 @@ import java.util.concurrent.CompletableFuture
 import net.obscura.lib.util.Logger
 import net.obscura.vpnclientapp.BuildConfig
 import net.obscura.vpnclientapp.R
+import net.obscura.vpnclientapp.activities.MainActivity
 import net.obscura.vpnclientapp.client.ManagerCmd
 import net.obscura.vpnclientapp.client.ManagerCmdOk
 import net.obscura.vpnclientapp.client.RustFfi
@@ -242,6 +244,21 @@ class ObscuraVpnService : VpnService() {
 
     private fun buildNotification() =
         NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setContentIntent(
+                PendingIntent.getActivity(
+                    this,
+                    0,
+                    Intent().apply {
+                        this.action = Intent.ACTION_MAIN
+                        this.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        this.setClassName(
+                            BuildConfig.APPLICATION_ID,
+                            MainActivity::class.qualifiedName!!,
+                        )
+                    },
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                )
+            )
             .setContentTitle(getString(R.string.app_name))
             .setContentText(
                 getString(

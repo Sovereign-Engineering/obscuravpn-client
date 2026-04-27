@@ -66,7 +66,12 @@
           OBSCURA_VERSION = version;
         };
         androidRustEnv = { ANDROID_NDK_ROOT = "${android.ndk-bundle}/libexec/android-sdk/ndk-bundle"; };
-        gradleFlags = [ "-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidBuildTools}/aapt2" ];
+
+        gradleOpts = [ "-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidBuildTools}/aapt2" ];
+        gradleFlags = gradleOpts ++ [
+          # Prevents dependency on group-index and SNAPSHOT files: https://github.com/NixOS/nixpkgs/issues/501643
+          "-xlint"
+        ];
 
         rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./rustlib/rust-toolchain.toml;
         craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
@@ -237,8 +242,8 @@
                 data = android/gradle/mitm-cache/deps.json;
               };
 
-              # Accounts for every flavor + check-only dependencies
-              gradleUpdateTask = "check";
+              # Accounts for check-only dependencies + tools needed for building an APK/AAB
+              gradleUpdateTask = "check extractReleaseAnnotations";
               # This is more robust than `nixDownloadDeps`, and will become the default once a Gradle bug is fixed that's only known to impact one project.
               # https://github.com/NixOS/nixpkgs/issues/365086
               # https://github.com/NixOS/nixpkgs/pull/383115
@@ -399,7 +404,7 @@
               pkgs.pnpm
             ] ++ rustArgs-android.nativeBuildInputs;
 
-            GRADLE_OPTS = lib.concatStringsSep " " gradleFlags; # Doesn't support spaces.
+            GRADLE_OPTS = lib.concatStringsSep " " gradleOpts; # Doesn't support spaces.
             JAVA_HOME = pkgs.jdk21.home;
 
             shellHook = ''

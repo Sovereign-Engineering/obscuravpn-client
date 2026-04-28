@@ -11,7 +11,7 @@ import net.obscura.vpnclientapp.client.errorCodeUnsupportedOnOS
 import net.obscura.vpnclientapp.client.jsonConfig
 import net.obscura.vpnclientapp.preferences.Preferences
 import net.obscura.vpnclientapp.services.IObscuraVpnService
-import net.obscura.vpnclientapp.services.JsonFfiBroadcastReceiver
+import net.obscura.vpnclientapp.ui.JsonFfiBroadcastReceiver
 import net.obscura.vpnclientapp.ui.OsStatusManager
 
 private val jsonUnit = jsonConfig.encodeToString(Unit)

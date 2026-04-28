@@ -33,6 +33,7 @@ import net.obscura.vpnclientapp.client.ManagerCmdOk
 import net.obscura.vpnclientapp.client.RustFfi
 import net.obscura.vpnclientapp.client.jsonConfig
 import net.obscura.vpnclientapp.helpers.requireVpnServiceProcess
+import net.obscura.vpnclientapp.ui.JsonFfiBroadcastReceiver
 
 private val logNoFfi = Logger(ObscuraVpnService::class)
 
@@ -55,9 +56,18 @@ class ObscuraVpnService : VpnService() {
             id: Long,
             command: String,
         ) {
-            CompletableFuture<String>().also {
-                JsonFfiBroadcastReceiver.broadcast(service, id, it)
-                service.rustFfi.jsonFfi(command, it)
+            val future = CompletableFuture<String>()
+            service.rustFfi.jsonFfi(command, future)
+            future.handle { value: String?, exception: Throwable? ->
+                try {
+                    service.sendBroadcast(
+                        Intent(service, JsonFfiBroadcastReceiver::class.java).apply {
+                            this.putJsonFfiExtras(id, value, exception)
+                        }
+                    )
+                } catch (e: Throwable) {
+                    service.log.error("failed to broadcast job $id result: $e", messageId = "L74T4QBq", tr = e)
+                }
             }
         }
     }

@@ -14,7 +14,6 @@ import net.obscura.vpnclientapp.client.ManagerCmd
 import net.obscura.vpnclientapp.client.ManagerCmdOk
 import net.obscura.vpnclientapp.client.jsonConfig
 import net.obscura.vpnclientapp.services.IObscuraVpnService
-import net.obscura.vpnclientapp.services.JsonFfiBroadcastReceiver
 
 private val log = Logger(VpnStatusObserver::class)
 

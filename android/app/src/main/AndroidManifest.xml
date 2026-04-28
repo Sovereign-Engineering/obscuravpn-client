@@ -73,7 +73,7 @@
         </service>
 
         <receiver
-            android:name=".services.JsonFfiBroadcastReceiver"
+            android:name=".ui.JsonFfiBroadcastReceiver"
             android:exported="false" />
 
         <meta-data

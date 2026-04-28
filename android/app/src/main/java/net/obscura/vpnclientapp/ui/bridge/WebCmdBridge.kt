@@ -59,7 +59,7 @@ class WebCmdBridge(
                         .run(WebCmd.Args(context, binder, this@WebCmdBridge.mainActivity, osStatusManager)),
                 )
             } catch (exception: CancellationException) {
-                log.debug("invoke job canceled: ${exception.message}", tr = exception)
+                log.debug("invoke job canceled: ${exception.message}")
                 throw exception
             } catch (exception: ErrorCodeException) {
                 this@WebCmdBridge.reject(id, exception)

@@ -44,7 +44,7 @@ class VpnStatusObserver(
                         log.debug("updated VPN status: $status")
                         this@VpnStatusObserver.callback.onStatusChanged(status)
                     } catch (e: CancellationException) {
-                        log.debug("VPN status job canceled: ${e.message}", tr = e)
+                        log.debug("VPN status job canceled: ${e.message}")
                         throw e
                     } catch (e: Throwable) {
                         log.error("failed to update VPN status: $e", tr = e)

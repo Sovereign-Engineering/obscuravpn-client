@@ -27,7 +27,7 @@ constructor(
     companion object {
         val ORIGIN = "https://appassets.androidplatform.net".toUri()
 
-        val HOME = "$ORIGIN/assets/index.html"
+        val HOME = "$ORIGIN/assets/web/index.html"
     }
 
     val bridge =

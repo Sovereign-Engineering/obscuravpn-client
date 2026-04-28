@@ -259,7 +259,7 @@
               patchPhase = ''
                 # TODO: Find a cleaner way to pass these inputs that works during dev as well.
                 ln -sfv ${rust-android}/lib/libobscuravpn_client.so app/src/main/jniLibs/arm64-v8a/
-                ln -sfv ${web-android} app/src/main/assets
+                ln -sfv ${web-android} app/src/main/assets/web
               '';
 
               APP_OUTPUTS = toString (map lib.strings.escapeShellArg appOutputs);

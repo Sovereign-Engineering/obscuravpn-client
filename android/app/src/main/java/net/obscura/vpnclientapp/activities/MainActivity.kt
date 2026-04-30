@@ -37,12 +37,15 @@ class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.O
 
     private lateinit var ui: ObscuraUI
 
+    private var isFreshLaunch: Boolean = true
     private var isVpnServiceBound: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         requireUIProcess()
+
+        this.isFreshLaunch = savedInstanceState == null
 
         // Edge-to-edge is the future for Android
         // https://developer.android.com/develop/ui/views/layout/edge-to-edge
@@ -106,10 +109,12 @@ class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.O
     override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
         log.debug("onServiceConnected $name $service")
         this.ui.onCreate(
+            this.isFreshLaunch,
             IObscuraVpnService.Stub.asInterface(service),
             this,
             this.osStatusManager,
         )
+        this.isFreshLaunch = false
     }
 
     override fun onServiceDisconnected(name: ComponentName?) {

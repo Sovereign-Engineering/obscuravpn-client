@@ -91,6 +91,7 @@ class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet?
     }
 
     fun onCreate(
+        isFreshLaunch: Boolean,
         binder: IObscuraVpnService,
         mainActivity: MainActivity,
         osStatusManager: OsStatusManager,
@@ -101,6 +102,8 @@ class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet?
             VpnStatusObserver(
                 binder,
                 object : VpnStatusObserver.Callback {
+                    private var isAutoConnectEligible = isFreshLaunch
+
                     override suspend fun onStatusChanged(status: ManagerCmdOk.GetStatus) {
                         osStatusManager.update {
                             this.vpnStatus =
@@ -112,6 +115,18 @@ class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet?
                                 }
                         }
                         this@ObscuraUI.setLoggedIn(status.accountId != null && !status.inNewAccountFlow)
+                        val shouldAutoConnect =
+                            this.isAutoConnectEligible &&
+                                status.autoConnect &&
+                                status.vpnStatus is ManagerCmdOk.GetStatus.VpnStatus.Disconnected
+                        this.isAutoConnectEligible = false
+                        if (shouldAutoConnect) {
+                            mainActivity.vpnPermissionRequestManager
+                                .requestVpnStart()
+                                .mapCatching { binder.startTunnel(null) }
+                                .onSuccess { log.info("auto-connected VPN") }
+                                .onFailure { log.error("failed to auto-connect VPN: ${it.message}", tr = it) }
+                        }
                     }
                 },
             )

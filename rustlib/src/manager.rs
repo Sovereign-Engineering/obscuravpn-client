@@ -128,16 +128,23 @@ impl VpnStatus {
                     reconnecting: disconnect_reason.is_some(),
                 }
             }
-            TunnelState::Connected { args, conn, relay, exit, network_config: _, offset_traffic_stats: _, network_interface: _ } => {
-                VpnStatus::Connected {
-                    tunnel_args: args.clone(),
-                    relay: relay.clone(),
-                    exit: exit.clone(),
-                    client_public_key: WgPubkey(conn.client_public_key().to_bytes()),
-                    exit_public_key: WgPubkey(conn.exit_public_key().to_bytes()),
-                    transport: conn.transport(),
-                }
-            }
+            TunnelState::Connected {
+                args,
+                conn,
+                relay,
+                exit,
+                network_config: _,
+                offset_traffic_stats: _,
+                network_interface: _,
+                tunnel_id: _,
+            } => VpnStatus::Connected {
+                tunnel_args: args.clone(),
+                relay: relay.clone(),
+                exit: exit.clone(),
+                client_public_key: WgPubkey(conn.client_public_key().to_bytes()),
+                exit_public_key: WgPubkey(conn.exit_public_key().to_bytes()),
+                transport: conn.transport(),
+            },
         }
     }
 }

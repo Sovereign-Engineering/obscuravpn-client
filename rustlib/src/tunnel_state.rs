@@ -40,6 +40,7 @@ pub enum TunnelState {
     },
     Connected {
         args: TunnelArgs,
+        tunnel_id: Uuid,
         #[debug(skip)]
         conn: Arc<QuicWgConn>,
         network_config: TunnelNetworkConfig,
@@ -50,7 +51,13 @@ pub enum TunnelState {
     },
 }
 
-type Connected = (Arc<QuicWgConn>, TunnelNetworkConfig, OneExit, OneRelay);
+struct Connected {
+    conn: Arc<QuicWgConn>,
+    exit: OneExit,
+    network_config: TunnelNetworkConfig,
+    relay: OneRelay,
+    tunnel_id: Uuid,
+}
 
 impl TunnelState {
     /// The constructed `TunnelState` can not be dropped due to spawned tasks, which hold references.
@@ -99,18 +106,12 @@ impl TunnelState {
         }
     }
 
-    fn set_connected(
-        &mut self,
-        args: &TunnelArgs,
-        network_interface: &NetworkInterface,
-        conn: Arc<QuicWgConn>,
-        network_config: TunnelNetworkConfig,
-        relay: OneRelay,
-        exit: OneExit,
-    ) {
+    fn set_connected(&mut self, args: &TunnelArgs, network_interface: &NetworkInterface, connected: Connected) {
+        let Connected { conn, exit, network_config, relay, tunnel_id } = connected;
         *self = Self::Connected {
             args: args.clone(),
             network_interface: network_interface.clone(),
+            tunnel_id,
             conn,
             network_config,
             relay,
@@ -142,9 +143,13 @@ impl TunnelState {
         match self {
             TunnelState::Disconnected => None,
             TunnelState::Connecting { .. } => None,
-            TunnelState::Connected { conn, network_config, exit, relay, .. } => {
-                Some((conn.clone(), network_config.clone(), exit.clone(), relay.clone()))
-            }
+            TunnelState::Connected { conn, exit, network_config, relay, tunnel_id, .. } => Some(Connected {
+                conn: conn.clone(),
+                exit: exit.clone(),
+                network_config: network_config.clone(),
+                relay: relay.clone(),
+                tunnel_id: *tunnel_id,
+            }),
         }
     }
 
@@ -246,34 +251,49 @@ impl TunnelState {
                                     tunnel_state.send_modify(|tunnel_state| tunnel_state.set_connect_error(error));
                                     ControlFlow::Break(())
                                 }
-                                Some(Ok((conn, network_config, exit, relay))) => {
-                                    tracing::info!(message_id = "icGquatl", "connected successfully");
+                                Some(Ok(connection)) => {
+                                    tracing::info!(
+                                        message_id = "icGquatl",
+                                        tunnel.id =% connection.tunnel_id,
+                                        "connected successfully"
+                                    );
                                     selection_state = ExitSelectionState::default();
-                                    ControlFlow::Continue((Arc::new(conn), network_config, exit, relay))
+                                    ControlFlow::Continue(Connected {
+                                        conn: Arc::new(connection.conn),
+                                        exit: connection.exit,
+                                        network_config: connection.network_config,
+                                        relay: connection.relay,
+                                        tunnel_id: connection.tunnel_id,
+                                    })
                                 }
                             }
                         }
                     };
-                    if let ControlFlow::Continue((conn, network_config, exit, relay)) = cf {
+                    if let ControlFlow::Continue(connected) = cf {
+                        let tunnel_id = connected.tunnel_id;
+                        let conn = connected.conn.clone();
                         // Reached connected state, set OS network config and update published tunnel state
-                        let os_network_config = OsNetworkConfig::new(&network_config, &exit.provider_name, *dns_content_block, *use_system_dns);
+                        let os_network_config = OsNetworkConfig::new(
+                            &connected.network_config,
+                            &connected.exit.provider_name,
+                            *dns_content_block,
+                            *use_system_dns,
+                        );
                         if let Err(()) = os_impl
                             .set_os_network_config(os_network_config, QuicWgConnPacketSender::new(Some(&conn)))
                             .await
                         {
-                            tracing::error!(message_id = "t7QzSTGu", "failed to set network config");
+                            tracing::error!(message_id = "t7QzSTGu", tunnel.id =% tunnel_id, "failed to set network config");
                             tunnel_state.send_modify(|tunnel_state| tunnel_state.set_connect_error(TunnelConnectError::SetOsNetworkConfig));
                         } else {
-                            tunnel_state.send_modify(|tunnel_state| {
-                                tunnel_state.set_connected(target_args, target_network_interface, conn.clone(), network_config, relay, exit)
-                            });
+                            tunnel_state.send_modify(|tunnel_state| tunnel_state.set_connected(target_args, target_network_interface, connected));
                             // forward traffic until target state changes or the tunnel fails
                             disconnect_reason = poll_until_change(&mut client_state_watch, &target_state, async {
                                 loop {
                                     match conn.receive().await {
                                         Ok(packet) => os_impl.packet_for_os(packet),
                                         Err(error) => {
-                                            tracing::error!(message_id = "tls1cZot", ?error, "tunnel failed");
+                                            tracing::error!(message_id = "tls1cZot", tunnel.id =% tunnel_id, ?error, "tunnel failed");
                                             break error;
                                         }
                                     }

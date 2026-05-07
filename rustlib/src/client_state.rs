@@ -151,6 +151,14 @@ impl ClientState {
     }
 }
 
+pub struct TunnelConnection {
+    pub conn: QuicWgConn,
+    pub exit: OneExit,
+    pub network_config: TunnelNetworkConfig,
+    pub relay: OneRelay,
+    pub tunnel_id: Uuid,
+}
+
 impl ClientStateHandle {
     pub fn borrow(&self) -> tokio::sync::watch::Ref<'_, ClientState> {
         self.0.borrow()
@@ -340,18 +348,18 @@ impl ClientStateHandle {
         exit_selector: &ExitSelector,
         network_interface: Option<&NetworkInterface>,
         selection_state: &mut ExitSelectionState,
-    ) -> Result<(QuicWgConn, TunnelNetworkConfig, OneExit, OneRelay), TunnelConnectError> {
-        let (token, tunnel_config, wg_sk, exit, relay, handshaking) = self.new_tunnel(exit_selector, network_interface, selection_state).await?;
+    ) -> Result<TunnelConnection, TunnelConnectError> {
+        let (tunnel_id, tunnel_config, wg_sk, exit, relay, handshaking) = self.new_tunnel(exit_selector, network_interface, selection_state).await?;
         let network_config = TunnelNetworkConfig::new(&tunnel_config, TUNNEL_MTU)?;
         let client_ip_v4 = network_config.ipv4;
         tracing::info!(
-            tunnel.id =% token,
+            tunnel.id =% tunnel_id,
             exit.pubkey =? tunnel_config.exit_pubkey,
             "finishing tunnel connection");
         let remote_pk = PublicKey::from(tunnel_config.exit_pubkey.0);
         let ping_keepalive_ip = tunnel_config.gateway_ip_v4;
-        let conn = QuicWgConn::connect(handshaking, wg_sk.clone(), remote_pk, client_ip_v4, ping_keepalive_ip, token).await?;
-        tracing::info!("tunnel connected");
+        let conn = QuicWgConn::connect(handshaking, wg_sk.clone(), remote_pk, client_ip_v4, ping_keepalive_ip, tunnel_id).await?;
+        tracing::info!(tunnel.id =% tunnel_id, "tunnel connected");
         let exit_id = exit.id.clone();
 
         self.change_config(|config| {
@@ -361,7 +369,7 @@ impl ClientStateHandle {
             };
             config.last_exit_selector = exit_selector.clone();
         });
-        Ok((conn, network_config, exit, relay))
+        Ok(TunnelConnection { conn, exit, network_config, relay, tunnel_id })
     }
 
     fn choose_exit(&self, selector: &ExitSelector, relay: &OneRelay, selection_state: &mut ExitSelectionState) -> Option<String> {

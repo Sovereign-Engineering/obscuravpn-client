@@ -82,6 +82,7 @@ impl From<&ApiError> for ManagerCmdErrorCode {
                     ApiErrorKind::AccountExpired {}
                     | ApiErrorKind::AlreadyExists {}
                     | ApiErrorKind::AlreadyReferred {}
+                    | ApiErrorKind::AssociateAccountConflict {}
                     | ApiErrorKind::BadRequest {}
                     | ApiErrorKind::IneligibleForReferral {}
                     | ApiErrorKind::InternalError {}
@@ -116,6 +117,9 @@ pub enum ManagerCmd {
     },
     ApiDeleteAccount {},
     ApiGetAccountInfo {},
+    ApiGoogleAssociateAccount {
+        purchase_token: String,
+    },
     CreateDebugArchive {
         user_feedback: Option<String>,
     },
@@ -237,6 +241,7 @@ impl ManagerCmd {
             Self::ApiAppleAssociateAccount { app_transaction_jws } => map_result(manager.apple_associate_account(app_transaction_jws).await),
             Self::ApiDeleteAccount {} => map_result(manager.delete_account().await),
             Self::ApiGetAccountInfo {} => map_result(manager.get_account_info().await),
+            Self::ApiGoogleAssociateAccount { purchase_token } => map_result(manager.google_associate_account(purchase_token).await),
             Self::SetFeatureFlag { flag, active } => manager.run_on_client_state(|c| c.set_feature_flag(&flag, active)),
             Self::CreateDebugArchive { user_feedback } => manager
                 .create_debug_archive(user_feedback.as_deref())

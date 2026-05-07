@@ -6,10 +6,13 @@ import com.android.billingclient.api.BillingClient
 import com.android.billingclient.api.BillingFlowParams
 import com.android.billingclient.api.ProductDetails
 import com.android.billingclient.api.QueryProductDetailsParams
+import com.android.billingclient.api.QueryPurchasesParams
 import com.android.billingclient.api.queryProductDetails
+import kotlin.coroutines.resume
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.onSubscription
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import net.obscura.lib.util.Logger
 
@@ -18,9 +21,11 @@ private val log = Logger(BillingManager::class)
 private const val PRODUCT_ID = "vpn_subscription_v1"
 private const val BASE_PLAN_ID = "monthly-autorenewing"
 
-class BillingManager(context: Context) {
+class BillingManager(
+    context: Context,
+) {
     sealed interface PurchaseResult {
-        object Completed : PurchaseResult
+        data class Completed(val purchaseTokens: List<String>) : PurchaseResult
 
         object Canceled : PurchaseResult
 
@@ -30,9 +35,12 @@ class BillingManager(context: Context) {
     }
 
     private val connection =
-        BillingConnection(context) { result, _ ->
+        BillingConnection(
+            context,
+        ) { result, purchases ->
             when (result.responseCode) {
-                BillingClient.BillingResponseCode.OK -> PurchaseResult.Completed
+                BillingClient.BillingResponseCode.OK ->
+                    PurchaseResult.Completed(purchaseTokens = purchases?.map { it.purchaseToken } ?: emptyList())
                 BillingClient.BillingResponseCode.USER_CANCELED -> PurchaseResult.Canceled
                 BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED -> PurchaseResult.AlreadyOwned
                 else -> {
@@ -42,15 +50,39 @@ class BillingManager(context: Context) {
             }
         }
 
+    suspend fun knownPurchaseTokens(): List<String> =
+        withContext(Dispatchers.IO) {
+            suspendCancellableCoroutine { continuation ->
+                this@BillingManager.connection.client.queryPurchasesAsync(
+                    QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.SUBS).build(),
+                ) { result, purchases ->
+                    log.info("purchases response: $result $purchases")
+                    when (result.responseCode) {
+                        BillingClient.BillingResponseCode.OK -> {
+                            if (continuation.isActive) {
+                                continuation.resume(purchases.map { it.purchaseToken })
+                            }
+                        }
+                        else -> {
+                            log.error("purchases response had unexpected billing result: $result")
+                            if (continuation.isActive) {
+                                continuation.resume(emptyList())
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
     private data class SubscriptionDetails(
         val productDetails: ProductDetails,
         val offerDetails: ProductDetails.SubscriptionOfferDetails,
     )
 
-    private suspend fun querySubscriptionDetails(client: BillingClient): SubscriptionDetails? {
+    private suspend fun querySubscriptionDetails(): SubscriptionDetails? {
         val result =
             withContext(Dispatchers.IO) {
-                client.queryProductDetails(
+                this@BillingManager.connection.client.queryProductDetails(
                     QueryProductDetailsParams.newBuilder()
                         .setProductList(
                             listOf(
@@ -86,7 +118,7 @@ class BillingManager(context: Context) {
 
     suspend fun launchFlow(activity: Activity): PurchaseResult {
         val productDetailsParams =
-            this.querySubscriptionDetails(this.connection.client)?.let {
+            this.querySubscriptionDetails()?.let {
                 BillingFlowParams.ProductDetailsParams.newBuilder()
                     .setProductDetails(it.productDetails)
                     .setOfferToken(it.offerDetails.offerToken)

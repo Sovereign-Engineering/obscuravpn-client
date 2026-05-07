@@ -56,6 +56,7 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
                         RateLimitExceeded {} => Self::ApiRateLimitExceeded,
                         AlreadyExists {}
                         | AlreadyReferred {}
+                        | AssociateAccountConflict {}
                         | BadRequest {}
                         | IneligibleForReferral {}
                         | InternalError {}

@@ -45,7 +45,7 @@ internal class BillingConnection<T>(
         // still be useful for:
         // 1. Querying purchases/etc. at the earliest possible time
         // 2. Logging
-        client.startConnection(
+        this.client.startConnection(
             object : BillingClientStateListener {
                 override fun onBillingSetupFinished(result: BillingResult) {
                     if (result.responseCode == BillingClient.BillingResponseCode.OK) {

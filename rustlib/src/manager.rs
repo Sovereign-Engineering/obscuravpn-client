@@ -1,6 +1,6 @@
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
-use obscuravpn_api::cmd::ExitList;
+use obscuravpn_api::cmd::{ExitList, GoogleAssociateAccount};
 use obscuravpn_api::{
     cmd::{AppleAssociateAccount, AppleAssociateAccountOutput, Cmd, DeleteAccount, DeleteAccountOutput, GetAccountInfo},
     types::{AccountId, AccountInfo, OneExit, OneRelay, WgPubkey},
@@ -229,6 +229,10 @@ impl Manager {
         let account_info = self.api_request(GetAccountInfo()).await?;
         self.client_state.update_account_info(&account_info);
         Ok(account_info)
+    }
+
+    pub async fn google_associate_account(&self, purchase_token: String) -> Result<(), ApiError> {
+        self.api_request(GoogleAssociateAccount { purchase_token }).await
     }
 
     async fn propagate_updates_to_status_task(this: Arc<Self>, _: ()) {

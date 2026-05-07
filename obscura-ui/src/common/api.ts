@@ -36,6 +36,7 @@ export interface AccountInfo {
     top_up: TopUpInfo | null,
     subscription: SubscriptionInfo | null,
     apple_subscription: AppleSubscriptionInfo | null,
+    google_subscription: GoogleSubscriptionInfo | null,
     auto_renews: number | null,
     current_expiry: number | null,
 }
@@ -66,6 +67,9 @@ export function hasActiveSubscription(account: AccountInfo): boolean {
         && account.apple_subscription.renewal_date > new Date().getTime()) {
       return true;
     }
+    if (hasGoogleSubscription(account)) {
+        return true;
+    } 
     return false;
 }
 
@@ -157,6 +161,31 @@ export function hasAppleSubscription(accountInfo: AccountInfo | undefined): bool
     const status = accountInfo?.apple_subscription?.status;
     return status === AppleSubscriptionStatus.ACTIVE
       || status === AppleSubscriptionStatus.GRACE_PERIOD;
+}
+
+// https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.subscriptionsv2#SubscriptionState
+// https://www.revenuecat.com/blog/engineering/google-play-lifecycle/
+export const enum GoogleSubscriptionStatus {
+  UNSPECIFIED = "SUBSCRIPTION_STATE_UNSPECIFIED",
+  PENDING = "SUBSCRIPTION_STATE_PENDING",
+  ACTIVE = "SUBSCRIPTION_STATE_ACTIVE",
+  PAUSED = "SUBSCRIPTION_STATE_PAUSED",
+  IN_GRACE_PERIOD = "SUBSCRIPTION_STATE_IN_GRACE_PERIOD",
+  ON_HOLD = "SUBSCRIPTION_STATE_ON_HOLD",
+  CANCELED = "SUBSCRIPTION_STATE_CANCELED",
+  EXPIRED = "SUBSCRIPTION_STATE_EXPIRED",
+  PENDING_PURCHASE_CANCELED = "SUBSCRIPTION_STATE_PENDING_PURCHASE_CANCELED",
+}
+
+export interface GoogleSubscriptionInfo {
+  status: GoogleSubscriptionStatus,
+  active: boolean,
+  auto_renew_status: boolean,
+  expires_at: number | null,
+}
+
+export function hasGoogleSubscription(accountInfo: AccountInfo | undefined): boolean {
+  return accountInfo?.google_subscription?.active === true;
 }
 
 /**

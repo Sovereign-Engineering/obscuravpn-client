@@ -4,7 +4,7 @@ import { useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as commands from '../bridge/commands';
 import * as ObscuraAccount from '../common/accountUtils';
-import { AccountInfo, activeAppleSubscription, AppleSubscriptionStatus, hasAppleSubscription, SubscriptionStatus } from '../common/api';
+import { AccountInfo, activeAppleSubscription, AppleSubscriptionStatus, GoogleSubscriptionStatus, hasAppleSubscription, hasGoogleSubscription, SubscriptionStatus } from '../common/api';
 import { AppContext, SubscriptionProductModel } from '../common/appContext';
 import { fmtErrorI18n, TranslationKey } from '../translations/i18n';
 import { ButtonLink } from './ButtonLink';
@@ -57,6 +57,7 @@ export function PaymentManagementSheet({ opened, onClose }: PaymentManagementShe
           <>
             <AccountInfoOverview accountInfo={appStatus.account.account_info} />
             {!activeAppleSubscription(appStatus.account.account_info)
+              && !(appStatus.account.account_info.active && hasGoogleSubscription(appStatus.account.account_info))
               && (externalPaymentsAllowed || appStatus.account.account_info.active)
               && <ButtonLink href={ObscuraAccount.payUrl(appStatus.accountId)}>{t(appStatus.account.account_info.active ? 'manageOnWeb' : 'payOnWeb')}</ButtonLink>}
           </>
@@ -153,12 +154,12 @@ interface RowProps {
 
 type Section = React.ReactElement[];
 
-interface SubscriptionProductCardProps {
+interface AppleSubscriptionProductCardProps {
   product: SubscriptionProductModel;
   subscribed: boolean;
 }
 
-function AppleSubscriptionProductCard({ product, subscribed }: SubscriptionProductCardProps) {
+function AppleSubscriptionProductCard({ product, subscribed }: AppleSubscriptionProductCardProps) {
   const { t } = useTranslation();
   const { pollAccount, setPaymentProcessing } = useContext(AppContext);
   const { execute: storeKitAssociateAccount } = commands.useCommand({ command: commands.storeKitAssociateAccount, showNotification: true, rethrow: true });
@@ -227,7 +228,11 @@ function AppleSubscriptionProductCard({ product, subscribed }: SubscriptionProdu
   );
 }
 
-function AndroidSubscriptionProductCard() {
+interface GoogleSubscriptionProductCardProps {
+  subscribed: boolean;
+}
+
+function GoogleSubscriptionProductCard({ subscribed }: GoogleSubscriptionProductCardProps) {
   const { t } = useTranslation();
   const { pollAccount, setPaymentProcessing } = useContext(AppContext);
 
@@ -248,9 +253,10 @@ function AndroidSubscriptionProductCard() {
 
   return (
     <Stack ta='center' p='0'>
-      <Button onClick={handlePurchase}>
-        {t('Subscribe In-app')}
-      </Button>
+      <Button component='a'
+        onClick={subscribed ? undefined : handlePurchase}
+        href={subscribed ? "https://play.google.com/store/account/subscriptions?sku=vpn_subscription_v1&package=net.obscura.vpnclientapp" : undefined}>
+        {subscribed ? t('Manage Subscription') : t('Subscribe In-app')}</Button>
     </Stack>
   );
 }
@@ -299,7 +305,6 @@ function useBuildSections(accountInfo: AccountInfo): Section[] {
     ]);
   }
 
-  // Apple Subscription Section
   if (accountInfo.apple_subscription) {
     const appleSub = accountInfo.apple_subscription;
     const section = [];
@@ -322,9 +327,25 @@ function useBuildSections(accountInfo: AccountInfo): Section[] {
     ]);
   }
 
-  if (osStatus.playBilling) {
+  if (accountInfo.google_subscription) {
+    const googleSub = accountInfo.google_subscription;
+    const section = [];
+    if (osStatus.playBilling) {
+      section.push(<GoogleSubscriptionProductCard subscribed={hasGoogleSubscription(accountInfo)} />);
+    }
+    section.push(
+      <InfoRow title={t('Status')} importance='medium' data={t(googleStatusToTranslationKey(googleSub.status))} dataColor={getGoogleSubscriptionStatusColor(googleSub.status)} />,
+      <InfoRow title={t('Source')} importance='medium' data={t('Play Store')} />,
+      <InfoRow title={t('Auto-Renewal')} importance='medium' data={googleSub.auto_renew_status ? t('Enabled') : t('Disabled')} />,
+    )
+    if (googleSub.auto_renew_status && googleSub.expires_at !== null) {
+      section.push(<InfoRow title={t('Renewal Date')} importance='medium' data={new Date(googleSub.expires_at * 1000).toLocaleDateString()} />);
+    }
+    sections.push(section);
+  } else if (osStatus.playBilling && !accountInfo.active) {
+    // Show subscription product if account is inactive
     sections.push([
-      <AndroidSubscriptionProductCard />,
+      <GoogleSubscriptionProductCard subscribed={false} />,
     ]);
   }
 
@@ -364,6 +385,22 @@ function getAppleSubscriptionStatusColor(status: AppleSubscriptionStatus): strin
   }
 }
 
+function getGoogleSubscriptionStatusColor(status: GoogleSubscriptionStatus): string {
+  switch (status) {
+    case GoogleSubscriptionStatus.ACTIVE:
+    case GoogleSubscriptionStatus.CANCELED:
+      return 'green';
+    case GoogleSubscriptionStatus.IN_GRACE_PERIOD:
+      return 'orange';
+    case GoogleSubscriptionStatus.EXPIRED:
+    case GoogleSubscriptionStatus.ON_HOLD:
+    case GoogleSubscriptionStatus.PAUSED:
+      return 'red';
+    default:
+      return 'gray';
+  }
+}
+
 function appleStatusToTranslationKey(status: AppleSubscriptionStatus): TranslationKey {
   switch (status) {
     case AppleSubscriptionStatus.ACTIVE:
@@ -378,5 +415,24 @@ function appleStatusToTranslationKey(status: AppleSubscriptionStatus): Translati
       return 'appleStatus-revoked' as TranslationKey;
     default:
       return 'appleStatus-unknown' as TranslationKey;
+  }
+}
+
+function googleStatusToTranslationKey(status: GoogleSubscriptionStatus): TranslationKey {
+  switch (status) {
+    case GoogleSubscriptionStatus.ACTIVE:
+      return 'googleStatus-active' as TranslationKey;
+    case GoogleSubscriptionStatus.CANCELED:
+      return 'googleStatus-canceled' as TranslationKey;
+    case GoogleSubscriptionStatus.EXPIRED:
+      return 'googleStatus-expired' as TranslationKey;
+    case GoogleSubscriptionStatus.IN_GRACE_PERIOD:
+      return 'googleStatus-inGracePeriod' as TranslationKey;
+    case GoogleSubscriptionStatus.ON_HOLD:
+      return 'googleStatus-onHold' as TranslationKey;
+    case GoogleSubscriptionStatus.PAUSED:
+      return 'googleStatus-paused' as TranslationKey;
+    default:
+      return 'googleStatus-unknown' as TranslationKey;
   }
 }

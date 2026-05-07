@@ -7,6 +7,18 @@ import net.obscura.lib.util.ExternallyTaggedEnumVariantSerializer
 
 sealed interface ManagerCmd {
     @KeepGeneratedSerializer
+    @Serializable(with = ApiGoogleAssociateAccount.Serializer::class)
+    data class ApiGoogleAssociateAccount(
+        val purchaseToken: String,
+    ) : ManagerCmd {
+        internal object Serializer :
+            ExternallyTaggedEnumVariantSerializer<ApiGoogleAssociateAccount>(
+                "apiGoogleAssociateAccount",
+                generatedSerializer(),
+            )
+    }
+
+    @KeepGeneratedSerializer
     @Serializable(with = CreateDebugArchive.Serializer::class)
     data class CreateDebugArchive(
         val userFeedback: String?,

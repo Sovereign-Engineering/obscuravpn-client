@@ -1,10 +1,11 @@
+use crate::wake_instant::WakeInstant;
 use etherparse::{IcmpEchoHeader, Icmpv4Type, PacketBuilder, SlicedPacket, TransportSlice};
 use rand::{RngCore, thread_rng};
 use static_assertions::{const_assert, const_assert_ne};
 use std::cmp::min;
 use std::collections::VecDeque;
 use std::net::Ipv4Addr;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 const MAX_ALLOWED_LOST_PROBES: usize = 4;
 const MAX_ALLOWED_LOST_PROBES_AFTER_SLEEP: usize = 1;
@@ -32,12 +33,12 @@ pub struct LivenessChecker {
     sent_user_traffic_since_last_ping: bool,
     is_waking: bool,
     outstanding_pongs: VecDeque<SentPing>,
-    last_ping_sent_at: Option<Instant>,
+    last_ping_sent_at: Option<WakeInstant>,
     slowest_pongs: VecDeque<ReceivedPong>,
 }
 
 struct SentPing {
-    sent_at: Instant,
+    sent_at: WakeInstant,
     id_seq: u32,
     payload: Vec<u8>,
 }
@@ -66,7 +67,7 @@ impl LivenessChecker {
     }
 
     // returns the number of likely lost probes, as well as when the next one would be considered lost
-    fn lost_probe_count_and_time_of_next_loss(&self, now: Instant) -> (usize, Option<Instant>) {
+    fn lost_probe_count_and_time_of_next_loss(&self, now: WakeInstant) -> (usize, Option<WakeInstant>) {
         let probe_lost_period = self.probe_lost_period();
         for (i, outstanding_pong) in self.outstanding_pongs.iter().enumerate() {
             let expires_at = outstanding_pong.sent_at + probe_lost_period;
@@ -80,7 +81,7 @@ impl LivenessChecker {
     // Call when sending a packet that does not originate from the liveness checker. May return a packet for sending.
     #[must_use = "may return a packet, which needs to be sent"]
     pub fn sent_traffic(&mut self) -> Option<Vec<u8>> {
-        let now = Instant::now();
+        let now = WakeInstant::now();
         if self.last_ping_sent_at.is_none_or(|last_ping| now > last_ping + BUSY_PING_PERIOD) {
             // Ping is overdue. Don't wait for next poll call.
             tracing::info!(message_id = "k5jg6f3w", "liveness checker sent_traffic returning packet");
@@ -94,8 +95,10 @@ impl LivenessChecker {
     #[must_use = "the returned packet needs to be sent"]
     pub fn wake(&mut self) -> Vec<u8> {
         tracing::info!(message_id = "OsZ6HBJO", "liveness checker wake called");
-        let now = Instant::now();
-        // Instants may or may not continue ticking during system sleep. Reset the whole state.
+        // Reset state to force an "aggressive" liveness check when the user wakes the device.
+        // - Higher risk of broken connection after sleep.
+        // - Likely chance that something will use the network (we probably woke for a reason).
+        let now = WakeInstant::now();
         *self = Self::new(self.mtu, self.src_ip, self.dst_ip);
         self.is_waking = true;
         // Immediately test connection after wake.
@@ -103,7 +106,7 @@ impl LivenessChecker {
     }
 
     pub fn poll(&mut self) -> LivenessCheckerPoll {
-        let now = Instant::now();
+        let now = WakeInstant::now();
 
         let (lost_probes, next_probe_loss) = self.lost_probe_count_and_time_of_next_loss(now);
         let max_lost_probes = if self.is_waking {
@@ -130,8 +133,8 @@ impl LivenessChecker {
             message_id = "KZjNGhxu",
             lost_probes,
             max_lost_probes,
-            since_last_ping_ms = ?self.last_ping_sent_at.map(|i| now.saturating_duration_since(i).as_millis()),
-            until_next_probe_loss_ms = ?next_probe_loss.map(|i| i.saturating_duration_since(now).as_millis()),
+            since_last_ping_ms = self.last_ping_sent_at.map(|i| now.saturating_duration_since(i).as_millis()),
+            until_next_probe_loss_ms = next_probe_loss.map(|i| i.saturating_duration_since(now).as_millis()),
             ping_period_ms = ping_period.as_millis(),
             "liveness checker probe loss ok"
         );
@@ -159,7 +162,7 @@ impl LivenessChecker {
 
     // Checks if a packet is an expected probe response and returns the probe latency if it is.
     pub fn process_potential_probe_response(&mut self, packet: &[u8]) -> Option<Duration> {
-        let now = Instant::now();
+        let now = WakeInstant::now();
         let ip = SlicedPacket::from_ip(packet).ok()?;
         let Some(TransportSlice::Icmpv4(icmp)) = ip.transport else { return None };
         let pong_id_seq = {
@@ -227,7 +230,7 @@ impl LivenessChecker {
         self.slowest_pongs.push_back(ReceivedPong { id_seq, rtt });
     }
 
-    fn send_ping(&mut self, now: Instant) -> Vec<u8> {
+    fn send_ping(&mut self, now: WakeInstant) -> Vec<u8> {
         self.last_ping_sent_at = Some(now);
         self.sent_user_traffic_since_last_ping = false;
 
@@ -256,7 +259,7 @@ impl LivenessChecker {
 #[derive(Debug)]
 pub enum LivenessCheckerPoll {
     Dead,
-    AliveUntil(Instant),
+    AliveUntil(WakeInstant),
     SendPacket(Vec<u8>),
 }
 
@@ -273,6 +276,6 @@ mod tests {
     fn test_probe_packet_size() {
         const MTU: u16 = 100;
         let mut checker = LivenessChecker::new(MTU, Ipv4Addr::LOCALHOST, Ipv4Addr::LOCALHOST);
-        assert_eq!(checker.send_ping(Instant::now()).len(), usize::from(MTU));
+        assert_eq!(checker.send_ping(WakeInstant::now()).len(), usize::from(MTU));
     }
 }

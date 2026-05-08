@@ -28,7 +28,7 @@ use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, ReadHalf};
 use tokio::net::TcpStream;
 use tokio::sync::watch;
-use tokio::time::{Duration, Instant};
+use tokio::time::{Duration, Instant, sleep};
 use tokio::time::{sleep_until, timeout};
 use tokio::{io, select, spawn};
 use tokio_rustls::TlsConnector;
@@ -37,6 +37,7 @@ use uuid::Uuid;
 
 use crate::liveness::LivenessChecker;
 use crate::tokio::AbortOnDrop;
+use crate::wake_instant::WakeInstant;
 
 const WG_FIRST_HANDSHAKE_RESENDS: usize = 25; // 2.5s per handshake.
 const WG_FIRST_HANDSHAKE_TIMEOUT: Duration = Duration::from_millis(100);
@@ -165,7 +166,7 @@ pub struct QuicWgTrafficStats {
 struct WgState {
     buffer: Vec<u8>,
     next_wg_timers_tick: Instant,
-    next_liveness_poll: Instant,
+    next_liveness_poll: WakeInstant,
     tick_stats: TickStats,
     traffic_stats: QuicWgTrafficStats,
     wg: Tunn,
@@ -238,7 +239,7 @@ impl QuicWgConn {
             traffic_stats: QuicWgTrafficStats { connected_at: now, tx_bytes: 0, rx_bytes: 0, latest_latency_ms: 0 },
             buffer: vec![0u8; u16::MAX as usize],
             next_wg_timers_tick: now + WG_TIMER_TICK,
-            next_liveness_poll: now,
+            next_liveness_poll: WakeInstant::now(),
             liveness_checker: LivenessChecker::new(LIVENESS_MTU, client_ip_v4, ping_target_ip_v4),
             tick_stats: Default::default(),
             fragmenter: Default::default(),
@@ -455,7 +456,7 @@ impl QuicWgConn {
                         }
                     }
                 }
-                _ = sleep_until(next_liveness_poll) => {
+                _ = sleep(next_liveness_poll.remaining()) => {
                     let wg_state = &mut*self.wg_state.lock().unwrap();
                     wg_state.next_liveness_poll = loop {
                         match wg_state.liveness_checker.poll() {
@@ -463,7 +464,7 @@ impl QuicWgConn {
                             crate::liveness::LivenessCheckerPoll::AliveUntil(pending_until) => break Ok(pending_until),
                             crate::liveness::LivenessCheckerPoll::SendPacket(packet) => self.send_single_packet(wg_state, &packet),
                         }
-                    }?.into();
+                    }?;
                 }
             }
         }

@@ -1,10 +1,13 @@
 use crate::{
     quicwg::{QuicWgConnPacketSender, TUNNEL_MTU},
+    rate_limited_log,
     tokio::AbortOnDrop,
 };
 use nix::{errno::Errno, unistd};
-use std::{os::fd::OwnedFd, sync::Arc};
+use std::{os::fd::OwnedFd, sync::Arc, time::Duration};
 use tokio::io::unix::AsyncFd;
+
+const TUN_MIN_LOG_SILENCE: Duration = Duration::from_secs(5);
 
 pub struct Tun {
     fd: Arc<OwnedFd>,
@@ -51,10 +54,16 @@ impl Tun {
 
     pub fn write(&self, packet: &[u8]) {
         if packet.len() > TUNNEL_MTU as usize {
-            tracing::warn!(message_id = "Yc1WxQBY", packet_len = packet.len(), "packet larger than MTU",);
+            rate_limited_log!(
+                TUN_MIN_LOG_SILENCE,
+                tracing::warn!(message_id = "Yc1WxQBY", packet_len = packet.len(), "packet larger than MTU")
+            );
         }
         if let Err(error) = unistd::write(&self.fd, packet) {
-            tracing::error!(message_id = "W0sOhigq", ?error, "writing packet to tun failed");
+            rate_limited_log!(
+                TUN_MIN_LOG_SILENCE,
+                tracing::error!(message_id = "W0sOhigq", ?error, "writing packet to tun failed")
+            );
         }
     }
 }

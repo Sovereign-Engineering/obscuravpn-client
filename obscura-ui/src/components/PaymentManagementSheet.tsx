@@ -4,7 +4,7 @@ import { useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as commands from '../bridge/commands';
 import * as ObscuraAccount from '../common/accountUtils';
-import { AccountInfo, activeAppleSubscription, AppleSubscriptionStatus, GoogleSubscriptionStatus, hasAppleSubscription, hasGoogleSubscription, SubscriptionStatus } from '../common/api';
+import { AccountInfo, AppleSubscriptionStatus, GoogleSubscriptionStatus, hasActiveSubscription, hasAppleSubscription, hasGoogleSubscription, SubscriptionStatus } from '../common/api';
 import { AppContext, SubscriptionProductModel } from '../common/appContext';
 import { fmtErrorI18n, TranslationKey } from '../translations/i18n';
 import { ButtonLink } from './ButtonLink';
@@ -56,8 +56,8 @@ export function PaymentManagementSheet({ opened, onClose }: PaymentManagementShe
         {appStatus.account?.account_info ? (
           <>
             <AccountInfoOverview accountInfo={appStatus.account.account_info} />
-            {!activeAppleSubscription(appStatus.account.account_info)
-              && !(appStatus.account.account_info.active && hasGoogleSubscription(appStatus.account.account_info))
+            {!hasAppleSubscription(appStatus.account.account_info)
+              && !hasGoogleSubscription(appStatus.account.account_info)
               && (externalPaymentsAllowed || appStatus.account.account_info.active)
               && <ButtonLink href={ObscuraAccount.payUrl(appStatus.accountId)}>{t(appStatus.account.account_info.active ? 'manageOnWeb' : 'payOnWeb')}</ButtonLink>}
           </>
@@ -320,8 +320,7 @@ function useBuildSections(accountInfo: AccountInfo): Section[] {
       section.push(<InfoRow title={t('Renewal Date')} importance='medium' data={new Date(appleSub.renewal_date * 1000).toLocaleDateString()} />);
     }
     sections.push(section);
-  } else if (appleSubscriptionProduct && !accountInfo.active) {
-    // Show subscription product if account is inactive
+  } else if (appleSubscriptionProduct && !hasActiveSubscription(accountInfo)) {
     sections.push([
       <AppleSubscriptionProductCard product={appleSubscriptionProduct} subscribed={false} />,
     ]);
@@ -342,8 +341,7 @@ function useBuildSections(accountInfo: AccountInfo): Section[] {
       section.push(<InfoRow title={t('Renewal Date')} importance='medium' data={new Date(googleSub.expires_at * 1000).toLocaleDateString()} />);
     }
     sections.push(section);
-  } else if (osStatus.playBilling && !accountInfo.active) {
-    // Show subscription product if account is inactive
+  } else if (osStatus.playBilling && !hasActiveSubscription(accountInfo)) {
     sections.push([
       <GoogleSubscriptionProductCard subscribed={false} />,
     ]);

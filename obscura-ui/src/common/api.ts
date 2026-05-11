@@ -59,13 +59,11 @@ export interface SubscriptionInfo {
 
 // returns if a subscription is active, regardless about renewal status
 export function hasActiveSubscription(account: AccountInfo): boolean {
-    if (account.subscription?.status === SubscriptionStatus.ACTIVE
-        || account.subscription?.status === SubscriptionStatus.TRIALING) {
+    if (hasStripeSubscription(account)) {
         return true;
     }
-    if (account.apple_subscription?.status === AppleSubscriptionStatus.ACTIVE
-        && account.apple_subscription.renewal_date > new Date().getTime()) {
-      return true;
+    if (hasAppleSubscription(account)) {
+        return true;
     }
     if (hasGoogleSubscription(account)) {
         return true;
@@ -87,21 +85,8 @@ export function paidUntil(account: AccountInfo): Date | null {
   return maxExpiry > 0 ? new Date(maxExpiry * 1000) : null;
 }
 
-export function activeAppleSubscription(account: AccountInfo): boolean {
-  return (
-    account.active && account.apple_subscription !== null &&
-      (
-        account.apple_subscription.status === AppleSubscriptionStatus.ACTIVE ||
-        account.apple_subscription.status === AppleSubscriptionStatus.GRACE_PERIOD
-      )
-  );
-}
-
 export function accountIsExpired(accountInfo: AccountInfo): boolean {
-  if (accountInfo.auto_renews) return false;
-  return (accountInfo.active && accountInfo.current_expiry) ?
-    new Date(accountInfo.current_expiry * 1000).getTime() < new Date().getTime() :
-    true;
+  return !accountInfo.active;
 }
 
 // TimeRemaining is represented in parts of a whole
@@ -142,6 +127,16 @@ export const enum SubscriptionStatus {
     UNPAID = "unpaid",
 }
 
+// TODO: https://linear.app/soveng/issue/OBS-3495/add-active-fields-for-stripe-and-apple-subscriptions
+export function hasStripeSubscription(accountInfo: AccountInfo | undefined): boolean {
+  const subscription = accountInfo?.subscription;
+  const status = subscription?.status;
+  const cancel_at_period_end = subscription?.cancel_at_period_end === true;
+  return status === SubscriptionStatus.ACTIVE
+    || status === SubscriptionStatus.TRIALING
+    || (status === SubscriptionStatus.PAST_DUE && !cancel_at_period_end);
+}
+
 // https://developer.apple.com/documentation/appstoreserverapi/status
 export const enum AppleSubscriptionStatus {
     ACTIVE = 1,
@@ -157,6 +152,7 @@ export interface AppleSubscriptionInfo {
     renewal_date: number,
 }
 
+// TODO: https://linear.app/soveng/issue/OBS-3495/add-active-fields-for-stripe-and-apple-subscriptions
 export function hasAppleSubscription(accountInfo: AccountInfo | undefined): boolean {
     const status = accountInfo?.apple_subscription?.status;
     return status === AppleSubscriptionStatus.ACTIVE

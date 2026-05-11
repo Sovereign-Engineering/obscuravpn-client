@@ -11,10 +11,8 @@ import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.view.WindowCompat
-import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
-import kotlinx.coroutines.launch
 import net.obscura.lib.util.Logger
 import net.obscura.vpnclientapp.BillingFacade
 import net.obscura.vpnclientapp.R
@@ -98,6 +96,9 @@ class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.O
         if (this.isVpnServiceBound) {
             this.unbindVpnService(this)
         }
+        if (::ui.isInitialized) {
+            this.ui.onDestroy()
+        }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -110,21 +111,13 @@ class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.O
 
     override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
         log.debug("onServiceConnected $name $service")
-        val binder = IObscuraVpnService.Stub.asInterface(service)
         this.ui.onCreate(
             this.isFreshLaunch,
-            binder,
+            IObscuraVpnService.Stub.asInterface(service),
             this,
             this.osStatusManager,
         )
         this.isFreshLaunch = false
-        this.lifecycleScope.launch {
-            try {
-                this@MainActivity.billingFacade.associateKnownPurchaseTokens(binder)
-            } catch (e: Throwable) {
-                log.error("failed to associate known purchase tokens with account: $e", tr = e)
-            }
-        }
     }
 
     override fun onServiceDisconnected(name: ComponentName?) {

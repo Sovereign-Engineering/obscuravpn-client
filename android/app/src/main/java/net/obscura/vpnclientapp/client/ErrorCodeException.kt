@@ -6,6 +6,10 @@ import androidx.annotation.Keep
 // it's only constructed on the Rust side.
 @Keep data class ErrorCodeException(val errorCode: String) : Exception(errorCode)
 
+fun errorCodeApiAssociateAccountConflict() = ErrorCodeException("apiAssociateAccountConflict")
+
+fun errorCodeApiRateLimitExceeded() = ErrorCodeException("apiRateLimitExceeded")
+
 fun errorCodeOther() = ErrorCodeException("other")
 
 fun errorCodePurchaseFailed() = ErrorCodeException("purchaseFailed")

@@ -5,11 +5,16 @@ import android.content.Context
 import com.android.billingclient.api.BillingClient
 import com.android.billingclient.api.BillingFlowParams
 import com.android.billingclient.api.ProductDetails
+import com.android.billingclient.api.Purchase
 import com.android.billingclient.api.QueryProductDetailsParams
 import com.android.billingclient.api.QueryPurchasesParams
 import com.android.billingclient.api.queryProductDetails
 import kotlin.coroutines.resume
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.coroutines.channels.onFailure
+import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -25,7 +30,7 @@ class BillingManager(
     context: Context,
 ) {
     sealed interface PurchaseResult {
-        data class Completed(val purchaseTokens: List<String>) : PurchaseResult
+        object Completed : PurchaseResult
 
         object Canceled : PurchaseResult
 
@@ -34,13 +39,31 @@ class BillingManager(
         object Failed : PurchaseResult
     }
 
+    private val purchaseTokensTx: Channel<String> = Channel(Channel.UNLIMITED)
+    val purchaseTokensRx: ReceiveChannel<String> = this.purchaseTokensTx
+
+    private fun sendPurchaseTokens(purchases: List<Purchase>) {
+        for (purchase in purchases) {
+            this.purchaseTokensTx.trySendBlocking(purchase.purchaseToken).onFailure {
+                log.error("failed to send purchase token: $it")
+            }
+        }
+    }
+
     private val connection =
         BillingConnection(
             context,
         ) { result, purchases ->
             when (result.responseCode) {
-                BillingClient.BillingResponseCode.OK ->
-                    PurchaseResult.Completed(purchaseTokens = purchases?.map { it.purchaseToken } ?: emptyList())
+                BillingClient.BillingResponseCode.OK -> {
+                    if (purchases?.isNotEmpty() == true) {
+                        this@BillingManager.sendPurchaseTokens(purchases)
+                        PurchaseResult.Completed
+                    } else {
+                        log.error("purchase list null or empty despite a successful purchase")
+                        PurchaseResult.Failed
+                    }
+                }
                 BillingClient.BillingResponseCode.USER_CANCELED -> PurchaseResult.Canceled
                 BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED -> PurchaseResult.AlreadyOwned
                 else -> {
@@ -50,7 +73,7 @@ class BillingManager(
             }
         }
 
-    suspend fun knownPurchaseTokens(): List<String> =
+    private suspend fun querySubscriptionPurchases(): List<Purchase> =
         withContext(Dispatchers.IO) {
             suspendCancellableCoroutine { continuation ->
                 this@BillingManager.connection.client.queryPurchasesAsync(
@@ -60,7 +83,7 @@ class BillingManager(
                     when (result.responseCode) {
                         BillingClient.BillingResponseCode.OK -> {
                             if (continuation.isActive) {
-                                continuation.resume(purchases.map { it.purchaseToken })
+                                continuation.resume(purchases)
                             }
                         }
                         else -> {
@@ -73,6 +96,10 @@ class BillingManager(
                 }
             }
         }
+
+    suspend fun refreshPurchaseTokens() {
+        this.sendPurchaseTokens(this.querySubscriptionPurchases())
+    }
 
     private data class SubscriptionDetails(
         val productDetails: ProductDetails,
@@ -165,5 +192,6 @@ class BillingManager(
 
     fun destroy() {
         this.connection.destroy()
+        this.purchaseTokensTx.close()
     }
 }

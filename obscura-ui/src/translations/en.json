@@ -199,6 +199,7 @@
   "installUpdate": "Install update",
   "InternalError": "An unexpected error has occurred. Please consider sending a Debugging Archive",
   "Internet": "Internet",
+  "ipcError-apiAssociateAccountConflict": "This subscription is already associated with another account.",
   "ipcError-apiError": "API request failed. Please make sure you are connected to the internet and no other VPN or firewall is running.",
   "ipcError-apiNoLongerSupported": "This client is too old, please update to the latest version for this functionality.",
   "ipcError-apiRateLimitExceeded": "API rate-limit exceeded. Please try again later.",

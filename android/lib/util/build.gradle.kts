@@ -16,6 +16,7 @@ extensions.configure<LibraryExtension> {
 kotlin { jvmToolchain(21) }
 
 dependencies {
+    implementation(libs.androidx.core.ktx)
     implementation(libs.kotlin.stdlib)
     implementation(libs.kotlinx.serialization.json)
 }

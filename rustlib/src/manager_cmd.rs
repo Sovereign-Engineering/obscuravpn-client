@@ -36,6 +36,7 @@ use crate::{config::PinnedLocation, manager::TunnelArgs};
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum ManagerCmdErrorCode {
+    ApiAssociateAccountConflict,
     ApiError,
     ApiInvalidAccountId,
     ApiNoLongerSupported,
@@ -75,6 +76,7 @@ impl From<&ApiError> for ManagerCmdErrorCode {
         match error {
             ApiError::ApiClient(err) => match err {
                 ClientError::ApiError(err) => match err.body.error {
+                    ApiErrorKind::AssociateAccountConflict {} => Self::ApiAssociateAccountConflict,
                     ApiErrorKind::NoLongerSupported {} => Self::ApiNoLongerSupported,
                     ApiErrorKind::RateLimitExceeded {} => Self::ApiRateLimitExceeded,
                     ApiErrorKind::SignupLimitExceeded {} => Self::ApiSignupLimitExceeded,
@@ -82,7 +84,6 @@ impl From<&ApiError> for ManagerCmdErrorCode {
                     ApiErrorKind::AccountExpired {}
                     | ApiErrorKind::AlreadyExists {}
                     | ApiErrorKind::AlreadyReferred {}
-                    | ApiErrorKind::AssociateAccountConflict {}
                     | ApiErrorKind::BadRequest {}
                     | ApiErrorKind::IneligibleForReferral {}
                     | ApiErrorKind::InternalError {}

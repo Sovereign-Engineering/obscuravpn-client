@@ -19,6 +19,7 @@ import net.obscura.vpnclientapp.services.IObscuraVpnService
 private val log = Logger(ObscuraUI::class)
 
 class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null) : FrameLayout(context, attrs) {
+    private lateinit var purchaseTokenUploader: PurchaseTokenUploader
     private lateinit var vpnStatusObserver: VpnStatusObserver
 
     val canGoBack
@@ -98,6 +99,8 @@ class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet?
     ) {
         onDestroy()
 
+        this.purchaseTokenUploader = PurchaseTokenUploader(binder, mainActivity.billingFacade)
+
         this.vpnStatusObserver =
             VpnStatusObserver(
                 binder,
@@ -162,6 +165,10 @@ class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet?
     }
 
     fun onDestroy() {
+        if (::purchaseTokenUploader.isInitialized) {
+            this.purchaseTokenUploader.cancel()
+        }
+
         bottomNavigation.visibility = GONE
         webViewContainer.removeAllViews()
 

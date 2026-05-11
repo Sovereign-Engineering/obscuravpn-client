@@ -116,9 +116,7 @@ internal sealed interface WebCmd {
             )
 
         override suspend fun run(args: Args) =
-            args.mainActivity.billingFacade.launchFlow(args.binder, args.mainActivity).let {
-                jsonConfig.encodeToString(it)
-            }
+            args.mainActivity.billingFacade.launchFlow(args.mainActivity).let { jsonConfig.encodeToString(it) }
     }
 
     @KeepGeneratedSerializer

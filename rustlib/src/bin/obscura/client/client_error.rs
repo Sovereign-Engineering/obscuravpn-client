@@ -19,7 +19,8 @@ impl From<ManagerCmdErrorCode> for ClientError {
         match error {
             ManagerCmdErrorCode::ApiInvalidAccountId => ClientError::MalformedAccountId,
             ManagerCmdErrorCode::ApiUnreachable => ClientError::ApiUnreachable,
-            ManagerCmdErrorCode::ApiError
+            ManagerCmdErrorCode::ApiAssociateAccountConflict
+            | ManagerCmdErrorCode::ApiError
             | ManagerCmdErrorCode::ApiNoLongerSupported
             | ManagerCmdErrorCode::ApiRateLimitExceeded
             | ManagerCmdErrorCode::ApiSignupLimitExceeded

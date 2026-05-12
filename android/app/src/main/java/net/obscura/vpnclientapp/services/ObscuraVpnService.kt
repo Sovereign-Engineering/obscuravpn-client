@@ -357,6 +357,11 @@ class ObscuraVpnService : VpnService() {
                     // regardless of the underlying network.
                     setMetered(false)
 
+                    // useSystemDns is always false on Android because no UI surface writes it.
+                    //
+                    // System-wide Private DNS overrides anything we set.
+                    // Mullvad has the same problem, no fix without WRITE_SECURE_SETTINGS. UI warns about it.
+                    // https://github.com/mullvad/mullvadvpn-app/issues/5009
                     if (!networkConfig.useSystemDns) {
                         networkConfig.dns.forEach { addDnsServer(it) }
                     }

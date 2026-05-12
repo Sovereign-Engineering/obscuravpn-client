@@ -16,15 +16,13 @@ import classes from './Settings.module.css';
 
 const APPLE_PLATFORMS = new Set([Platform.macOS, Platform.iOS]);
 const IS_APPLE = APPLE_PLATFORMS.has(PLATFORM);
-
-const CUSTOM_DNS_PLATFORMS_EXCLUDED = new Set([Platform.Android]);
-const CUSTOM_DNS_SUPPORTED = !CUSTOM_DNS_PLATFORMS_EXCLUDED.has(PLATFORM);
+const IS_ANDROID = PLATFORM === Platform.Android;
 
 export default function Settings() {
   return (
     <Stack mb='xl' gap='lg' align='flex-start' className={classes.container}>
       <GeneralSettings />
-      {CUSTOM_DNS_SUPPORTED && <DnsSettings />}
+      <DnsSettings />
       <ExperimentalSettings />
       <NetworkSettings />
       <AppearanceSettings />
@@ -37,40 +35,49 @@ function DnsSettings() {
   const { appStatus } = useContext(AppContext);
   const { dnsContentBlock, useSystemDns } = appStatus;
 
-  const handleModeChange = (val: string) => {
-    commands.setUseSystemDns(val === 'system');
-  };
-
   const onBlockChange = (key: keyof DNSContentBlock, e: React.ChangeEvent<HTMLInputElement>) => {
     const checked = e.currentTarget.checked;
     const newBlock = { ...dnsContentBlock, [key]: checked };
     commands.setDnsContentBlock(newBlock);
   };
 
+  const titleKey = IS_ANDROID ? 'dnsContentBlocking' : 'dnsSetting';
+
+  const checkboxes = (
+    <>
+      <Checkbox disabled={useSystemDns} checked={dnsContentBlock.ad} onChange={(e) => onBlockChange('ad', e)} label={t('dnsBlockAds')} />
+      <Checkbox disabled={useSystemDns} checked={dnsContentBlock.tracker} onChange={(e) => onBlockChange('tracker', e)} label={t('dnsBlockTrackers')} />
+      <Checkbox disabled={useSystemDns} checked={dnsContentBlock.malware} onChange={(e) => onBlockChange('malware', e)} label={t('dnsBlockMalware')} />
+      <Checkbox disabled={useSystemDns} checked={dnsContentBlock.gambling} onChange={(e) => onBlockChange('gambling', e)} label={t('dnsBlockGambling')} />
+      <Checkbox disabled={useSystemDns} checked={dnsContentBlock.adult} onChange={(e) => onBlockChange('adult', e)} label={t('dnsBlockAdult')} />
+      <Checkbox disabled={useSystemDns} checked={dnsContentBlock.socialMedia} onChange={(e) => onBlockChange('socialMedia', e)} label={t('dnsBlockSocialMedia')} />
+    </>
+  );
+
   return (
     <Card padding='md' radius='md' w='100%' shadow='xs'>
       <Stack gap='xs'>
         <Group gap='xs'>
           <MdBlock size='1.5em' style={{ color: 'var(--mantine-color-dimmed)' }} />
-          <Title order={4}>{t('dnsSetting')}</Title>
+          <Title order={4}>{t(titleKey)}</Title>
         </Group>
-
-        <Radio.Group value={useSystemDns ? 'system' : 'obscura'} onChange={handleModeChange}>
-          <Stack gap='sm'>
-            <Radio value="obscura" label={t('dnsModeObscura')} />
-
-            <Stack gap='xs' ml='xl'>
-              <Checkbox disabled={useSystemDns} checked={dnsContentBlock.ad} onChange={(e) => onBlockChange('ad', e)} label={t('dnsBlockAds')} />
-              <Checkbox disabled={useSystemDns} checked={dnsContentBlock.tracker} onChange={(e) => onBlockChange('tracker', e)} label={t('dnsBlockTrackers')} />
-              <Checkbox disabled={useSystemDns} checked={dnsContentBlock.malware} onChange={(e) => onBlockChange('malware', e)} label={t('dnsBlockMalware')} />
-              <Checkbox disabled={useSystemDns} checked={dnsContentBlock.gambling} onChange={(e) => onBlockChange('gambling', e)} label={t('dnsBlockGambling')} />
-              <Checkbox disabled={useSystemDns} checked={dnsContentBlock.adult} onChange={(e) => onBlockChange('adult', e)} label={t('dnsBlockAdult')} />
-              <Checkbox disabled={useSystemDns} checked={dnsContentBlock.socialMedia} onChange={(e) => onBlockChange('socialMedia', e)} label={t('dnsBlockSocialMedia')} />
+        {IS_ANDROID ? (
+          /* no "Use system DNS" on Android. See applyNetworkConfig in ObscuraVpnService.kt for the reasons. */
+          <>
+            <Stack gap='xs'>{checkboxes}</Stack>
+            <Alert icon={<IoInformationCircleOutline />} color='blue' variant='light'>
+              {t('androidPrivateDnsAlert')}
+            </Alert>
+          </>
+        ) : (
+          <Radio.Group value={useSystemDns ? 'system' : 'obscura'} onChange={(val) => commands.setUseSystemDns(val === 'system')}>
+            <Stack gap='sm'>
+              <Radio value="obscura" label={t('dnsModeObscura')} />
+              <Stack gap='xs' ml='xl'>{checkboxes}</Stack>
+              <Radio value="system" label={t('dnsModeSystem')} description={t('dnsModeSystemDescription')} />
             </Stack>
-
-            <Radio value="system" label={t('dnsModeSystem')} description={t('dnsModeSystemDescription')} />
-          </Stack>
-        </Radio.Group>
+          </Radio.Group>
+        )}
       </Stack>
     </Card>
   );

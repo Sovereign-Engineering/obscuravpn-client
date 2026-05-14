@@ -10,10 +10,23 @@ sealed interface ManagerCmd {
     @Serializable(with = ApiGoogleAssociateAccount.Serializer::class)
     data class ApiGoogleAssociateAccount(
         val purchaseToken: String,
+        val promoCode: String?,
     ) : ManagerCmd {
         internal object Serializer :
             ExternallyTaggedEnumVariantSerializer<ApiGoogleAssociateAccount>(
                 "apiGoogleAssociateAccount",
+                generatedSerializer(),
+            )
+    }
+
+    @KeepGeneratedSerializer
+    @Serializable(with = ApiGoogleBillingDetails.Serializer::class)
+    data class ApiGoogleBillingDetails(
+        val promoCode: String?,
+    ) : ManagerCmd {
+        internal object Serializer :
+            ExternallyTaggedEnumVariantSerializer<ApiGoogleBillingDetails>(
+                "apiGoogleBillingDetails",
                 generatedSerializer(),
             )
     }

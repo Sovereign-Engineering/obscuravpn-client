@@ -23,6 +23,7 @@ impl From<ManagerCmdErrorCode> for ClientError {
             | ManagerCmdErrorCode::ApiError
             | ManagerCmdErrorCode::ApiNoLongerSupported
             | ManagerCmdErrorCode::ApiRateLimitExceeded
+            | ManagerCmdErrorCode::ApiSaleNotFound
             | ManagerCmdErrorCode::ApiSignupLimitExceeded
             | ManagerCmdErrorCode::ConfigSaveError
             | ManagerCmdErrorCode::Other => anyhow::Error::msg(error.as_static_str()).into(),

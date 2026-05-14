@@ -5,16 +5,20 @@ import kotlinx.serialization.KeepGeneratedSerializer
 import kotlinx.serialization.Serializable
 import net.obscura.lib.util.ExternallyTaggedEnumSerializer
 import net.obscura.lib.util.ExternallyTaggedEnumVariantSerializer
+import net.obscura.lib.util.Logger
 import net.obscura.vpnclientapp.activities.MainActivity
 import net.obscura.vpnclientapp.client.ManagerCmd
+import net.obscura.vpnclientapp.client.ManagerCmdOk
 import net.obscura.vpnclientapp.client.errorCodeUnsupportedOnOS
 import net.obscura.vpnclientapp.client.jsonConfig
 import net.obscura.vpnclientapp.preferences.Preferences
 import net.obscura.vpnclientapp.services.IObscuraVpnService
 import net.obscura.vpnclientapp.ui.JsonFfiBroadcastReceiver
 import net.obscura.vpnclientapp.ui.OsStatusManager
+import net.obscura.vpnclientapp.ui.uploadPurchaseToken
 
 private val jsonUnit = jsonConfig.encodeToString(Unit)
+private val log = Logger(WebCmd::class)
 
 @Serializable(with = WebCmd.Serializer::class)
 internal sealed interface WebCmd {
@@ -108,15 +112,30 @@ internal sealed interface WebCmd {
 
     @KeepGeneratedSerializer
     @Serializable(with = PurchaseSubscription.Serializer::class)
-    class PurchaseSubscription : WebCmd {
+    data class PurchaseSubscription(val promoCode: String?) : WebCmd {
         internal object Serializer :
             ExternallyTaggedEnumVariantSerializer<PurchaseSubscription>(
                 "purchaseSubscription",
                 generatedSerializer(),
             )
 
-        override suspend fun run(args: Args) =
-            args.mainActivity.billingFacade.launchFlow(args.mainActivity).let { jsonConfig.encodeToString(it) }
+        override suspend fun run(args: Args): String {
+            val billingDetails =
+                JsonFfiCmd(
+                        jsonConfig.encodeToString(ManagerCmd.ApiGoogleBillingDetails(this.promoCode)),
+                    )
+                    .run(args)
+                    .let { jsonConfig.decodeFromString<ManagerCmdOk.ApiGoogleBillingDetails>(it) }
+            log.info("billing details: $billingDetails")
+            val purchaseTokens = args.mainActivity.billingFacade.launchFlow(args.mainActivity, billingDetails)
+            val didPurchase = purchaseTokens != null
+            if (didPurchase) {
+                for (purchaseToken in purchaseTokens) {
+                    uploadPurchaseToken(args.binder, purchaseToken, promoCode)
+                }
+            }
+            return jsonConfig.encodeToString(didPurchase)
+        }
     }
 
     @KeepGeneratedSerializer

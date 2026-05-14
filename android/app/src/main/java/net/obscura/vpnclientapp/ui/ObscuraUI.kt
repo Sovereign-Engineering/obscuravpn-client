@@ -8,18 +8,24 @@ import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.postDelayed
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.navigation.NavigationBarView
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import net.obscura.lib.util.Logger
 import net.obscura.vpnclientapp.R
 import net.obscura.vpnclientapp.activities.MainActivity
+import net.obscura.vpnclientapp.client.ErrorCodeException
 import net.obscura.vpnclientapp.client.ManagerCmdOk
 import net.obscura.vpnclientapp.services.IObscuraVpnService
 
 private val log = Logger(ObscuraUI::class)
 
 class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null) : FrameLayout(context, attrs) {
-    private lateinit var purchaseTokenUploader: PurchaseTokenUploader
+    private var purchaseTokenUploader: Job? = null
     private lateinit var vpnStatusObserver: VpnStatusObserver
 
     val canGoBack
@@ -99,7 +105,19 @@ class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet?
     ) {
         onDestroy()
 
-        this.purchaseTokenUploader = PurchaseTokenUploader(binder, mainActivity.billingFacade)
+        this.purchaseTokenUploader =
+            mainActivity.lifecycleScope.launch(Dispatchers.Default) {
+                val purchaseTokens = mainActivity.billingFacade.fetchPurchaseTokens()
+                if (purchaseTokens != null) {
+                    for (purchaseToken in purchaseTokens) {
+                        try {
+                            uploadPurchaseToken(binder, purchaseToken, null)
+                        } catch (_: ErrorCodeException) {
+                            // This is already logged internally
+                        }
+                    }
+                }
+            }
 
         this.vpnStatusObserver =
             VpnStatusObserver(
@@ -165,9 +183,7 @@ class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet?
     }
 
     fun onDestroy() {
-        if (::purchaseTokenUploader.isInitialized) {
-            this.purchaseTokenUploader.cancel()
-        }
+        this.purchaseTokenUploader?.cancel(CancellationException("UI destroyed"))
 
         bottomNavigation.visibility = GONE
         webViewContainer.removeAllViews()

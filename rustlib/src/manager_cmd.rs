@@ -5,7 +5,7 @@ use std::{sync::Arc, time::Duration};
 use base64::prelude::*;
 use obscuravpn_api::{
     ClientError,
-    cmd::{ApiErrorKind, AppleAssociateAccountOutput, DeleteAccountOutput, ExitList},
+    cmd::{ApiErrorKind, AppleAssociateAccountOutput, DeleteAccountOutput, ExitList, GoogleBillingDetailsOutput},
     types::{AccountId, AccountInfo},
 };
 use serde::{Deserialize, Serialize};
@@ -41,6 +41,7 @@ pub enum ManagerCmdErrorCode {
     ApiInvalidAccountId,
     ApiNoLongerSupported,
     ApiRateLimitExceeded,
+    ApiSaleNotFound,
     ApiSignupLimitExceeded,
     ApiUnreachable,
     ConfigSaveError,
@@ -79,6 +80,7 @@ impl From<&ApiError> for ManagerCmdErrorCode {
                     ApiErrorKind::AssociateAccountConflict {} => Self::ApiAssociateAccountConflict,
                     ApiErrorKind::NoLongerSupported {} => Self::ApiNoLongerSupported,
                     ApiErrorKind::RateLimitExceeded {} => Self::ApiRateLimitExceeded,
+                    ApiErrorKind::SaleNotFound {} => Self::ApiSaleNotFound,
                     ApiErrorKind::SignupLimitExceeded {} => Self::ApiSignupLimitExceeded,
                     ApiErrorKind::InvalidAccountId {} => Self::ApiInvalidAccountId,
                     ApiErrorKind::AccountExpired {}
@@ -93,7 +95,6 @@ impl From<&ApiError> for ManagerCmdErrorCode {
                     | ApiErrorKind::MoneroTopUpNotFound {}
                     | ApiErrorKind::NoApiRoute {}
                     | ApiErrorKind::NoMatchingExit {}
-                    | ApiErrorKind::SaleNotFound {}
                     | ApiErrorKind::TunnelLimitExceeded {}
                     | ApiErrorKind::WgKeyRotationRequired {}
                     | ApiErrorKind::Unknown(_) => Self::ApiError,
@@ -120,6 +121,10 @@ pub enum ManagerCmd {
     ApiGetAccountInfo {},
     ApiGoogleAssociateAccount {
         purchase_token: String,
+        promo_code: Option<String>,
+    },
+    ApiGoogleBillingDetails {
+        promo_code: Option<String>,
     },
     CreateDebugArchive {
         user_feedback: Option<String>,
@@ -189,6 +194,8 @@ pub enum ManagerCmdOk {
     ApiDeleteAccount(DeleteAccountOutput),
     #[from]
     ApiGetAccountInfo(AccountInfo),
+    #[from]
+    ApiGoogleBillingDetails(GoogleBillingDetailsOutput),
     CreateDebugArchive(String),
     Empty,
     GetDebugInfo(DebugInfo),
@@ -242,7 +249,10 @@ impl ManagerCmd {
             Self::ApiAppleAssociateAccount { app_transaction_jws } => map_result(manager.apple_associate_account(app_transaction_jws).await),
             Self::ApiDeleteAccount {} => map_result(manager.delete_account().await),
             Self::ApiGetAccountInfo {} => map_result(manager.get_account_info().await),
-            Self::ApiGoogleAssociateAccount { purchase_token } => map_result(manager.google_associate_account(purchase_token).await),
+            Self::ApiGoogleAssociateAccount { purchase_token, promo_code } => {
+                map_result(manager.google_associate_account(purchase_token, promo_code).await)
+            }
+            Self::ApiGoogleBillingDetails { promo_code } => map_result(manager.google_billing_details(promo_code).await),
             Self::SetFeatureFlag { flag, active } => manager.run_on_client_state(|c| c.set_feature_flag(&flag, active)),
             Self::CreateDebugArchive { user_feedback } => manager
                 .create_debug_archive(user_feedback.as_deref())

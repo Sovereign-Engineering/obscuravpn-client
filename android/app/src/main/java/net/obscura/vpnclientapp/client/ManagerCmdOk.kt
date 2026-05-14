@@ -1,11 +1,19 @@
 package net.obscura.vpnclientapp.client
 
 import kotlinx.serialization.KeepGeneratedSerializer
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import net.obscura.lib.util.ExternallyTaggedEnumSerializer
 import net.obscura.lib.util.ExternallyTaggedEnumVariantSerializer
 
 sealed interface ManagerCmdOk {
+    @Serializable
+    data class ApiGoogleBillingDetails(
+        @SerialName("product_id") val productId: String,
+        @SerialName("base_plan_id") val basePlanId: String,
+        @SerialName("offer_id") val offerId: String?,
+    ) : ManagerCmdOk
+
     @Serializable
     data class GetStatus(
         val accountId: String?,

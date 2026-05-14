@@ -11,10 +11,6 @@ import com.android.billingclient.api.QueryPurchasesParams
 import com.android.billingclient.api.queryProductDetails
 import kotlin.coroutines.resume
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.ReceiveChannel
-import kotlinx.coroutines.channels.onFailure
-import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -23,31 +19,17 @@ import net.obscura.lib.util.Logger
 
 private val log = Logger(BillingManager::class)
 
-private const val PRODUCT_ID = "vpn_subscription_v1"
-private const val BASE_PLAN_ID = "monthly-autorenewing"
-
 class BillingManager(
     context: Context,
 ) {
     sealed interface PurchaseResult {
-        object Completed : PurchaseResult
+        data class Completed(val purchaseTokens: List<String>) : PurchaseResult
 
         object Canceled : PurchaseResult
 
         object AlreadyOwned : PurchaseResult
 
         object Failed : PurchaseResult
-    }
-
-    private val purchaseTokensTx: Channel<String> = Channel(Channel.UNLIMITED)
-    val purchaseTokensRx: ReceiveChannel<String> = this.purchaseTokensTx
-
-    private fun sendPurchaseTokens(purchases: List<Purchase>) {
-        for (purchase in purchases) {
-            this.purchaseTokensTx.trySendBlocking(purchase.purchaseToken).onFailure {
-                log.error("failed to send purchase token: $it")
-            }
-        }
     }
 
     private val connection =
@@ -57,8 +39,7 @@ class BillingManager(
             when (result.responseCode) {
                 BillingClient.BillingResponseCode.OK -> {
                     if (purchases?.isNotEmpty() == true) {
-                        this@BillingManager.sendPurchaseTokens(purchases)
-                        PurchaseResult.Completed
+                        PurchaseResult.Completed(purchases.map { it.purchaseToken })
                     } else {
                         log.error("purchase list null or empty despite a successful purchase")
                         PurchaseResult.Failed
@@ -73,66 +54,74 @@ class BillingManager(
             }
         }
 
-    private suspend fun querySubscriptionPurchases(): List<Purchase> =
-        withContext(Dispatchers.IO) {
-            suspendCancellableCoroutine { continuation ->
-                this@BillingManager.connection.client.queryPurchasesAsync(
-                    QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.SUBS).build(),
-                ) { result, purchases ->
-                    log.info("purchases response: $result $purchases")
-                    when (result.responseCode) {
-                        BillingClient.BillingResponseCode.OK -> {
-                            if (continuation.isActive) {
-                                continuation.resume(purchases)
-                            }
-                        }
-                        else -> {
-                            log.error("purchases response had unexpected billing result: $result")
-                            if (continuation.isActive) {
-                                continuation.resume(emptyList())
-                            }
-                        }
+    private suspend fun querySubscriptionPurchases(): List<Purchase>? = suspendCancellableCoroutine { continuation ->
+        this.connection.client.queryPurchasesAsync(
+            QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.SUBS).build(),
+        ) { result, purchases ->
+            log.info("purchases response: $result $purchases")
+            when (result.responseCode) {
+                BillingClient.BillingResponseCode.OK -> {
+                    if (continuation.isActive) {
+                        continuation.resume(purchases)
+                    }
+                }
+                else -> {
+                    log.error("purchases response had unexpected billing result: $result")
+                    if (continuation.isActive) {
+                        continuation.resume(null)
                     }
                 }
             }
         }
-
-    suspend fun refreshPurchaseTokens() {
-        this.sendPurchaseTokens(this.querySubscriptionPurchases())
     }
+
+    suspend fun fetchPurchaseTokens() = this.querySubscriptionPurchases()?.map { it.purchaseToken }
 
     private data class SubscriptionDetails(
         val productDetails: ProductDetails,
         val offerDetails: ProductDetails.SubscriptionOfferDetails,
     )
 
-    private suspend fun querySubscriptionDetails(): SubscriptionDetails? {
+    private suspend fun querySubscriptionDetails(
+        productId: String,
+        basePlanId: String,
+        offerId: String?,
+    ): SubscriptionDetails? {
         val result =
-            withContext(Dispatchers.IO) {
-                this@BillingManager.connection.client.queryProductDetails(
-                    QueryProductDetailsParams.newBuilder()
-                        .setProductList(
-                            listOf(
-                                QueryProductDetailsParams.Product.newBuilder()
-                                    .setProductId(PRODUCT_ID)
-                                    .setProductType(BillingClient.ProductType.SUBS)
-                                    .build()
-                            )
+            this.connection.client.queryProductDetails(
+                QueryProductDetailsParams.newBuilder()
+                    .setProductList(
+                        listOf(
+                            QueryProductDetailsParams.Product.newBuilder()
+                                .setProductId(productId)
+                                .setProductType(BillingClient.ProductType.SUBS)
+                                .build()
                         )
-                        .build()
-                )
-            }
+                    )
+                    .build()
+            )
         return when (result.billingResult.responseCode) {
             BillingClient.BillingResponseCode.OK -> {
-                val productDetails = result.productDetailsList?.find { it.productId == PRODUCT_ID }
-                val offerDetails = productDetails?.subscriptionOfferDetails?.find { it.basePlanId == BASE_PLAN_ID }
+                val productDetails =
+                    result.productDetailsList?.find { it.productId == productId }
+                        ?: run {
+                            log.error("product $productId not found: ${result.productDetailsList}")
+                            return null
+                        }
+                log.info("product details: $productDetails")
+                val offerDetails =
+                    productDetails.subscriptionOfferDetails?.find {
+                        it.basePlanId == basePlanId && it.offerId == offerId
+                    }
                 if (offerDetails != null) {
-                    log.info("subscription details: $productDetails $offerDetails")
+                    log.info("offer details: $offerDetails")
                     SubscriptionDetails(productDetails, offerDetails)
                 } else {
-                    log.error(
-                        "subscription details for product $PRODUCT_ID and base plan $BASE_PLAN_ID not found: $result"
-                    )
+                    if (offerId != null) {
+                        log.error("offer $offerId not found: ${productDetails.subscriptionOfferDetails}")
+                    } else {
+                        log.error("base plan $basePlanId not found: ${productDetails.subscriptionOfferDetails}")
+                    }
                     null
                 }
             }
@@ -143,9 +132,14 @@ class BillingManager(
         }
     }
 
-    suspend fun launchFlow(activity: Activity): PurchaseResult {
+    suspend fun launchFlow(
+        activity: Activity,
+        productId: String,
+        basePlanId: String,
+        offerId: String?,
+    ): PurchaseResult {
         val productDetailsParams =
-            this.querySubscriptionDetails()?.let {
+            this.querySubscriptionDetails(productId, basePlanId, offerId)?.let {
                 BillingFlowParams.ProductDetailsParams.newBuilder()
                     .setProductDetails(it.productDetails)
                     .setOfferToken(it.offerDetails.offerToken)
@@ -155,7 +149,7 @@ class BillingManager(
             .onSubscription {
                 val result =
                     // `launchBillingFlow` can only be called on the UI thread
-                    withContext(Dispatchers.Main) {
+                    withContext(Dispatchers.Main.immediate) {
                         this@BillingManager.connection.client.launchBillingFlow(
                             activity,
                             BillingFlowParams.newBuilder()
@@ -192,6 +186,5 @@ class BillingManager(
 
     fun destroy() {
         this.connection.destroy()
-        this.purchaseTokensTx.close()
     }
 }

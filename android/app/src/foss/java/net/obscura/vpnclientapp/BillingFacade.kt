@@ -1,25 +1,19 @@
 package net.obscura.vpnclientapp
 
 import android.content.Context
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.ReceiveChannel
 import net.obscura.vpnclientapp.activities.MainActivity
+import net.obscura.vpnclientapp.client.ManagerCmdOk
 import net.obscura.vpnclientapp.client.errorCodeUnsupportedOnOS
 
 class BillingFacade(@Suppress("UNUSED_PARAMETER") context: Context) {
-    val purchaseTokensRx: ReceiveChannel<String> = Channel()
+    @Suppress("FunctionOnlyReturningConstant", "RedundantSuspendModifier")
+    suspend fun fetchPurchaseTokens(): List<String>? = null
 
-    init {
-        this.purchaseTokensRx.cancel(CancellationException("Play Billing not in use"))
-    }
-
-    @Suppress("RedundantSuspendModifier") suspend fun refreshPurchaseTokens() = Unit
-
-    @Suppress("RedundantSuspendModifier")
+    @Suppress("RedundantNullableReturnType", "RedundantSuspendModifier")
     suspend fun launchFlow(
         @Suppress("UNUSED_PARAMETER") mainActivity: MainActivity,
-    ): Boolean = throw errorCodeUnsupportedOnOS()
+        @Suppress("UNUSED_PARAMETER") billingDetails: ManagerCmdOk.ApiGoogleBillingDetails,
+    ): List<String>? = throw errorCodeUnsupportedOnOS()
 
     fun destroy() = Unit
 }

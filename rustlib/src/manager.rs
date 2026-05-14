@@ -1,8 +1,10 @@
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
-use obscuravpn_api::cmd::{ExitList, GoogleAssociateAccount};
 use obscuravpn_api::{
-    cmd::{AppleAssociateAccount, AppleAssociateAccountOutput, Cmd, DeleteAccount, DeleteAccountOutput, GetAccountInfo},
+    cmd::{
+        AppleAssociateAccount, AppleAssociateAccountOutput, Cmd, DeleteAccount, DeleteAccountOutput, ExitList, GetAccountInfo,
+        GoogleAssociateAccount, GoogleBillingDetails, GoogleBillingDetailsOutput,
+    },
     types::{AccountId, AccountInfo, OneExit, OneRelay, WgPubkey},
 };
 use serde::{Deserialize, Serialize};
@@ -231,8 +233,12 @@ impl Manager {
         Ok(account_info)
     }
 
-    pub async fn google_associate_account(&self, purchase_token: String) -> Result<(), ApiError> {
-        self.api_request(GoogleAssociateAccount { purchase_token }).await
+    pub async fn google_associate_account(&self, purchase_token: String, promo_code: Option<String>) -> Result<(), ApiError> {
+        self.api_request(GoogleAssociateAccount { purchase_token, promo_code }).await
+    }
+
+    pub async fn google_billing_details(&self, promo_code: Option<String>) -> Result<GoogleBillingDetailsOutput, ApiError> {
+        self.api_request(GoogleBillingDetails { promo_code }).await
     }
 
     async fn propagate_updates_to_status_task(this: Arc<Self>, _: ()) {

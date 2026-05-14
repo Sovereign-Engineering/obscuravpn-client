@@ -1,4 +1,4 @@
-import { Anchor, Box, Button, Divider, Group, Loader, Stack, Text, UnstyledButton } from '@mantine/core';
+import { Anchor, Box, Button, Divider, Group, Loader, Stack, Text, TextInput, UnstyledButton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -12,6 +12,7 @@ import { ConfirmationDialog } from './ConfirmationDialog';
 import { normalizeError } from '../common/utils';
 import { CommandError } from '../bridge/commands';
 import { TFunction } from 'i18next';
+import { IoMdPricetag } from 'react-icons/io';
 
 interface PaymentManagementSheetProps {
   opened: boolean;
@@ -164,8 +165,11 @@ function AppleSubscriptionProductCard({ product, subscribed }: AppleSubscription
   const { pollAccount, setPaymentProcessing } = useContext(AppContext);
   const { execute: storeKitAssociateAccount } = commands.useCommand({ command: commands.storeKitAssociateAccount, showNotification: true, rethrow: true });
   const [preparingToRedeem, setPreparingToRedeem] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
 
   const handlePurchase = async () => {
+    if (purchasing) return;
+    setPurchasing(true);
     try {
       const purchaseSuccessful = await commands.storeKitPurchaseSubscription();
       if (purchaseSuccessful) {
@@ -173,10 +177,12 @@ function AppleSubscriptionProductCard({ product, subscribed }: AppleSubscription
         setPaymentProcessing(true);
         await pollAccount();
       } else {
-        return; // user dismissed payment sheet
+        // user dismissed payment sheet
       }
     } catch (e) {
       showErrorNotification(t, e);
+    } finally {
+      setPurchasing(false);
     }
   }
 
@@ -199,6 +205,8 @@ function AppleSubscriptionProductCard({ product, subscribed }: AppleSubscription
         </Group>
       </Stack>
       <Button component='a'
+        loaderProps={{ type: 'dots' }}
+        loading={purchasing}
         onClick={subscribed ? undefined : handlePurchase}
         href={subscribed ? ObscuraAccount.APP_MANAGE_SUBSCRIPTION : undefined}>
         {subscribed ? t('Manage Subscription') : t('Subscribe In-app')}</Button>
@@ -227,7 +235,6 @@ function AppleSubscriptionProductCard({ product, subscribed }: AppleSubscription
     </Stack>
   );
 }
-
 interface GoogleSubscriptionProductCardProps {
   subscribed: boolean;
 }
@@ -235,28 +242,51 @@ interface GoogleSubscriptionProductCardProps {
 function GoogleSubscriptionProductCard({ subscribed }: GoogleSubscriptionProductCardProps) {
   const { t } = useTranslation();
   const { pollAccount, setPaymentProcessing } = useContext(AppContext);
+  const [promoCode, setPromoCode] = useState('');
+  const [purchasing, setPurchasing] = useState(false);
 
   const handlePurchase = async () => {
+    if (purchasing) return;
+    setPurchasing(true);
     try {
-      const purchaseSuccessful = await commands.playPurchaseSubscription();
+      const promoCodeClean = promoCode.trim();
+      const purchaseSuccessful = await commands.playPurchaseSubscription(promoCodeClean.length !== 0 ?
+        promoCodeClean
+        : null);
       if (purchaseSuccessful) {
         console.log('Purchase flow completed, show payment processing UI.');
         setPaymentProcessing(true);
         await pollAccount();
       } else {
-        return; // user dismissed payment sheet
+        // user dismissed payment sheet
       }
     } catch (e) {
       showErrorNotification(t, e);
+    } finally {
+      setPurchasing(false);
     }
   }
 
   return (
-    <Stack ta='center' p='0'>
-      <Button component='a'
+    <Stack gap='xs' p='0' ta='center'>
+      <Button
+        component='a'
+        href={subscribed ? "https://play.google.com/store/account/subscriptions?sku=vpn_subscription_v1&package=net.obscura.vpnclientapp" : undefined}
+        loaderProps={{ type: 'dots' }}
+        loading={purchasing}
         onClick={subscribed ? undefined : handlePurchase}
-        href={subscribed ? "https://play.google.com/store/account/subscriptions?sku=vpn_subscription_v1&package=net.obscura.vpnclientapp" : undefined}>
+      >
         {subscribed ? t('Manage Subscription') : t('Subscribe In-app')}</Button>
+      {!subscribed && <TextInput
+        autoCapitalize='characters'
+        disabled={purchasing}
+        leftSection={<IoMdPricetag />}
+        onChange={(e) => setPromoCode(e.currentTarget.value)}
+        placeholder={t('Have a promo code?')}
+        radius='md'
+        value={promoCode}
+        w={{ base: '100%', xs: 'auto' }}
+      />}
     </Stack>
   );
 }

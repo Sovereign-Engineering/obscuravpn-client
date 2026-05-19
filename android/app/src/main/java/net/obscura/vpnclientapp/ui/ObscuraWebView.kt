@@ -38,10 +38,10 @@ constructor(
     var onPageLoadedCallback: ((String) -> Unit)? = null
 
     init {
-        settings.domStorageEnabled = true
-        settings.javaScriptEnabled = true
-
-        addJavascriptInterface(bridge, "obscuraAndroidCommandBridge")
+        this.settings.domStorageEnabled = true
+        this.settings.javaScriptEnabled = true
+        this.addJavascriptInterface(bridge, "obscuraAndroidCommandBridge")
+        this.setRendererPriorityPolicy(RENDERER_PRIORITY_BOUND, true)
 
         WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(context))

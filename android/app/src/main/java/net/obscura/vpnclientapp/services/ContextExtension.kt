@@ -1,6 +1,7 @@
 package net.obscura.vpnclientapp.services
 
 import android.content.Context
+import android.content.Context.BIND_ABOVE_CLIENT
 import android.content.Context.BIND_AUTO_CREATE
 import android.content.Intent
 import android.content.ServiceConnection
@@ -14,7 +15,7 @@ fun Context.bindVpnService(serviceConnection: ServiceConnection): Boolean {
     log.info("binding VPN service")
     val intent = Intent(this, ObscuraVpnService::class.java)
     return try {
-        val isBinding = this.bindService(intent, serviceConnection, BIND_AUTO_CREATE)
+        val isBinding = this.bindService(intent, serviceConnection, BIND_ABOVE_CLIENT or BIND_AUTO_CREATE)
         if (!isBinding) {
             log.error("missing permissions or service not found")
         }

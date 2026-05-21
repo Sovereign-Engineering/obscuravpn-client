@@ -1,0 +1,16 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "pnpm install",
+      "type": "shell",
+      "command": "pnpm install",
+      "options": {
+        "cwd": "${workspaceFolder}/../../obscura-ui"
+      },
+      "presentation": {
+        "reveal": "silent"
+      }
+    }
+  ]
+}

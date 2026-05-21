@@ -4,12 +4,12 @@ import { notifications } from '@mantine/notifications';
 import { ReactNode, useContext, useEffect, useRef, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useTranslation } from 'react-i18next';
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
 import classes from './App.module.css';
 import * as commands from './bridge/commands';
-import { IS_HANDHELD_DEVICE, logReactError, PLATFORM, Platform, useSystemChecks } from './bridge/SystemProvider';
-import { AppContext, AppStatus, ConnectionInProgress, connectionIsIdle, NEVPNStatus, OsStatus } from './common/appContext';
+import { HAS_NE_VPN_STATUS, IS_HANDHELD_DEVICE, logReactError, PLATFORM, Platform, useSystemChecks } from './bridge/SystemProvider';
+import { AppContext, AppStatus, ConnectionInProgress, connectionIsIdle, getEffectiveOsStatus, NavigationView, NEVPNStatus, OsStatus, OsStatusWVpnStatus } from './common/appContext';
 import { fmt } from './common/fmt';
 import { NotificationId } from './common/notifIds';
 import { useAsync } from './common/useAsync';
@@ -31,6 +31,7 @@ interface View {
 export default function () {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const colorScheme = useContext(CColorSchemeContext);
 
   const toggleColorScheme = async () => {
@@ -69,6 +70,8 @@ export default function () {
   const showAccountCreation = appStatus?.inNewAccountFlow;
   const loading = appStatus === null || osStatus === null;
 
+  const { execute: disconnect } = commands.useCommand({ command: commands.disconnect, showNotification: true, rethrow: true });
+
   async function tryConnect(exit: commands.ExitSelector) {
     setInitiatingExitSelector(exit);
     if (vpnConnected) {
@@ -97,7 +100,27 @@ export default function () {
     ignoreConnectingErrors.current = true;
     setConnectionInProgress(ConnectionInProgress.Disconnecting);
     setVpnConnected(false);
-    await commands.disconnect();
+    try {
+      await disconnect();
+    } catch {
+      // set vpn status to what appStatus reports
+      try {
+        const appStatus = await commands.status(null);
+        if (appStatus.vpnStatus.connecting?.reconnecting) {
+          setConnectionInProgress(ConnectionInProgress.Reconnecting);
+        } else if (appStatus.vpnStatus.connecting?.reconnecting === false) {
+          setConnectionInProgress(ConnectionInProgress.Connecting);
+        } else {
+          setConnectionInProgress(ConnectionInProgress.UNSET);
+        }
+        setVpnConnected(appStatus.vpnStatus.connected !== undefined);
+      } catch (error) {
+        const e = normalizeError(error);
+        console.error('disconnectFromVpn could not rollback vpn status because command getStatus failed', e.message);
+        // rollback to original value
+        setVpnConnected(true);
+      }
+    }
   }
 
   function notifyVpnError(errorEnum: string) {
@@ -120,6 +143,9 @@ export default function () {
     if (vpnStatus === undefined) return;
 
     if (vpnStatus.connected !== undefined) {
+      // Ignore stale connected status while a disconnect is in flight — otherwise the
+      // connected UI flashes between the click and the backend clearing vpnStatus.connected.
+      if (connectionInProgress === ConnectionInProgress.Disconnecting) return;
       setVpnConnected(true);
       setConnectionInProgress(ConnectionInProgress.UNSET);
       notifications.hide(NotificationId.VPN_ERROR);
@@ -138,7 +164,7 @@ export default function () {
         return ConnectionInProgress.Connecting;
       });
       const connectError = vpnStatus.connecting?.connectError;
-      if (connectError !== undefined) {
+      if (connectError) {
         if (reconnecting) {
           console.error(`got error while reconnecting: ${connectError}`);
         } else {
@@ -147,6 +173,10 @@ export default function () {
         console.log(fmt`vpnStatus = ${vpnStatus}`);
         notifyVpnError(connectError);
       }
+    } else if (vpnStatus.disconnected !== undefined && !HAS_NE_VPN_STATUS) {
+      setConnectionInProgress(ConnectionInProgress.UNSET);
+      setVpnConnected(false);
+      setInitiatingExitSelector(undefined);
     }
   }
 
@@ -195,8 +225,8 @@ export default function () {
   }, [appStatus]);
 
   useEffect(() => {
-    if (osStatus !== null) {
-      const { osVpnStatus } = osStatus;
+    if (osStatus !== null && HAS_NE_VPN_STATUS) {
+      const { osVpnStatus } = osStatus as OsStatusWVpnStatus;
       switch (osVpnStatus) {
         case NEVPNStatus.Disconnecting:
           setConnectionInProgress(ConnectionInProgress.Disconnecting);
@@ -213,8 +243,28 @@ export default function () {
     }
   }, [osStatus]);
 
-  function resetState() {
-    if (window.location.pathname === '/connection') {
+  async function errorBoundaryOnReset() {
+    if (osStatus?.navigationView) {
+      let targetPath: string;
+      let targetView: NavigationView;
+      if (location.pathname !== `/${osStatus.navigationView}`) {
+        targetPath = `/${osStatus.navigationView}`;
+        targetView = osStatus.navigationView;
+      } else if (location.pathname !== '/help') {
+        targetPath = '/help';
+        targetView = NavigationView.Help;
+      } else {
+        targetPath = '/';
+        targetView = NavigationView.Connection;
+      }
+      try {
+        await commands.setNavigationView(targetView);
+      } catch (e) {
+        console.error('setNavigationView failed:', e);
+      }
+      console.log(`resetting to ${targetPath} (osStatus reports ${osStatus.navigationView})`);
+      window.location.pathname = targetPath;
+    } else if (location.pathname === '/connection') {
       window.location.pathname = '/help';
     } else {
       window.location.pathname = '/';
@@ -225,6 +275,7 @@ export default function () {
   useEffect(() => {
     const onNavUpdate = (e: Event) => {
       if (e instanceof CustomEvent) {
+        console.log(`navigation to ${e.detail}`);
         navigate(`/${e.detail}`);
       } else {
         console.error('expected custom event for navigation purposes, got generic Event');
@@ -233,6 +284,20 @@ export default function () {
     window.addEventListener('navUpdate', onNavUpdate);
     return () => window.removeEventListener('navUpdate', onNavUpdate);
   }, []);
+
+  // osStatus driven navigation. resetStateFromError() syncs the C# singleton to the
+  // destination before its hard reload, so the post-reload poll resolves with the
+  // correct view and this effect is a no-op.
+  useEffect(() => {
+    if (osStatus?.navigationView) {
+      console.log(`navigating to /${osStatus.navigationView}`);
+      navigate(`/${osStatus.navigationView}`);
+    }
+  }, [osStatus?.navigationView]);
+
+  useEffect(() => {
+    console.log(`new location: ${location.pathname}`);
+  }, [location]);
 
   const onPaymentSucceeded = () => {
     console.log("handling paymentSucceeded event");
@@ -280,22 +345,27 @@ export default function () {
     returnError: true,
   });
 
-  if (loading) return <SplashScreen text={t('appStatusLoading')} osStatus={osStatus} />;
+  if (loading) {
+    const effectiveOsStatus = osStatus === null ? null : { ...osStatus, osVpnStatus: getEffectiveOsStatus(osStatus, appStatus) };
+    return <SplashScreen text={t('appStatusLoading')} osStatus={effectiveOsStatus} />;
+  }
+
+  const osVpnStatus = getEffectiveOsStatus(osStatus, appStatus);
 
   const appContext = {
     accountInfo: accountInfo ?? null,
     appStatus,
     connectionInProgress,
-    osStatus,
+    osStatus: { ...osStatus, osVpnStatus },
     pollAccount,
-    showOfflineUI: !osStatus.internetAvailable && connectionIsIdle(connectionInProgress, appStatus.vpnStatus, osStatus.osVpnStatus),
+    showOfflineUI: !osStatus.internetAvailable && connectionIsIdle(connectionInProgress, appStatus.vpnStatus, osVpnStatus),
     accountLoading: accountLoadingDelayed,
     vpnConnect: tryConnect,
     vpnConnected,
     vpnDisconnect: disconnectFromVpn,
     initiatingExitSelector,
     isProcessingPayment,
-    setPaymentProcessing
+    setPaymentProcessing,
   }
 
   if (!isLoggedIn || showAccountCreation) {
@@ -314,9 +384,9 @@ export default function () {
       className={classes.appShell}>
       <AppShellMain>
         <AppContext.Provider value={appContext}>
-          <ErrorBoundary FallbackComponent={FallbackAppRender} onReset={_details => resetState()} onError={logReactError}>
+          <ErrorBoundary FallbackComponent={FallbackAppRender} onReset={_details => errorBoundaryOnReset()} onError={logReactError}>
             <Routes>
-              {views[0] !== undefined && <Route path='/' element={<Navigate to={views[0].path} />} />}
+              {views[0] !== undefined && window.location.pathname === '/' && <Route path='/' element={<Navigate to={views[0].path} />} />}
               {views.map((view, index) => <Route key={index} path={view.path} element={<RenderView key={view.path} view={view} />} />)}
             </Routes>
           </ErrorBoundary>

@@ -1,20 +1,20 @@
 import { Anchor, Button, Card, Group, Loader, Stack, Text, Textarea, Title } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
+import { notifications } from '@mantine/notifications';
 import { useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { IoIosMail, IoIosShare } from 'react-icons/io';
 import * as commands from '../bridge/commands';
 import { emailDebugArchive, revealItemInDir, shareDebugArchive } from '../bridge/commands';
 import { IS_HANDHELD_DEVICE, systemName } from '../bridge/SystemProvider';
-import { NEVPNStatus, OsStatus } from '../common/appContext';
+import { NEVPNStatus, OsStatus, OsStatusWVpnStatus } from '../common/appContext';
 import { useDebuggingArchive } from '../common/debuggingArchiveHook';
 import { EMAIL } from '../common/links';
 import useMailto from '../common/useMailto';
+import { normalizeError } from '../common/utils';
+import { ErrorI18n, fmtErrorI18n } from '../translations/i18n';
 import { ConfirmationDialog } from './ConfirmationDialog';
 import classes from './DebuggingArchive.module.css';
-import { fmtErrorI18n } from '../translations/i18n';
-import { normalizeError } from '../common/utils';
-import { notifications } from '@mantine/notifications';
 
 const ICON_SIZE = 20;
 
@@ -24,7 +24,7 @@ export enum DebuggingArchiveVariant {
 }
 
 // this component may be used before appContext is created, and thus requires explicitly passing osStatus
-export default function DebuggingArchive({ osStatus, variant = DebuggingArchiveVariant.Card }: { osStatus: OsStatus, variant?: DebuggingArchiveVariant }) {
+export default function DebuggingArchive({ osStatus, variant = DebuggingArchiveVariant.Card }: { osStatus: OsStatusWVpnStatus, variant?: DebuggingArchiveVariant }) {
   const { t } = useTranslation();
   const createDebuggingArchive = useDebuggingArchive();
   const [opened, { open, close }] = useDisclosure(false);
@@ -76,22 +76,14 @@ export default function DebuggingArchive({ osStatus, variant = DebuggingArchiveV
               setDisableButtons(true);
               try {
                 await disconnect();
-                let knownOsStatusId = osStatus.version;
-                const startTime = Date.now();
-                while (true) {
-                  if (Date.now() - startTime >= 60_000) {
-                    throw new Error(t('error-timeoutDisconnect'));
-                  }
-                  const newOsStatus = await commands.osStatus(knownOsStatusId);
-                  knownOsStatusId = newOsStatus.version;
-                  if (newOsStatus.osVpnStatus === NEVPNStatus.Disconnected) break;
-                }
+                await commands.waitUntilDisconnected(osStatus);
                 onContinue();
               } catch (err) {
                 console.error('failed to disconnect before creating debugging archive');
                 const error = normalizeError(err);
-                const message = error instanceof commands.CommandError
-                  ? fmtErrorI18n(t, error) : error.message;
+                const message = error instanceof ErrorI18n
+                  ? fmtErrorI18n(t, error)
+                  : error.message;
                 notifications.show({
                   color: 'red',
                   title: t('Error'),

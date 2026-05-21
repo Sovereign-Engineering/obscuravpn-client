@@ -1,8 +1,11 @@
 import i18n, { TFunction } from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import { initReactI18next } from 'react-i18next';
-import { CommandError } from '../bridge/commands';
 import en from './en.json';
+
+export abstract class ErrorI18n extends Error {
+  abstract i18nKey(): TranslationKey | string;
+}
 
 export type TranslationKey = keyof typeof en;
 export const defaultNS = 'translations';
@@ -31,7 +34,6 @@ i18n
 
 export default i18n;
 
-// all errors over the bridge are CommandError's, see "ipcError-*" keys
-export function fmtErrorI18n(t: TFunction, error: CommandError): string {
+export function fmtErrorI18n(t: TFunction, error: ErrorI18n): string {
   return t(error.i18nKey() as TranslationKey);
 }

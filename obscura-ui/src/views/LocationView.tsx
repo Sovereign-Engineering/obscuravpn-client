@@ -10,7 +10,7 @@ import { CONNECT_REQUIRES_ONLINE, IS_HANDHELD_DEVICE } from '../bridge/SystemPro
 import { accountIsExpired, Exit, getContinent, getExitCountry } from '../common/api';
 import { AppContext, ConnectionInProgress, getCityFromArgs, getCityFromStatus, NEVPNStatus } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
-import { exitCityEquals, exitLocation, exitsSortComparator, getExitCountryFlag } from '../common/exitUtils';
+import { exitCityEquals, exitLocation, exitsSortComparator } from '../common/exitUtils';
 import { KeyedSet } from '../common/KeyedSet';
 import { NotificationId } from '../common/notifIds';
 import { useAsync } from '../common/useAsync';
@@ -18,6 +18,7 @@ import { useExitList } from '../common/useExitList';
 import { fmtTime, normalizedIncludes } from '../common/utils';
 import BoltBadgeAuto from '../components/BoltBadgeAuto';
 import { MobileDrawer } from '../components/ConfirmationDialog';
+import { Flag } from '../components/CountryFlag';
 import ExternalLinkIcon from '../components/ExternalLinkIcon';
 import ObscuraChip from '../components/ObscuraChip';
 import { SecondaryButton } from '../components/SecondaryButton';
@@ -240,7 +241,7 @@ function LocationCard({ exit, connected, showLastChosen = false, onSelect, toggl
         <Card shadow='xs' title={cardTitle} className={cardClasses.join(' ')} withBorder padding='xs' radius='md' w='100%' onClick={(connected || disableClick) ? undefined : onSelect}>
             <Group justify='space-between'>
                 <Group>
-                    <Text size='2rem'>{getExitCountryFlag(exit)}</Text>
+                    <Text size='2rem'><Flag countryCode={exit.country_code} h={20} /></Text>
                     <Flex direction='column'>
                         <Text size='md'>{exit.city_name}</Text>
                         <Text c='dimmed' size='sm'>{getExitCountry(exit).name}</Text>

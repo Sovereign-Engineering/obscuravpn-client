@@ -3,10 +3,11 @@ import { useInterval } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import Cookies from 'js-cookie';
 import { useContext, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import * as commands from '../bridge/commands';
 import { jsonFfiCmd } from "../bridge/commands";
 import { PLATFORM } from '../bridge/SystemProvider';
-import { AppContext } from '../common/appContext';
+import { AppContext, NavigationView } from '../common/appContext';
 import { localStorageGet, LocalStorageKey } from '../common/localStorage';
 import { errMsg } from '../common/utils';
 import DevSendCommand from '../components/DevSendCommand';
@@ -34,7 +35,7 @@ export default function DeveloperViewer() {
     const [localStorageValue, setLocalStorageValue] = useState<string | null>(null);
 
     const [accordionValues, setAccordionValues] = useState<string[]>([]);
-
+    const navigate = useNavigate();
     return <Stack p={20} mb={50}>
         <Title order={3}>Developer View</Title>
         <Title order={4}>Statuses</Title>
@@ -131,5 +132,20 @@ export default function DeveloperViewer() {
         </Group>
         <JsonInput value={localStorageValue ?? 'null'} contentEditable={false} />
         <Button onClick={ () => jsonFfiCmd("terminateProcess", {})}>kill tunnel manager process</Button>
+        <Button onClick={async () => {
+            if (osStatus?.navigationView) {
+                const targetView = NavigationView.Help;
+                const targetPath = `/${targetView}`;
+                try {
+                    await commands.setNavigationView(targetView);
+                } catch (e) {
+                    console.error('setNavigationView failed:', e);
+                }
+                console.log(`resetting to ${targetPath}`);
+                window.location.pathname = targetPath;
+            } else {
+                window.location.pathname = '/';
+            }
+        }}>Simulate error boundary reset</Button>
     </Stack>;
 }

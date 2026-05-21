@@ -24,5 +24,13 @@ interface Window {
         }): void
       }
     }
+  },
+  // https://learn.microsoft.com/microsoft-edge/webview2/reference/javascript/webview#properties
+  chrome: {
+    webview: {
+      postMessage(message: any) : void,
+      addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void,
+      removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void,
+    }
   }
 }

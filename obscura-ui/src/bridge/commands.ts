@@ -4,11 +4,11 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AccountId } from '../common/accountUtils';
 import { AccountInfo, Exit } from '../common/api';
-import { AppStatus, DNSContentBlock, FeatureFlagKey, OsStatus, PinnedLocation, SubscriptionProductModel } from '../common/appContext';
+import { AppStatus, DNSContentBlock, FeatureFlagKey, NavigationView, NEVPNStatus, OsStatus, OsStatusWVpnStatus, PinnedLocation, SubscriptionProductModel } from '../common/appContext';
 import { normalizeError } from '../common/utils';
-import { fmtErrorI18n } from '../translations/i18n';
-import { Platform, PLATFORM } from './SystemProvider';
-import './android';
+import { ErrorI18n, fmtErrorI18n, TranslationKey } from '../translations/i18n';
+import { HAS_NE_VPN_STATUS, Platform, PLATFORM } from './SystemProvider';
+import './setupBridge';
 
 async function WKWebViewInvoke(command: string, args: Object) {
     const commandJson = JSON.stringify({ [command]: args });
@@ -34,7 +34,7 @@ async function invoke(command: string, args: Object = {}): Promise<unknown> {
     }
 }
 
-export class CommandError extends Error {
+export class CommandError extends ErrorI18n {
     code: string
 
     constructor(code: string) {
@@ -59,16 +59,20 @@ export async function jsonFfiCmd(cmd: string, arg = {}, timeoutMs: number | null
     })
 }
 
-export async function status(lastStatusId: string | null = null): Promise<AppStatus> {
+export async function status(lastStatusId: string | null = null, timeoutMs: number | null = null): Promise<AppStatus> {
     return await jsonFfiCmd(
         'getStatus',
         { knownVersion: lastStatusId },
-        null,
+        timeoutMs,
     ) as AppStatus;
 }
 
 export async function osStatus(lastOsStatusId: string | null = null): Promise<OsStatus> {
     return await invoke('getOsStatus', { knownVersion: lastOsStatusId }) as OsStatus;
+}
+
+export async function setNavigationView(view: NavigationView): Promise<void> {
+    await invoke('setNavigationView', { view });
 }
 
 export function login(accountId: AccountId, validate = false) {
@@ -282,6 +286,32 @@ export async function resetOfferCodeRedemptionSuccess(): Promise<void> {
 
 export async function playPurchaseSubscription(promoCode: string | null): Promise<boolean> {
   return await invoke('purchaseSubscription', { promoCode }) as boolean;
+}
+
+export class DisconnectTimeoutError extends ErrorI18n {
+  i18nKey(): TranslationKey {
+    return 'error-timeoutDisconnect';
+  }
+}
+
+export async function waitUntilDisconnected(
+  initialOsStatus: OsStatusWVpnStatus,
+): Promise<void> {
+  if (initialOsStatus.osVpnStatus === NEVPNStatus.Disconnected) return;
+  const startTime = Date.now();
+  if (HAS_NE_VPN_STATUS) {
+    let latest = initialOsStatus;
+    while (latest.osVpnStatus !== NEVPNStatus.Disconnected) {
+      if (Date.now() - startTime >= 60_000) throw new DisconnectTimeoutError();
+      latest = await osStatus(latest.version) as OsStatusWVpnStatus;
+    }
+  } else {
+    let latest = await status(null);
+    while (latest.vpnStatus.disconnected === undefined) {
+      if (Date.now() - startTime >= 60_000) throw new DisconnectTimeoutError();
+      latest = await status(latest.version);
+    }
+  }
 }
 
 export interface UseCommandOptions<CommandArgs extends any[]> {

@@ -1,3 +1,4 @@
+import { ErrorI18n } from "../translations/i18n";
 import { err } from "./fmt";
 
 const D = [
@@ -82,7 +83,7 @@ const enum ObscuraAccountErrorCode {
   INVALID_CHECKSUM = "invalidChecksum",
 };
 
-export class ObscuraAccountIdError extends Error {
+export class ObscuraAccountIdError extends ErrorI18n {
   public readonly code: string;
 
   constructor(code: ObscuraAccountErrorCode, message: string) {

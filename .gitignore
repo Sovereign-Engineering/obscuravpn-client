@@ -26,3 +26,5 @@ result-*
 
 # Windows
 windows/wintun*/*
+windows/webui-build/*
+windows/obscura-client/*.csproj.lscache

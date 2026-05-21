@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "obscura-client (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "obscura-client (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

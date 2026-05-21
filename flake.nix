@@ -145,21 +145,13 @@
         licenses-node = nodeDerivation {
           name = "licenses-node.json";
 
-          nativeBuildInputs = [ pkgs.pnpm ];
-
           src = lib.fileset.toSource {
             root = ./obscura-ui;
             fileset = lib.fileset.unions [ ./obscura-ui/package.json ./obscura-ui/package-lock.json ];
           };
 
           buildPhase = ''
-            license-checker \
-              --start ${nodeModules} \
-              --onlyAllow '0BSD;Apache-2.0;BSD-2-Clause;BSD-3-Clause;CC0-1.0;CC-BY-3.0;CC-BY-4.0;ISC;MIT;OFL-1.1;Python-2.0' \
-              --excludePrivatePackages \
-              --unknown \
-              --json \
-              >"$out"
+            npm run --silent license-node -- --start ${nodeModules} >"$out"
           '';
         };
 

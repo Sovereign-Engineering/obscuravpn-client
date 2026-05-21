@@ -43,6 +43,23 @@ export function isPromise(v: unknown): v is PromiseLike<unknown> {
     return !!v && (typeof v == "object" || typeof v == "function") && "then" in v;
 }
 
+// TODO: Use standard Promise.withResolvers() when sufficiently available.
+export interface PromiseWithResolvers<T> {
+    resolve(v: T | PromiseLike<T>): void;
+    reject(err: unknown): void;
+    promise: Promise<T>;
+}
+
+export function promiseWithResolvers<T>(): PromiseWithResolvers<T> {
+    let resolve!: (v: T) => void;
+    let reject!: (err: unknown) => void;
+    const promise = new Promise<T>((res, rej) => {
+        resolve = res;
+        reject = rej;
+    });
+    return { resolve, reject, promise };
+}
+
 export function arraysEqual<T>(a: T[], b: T[]) {
     if (a === b) return true;
     if (a == null || b == null) return false;

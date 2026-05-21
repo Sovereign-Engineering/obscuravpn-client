@@ -2,21 +2,6 @@ import { ExitSelectorCity } from '../bridge/commands';
 import { PinnedLocation } from '../common/appContext';
 import { Exit, getContinent, getExitCountry } from './api';
 
-/** returns a string containing the country flag emoji. */
-export function getCountryFlag(countryCode: string): string {
-  return countryCode
-      .replace(/[A-Za-z]/g, char => {
-          let codePoint = char.toUpperCase().codePointAt(0)!
-              - "A".codePointAt(0)!
-              + "🇦".codePointAt(0)!;
-          return String.fromCodePoint(codePoint)
-      });
-}
-
-export function getExitCountryFlag(exit: Exit): string {
-  return getCountryFlag(getExitCountry(exit).iso2);
-}
-
 /** returns a sort comparator for Exit[] given some parameters */
 export function exitsSortComparator(left: Exit, right: Exit): number {
   const leftCountry = getExitCountry(left);

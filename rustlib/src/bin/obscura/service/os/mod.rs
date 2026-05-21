@@ -6,6 +6,8 @@ pub mod windows;
 use ipnetwork::{IpNetwork, Ipv4Network, Ipv6Network};
 use std::net::{Ipv4Addr, Ipv6Addr};
 
+pub const MAX_IPC_MESSAGE_LEN: u32 = 1_000_000;
+
 /// The individual routes cover half of the respective address space, which gives them priority over the default route without replacing it. We don't want to replace the default route, because:
 /// - We use the default route for preferred network interface discovery
 /// - We wouldn't know what the set it to when the tunnel is disabled

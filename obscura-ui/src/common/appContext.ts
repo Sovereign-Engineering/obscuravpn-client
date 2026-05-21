@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react';
-import { ExitSelector, ExitSelectorCity, TunnelArgs } from 'src/bridge/commands';
+import { ExitSelector, ExitSelectorCity, TunnelArgs } from '../bridge/commands';
+import { HAS_NE_VPN_STATUS } from '../bridge/SystemProvider';
 import { AccountId } from './accountUtils';
 import { AccountInfo, Exit } from './api';
 
@@ -9,7 +10,7 @@ export enum NEVPNStatus {
     Connecting = 'connecting',
     Connected = 'connected',
     Reasserting = 'reasserting',
-    Disconnecting = 'disconnecting'
+    Disconnecting = 'disconnecting',
 }
 
 export enum UpdaterStatusType {
@@ -34,24 +35,34 @@ export interface UpdaterStatus {
     errorCode?: number;
 }
 
-export interface OsStatus {
+export enum NavigationView {
+  Developer = "developer",
+  Connection = "connection",
+  Location = "location",
+  Account = "account",
+  Help = "help",
+  About = "about",
+  Settings = "settings",
+}
+
+export interface OsStatusShared {
     version: string,
     internetAvailable: boolean,
-    osVpnStatus: NEVPNStatus,
     srcVersion: string
     strictLeakPrevention: boolean,
-    updaterStatus: UpdaterStatus,
     debugBundleStatus: {
-        inProgress: boolean,
-        latestPath: string | null,
-        inProgressCounter: number,
+      inProgress: boolean,
+      latestPath: string | null,
+      inProgressCounter: number,
     },
     canSendMail: boolean,
     loginItemStatus?: {
-        registered: boolean,
-        error?: string
+      registered: boolean,
+      error?: string
     },
-    // iOS-specific
+    navigationView?: NavigationView,
+    // macOS specific (other platforms should specify uninitiated)
+    updaterStatus: UpdaterStatus,
     storeKit?: {
       subscriptionProduct?: SubscriptionProductModel,
       externalPaymentsAllowed: boolean,
@@ -60,6 +71,12 @@ export interface OsStatus {
     // Android-specific
     playBilling?: boolean,
 }
+
+export interface OsStatusWVpnStatus extends OsStatusShared {
+  osVpnStatus: NEVPNStatus,
+}
+
+export type OsStatus = OsStatusShared | OsStatusWVpnStatus;
 
 export interface SubscriptionProductModel {
   displayName: string,
@@ -83,7 +100,7 @@ export interface VpnStatus {
       tunnelArgs: TunnelArgs,
     },
     connecting?: {
-      connectError: string,
+      connectError: string | null,
       reconnecting: boolean
       tunnelArgs: TunnelArgs,
     },
@@ -166,7 +183,7 @@ interface IAppContext {
     pollAccount: () => Promise<void>,
     accountLoading: boolean,
     appStatus: AppStatus,
-    osStatus: OsStatus,
+    osStatus: OsStatusWVpnStatus,
     showOfflineUI: boolean,
     accountInfo: AccountInfo | null,
     connectionInProgress: ConnectionInProgress,
@@ -222,4 +239,18 @@ export function connectionIsIdle(connectionInProgress: ConnectionInProgress, vpn
       osVpnStatus === NEVPNStatus.Disconnected ||
       osVpnStatus === NEVPNStatus.Invalid
     );
+}
+
+export function getEffectiveOsStatus(osStatus: OsStatus, appStatus?: AppStatus | null): NEVPNStatus {
+  if (HAS_NE_VPN_STATUS) return (osStatus as OsStatusWVpnStatus).osVpnStatus;
+  return appStatus ? vpnStatusToNEVPNStatus(appStatus.vpnStatus) : NEVPNStatus.Disconnected;
+}
+
+export function vpnStatusToNEVPNStatus(vpnStatus: VpnStatus): NEVPNStatus {
+  if (!vpnStatus) return NEVPNStatus.Disconnected;
+  if (vpnStatus.connected !== undefined) return NEVPNStatus.Connected;
+  if (vpnStatus.connecting !== undefined) {
+    return vpnStatus.connecting.reconnecting ? NEVPNStatus.Reasserting : NEVPNStatus.Connecting;
+  }
+  return NEVPNStatus.Disconnected;
 }

@@ -14,6 +14,8 @@ pub enum WindowsServiceStartError {
     CreateWintunAdapter(#[source] wintun::Error),
     #[error("Failed to start wintun session: {0}")]
     StartWintunSession(#[source] wintun::Error),
+    #[error("Failed to create named pipe: {0}")]
+    CreateNamedPipe(#[source] std::io::Error),
     #[error("Unexpected error. Details: {0}")]
     Unexpected(#[from] anyhow::Error),
 }

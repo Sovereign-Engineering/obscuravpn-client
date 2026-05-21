@@ -12,6 +12,7 @@
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "countries-list": "^3.2.0",
+    "country-flag-icons": "^1.6.16",
     "framer-motion": "^12.23.24",
     "i18next": "^25.6.0",
     "i18next-browser-languagedetector": "^8.2.0",
@@ -29,7 +30,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "serve": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "license-node": "npx license-checker --onlyAllow \"0BSD;Apache-2.0;BSD-2-Clause;BSD-3-Clause;CC0-1.0;CC-BY-3.0;CC-BY-4.0;ISC;Python-2.0;OFL-1.1;MIT\" --excludePrivatePackages --unknown --json"
   },
   "eslintConfig": {
     "extends": [

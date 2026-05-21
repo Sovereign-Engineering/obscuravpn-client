@@ -1,14 +1,13 @@
 import { Group, Image, Loader, Stack, Text } from '@mantine/core';
 import { useThrottledValue } from '@mantine/hooks';
 import AppIcon from '../../../apple/client/Assets.xcassets/AppIcon.appiconset/icon_128x128.png';
-import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
-import { OsStatus } from '../common/appContext';
+import { OsStatusWVpnStatus } from '../common/appContext';
 import DebuggingArchive from '../components/DebuggingArchive';
 import ObscuraWordmark from '../components/ObscuraWordmark';
 
 interface SplashScreenProps {
   text: string;
-  osStatus: OsStatus | null
+  osStatus: OsStatusWVpnStatus | null
 }
 
 export default function SplashScreen({ text = '', osStatus }: SplashScreenProps) {

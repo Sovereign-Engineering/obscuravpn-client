@@ -1,16 +1,16 @@
+mod ipc;
 pub mod nrpt;
 mod start_error;
 pub mod tun;
 
 use bytes::Bytes;
+use ipc::ServiceIpc;
 use obscuravpn_client::manager_cmd::{ManagerCmd, ManagerCmdErrorCode, ManagerCmdOk};
 use obscuravpn_client::net::NetworkInterface;
 use obscuravpn_client::network_config::OsNetworkConfig;
 use obscuravpn_client::os::os_trait::Os;
 use obscuravpn_client::quicwg::QuicWgConnPacketSender;
 pub use start_error::WindowsServiceStartError;
-use std::future::pending;
-use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::watch::Receiver;
 use tun::Tun;
 mod adapters;
@@ -19,31 +19,44 @@ mod iphelper;
 
 pub struct WindowsOsImpl {
     tun: Tun,
-    sent_start_command: AtomicBool,
+    ipc: ServiceIpc,
     active_adapter_watcher: Receiver<Option<NetworkInterface>>,
 }
 
 impl WindowsOsImpl {
     pub async fn new() -> Result<Self, WindowsServiceStartError> {
         let tun = Tun::create().await?;
-        Ok(Self {
-            tun,
-            sent_start_command: Default::default(),
-            active_adapter_watcher: adapters::watch_active_adapter(),
-        })
+        Ok(Self { tun, active_adapter_watcher: adapters::watch_active_adapter(), ipc: ServiceIpc::new()? })
     }
 
     pub async fn next_manager_command(&self) -> (ManagerCmd, Box<dyn FnOnce(Result<ManagerCmdOk, ManagerCmdErrorCode>) + Send>) {
-        if self.sent_start_command.swap(true, Ordering::SeqCst) {
-            pending().await
-        } else {
-            let cmd = ManagerCmd::SetTunnelArgs { args: None, active: Some(true) };
-            let result_callback = |result: Result<ManagerCmdOk, ManagerCmdErrorCode>| {
-                tracing::info!(message_id = "ZuqhHDfS", "manager called result callback: {:?}", result);
+        loop {
+            let (json_cmd, response_fn) = self.ipc.next().await;
+            let response_fn = move |result: Result<ManagerCmdOk, ManagerCmdErrorCode>| {
+                let json_response = serde_json::to_vec(&result)
+                    .map_err(|error| {
+                        tracing::error!(message_id = "zPDkA52Z", ?error, "failed to encode command result");
+                        ManagerCmdErrorCode::Other
+                    })
+                    .unwrap_or(JSON_OTHER_ERROR.into());
+                response_fn(json_response)
             };
-            (cmd, Box::new(result_callback))
+            match ManagerCmd::from_json(&json_cmd) {
+                Ok(cmd) => return (cmd, Box::new(response_fn)),
+                Err(error) => response_fn(Err(error)),
+            }
         }
     }
+}
+
+const JSON_OTHER_ERROR: &str = r#"{"Err":"other"}"#;
+
+#[test]
+fn test_other_error_json() {
+    assert_eq!(
+        serde_json::to_string(&Result::<ManagerCmdOk, ManagerCmdErrorCode>::Err(ManagerCmdErrorCode::Other)).unwrap(),
+        JSON_OTHER_ERROR
+    )
 }
 
 impl Os for WindowsOsImpl {

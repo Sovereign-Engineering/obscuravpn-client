@@ -1,3 +1,5 @@
+set windows-shell := ["cmd", "/c"]
+
 setup:
 	pnpm install --frozen-lockfile
 

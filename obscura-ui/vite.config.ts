@@ -19,8 +19,7 @@ export default defineConfig({
   server: {
     port: 1420,
     strictPort: true,
-    // WK_WEB_VIEW will be defined when using the Dev Client scheme in XCode
-    open: process.env.WK_WEB_VIEW === undefined
+    open: false,
   },
   // env variables
   envPrefix: ['VITE_', 'OBS_WEB_'],

@@ -1,3 +1,4 @@
+use crate::service::os::MAX_IPC_MESSAGE_LEN;
 use crate::service::os::linux::service_lock::ServiceLock;
 use crate::service::os::linux::start_error::LinuxServiceStartError;
 use flume::{Receiver, Sender, bounded};
@@ -69,7 +70,7 @@ impl ServiceIpc {
             );
         })?;
         let len = u32::from_be_bytes(len);
-        if len > 1_000_000 {
+        if len > MAX_IPC_MESSAGE_LEN {
             tracing::error!(message_id = "k9XmPq2R", len, "message on socket stream too long");
             return Err(());
         }

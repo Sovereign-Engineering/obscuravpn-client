@@ -137,8 +137,14 @@ bin/gradle-deps-update.sh
 
 Install [Visual Studio](https://visualstudio.microsoft.com/downloads/) with the following Workloads:
 
-- Desktop development with C++
+- Desktop development with C++ (for Rust)
 - WinUI application development
+
+Install [Rust](https://rust-lang.org/learn/get-started/).
+
+You may also need to install [Windows App SDK](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads) manually to get the client app running.
+
+Install [Powershell 7](https://learn.microsoft.com/powershell/scripting/install/install-powershell-on-windows)
 
 On Windows, definitely ARM64 machines, you need to add `C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\Llvm\ARM64\bin` to path.
 
@@ -153,6 +159,20 @@ To test the service, run `sudo cargo run service`. You need to enable `sudo` und
 The default config directory is `%APPDATA%\Obscura`. When testing the service, you may find it beneficial to manually add in an account number.
 
 A helpful command to clean DNS query manually is `Remove-DnsClientNrptRule -Name "{fb157da8-6578-4f53-81ea-0a9168e96c1f}"`.
+
+To run the desktop app, you need to install [nvm-windows](https://github.com/coreybutler/nvm-windows/releases) (`winget install nvm-windows`) and then run `nvm install lts && nvm use lts && corepack enable`.
+
+### Tips
+
+The [WinUI 3 Gallery](https://apps.microsoft.com/detail/9p3jfpwwdzrc) app is very useful at showcasing features currently available with code snippets.
+
+If for some reason you don't want to modify `tag.json` to set the version of the app, you can also add the following to manually create the environment variable (assuming non-CLI build).
+
+```csproj
+<OBSCURA_VERSION Condition="'$(OBSCURA_VERSION)' == ''">1.156</OBSCURA_VERSION>
+```
+
+[Segoe Fluent Icons](https://learn.microsoft.com/windows/apps/design/iconography/segoe-ui-symbol-font#icon-list)
 
 ## Swift unit tests
 

@@ -3,9 +3,10 @@ import { useThrottledValue } from '@mantine/hooks';
 import { lazy, Suspense, useContext, useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { FaCheckCircle, FaExclamationTriangle } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import AppIcon from '../../../apple/client/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x@2x.png';
 import * as commands from '../bridge/commands';
-import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
+import { IS_HANDHELD_DEVICE, PLATFORM, Platform } from '../bridge/SystemProvider';
 import { LEGAL_WEBPAGE, OBSCURA_WEBPAGE } from '../common/accountUtils';
 import { AppContext, UpdaterStatusType } from '../common/appContext';
 import { MIN_LOAD_MS } from '../common/utils';
@@ -13,9 +14,10 @@ import DebuggingArchive from '../components/DebuggingArchive';
 import ObscuraWordmark from '../components/ObscuraWordmark';
 import { Socials } from '../components/Socials';
 import classes from './About.module.css';
-import { useNavigate } from 'react-router-dom';
 
 const Licenses = lazy(() => import('../components/Licenses'));
+
+const UPDATE_CHECKING_SUPPORTED = PLATFORM === Platform.macOS;
 
 export default function About() {
   const { t } = useTranslation();
@@ -39,7 +41,7 @@ export default function About() {
 
   useEffect(() => {
     // Intentionally run only on mount (recheck once if update not already available)
-    if (updaterStatus?.type !== UpdaterStatusType.Available && !IS_HANDHELD_DEVICE) {
+    if (updaterStatus?.type !== UpdaterStatusType.Available && UPDATE_CHECKING_SUPPORTED) {
       checkForUpdates();
     }
   }, []);
@@ -65,7 +67,7 @@ export default function About() {
             <UpdaterError errorCode={updaterStatusDelayed.errorCode} error={updaterStatusDelayed.error!} />
           )}
           <Group>
-            {!IS_HANDHELD_DEVICE && <> {
+            {UPDATE_CHECKING_SUPPORTED && <> {
               updaterStatusDelayed?.type === UpdaterStatusType.Available ? (
                 <Button onClick={installUpdate}>{t('installUpdate')}</Button>
               ) : (

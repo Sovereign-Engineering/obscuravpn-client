@@ -7,6 +7,7 @@ export enum Platform {
   macOS = 'macosx',
   iOS = 'iphoneos',
   Android = 'android',
+  Windows = 'windows',
 }
 
 export function systemName(): string {
@@ -17,6 +18,8 @@ export function systemName(): string {
       return "iOS";
     case Platform.Android:
       return "Android";
+    case Platform.Windows:
+      return "Windows";
   }
 }
 
@@ -27,6 +30,7 @@ const platformDefined = Object.values(Platform).includes(PLATFORM);
 // TODO: Can we remove iOS by preventing it from failing early?
 // https://linear.app/soveng/issue/OBS-3164/improve-feedback-during-connecting-state
 export const CONNECT_REQUIRES_ONLINE = PLATFORM === Platform.iOS || PLATFORM === Platform.macOS;
+export const HAS_NE_VPN_STATUS = PLATFORM !== Platform.Windows;
 
 export function useSystemChecks() {
   useEffect(() => {

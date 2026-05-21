@@ -1,12 +1,11 @@
 {
   "compilerOptions": {
     "allowJs": false,
-    "baseUrl": ".",
     "esModuleInterop": true,
     "jsx": "react-jsx",
     "jsxImportSource": "react",
     "lib": [
-      "es2022",
+      "es2024",
       "dom"
     ],
     "module": "ES2022",

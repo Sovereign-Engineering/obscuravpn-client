@@ -6,18 +6,19 @@ import { useTranslation } from 'react-i18next';
 import { BsChevronDown, BsPinFill } from 'react-icons/bs';
 import { IoIosEyeOff } from 'react-icons/io';
 import { MdLanguage, MdLaptopMac, MdOutlineWifiOff } from 'react-icons/md';
-import { ExitSelector, ExitSelectorCity } from 'src/bridge/commands';
+import { ExitSelector, ExitSelectorCity } from '../bridge/commands';
 import { CONNECT_REQUIRES_ONLINE } from '../bridge/SystemProvider';
 import * as ObscuraAccount from '../common/accountUtils';
 import { accountIsExpired, Exit, getContinent, getExitCountry, useReRenderWhenExpired } from '../common/api';
 import { AppContext, ConnectionInProgress, getCityFromStatus, isConnecting, NEVPNStatus, PinnedLocation, useIsConnecting, useIsTransitioning } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
-import { exitCityEquals, exitLocation, exitsSortComparator, getCountryFlag, getExitCountryFlag } from '../common/exitUtils';
+import { exitCityEquals, exitLocation, exitsSortComparator } from '../common/exitUtils';
 import { KeyedSet } from '../common/KeyedSet';
 import { useExitList } from '../common/useExitList';
 import { useCookie } from '../common/utils';
 import BoltBadgeAuto from '../components/BoltBadgeAuto';
 import { CColorSchemeContext } from '../components/CachedColorScheme';
+import { Flag } from '../components/CountryFlag';
 import ExternalLinkIcon from '../components/ExternalLinkIcon';
 import ObscuraChip from '../components/ObscuraChip';
 import DecoConnected from '../res/deco/deco-connected.svg';
@@ -71,7 +72,9 @@ export default function Connection() {
       If we're already connected and the account expires, we still want to show the disconnect.
       Only when we're no longer connected should the pre-requisite take precedence.
     */
-    const showLocationSelect = (isCityConnect || osStatus.osVpnStatus !== NEVPNStatus.Connecting) && (vpnConnected || accountInfo !== null && !accountHasExpired);
+    const showLocationSelect = (isCityConnect || (
+      osStatus.osVpnStatus !== NEVPNStatus.Connecting && connectionInProgress !== ConnectionInProgress.Connecting
+    )) && (vpnConnected || accountInfo !== null && !accountHasExpired);
     /* The primary button is hidden in the following scenarios:
       1) connected
       2) not connecting via quick connect (i.e. connecting to a user-selected location)
@@ -154,17 +157,14 @@ function PrimaryConnectButton() {
   const connectingToCity = (targetCity !== undefined || specificInitiation) && (osStatus.osVpnStatus !== NEVPNStatus.Disconnected || appStatus.vpnStatus.connecting !== undefined);
 
   if (inConnectingState && !connectingToCity && osStatus.osVpnStatus !== NEVPNStatus.Disconnecting) {
-    return <>
-      <Space h='lg' />
-      <Button w={BUTTON_WIDTH} {...theme.other.buttonDisconnectProps} mt={5} onClick={vpnDisconnect}>{t('Cancel Connecting')}</Button>
-    </>
+    return <Button w={BUTTON_WIDTH} {...theme.other.buttonDisconnectProps} mt={5} onClick={vpnDisconnect}>{t('Cancel Connecting')}</Button>;
   }
 
   if (!vpnConnected && accountInfo !== null && accountHasExpired) {
     return <Button component='a' href={ObscuraAccount.APP_ACCOUNT_TAB}>{t('ManageAccount')}</Button>;
   }
 
-  const showQuickConnect = !vpnConnected && !connectingToCity && accountInfo !== null && !appStatus.vpnStatus.connecting && osStatus.osVpnStatus !== NEVPNStatus.Disconnecting;
+  const showQuickConnect = !vpnConnected && !connectingToCity && accountInfo !== null && !appStatus.vpnStatus.connecting && osStatus.osVpnStatus === NEVPNStatus.Disconnected;
   const qcBtnAction = (_: MouseEvent) => vpnConnected ? vpnDisconnect() : vpnConnect({ any: {} });
   const qcBtnDisabled = (!internetAvailable && CONNECT_REQUIRES_ONLINE) || connectionTransition;
   const primaryBtnDisconnectProps = (vpnConnected && connectionInProgress !== ConnectionInProgress.Reconnecting) ? theme.other.buttonDisconnectProps : {};
@@ -391,7 +391,6 @@ function Mascot() {
             if (connectingIndex !== 0) {
               toggleConnectingDeco(0);
             }
-            console.log('stopped');
             stop();
         }
         return () => stop();
@@ -517,7 +516,7 @@ function LocationSelect(): ReactNode {
                                   selectedCity === null
                                   ? <Text>{showOfflineUI ? t('noInternet') : t('selectLocation')}</Text>
                                   : <Group gap='xs'>
-                                    <Text size='lg'>{getCountryFlag(selectedCity.country_code)} {selectedExampleExit?.city_name}</Text>
+                                    <Text size='lg'><Flag countryCode={selectedCity.country_code} /> {selectedExampleExit?.city_name}</Text>
                                   </Group>
                                 }
                             </Button>
@@ -679,7 +678,7 @@ function CityOptions({ locations, pinnedLocationSet, lastChosenExit, onExitSelec
           onClick={() => onExitSelect(exit.country_code, exit.city_code)}
           {...getMouseHoverProps(key)}>
           <Group gap='xs' justify='space-between'>
-            <Text size='lg'>{getExitCountryFlag(exit)} {exit.city_name}</Text>
+            <Text size='lg'><Flag countryCode={exit.country_code} /> {exit.city_name}</Text>
             <ItemRightSection exit={exit} hoverKey={key} />
           </Group >
         </Combobox.Option >
@@ -710,7 +709,7 @@ function CityOptions({ locations, pinnedLocationSet, lastChosenExit, onExitSelec
           onClick={() => onExitSelect(exit.country_code, exit.city_code)}
           {...getMouseHoverProps(key)}>
           <Group gap='xs' justify='space-between'>
-              <Text size='lg'>{getExitCountryFlag(exit)} {exit.city_name}</Text>
+              <Text size='lg'><Flag countryCode={exit.country_code} /> {exit.city_name}</Text>
               <ItemRightSection exit={exit} hoverKey={key} showIconIfPinned />
           </Group >
         </Combobox.Option >

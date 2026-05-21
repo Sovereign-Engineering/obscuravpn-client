@@ -504,19 +504,15 @@ impl QuicWgConnHandshaking {
         relay_cert: CertificateDer<'static>,
         relay_sni: &str,
         quic_frame_padding: bool,
-        force_small_mtu: bool,
-        network_interface_mtu: Option<u16>,
     ) -> Result<Self, QuicWgConnectError> {
         let port = relay_addr.port();
         tracing::info!(
             message_id = "AYsfThUG",
-            network_interface.mtu = network_interface_mtu,
             port = port,
             relay.id = relay_id,
             "starting quic wg relay handshake",
         );
-        let quic_config =
-            Self::quic_config(relay_cert, quic_frame_padding, network_interface_mtu, force_small_mtu).map_err(QuicWgConnectError::CryptoConfig)?;
+        let quic_config = Self::quic_config(relay_cert, quic_frame_padding).map_err(QuicWgConnectError::CryptoConfig)?;
         let connecting = quic_endpoint
             .connect_with(quic_config.clone(), relay_addr, relay_sni)
             .map_err(QuicWgConnectError::QuicConfig)?;
@@ -655,12 +651,7 @@ impl QuicWgConnHandshaking {
         Ok(TlsConnector::from(Arc::new(crypto)))
     }
 
-    fn quic_config(
-        relay_cert: CertificateDer<'static>,
-        quic_frame_padding: bool,
-        network_interface_mtu: Option<u16>,
-        force_small_mtu: bool,
-    ) -> Result<ClientConfig, anyhow::Error> {
+    fn quic_config(relay_cert: CertificateDer<'static>, quic_frame_padding: bool) -> Result<ClientConfig, anyhow::Error> {
         let mut crypto = Self::rustls_config(relay_cert)?;
         crypto.alpn_protocols = vec![b"h3".to_vec()];
         let crypto = QuicClientConfig::try_from(crypto)?;
@@ -669,23 +660,7 @@ impl QuicWgConnHandshaking {
         transport_config.max_concurrent_uni_streams(0u8.into());
         transport_config.max_concurrent_bidi_streams(0u8.into());
         let mut mtu_discovery_config = MtuDiscoveryConfig::default();
-        if force_small_mtu {
-            tracing::info!(
-                message_id = "To1eYEO2",
-                "constraining outgoing UDP payload size due to small MTU experimental flag being set"
-            );
-            mtu_discovery_config.upper_bound(1200);
-        } else if network_interface_mtu.is_some_and(|network_interface_mtu| network_interface_mtu < DEFAULT_UDP_PAYLOAD_SIZE + IPV4_UDP_OVERHEAD) {
-            tracing::info!(
-                message_id = "7XXBAv2f",
-                network_interface_mtu,
-                "not setting fixed outgoing max UDP payload size, because network MTU is too low"
-            );
-        } else {
-            transport_config.initial_mtu(DEFAULT_UDP_PAYLOAD_SIZE);
-            transport_config.min_mtu(DEFAULT_UDP_PAYLOAD_SIZE);
-            mtu_discovery_config.upper_bound(DEFAULT_UDP_PAYLOAD_SIZE);
-        }
+        mtu_discovery_config.upper_bound(DEFAULT_UDP_PAYLOAD_SIZE);
         mtu_discovery_config.black_hole_cooldown(Duration::from_secs(10));
         transport_config.mtu_discovery_config(Some(mtu_discovery_config));
         transport_config.max_idle_timeout(Some(QUIC_IDLE_TIMEOUT.try_into()?));

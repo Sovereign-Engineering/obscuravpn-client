@@ -38,17 +38,8 @@ pub fn race_relay_handshakes(
                     let mut handshaking = match use_tcp_tls {
                         true => QuicWgConnHandshaking::start_tcp_tls(relay.id.clone(), relay_addr, relay_cert, &sni).await,
                         false => {
-                            QuicWgConnHandshaking::start_quic(
-                                relay.id.clone(),
-                                &quic_endpoint,
-                                relay_addr,
-                                relay_cert,
-                                &sni,
-                                quic_frame_padding,
-                                force_small_mtu,
-                                mtu,
-                            )
-                            .await
+                            QuicWgConnHandshaking::start_quic(relay.id.clone(), &quic_endpoint, relay_addr, relay_cert, &sni, quic_frame_padding)
+                                .await
                         }
                     }?;
                     let rtt = handshaking.measure_rtt().await?;

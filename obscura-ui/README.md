@@ -19,6 +19,6 @@ For adding new mobile styles, you can do the following
 
 ```css
 @media screen and (max-width: $mantine-breakpoint-xs) {
-    padding-top: env(safe-area-inset-top) !important;
+    padding-top: var(--safe-area-inset-top, env(safe-area-inset-top)) !important;
 }
 ```

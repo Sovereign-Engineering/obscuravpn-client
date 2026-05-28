@@ -62,29 +62,22 @@ class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet?
 
         // TODO: Synchronize padding with IME animation
         // https://linear.app/soveng/issue/OBS-3233/android-ime-animation-jank
-        // TODO: Edge-to-edge `WebView`
-        // https://linear.app/soveng/issue/OBS-3237/android-edge-to-edge-webview
         ViewCompat.setOnApplyWindowInsetsListener(this.webViewContainer) { view, windowInsets ->
-            val insetsMask =
-                WindowInsetsCompat.Type.displayCutout()
-                    .or(WindowInsetsCompat.Type.navigationBars())
-                    .or(WindowInsetsCompat.Type.statusBars())
+            val insetsMask = WindowInsetsCompat.Type.displayCutout().or(WindowInsetsCompat.Type.systemBars())
             val insets = windowInsets.getInsets(insetsMask)
             val imeMask = WindowInsetsCompat.Type.ime()
             val bottom =
                 if (windowInsets.isVisible(imeMask)) {
-                    windowInsets.getInsets(imeMask).bottom
+                    // Injecting this would cause a slight resize of the web UI
+                    Pair(windowInsets.getInsets(imeMask).bottom, 0)
                 } else if (!this.loggedIn) {
-                    insets.bottom
+                    Pair(0, insets.bottom)
                 } else {
-                    0
+                    Pair(0, 0)
                 }
-            // Only use non-zero insets when there's overlap
-            // https://developer.android.com/develop/ui/views/layout/webapps/understand-window-insets#bounds-overlap
-            view.setPadding(insets.left, insets.top, insets.right, bottom)
-            // Child `WebView` should ignore any insets we applied here
-            // https://developer.android.com/develop/ui/views/layout/webapps/understand-window-insets#inset-handling
-            WindowInsetsCompat.Builder(windowInsets).setInsets(insetsMask.or(imeMask), Insets.NONE).build()
+            view.setPadding(0, 0, 0, bottom.first)
+            this.webView?.injectInsets(Insets.of(insets.left, insets.top, insets.right, bottom.second))
+            WindowInsetsCompat.CONSUMED
         }
         ViewCompat.setOnApplyWindowInsetsListener(this.bottomNavigation) { view, windowInsets ->
             // Hide bottom nav when IME is visible

@@ -11,7 +11,8 @@
     background-color: light-dark(var(--mantine-color-dark-8), var(--mantine-color-dark-6)) !important;
 }
 
-.progress, .trafficVulnerableProgressBar {
+.progress,
+.trafficVulnerableProgressBar {
     background-color: light-dark(var(--mantine-color-dark-4), var(--mantine-color-dark-3)) !important;
 }
 
@@ -45,9 +46,9 @@
 
 @media screen and (max-width: $mantine-breakpoint-xs) {
     .container {
-        padding-top: env(safe-area-inset-top);
-        padding-left: env(safe-area-inset-left);
-        padding-right: env(safe-area-inset-right);
+        padding-top: var(--safe-area-inset-top, env(safe-area-inset-top));
+        padding-left: var(--safe-area-inset-left, env(safe-area-inset-left));
+        padding-right: var(--safe-area-inset-right, env(safe-area-inset-right));
     }
 
     .connectionProgressBarContainer {

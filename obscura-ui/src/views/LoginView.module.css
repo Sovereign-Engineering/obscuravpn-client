@@ -28,6 +28,7 @@
     min-height: 100vh;
     gap: 20px !important;
     background-position: top;
+    padding-top: 28vh;
     @mixin dark {
         background-color: var(--mantine-color-dark-8);
     }
@@ -35,12 +36,17 @@
 
 .loginContainerHandheld {
     background-position: bottom;
+    padding-top: 23vh;
+    padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom));
     @media (orientation: portrait) {
         /* when the soft keyboard is open,
            this padding ensures that the background image
            is below the debugging archive label
          */
         padding-bottom: 120px;
+    }
+    @media (orientation: landscape) {
+        padding-top: 8vh;
     }
 }
 
@@ -50,6 +56,9 @@
 }
 
 .copyAccountStack {
-    min-height: 32vh;
-    max-height: 42vh;
+    min-height: 29vh;
+    max-height: 51vh;
+    @media (orientation: landscape) {
+        min-height: 54vh;
+    }
 }

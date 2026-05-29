@@ -1,7 +1,5 @@
 .container {
-    padding-top: calc(20px + var(--safe-area-inset-top, env(safe-area-inset-top, -20px)));
-    padding-left: var(--safe-area-inset-left, env(safe-area-inset-left));
-    padding-right: var(--safe-area-inset-right, env(safe-area-inset-right));
+    padding-top: 20px;
 }
 
 @media screen and (max-width: $mantine-breakpoint-xs) {

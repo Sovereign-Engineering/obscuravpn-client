@@ -48,7 +48,7 @@ export default function About() {
   const updaterStatusDelayed = useThrottledValue(updaterStatus, updaterStatus.type === UpdaterStatusType.Initiated ? MIN_LOAD_MS : 0);
   const isLatest = errorCodeIsLatestVersion(updaterStatusDelayed.errorCode);
   return (
-    <Flex className={classes.container} gap='md' direction='column' justify='space-between' h='100vh'>
+    <Flex className={classes.container} gap='md' direction='column' justify='space-between' h='100%'>
       <Stack align='center' style={{ flexGrow: '1' }} justify='space-around'>
         <Stack align='center'>
           <Image src={AppIcon} w={120} />

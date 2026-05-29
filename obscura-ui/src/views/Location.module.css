@@ -44,7 +44,7 @@
 
 @media screen and (max-width: $mantine-breakpoint-xs) {
     .container {
-        padding-top: calc(20px + var(--safe-area-inset-top, env(safe-area-inset-top)));
+        padding-top: 20px;
         padding-bottom: 70px;
         padding-left: 20px;
         padding-right: 20px;

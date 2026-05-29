@@ -40,7 +40,7 @@ export function PaymentManagementSheet({ opened, onClose }: PaymentManagementShe
   }, [osStatus.offerCodeRedemptionSuccess, appStatus.account?.account_info.active, setPaymentProcessing]);
 
   if (isProcessingPayment) {
-    return <ProcessingPaymentSheet opened={true} />;
+    return <ProcessingPaymentSheet opened={true}/>;
   }
 
   const externalPaymentsAllowed = osStatus.storeKit?.externalPaymentsAllowed || osStatus.playBilling === false

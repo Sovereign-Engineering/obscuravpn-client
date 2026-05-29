@@ -1,4 +1,4 @@
-import { Anchor, Button, Card, Code, CopyButton, Group, Image, Loader, Space, Stack, Text, TextInput, Title, Transition } from '@mantine/core';
+import { Anchor, Button, Card, Code, CopyButton, Group, Image, Loader, Stack, Text, TextInput, Title, Transition } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { motion, MotionValue, useSpring, useTransform } from 'framer-motion';
@@ -29,7 +29,6 @@ interface LogInProps {
 const COPY_ACCOUNT_WIDTH = IS_HANDHELD_DEVICE ? 300 : '24ch';
 const BACKGROUND_IMAGE = IS_HANDHELD_DEVICE ? DecoOrangeBottom : DecoOrangeTop;
 const BACKGROUND_POSITION = IS_HANDHELD_DEVICE ? 'bottom' : 'top';
-const TOP_SPACING = IS_HANDHELD_DEVICE ? '16vh' : '28vh';
 
 export default function LogIn({ accountNumber, accountActive }: LogInProps) {
   const { t } = useTranslation();
@@ -114,7 +113,6 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
 
   return (
     <Stack className={loginContainerClasses} style={{backgroundImage: `url("${BACKGROUND_IMAGE}")`}}>
-        <Space h={TOP_SPACING} />
         {
           (!!accountNumber || awaitingAccountCreation) ? <AccountGeneration loading={awaitingAccountCreation} generatedAccountId={accountNumber} accountActive={accountActive} />
             :
@@ -200,7 +198,7 @@ function AccountGeneration({ generatedAccountId, accountActive, loading }: Accou
 
   return (
     <>
-      {IS_HANDHELD_DEVICE && <PaymentManagementSheet opened={paymentSheetOpened} onClose={closePaymentSheet} />}
+      {IS_HANDHELD_DEVICE && <PaymentManagementSheet opened={paymentSheetOpened} onClose={closePaymentSheet}/>}
       <ConfirmationDialog opened={confirmAccountSecured} onClose={close}>
         <Stack p={IS_HANDHELD_DEVICE ? 'xl' : undefined} ta={IS_HANDHELD_DEVICE ? 'center' : undefined}>
           <Text>{t('accountNumberStoredConfirmation')}</Text>

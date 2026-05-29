@@ -113,7 +113,8 @@ export default function Connection() {
     }
 
     return (
-        <Stack align='center' h='100vh' gap={0} className={classes.container} style={{ backgroundImage: `url("${Deco()}")`}}>
+        <Stack align='center' h='100vh' gap={0} className={classes.container}>
+            <div className={classes.deco} style={{ backgroundImage: `url("${Deco()}")` }} />
             <Space h={40} />
             <Mascot />
             <Stack align='center' gap={primaryButtonShown ? 0 : 20} mt={primaryButtonShown ? 0 : 20} justify='space-around'>

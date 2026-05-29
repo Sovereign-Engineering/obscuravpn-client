@@ -15,10 +15,8 @@
 
 ### Media Queries
 
-For adding new mobile styles, you can do the following
+When adding new mobile styles, use `$mantine-breakpoint-xs`:
 
 ```css
-@media screen and (max-width: $mantine-breakpoint-xs) {
-    padding-top: var(--safe-area-inset-top, env(safe-area-inset-top)) !important;
-}
+@media screen and (max-width: $mantine-breakpoint-xs) { ... }
 ```

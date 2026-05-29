@@ -1,7 +1,16 @@
 .container {
+    position: relative;
+    isolation: isolate;
+}
+
+.deco {
+    position: fixed;
+    inset: 0;
     background-repeat: no-repeat;
     background-size: contain;
     background-position: bottom;
+    pointer-events: none;
+    z-index: -1;
 }
 
 .connectionProgressBarContainer {

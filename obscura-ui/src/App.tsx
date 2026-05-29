@@ -10,6 +10,7 @@ import classes from './App.module.css';
 import * as commands from './bridge/commands';
 import { HAS_NE_VPN_STATUS, IS_HANDHELD_DEVICE, logReactError, PLATFORM, Platform, useSystemChecks } from './bridge/SystemProvider';
 import { AppContext, AppStatus, ConnectionInProgress, connectionIsIdle, getEffectiveOsStatus, NavigationView, NEVPNStatus, OsStatus, OsStatusWVpnStatus } from './common/appContext';
+import commonClasses from './common/common.module.css';
 import { fmt } from './common/fmt';
 import { NotificationId } from './common/notifIds';
 import { useAsync } from './common/useAsync';
@@ -26,6 +27,8 @@ interface View {
   path: string,
   exact?: boolean,
   needsScroll: boolean,
+  // View's own root applies insets — skip the wrapping inset container.
+  selfInsets?: boolean,
 }
 
 export default function () {
@@ -57,7 +60,7 @@ export default function () {
   const ignoreConnectingErrors = useRef(false);
 
   const views: View[] = [
-    { component: Connection, path: '/connection', needsScroll: false },
+    { component: Connection, path: '/connection', needsScroll: false, selfInsets: true },
     { component: DeveloperView, path: '/developer', needsScroll: true },
     { component: Location, path: '/location', needsScroll: true },
     { component: Account, path: '/account', needsScroll: false },
@@ -381,7 +384,7 @@ export default function () {
     <AppShell
       header={{ height: 0 }}
       navbar={undefined}
-      className={classes.appShell}>
+      classNames={{ root: classes.appShell }}>
       <AppShellMain>
         <AppContext.Provider value={appContext}>
           <ErrorBoundary FallbackComponent={FallbackAppRender} onReset={_details => errorBoundaryOnReset()} onError={logReactError}>
@@ -397,11 +400,15 @@ export default function () {
 }
 
 function RenderView({ view }: { view: View }) {
+  if (view.needsScroll) {
+    return <ScrollableView><view.component /></ScrollableView>;
+  }
+  if (view.selfInsets) {
+    return <view.component />;
+  }
   return (
-    view.needsScroll ?
-      <ScrollableView>
-        <view.component />
-      </ScrollableView> :
+    <div className={commonClasses.applyInsets} style={{height: '100vh'}}>
       <view.component />
+    </div>
   );
 }

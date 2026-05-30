@@ -9,6 +9,7 @@ data class OsStatus(
     val internetAvailable: Boolean,
     val osVpnStatus: OsVpnStatus,
     val srcVersion: String,
+    val navigationView: NavigationView?,
     val updaterStatus: UpdaterStatus,
     val debugBundleStatus: DebugBundleStatus,
     val canSendMail: Boolean,
@@ -31,6 +32,19 @@ data class OsStatus(
         var latestPath: String?,
         var inProgressCounter: Long,
     )
+
+    @Serializable
+    enum class NavigationView {
+        @SerialName("developer") Developer,
+        @SerialName("connection") Connection,
+        @SerialName("location") Location,
+        @SerialName("account") Account,
+        @SerialName("help") Help,
+        @SerialName("about") About,
+        @SerialName("settings") Settings;
+
+        fun serialName() = NavigationView.serializer().descriptor.getElementName(this.ordinal)
+    }
 
     @Serializable
     data class UpdaterStatus(

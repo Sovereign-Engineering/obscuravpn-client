@@ -24,6 +24,7 @@ class OsStatusManager @Inject constructor(@ApplicationContext context: Context) 
                 inProgressCounter = 0,
             ),
         var internetAvailable: Boolean = false,
+        var navigationView: OsStatus.NavigationView? = null,
         var vpnStatus: OsStatus.OsVpnStatus = OsStatus.OsVpnStatus.Disconnected,
     )
 
@@ -50,6 +51,7 @@ class OsStatusManager @Inject constructor(@ApplicationContext context: Context) 
                     internetAvailable = this.current.state.internetAvailable,
                     osVpnStatus = this.current.state.vpnStatus,
                     srcVersion = BuildConfig.VERSION_NAME,
+                    navigationView = this.current.state.navigationView,
                     updaterStatus =
                         OsStatus.UpdaterStatus(
                             type = "uninitiated",

@@ -1,7 +1,6 @@
 package net.obscura.vpnclientapp.ui
 
 import android.annotation.SuppressLint
-import android.content.Context
 import android.content.Intent
 import android.util.AttributeSet
 import android.webkit.WebMessage
@@ -12,32 +11,23 @@ import androidx.core.graphics.Insets
 import androidx.core.net.toUri
 import androidx.core.util.TypedValueCompat.pxToDp
 import androidx.webkit.WebViewAssetLoader
-import net.obscura.vpnclientapp.activities.MainActivity
-import net.obscura.vpnclientapp.services.IObscuraVpnService
+import net.obscura.vpnclientapp.ui.bridge.WebCmdArgs
 import net.obscura.vpnclientapp.ui.bridge.WebCmdBridge
 
 @SuppressLint("SetJavaScriptEnabled", "ViewConstructor")
 class ObscuraWebView
 @JvmOverloads
 constructor(
-    context: Context,
-    binder: IObscuraVpnService,
-    mainActivity: MainActivity,
-    osStatusManager: OsStatusManager,
+    args: WebCmdArgs,
     attrs: AttributeSet? = null,
-) : WebView(context, attrs) {
+) : WebView(args.context, attrs) {
     companion object {
         val ORIGIN = "https://appassets.androidplatform.net".toUri()
 
         val HOME = "$ORIGIN/assets/web/index.html"
     }
 
-    val bridge =
-        WebCmdBridge(context, binder, mainActivity, osStatusManager) { data ->
-            post { postWebMessage(WebMessage("android/$data"), ORIGIN) }
-        }
-
-    var onPageLoadedCallback: ((String) -> Unit)? = null
+    val bridge = WebCmdBridge(args) { data -> post { postWebMessage(WebMessage("android/$data"), ORIGIN) } }
 
     init {
         this.settings.domStorageEnabled = true
@@ -80,7 +70,6 @@ constructor(
                         override fun onPageFinished(view: WebView?, url: String) {
                             super.onPageFinished(view, url)
                             view?.requestApplyInsets()
-                            onPageLoadedCallback?.invoke(url)
                         }
                     }
             }

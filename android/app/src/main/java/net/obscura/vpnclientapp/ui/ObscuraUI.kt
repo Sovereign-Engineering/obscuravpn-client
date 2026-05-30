@@ -7,10 +7,8 @@ import android.widget.FrameLayout
 import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.postDelayed
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomnavigation.BottomNavigationView
-import com.google.android.material.navigation.NavigationBarView
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -21,30 +19,48 @@ import net.obscura.vpnclientapp.activities.MainActivity
 import net.obscura.vpnclientapp.client.ErrorCodeException
 import net.obscura.vpnclientapp.client.ManagerCmdOk
 import net.obscura.vpnclientapp.services.IObscuraVpnService
+import net.obscura.vpnclientapp.ui.bridge.WebCmdArgs
 
 private val log = Logger(ObscuraUI::class)
+
+private fun viewFromId(id: Int) =
+    when (id) {
+        R.id.nav_connection -> OsStatus.NavigationView.Connection
+        R.id.nav_location -> OsStatus.NavigationView.Location
+        R.id.nav_account -> OsStatus.NavigationView.Account
+        R.id.nav_settings -> OsStatus.NavigationView.Settings
+        R.id.nav_about -> OsStatus.NavigationView.About
+        else -> {
+            log.error("unrecognized view id: $id")
+            null
+        }
+    }
+
+private fun idFromView(view: OsStatus.NavigationView) =
+    when (view) {
+        OsStatus.NavigationView.Connection -> R.id.nav_connection
+        OsStatus.NavigationView.Location -> R.id.nav_location
+        OsStatus.NavigationView.Account -> R.id.nav_account
+        OsStatus.NavigationView.Settings -> R.id.nav_settings
+        OsStatus.NavigationView.About -> R.id.nav_about
+        else -> {
+            log.error("view has no id: $view")
+            null
+        }
+    }
 
 class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null) : FrameLayout(context, attrs) {
     private var purchaseTokenUploader: Job? = null
     private lateinit var vpnStatusObserver: VpnStatusObserver
 
     val canGoBack
-        get() = (webView?.canGoBack() ?: false) || (bottomNavigation.selectedItemId != R.id.nav_connection)
+        get() = bottomNavigation.selectedItemId != R.id.nav_connection
 
     private lateinit var webViewContainer: FrameLayout
     private lateinit var bottomNavigation: BottomNavigationView
     private var loggedIn: Boolean = false
 
     private var webView: ObscuraWebView? = null
-
-    private val itemReselectedListener = NavigationBarView.OnItemReselectedListener { navigateToTab(it.itemId) }
-
-    private val itemSelectedListener =
-        NavigationBarView.OnItemSelectedListener {
-            navigateToTab(it.itemId)
-
-            true
-        }
 
     private fun setLoggedIn(loggedIn: Boolean) {
         this.bottomNavigation.visibility = if (loggedIn) VISIBLE else GONE
@@ -57,8 +73,6 @@ class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet?
         this.webViewContainer = this.findViewById(R.id.web_view_container)
         this.bottomNavigation = this.findViewById(R.id.nav_view)
         this.bottomNavigation.visibility = GONE
-        this.bottomNavigation.setOnItemReselectedListener(itemReselectedListener)
-        this.bottomNavigation.setOnItemSelectedListener(itemSelectedListener)
 
         // TODO: Synchronize padding with IME animation
         // https://linear.app/soveng/issue/OBS-3233/android-ime-animation-jank
@@ -146,24 +160,19 @@ class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet?
             )
         mainActivity.lifecycle.addObserver(this.vpnStatusObserver)
 
-        webView =
-            ObscuraWebView(context, binder, mainActivity, osStatusManager).apply {
-                webViewContainer.addView(
-                    this,
+        this.bottomNavigation.setOnItemSelectedListener {
+            val view = viewFromId(it.itemId)
+            val didNavigate = view?.serialName()?.let { path -> this@ObscuraUI.webView?.navigate(path) } != null
+            if (didNavigate) osStatusManager.update { this.navigationView = view }
+            didNavigate
+        }
+        osStatusManager.update { this.navigationView = viewFromId(this@ObscuraUI.bottomNavigation.selectedItemId) }
+        this.webView =
+            ObscuraWebView(WebCmdArgs(context, binder, mainActivity, osStatusManager, this)).also {
+                this.webViewContainer.addView(
+                    it,
                     LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT),
                 )
-
-                onPageLoadedCallback = {
-                    if (bottomNavigation.selectedItemId != R.id.nav_connection) {
-                        // TODO: make sure UI picks this up correctly
-
-                        var delay = 0L
-                        while (delay < 100L) {
-                            postDelayed(delay) { navigateToTab(bottomNavigation.selectedItemId) }
-                            delay += 10
-                        }
-                    }
-                }
             }
     }
 
@@ -193,28 +202,11 @@ class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet?
     }
 
     fun goBack() {
-        if (webView?.canGoBack() ?: false) {
-            webView?.goBack()
-        } else if (bottomNavigation.selectedItemId != R.id.nav_connection) {
-            bottomNavigation.selectedItemId = R.id.nav_connection
-        }
+        bottomNavigation.selectedItemId = R.id.nav_connection
     }
 
-    private fun navigateToTab(id: Int) {
-        val path =
-            when (id) {
-                R.id.nav_connection -> ""
-                R.id.nav_location -> "location"
-                R.id.nav_account -> "account"
-                R.id.nav_settings -> "settings"
-                R.id.nav_about -> "about"
-                else -> {
-                    log.error("unrecognized view id: $id")
-                    return
-                }
-            }
-        this.webView?.navigate(path)
-    }
+    fun setNavigationView(view: OsStatus.NavigationView) =
+        idFromView(view)?.let { this.bottomNavigation.selectedItemId = it }
 
     fun handleObscuraUri(uri: Uri) {
         log.debug("handling deep link: $uri")

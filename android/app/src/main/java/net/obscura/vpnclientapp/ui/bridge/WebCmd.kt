@@ -14,11 +14,21 @@ import net.obscura.vpnclientapp.client.jsonConfig
 import net.obscura.vpnclientapp.preferences.Preferences
 import net.obscura.vpnclientapp.services.IObscuraVpnService
 import net.obscura.vpnclientapp.ui.JsonFfiBroadcastReceiver
+import net.obscura.vpnclientapp.ui.ObscuraUI
+import net.obscura.vpnclientapp.ui.OsStatus
 import net.obscura.vpnclientapp.ui.OsStatusManager
 import net.obscura.vpnclientapp.ui.uploadPurchaseToken
 
 private val jsonUnit = jsonConfig.encodeToString(Unit)
 private val log = Logger(WebCmd::class)
+
+data class WebCmdArgs(
+    val context: Context,
+    val binder: IObscuraVpnService,
+    val mainActivity: MainActivity,
+    val osStatusManager: OsStatusManager,
+    val ui: ObscuraUI,
+)
 
 @Serializable(with = WebCmd.Serializer::class)
 internal sealed interface WebCmd {
@@ -34,20 +44,14 @@ internal sealed interface WebCmd {
                 RevealItemInDir.Serializer,
                 SetColorScheme.Serializer,
                 SetFeatureFlag.Serializer,
+                SetNavigationView.Serializer,
                 ShareDebugArchive.Serializer,
                 StartTunnel.Serializer,
                 StopTunnel.Serializer,
             ),
         )
 
-    data class Args(
-        val context: Context,
-        val binder: IObscuraVpnService,
-        val mainActivity: MainActivity,
-        val osStatusManager: OsStatusManager,
-    )
-
-    suspend fun run(args: Args): String
+    suspend fun run(args: WebCmdArgs): String
 
     @KeepGeneratedSerializer
     @Serializable(with = DebuggingArchive.Serializer::class)
@@ -60,7 +64,7 @@ internal sealed interface WebCmd {
         // Eventually, all platforms should just use the JSON FFI command to create debug archives, but for now,
         // adapting the command here is the least invasive change.
         // TODO: https://linear.app/soveng/issue/OBS-3095/cross-platform-debug-archive-story
-        override suspend fun run(args: Args) =
+        override suspend fun run(args: WebCmdArgs) =
             jsonUnit.also {
                 args.osStatusManager.update { this.debugBundleStatus.inProgress = true }
                 val path = runCatching {
@@ -86,7 +90,7 @@ internal sealed interface WebCmd {
         internal object Serializer :
             ExternallyTaggedEnumVariantSerializer<EmailDebugArchive>("emailDebugArchive", generatedSerializer())
 
-        override suspend fun run(args: Args) =
+        override suspend fun run(args: WebCmdArgs) =
             jsonUnit.also { shareDebugArchive(args.context, path, true, subject, body) }
     }
 
@@ -96,7 +100,7 @@ internal sealed interface WebCmd {
         internal object Serializer :
             ExternallyTaggedEnumVariantSerializer<GetOsStatus>("getOsStatus", generatedSerializer())
 
-        override suspend fun run(args: Args) = args.osStatusManager.waitForUpdate(knownVersion).await()
+        override suspend fun run(args: WebCmdArgs) = args.osStatusManager.waitForUpdate(knownVersion).await()
     }
 
     @KeepGeneratedSerializer
@@ -107,7 +111,8 @@ internal sealed interface WebCmd {
         internal object Serializer :
             ExternallyTaggedEnumVariantSerializer<JsonFfiCmd>("jsonFfiCmd", generatedSerializer())
 
-        override suspend fun run(args: Args) = JsonFfiBroadcastReceiver.waitForResponse(args.binder, this.cmd).await()
+        override suspend fun run(args: WebCmdArgs) =
+            JsonFfiBroadcastReceiver.waitForResponse(args.binder, this.cmd).await()
     }
 
     @KeepGeneratedSerializer
@@ -119,7 +124,7 @@ internal sealed interface WebCmd {
                 generatedSerializer(),
             )
 
-        override suspend fun run(args: Args): String {
+        override suspend fun run(args: WebCmdArgs): String {
             val billingDetails =
                 JsonFfiCmd(
                         jsonConfig.encodeToString(ManagerCmd.ApiGoogleBillingDetails(this.promoCode)),
@@ -149,7 +154,7 @@ internal sealed interface WebCmd {
                 generatedSerializer(),
             )
 
-        override suspend fun run(args: Args) = throw errorCodeUnsupportedOnOS()
+        override suspend fun run(args: WebCmdArgs) = throw errorCodeUnsupportedOnOS()
     }
 
     @KeepGeneratedSerializer
@@ -163,7 +168,8 @@ internal sealed interface WebCmd {
                 generatedSerializer(),
             )
 
-        override suspend fun run(args: Args) = jsonUnit.also { Preferences(args.context).colorScheme = this.value }
+        override suspend fun run(args: WebCmdArgs) =
+            jsonUnit.also { Preferences(args.context).colorScheme = this.value }
     }
 
     @KeepGeneratedSerializer
@@ -178,7 +184,21 @@ internal sealed interface WebCmd {
                 generatedSerializer(),
             )
 
-        override suspend fun run(args: Args) = throw errorCodeUnsupportedOnOS()
+        override suspend fun run(args: WebCmdArgs) = throw errorCodeUnsupportedOnOS()
+    }
+
+    @KeepGeneratedSerializer
+    @Serializable(with = SetNavigationView.Serializer::class)
+    data class SetNavigationView(
+        val view: OsStatus.NavigationView,
+    ) : WebCmd {
+        internal object Serializer :
+            ExternallyTaggedEnumVariantSerializer<SetNavigationView>(
+                "setNavigationView",
+                generatedSerializer(),
+            )
+
+        override suspend fun run(args: WebCmdArgs) = jsonUnit.also { args.ui.setNavigationView(this.view) }
     }
 
     @KeepGeneratedSerializer
@@ -192,7 +212,7 @@ internal sealed interface WebCmd {
                 generatedSerializer(),
             )
 
-        override suspend fun run(args: Args) = jsonUnit.also { shareDebugArchive(args.context, path, false) }
+        override suspend fun run(args: WebCmdArgs) = jsonUnit.also { shareDebugArchive(args.context, path, false) }
     }
 
     @KeepGeneratedSerializer
@@ -206,7 +226,7 @@ internal sealed interface WebCmd {
                 generatedSerializer(),
             )
 
-        override suspend fun run(args: Args) =
+        override suspend fun run(args: WebCmdArgs) =
             jsonUnit.also {
                 args.mainActivity.vpnPermissionRequestManager.requestVpnStart().getOrThrow()
                 args.binder.startTunnel(this@StartTunnel.tunnelArgs)
@@ -222,6 +242,6 @@ internal sealed interface WebCmd {
                 generatedSerializer(),
             )
 
-        override suspend fun run(args: Args) = jsonUnit.also { args.binder.stopTunnel() }
+        override suspend fun run(args: WebCmdArgs) = jsonUnit.also { args.binder.stopTunnel() }
     }
 }

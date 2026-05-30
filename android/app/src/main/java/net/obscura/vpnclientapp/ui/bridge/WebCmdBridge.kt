@@ -1,6 +1,5 @@
 package net.obscura.vpnclientapp.ui.bridge
 
-import android.content.Context
 import android.webkit.JavascriptInterface
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -10,20 +9,14 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import net.obscura.lib.util.Logger
-import net.obscura.vpnclientapp.activities.MainActivity
 import net.obscura.vpnclientapp.client.ErrorCodeException
 import net.obscura.vpnclientapp.client.errorCodeOther
 import net.obscura.vpnclientapp.client.jsonConfig
-import net.obscura.vpnclientapp.services.IObscuraVpnService
-import net.obscura.vpnclientapp.ui.OsStatusManager
 
 private val log = Logger(WebCmdBridge::class)
 
 class WebCmdBridge(
-    private val context: Context,
-    private val binder: IObscuraVpnService,
-    private val mainActivity: MainActivity,
-    private val osStatusManager: OsStatusManager,
+    private val args: WebCmdArgs,
     private val postMessage: (data: String) -> Unit,
 ) {
     private val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
@@ -54,9 +47,7 @@ class WebCmdBridge(
             try {
                 this@WebCmdBridge.accept(
                     id,
-                    jsonConfig
-                        .decodeFromString<WebCmd>(data)
-                        .run(WebCmd.Args(context, binder, this@WebCmdBridge.mainActivity, osStatusManager)),
+                    jsonConfig.decodeFromString<WebCmd>(data).run(this@WebCmdBridge.args),
                 )
             } catch (exception: CancellationException) {
                 log.debug("invoke job canceled: ${exception.message}")

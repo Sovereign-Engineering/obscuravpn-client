@@ -1,5 +1,7 @@
 LoadImage
-DestroyIcon
 IsIconic
 SetForegroundWindow
 ShowWindow
+CoWaitForMultipleObjects
+INFINITE
+CWMO_FLAGS

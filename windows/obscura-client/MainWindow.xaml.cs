@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading.Tasks;
 using log4net;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -29,6 +30,8 @@ public sealed partial class MainWindow : Window
     CoreWebView2DevToolsProtocolEventReceiver? _exceptionReceiver;
 
     readonly WindowMessageMonitor _msgMonitor;
+    // In case cold launch is from a `/payment-succeeded` URI protocol launch
+    readonly TaskCompletionSource _webUIReady = new();
 
     const uint WM_CLOSE = 0x0010;
 
@@ -101,6 +104,7 @@ public sealed partial class MainWindow : Window
         WebView.CoreWebView2.WebMessageReceived += WebView_WebMessageReceived;
         WebView.CoreWebView2.NewWindowRequested += WebView_NewWindowRequested;
         WebView.CoreWebView2.NavigationStarting += WebView_NavigationStarting;
+        WebView.CoreWebView2.NavigationCompleted += OnInitialNavigationCompleted;
 #if DEBUG
         WebView.CoreWebView2.Navigate($"http://localhost:{DevServer.PORT}/");
 #else
@@ -121,6 +125,18 @@ public sealed partial class MainWindow : Window
                 HOSTNAME, webUIPath, CoreWebView2HostResourceAccessKind.Allow);
             WebView.CoreWebView2.Navigate($"https://{HOSTNAME}/index.html");
 #endif
+    }
+
+    private void OnInitialNavigationCompleted(CoreWebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
+    {
+        if (args.IsSuccess)
+        {
+            sender.NavigationCompleted -= OnInitialNavigationCompleted;
+            _webUIReady.TrySetResult();
+        } else
+        {
+            Log.Error($"webview initial navigation failed {args.WebErrorStatus}");
+        }
     }
 
     private void OnWindowMessageReceived(object? sender, WindowMessageEventArgs e)
@@ -312,7 +328,7 @@ public sealed partial class MainWindow : Window
         OpenInDefaultBrowser(args.Uri);
     }
 
-    private static void WebView_NavigationStarting(CoreWebView2 sender, CoreWebView2NavigationStartingEventArgs args)
+    private void WebView_NavigationStarting(CoreWebView2 sender, CoreWebView2NavigationStartingEventArgs args)
     {
         if (!Uri.TryCreate(args.Uri, UriKind.Absolute, out var uri))
         {
@@ -348,12 +364,21 @@ public sealed partial class MainWindow : Window
         Log.Warn($"Blocked navigation to unsupported scheme: {args.Uri}");
     }
 
-    private static void HandleObscuraUrl(Uri uri)
+    internal async void HandleObscuraUrl(Uri uri)
     {
         switch (uri.AbsolutePath)
         {
+            case "/open":
+                break;
             case "/account":
                 OsStatus.Instance.SetNavigationView(NavigationView.Account);
+                break;
+            case "/location":
+                OsStatus.Instance.SetNavigationView(NavigationView.Location);
+                break;
+            case "/payment-succeeded":
+                await _webUIReady.Task;
+                await WebView.CoreWebView2.ExecuteScriptAsync("window.dispatchEvent(new CustomEvent('paymentSucceeded'))");
                 break;
             default:
                 Log.Warn($"Unhandled obscuravpn path: {uri.AbsolutePath}");

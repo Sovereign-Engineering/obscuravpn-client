@@ -3,6 +3,8 @@ package net.obscura.vpnclientapp.ui
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.util.AttributeSet
+import android.webkit.ConsoleMessage
+import android.webkit.WebChromeClient
 import android.webkit.WebMessage
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -11,6 +13,8 @@ import androidx.core.graphics.Insets
 import androidx.core.net.toUri
 import androidx.core.util.TypedValueCompat.pxToDp
 import androidx.webkit.WebViewAssetLoader
+import net.obscura.lib.util.LogLevel
+import net.obscura.lib.util.Logger
 import net.obscura.vpnclientapp.ui.bridge.WebCmdArgs
 import net.obscura.vpnclientapp.ui.bridge.WebCmdBridge
 
@@ -34,7 +38,23 @@ constructor(
         this.settings.javaScriptEnabled = true
         this.addJavascriptInterface(bridge, "obscuraAndroidCommandBridge")
         this.setRendererPriorityPolicy(RENDERER_PRIORITY_BOUND, true)
-
+        this.webChromeClient =
+            object : WebChromeClient() {
+                override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean {
+                    Logger("WebViewConsole")
+                        .event(
+                            when (consoleMessage.messageLevel()) {
+                                ConsoleMessage.MessageLevel.DEBUG -> LogLevel.DEBUG
+                                ConsoleMessage.MessageLevel.LOG,
+                                ConsoleMessage.MessageLevel.TIP -> LogLevel.INFO
+                                ConsoleMessage.MessageLevel.WARNING -> LogLevel.WARN
+                                ConsoleMessage.MessageLevel.ERROR -> LogLevel.ERROR
+                            },
+                            consoleMessage.message(),
+                        )
+                    return true
+                }
+            }
         WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(context))
             .addPathHandler("/res/", WebViewAssetLoader.ResourcesPathHandler(context))

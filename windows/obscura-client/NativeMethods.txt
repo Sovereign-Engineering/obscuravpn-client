@@ -1,0 +1,5 @@
+LoadImage
+DestroyIcon
+IsIconic
+SetForegroundWindow
+ShowWindow

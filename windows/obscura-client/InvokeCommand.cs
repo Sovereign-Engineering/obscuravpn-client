@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -90,13 +89,28 @@ public interface IIPCCommandArg
 public class IPCCommand : IObscuraCommand
 {
     private static readonly ILog Log = LogManager.GetLogger(typeof(IPCCommand));
-    public string Cmd { get; set; } = "";
+    public required string Cmd { get; set; }
     public double? TimeoutMs { get; set; }
 
-    public static async Task<string> RunWithArgAsync(IIPCCommandArg command)
+    public static Task<string> RunWithArgAsync(IIPCCommandArg command, CancellationToken ct = default)
     {
         var wrapped = new Dictionary<string, object?> { [command.CommandName()] = command };
-        return await new IPCCommand { Cmd = JsonSerializer.Serialize(wrapped, JsonConfig.Options) }.RunAsync();
+        var json = JsonSerializer.Serialize(wrapped, JsonConfig.Options);
+        return SendAndParseAsync(json, ct);
+    }
+
+    public static async Task<NeStatus> GetStatus(string? knownVersion, CancellationToken ct)
+    {
+        var ok = await RunWithArgAsync(new GetStatusArgs { KnownVersion = knownVersion }, ct);
+        return JsonSerializer.Deserialize<NeStatus>(ok, JsonConfig.Options)
+            ?? throw new InvalidOperationException($"getStatus returned null body: {ok}");
+    }
+
+    public static async Task<ExitListEnvelope> GetExitList(string? knownVersion, CancellationToken ct)
+    {
+        var ok = await RunWithArgAsync(new GetExitListArgs { KnownVersion = knownVersion }, ct);
+        return JsonSerializer.Deserialize<ExitListEnvelope>(ok, JsonConfig.Options)
+            ?? throw new InvalidOperationException($"getExitList returned null body: {ok}");
     }
 
     public async Task<string> RunAsync()
@@ -107,7 +121,12 @@ public class IPCCommand : IObscuraCommand
         using var cts = TimeoutMs is > 0 ? new CancellationTokenSource(TimeSpan.FromMilliseconds(TimeoutMs.Value)) : null;
         var cancellationToken = cts?.Token ?? default;
 
-        var response = await ServiceIpc.SendCommand(Cmd, cancellationToken);
+        return await SendAndParseAsync(Cmd, cancellationToken);
+    }
+
+    static async Task<string> SendAndParseAsync(string commandJson, CancellationToken ct)
+    {
+        var response = await ServiceIpc.SendCommand(commandJson, ct);
 
         IPCResponse? result;
         try
@@ -150,11 +169,28 @@ public class IPCResponse
     public JsonElement Err { get; set; }
 }
 
+class TunnelArgs
+{
+    public required ExitSelector Exit { get; set; }
+}
+
 class SetTunnelArgs : IIPCCommandArg
 {
     public string CommandName() => "setTunnelArgs";
-    public JsonNode? Args { get; set; }
+    public TunnelArgs? Args { get; set; }
     public required bool Active { get; set; }
+}
+
+class GetStatusArgs : IIPCCommandArg
+{
+    public string CommandName() => "getStatus";
+    public string? KnownVersion { get; set; }
+}
+
+class GetExitListArgs : IIPCCommandArg
+{
+    public string CommandName() => "getExitList";
+    public string? KnownVersion { get; set; }
 }
 
 public class StartTunnelCommand : IObscuraCommand
@@ -162,15 +198,20 @@ public class StartTunnelCommand : IObscuraCommand
     public required string TunnelArgs { get; set; }
     public async Task<string> RunAsync()
     {
-        return await IPCCommand.RunWithArgAsync(new SetTunnelArgs { Args = JsonNode.Parse(TunnelArgs), Active = true });
+        var args = JsonSerializer.Deserialize<TunnelArgs>(TunnelArgs, JsonConfig.Options)
+            ?? throw new ArgumentException($"Failed to parse tunnelArgs: {TunnelArgs}");
+        return await IPCCommand.RunWithArgAsync(new SetTunnelArgs { Args = args, Active = true });
     }
 }
 
 public class StopTunnelCommand : IObscuraCommand
 {
+    public double? TimeoutMs { get; set; }
+
     public async Task<string> RunAsync()
     {
-        return await IPCCommand.RunWithArgAsync(new SetTunnelArgs { Active = false });
+        using var cts = TimeoutMs is > 0 ? new CancellationTokenSource(TimeSpan.FromMilliseconds(TimeoutMs.Value)) : null;
+        return await IPCCommand.RunWithArgAsync(new SetTunnelArgs { Active = false }, cts?.Token ?? default);
     }
 }
 

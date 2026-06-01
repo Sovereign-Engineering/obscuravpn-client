@@ -1,21 +1,37 @@
-using log4net;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.Web.WebView2.Core;
 using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using log4net;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.Web.WebView2.Core;
+using Windows.Win32;
+using Windows.Win32.Foundation;
+using Windows.Win32.UI.WindowsAndMessaging;
+using WinUIEx.Messaging;
 using XamlNavigationView = Microsoft.UI.Xaml.Controls.NavigationView;
 
 namespace Obscura_Client;
 
 public sealed partial class MainWindow : Window
 {
-    private static readonly string HOSTNAME = "obscura-ui";
-    private static readonly ILog Log = LogManager.GetLogger(typeof(MainWindow));
-    private static readonly ILog WebviewLog = LogManager.GetLogger("Webview");
+#if !DEBUG
+    static readonly string HOSTNAME = "obscura-ui";
+#endif
+    static readonly ILog Log = LogManager.GetLogger(typeof(MainWindow));
+    static readonly ILog WebviewLog = LogManager.GetLogger("Webview");
+    // References to CoreWebView2DevToolsProtocolEventReceiver MUST be held
+    // Otherwise, undefined behaviour including exceptions that crash such as memory access violation may occur
+    CoreWebView2DevToolsProtocolEventReceiver? _logEventReceiver;
+    CoreWebView2DevToolsProtocolEventReceiver? _consoleReceiver;
+    CoreWebView2DevToolsProtocolEventReceiver? _exceptionReceiver;
+
+    readonly WindowMessageMonitor _msgMonitor;
+
+    const uint WM_CLOSE = 0x0010;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -31,15 +47,39 @@ public sealed partial class MainWindow : Window
         // Use the modern TitleBar control as the custom title bar
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
-
         InitializeWebView();
-
 #if DEBUG
         DeveloperNavItem.Visibility = Visibility.Visible;
 #endif
-
         // Select the first navigation item (Connection) by default
         NavView.SelectedItem = NavView.MenuItems[0];
+
+        // Subclass WM_CLOSE *before* WinUI sees it. The standard AppWindow.Closing +
+        // args.Cancel pattern destabilizes WebView2: each cancel-close leaves it partially
+        // torn down, and the next show/focus event then NULL-derefs inside
+        // Microsoft.Web.WebView2.Core.dll. Intercepting at the Win32 level keeps WinUI's
+        // close-cancel machinery completely out of the loop — WebView2 never learns a
+        // close was attempted, so its state stays clean across hide/show cycles.
+        _msgMonitor = new WindowMessageMonitor(this);
+        _msgMonitor.WindowMessageReceived += OnWindowMessageReceived;
+
+        Closed += OnClosed;
+    }
+
+    private void OnClosed(object sender, WindowEventArgs args)
+    {
+        // Window.Close() destroys the HWND but does not release the WebView2's CoreWebView2.
+        // The CoreWebView2 + DevTools event receivers are COM RCWs that keep the STA apartment
+        // alive, which in turn keeps the process alive. Explicitly closing the WebView2 releases
+        // those references so the process can actually exit.
+        try
+        {
+            WebView.CoreWebView2.WebMessageReceived -= WebView_WebMessageReceived;
+            WebView.CoreWebView2.NewWindowRequested -= WebView_NewWindowRequested;
+            WebView.CoreWebView2.NavigationStarting -= WebView_NavigationStarting;
+            WebView.Close();
+        }
+        catch (Exception ex) { Log.Warn($"WebView2 close failed: {ex.Message}"); }
     }
 
     private async void InitializeWebView()
@@ -49,14 +89,14 @@ public sealed partial class MainWindow : Window
         await WebView.CoreWebView2.CallDevToolsProtocolMethodAsync("Log.enable", "{}");
         await WebView.CoreWebView2.CallDevToolsProtocolMethodAsync("Runtime.enable", "{}");
 
-        var logEventReceiver = WebView.CoreWebView2.GetDevToolsProtocolEventReceiver("Log.entryAdded");
-        logEventReceiver.DevToolsProtocolEventReceived += (s, e) => OnWebviewLogEntry(e.ParameterObjectAsJson);
+        _logEventReceiver = WebView.CoreWebView2.GetDevToolsProtocolEventReceiver("Log.entryAdded");
+        _logEventReceiver.DevToolsProtocolEventReceived += (s, e) => OnWebviewLogEntry(e.ParameterObjectAsJson);
 
-        var consoleReceiver = WebView.CoreWebView2.GetDevToolsProtocolEventReceiver("Runtime.consoleAPICalled");
-        consoleReceiver.DevToolsProtocolEventReceived += (s, e) => OnWebviewConsoleApiCall(e.ParameterObjectAsJson);
+        _consoleReceiver = WebView.CoreWebView2.GetDevToolsProtocolEventReceiver("Runtime.consoleAPICalled");
+        _consoleReceiver.DevToolsProtocolEventReceived += (s, e) => OnWebviewConsoleApiCall(e.ParameterObjectAsJson);
 
-        var exceptionReceiver = WebView.CoreWebView2.GetDevToolsProtocolEventReceiver("Runtime.exceptionThrown");
-        exceptionReceiver.DevToolsProtocolEventReceived += (s, e) => OnWebviewException(e.ParameterObjectAsJson);
+        _exceptionReceiver = WebView.CoreWebView2.GetDevToolsProtocolEventReceiver("Runtime.exceptionThrown");
+        _exceptionReceiver.DevToolsProtocolEventReceived += (s, e) => OnWebviewException(e.ParameterObjectAsJson);
 
         WebView.CoreWebView2.WebMessageReceived += WebView_WebMessageReceived;
         WebView.CoreWebView2.NewWindowRequested += WebView_NewWindowRequested;
@@ -81,6 +121,30 @@ public sealed partial class MainWindow : Window
                 HOSTNAME, webUIPath, CoreWebView2HostResourceAccessKind.Allow);
             WebView.CoreWebView2.Navigate($"https://{HOSTNAME}/index.html");
 #endif
+    }
+
+    private void OnWindowMessageReceived(object? sender, WindowMessageEventArgs e)
+    {
+        if (e.Message.MessageId == WM_CLOSE)
+        {
+            // Hide at the HWND level. AppWindow.Hide() still nudges parts of WinUI's
+            // window state machine that interact poorly with WebView2.
+            PInvoke.ShowWindow((HWND)GetWindowHandle(), SHOW_WINDOW_CMD.SW_HIDE);
+            e.Handled = true;
+            e.Result = 0;
+        }
+    }
+
+    public void ShowAndActivate()
+    {
+        var hwnd = (HWND)GetWindowHandle();
+        PInvoke.ShowWindow(hwnd, PInvoke.IsIconic(hwnd) ? SHOW_WINDOW_CMD.SW_RESTORE : SHOW_WINDOW_CMD.SW_SHOW);
+        PInvoke.SetForegroundWindow(hwnd);
+    }
+
+    nint GetWindowHandle()
+    {
+        return WinRT.Interop.WindowNative.GetWindowHandle(this);
     }
 
     class WindowsCommandMessage
@@ -313,12 +377,12 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void TitleBar_PaneToggleRequested(TitleBar sender, object args)
+    internal void TitleBar_PaneToggleRequested(TitleBar _, object _1)
     {
         NavView.IsPaneOpen = !NavView.IsPaneOpen;
     }
 
-    private void NavView_SelectionChanged(XamlNavigationView sender, NavigationViewSelectionChangedEventArgs args)
+    internal static void NavView_SelectionChanged(XamlNavigationView _, NavigationViewSelectionChangedEventArgs args)
     {
         if (args.SelectedItem is NavigationViewItem item && item.Tag is int tagValue
             && typeof(NavigationView).IsEnumDefined(item.Tag))
@@ -330,6 +394,6 @@ public sealed partial class MainWindow : Window
     private class BridgeMessage
     {
         public ulong Id { get; set; }
-        public string Data { get; set; } = "";
+        public required string Data { get; set; }
     }
 }

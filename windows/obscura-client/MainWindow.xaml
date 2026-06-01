@@ -36,7 +36,7 @@
             IsBackButtonVisible="Collapsed"
             IsPaneToggleButtonVisible="False"
             IsSettingsVisible="False"
-            SelectionChanged="NavView_SelectionChanged"
+            SelectionChanged="{x:Bind local:MainWindow.NavView_SelectionChanged}"
             PaneDisplayMode="Auto"
             OpenPaneLength="170">
 

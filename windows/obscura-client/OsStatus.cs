@@ -1,6 +1,7 @@
 using System;
 using System.Net.NetworkInformation;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using log4net;
 
@@ -43,7 +44,7 @@ public class OsStatus
     private static readonly ILog Log = LogManager.GetLogger(typeof(OsStatus));
     public static OsStatus Instance { get; } = new OsStatus();
 
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private TaskCompletionSource _versionChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public string Version { get; private set; } = Guid.NewGuid().ToString();

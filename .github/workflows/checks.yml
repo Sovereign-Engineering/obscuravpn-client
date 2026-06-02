@@ -21,7 +21,7 @@ jobs:
     runs-on: [nix]
     steps:
       - name: git checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
       - name: Nix Checks
         shell: bash
         run: |
@@ -38,7 +38,7 @@ jobs:
             --print-build-logs \
             --show-trace
       - name: Upload debug APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: obscura-debug.apk
           path: result/app-foss-debug.apk
@@ -53,7 +53,7 @@ jobs:
       - nscloud-cache-size-50gb
     steps:
       - name: git checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - uses: namespacelabs/nscloud-cache-action@v1
         with:
@@ -84,7 +84,7 @@ jobs:
       - nscloud-cache-size-50gb
     steps:
       - name: git checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: unshallow and fetch git tags
         shell: bash
@@ -119,7 +119,7 @@ jobs:
       - nscloud-cache-size-50gb
     steps:
       - name: git checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: unshallow and fetch git tags
         shell: bash
@@ -159,7 +159,7 @@ jobs:
     environment: sync
     steps:
       - name: git checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0 # We need all history to check for internal commits.
       - name: Check Restricted Commits

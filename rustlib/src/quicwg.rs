@@ -401,6 +401,8 @@ impl QuicWgConn {
                     let wg_state = &mut *self.wg_state.lock().unwrap();
                     tracing::info!(
                         message_id = "WKqFjXMA",
+                        max_udp_payload = self.wg_sender.max_udp_payload_size(),
+                        max_wg_message = self.wg_sender.max_wg_message_size(),
                         tick_stats =? wg_state.tick_stats,
                     );
                     wg_state.tick_stats = TickStats::default();
@@ -825,6 +827,16 @@ enum WgSender {
 }
 
 impl WgSender {
+    /// Current effective max UDP payload size.
+    ///
+    /// Returns None for non-QUIC transports.
+    fn max_udp_payload_size(&self) -> Option<u16> {
+        match self {
+            WgSender::Quic { conn, .. } => Some(conn.stats().path.current_mtu),
+            WgSender::TcpTls { .. } => None,
+        }
+    }
+
     fn max_wg_message_size(&self) -> Option<u16> {
         match self {
             WgSender::Quic { conn, .. } => conn.max_datagram_size().and_then(|s| u16::try_from(s).ok()),

@@ -2,6 +2,9 @@
 
 Obscura VPN library, CLI client, and App
 
+## Download
+<a href="https://play.google.com/store/apps/details?id=net.obscura.vpnclientapp" target="_blank"><img src="./assets/get-it-on-play.png" alt="Get it on Google Play" height="50"></a> <a href="obtanium://add/https://https://github.com/mateowoetam/obscuravpn-client/" target="_blank"><img src="./assets/get-it-on-obtainium.png" alt="Get it on Obtanium" height="50"></a> <a href="https://apps.apple.com/app/obscura-vpn/id6746820048" target="_blank"><img src="./assets/get-it-on-app-store.svg" alt="Get it on the App Store" height="50"></a>
+
 ## Support
 
 No support is provided for this code directly. However, if you are experiencing issues with your Obscura VPN service please contact <support@obscura.net>.

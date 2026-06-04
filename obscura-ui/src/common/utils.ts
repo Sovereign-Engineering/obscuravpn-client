@@ -3,6 +3,10 @@ import Cookies from 'js-cookie';
 import localforage from 'localforage';
 import { Dispatch, ForwardedRef, RefCallback, SetStateAction, useEffect, useLayoutEffect, useState } from 'react';
 import { fmt } from './fmt';
+import { fmtErrorI18n, TranslationKey } from '../translations/i18n';
+import { CommandError } from '../bridge/commands';
+import { TFunction } from 'i18next';
+import { notifications } from '@mantine/notifications';
 export { localforage };
 
 export const HEADER_TITLE = 'Obscura VPN';
@@ -24,6 +28,17 @@ export function useCookie(key: string, defaultValue: string, options: Cookies.Co
 // show browser / native notification
 export function notify(title: string, body?: string) {
     new Notification(title, { body: body || "", });
+}
+
+export function showErrorNotification(t: TFunction, e: unknown, titleKey: TranslationKey) {
+  const error = normalizeError(e);
+  const message = error instanceof CommandError
+    ? fmtErrorI18n(t, error) : error.message;
+  notifications.show({
+    color: 'red',
+    title: t(titleKey),
+    message,
+  });
 }
 
 export function sleep(ms: number) {

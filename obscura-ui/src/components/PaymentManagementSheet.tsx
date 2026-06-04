@@ -1,17 +1,14 @@
 import { Anchor, Box, Button, Divider, Group, Loader, Stack, Text, TextInput, UnstyledButton } from '@mantine/core';
-import { notifications } from '@mantine/notifications';
 import { useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as commands from '../bridge/commands';
 import * as ObscuraAccount from '../common/accountUtils';
 import { AccountInfo, AppleSubscriptionStatus, GoogleSubscriptionStatus, hasActiveSubscription, hasAppleSubscription, hasGoogleSubscription, SubscriptionStatus } from '../common/api';
 import { AppContext, SubscriptionProductModel } from '../common/appContext';
-import { fmtErrorI18n, TranslationKey } from '../translations/i18n';
+import { TranslationKey } from '../translations/i18n';
 import { ButtonLink } from './ButtonLink';
 import { ConfirmationDialog } from './ConfirmationDialog';
-import { normalizeError } from '../common/utils';
-import { CommandError } from '../bridge/commands';
-import { TFunction } from 'i18next';
+import { showErrorNotification } from '../common/utils';
 import { IoMdPricetag } from 'react-icons/io';
 
 interface PaymentManagementSheetProps {
@@ -180,7 +177,7 @@ function AppleSubscriptionProductCard({ product, subscribed }: AppleSubscription
         // user dismissed payment sheet
       }
     } catch (e) {
-      showErrorNotification(t, e);
+      showErrorNotification(t, e, 'purchaseFailed');
     } finally {
       setPurchasing(false);
     }
@@ -261,7 +258,7 @@ function GoogleSubscriptionProductCard({ subscribed }: GoogleSubscriptionProduct
         // user dismissed payment sheet
       }
     } catch (e) {
-      showErrorNotification(t, e);
+      showErrorNotification(t, e, 'purchaseFailed');
     } finally {
       setPurchasing(false);
     }
@@ -289,17 +286,6 @@ function GoogleSubscriptionProductCard({ subscribed }: GoogleSubscriptionProduct
       />}
     </Stack>
   );
-}
-
-function showErrorNotification(t: TFunction, e: unknown) {
-  const error = normalizeError(e);
-  const message = error instanceof CommandError
-    ? fmtErrorI18n(t, error) : error.message;
-  notifications.show({
-    color: 'red',
-    title: t('purchaseFailed'),
-    message,
-  });
 }
 
 function useBuildSections(accountInfo: AccountInfo): Section[] {

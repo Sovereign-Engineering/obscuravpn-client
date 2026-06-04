@@ -18,11 +18,13 @@ import net.obscura.lib.util.Logger
 import net.obscura.vpnclientapp.ui.bridge.WebCmdArgs
 import net.obscura.vpnclientapp.ui.bridge.WebCmdBridge
 
+private val log = Logger(ObscuraWebView::class)
+
 @SuppressLint("SetJavaScriptEnabled", "ViewConstructor")
 class ObscuraWebView
 @JvmOverloads
 constructor(
-    args: WebCmdArgs,
+    private val args: WebCmdArgs,
     attrs: AttributeSet? = null,
 ) : WebView(args.context, attrs) {
     companion object {
@@ -66,20 +68,23 @@ constructor(
                             view: WebView,
                             request: WebResourceRequest,
                         ): Boolean {
-                            val shouldOverride = request.url.host != ORIGIN.host
-                            if (shouldOverride && request.isForMainFrame) {
-                                context.startActivity(
-                                    Intent(
-                                        Intent.ACTION_VIEW,
-                                        if (request.url.scheme == "http") {
-                                            request.url.buildUpon().scheme("https").build()
-                                        } else {
-                                            request.url
-                                        },
+                            if (request.isForMainFrame) {
+                                if (request.url.host == ORIGIN.host) {
+                                    log.warn("ignoring URL change: ${request.url.path}")
+                                } else {
+                                    context.startActivity(
+                                        Intent(
+                                            Intent.ACTION_VIEW,
+                                            if (request.url.scheme == "http") {
+                                                request.url.buildUpon().scheme("https").build()
+                                            } else {
+                                                request.url
+                                            },
+                                        )
                                     )
-                                )
+                                }
                             }
-                            return shouldOverride
+                            return request.isForMainFrame
                         }
 
                         override fun shouldInterceptRequest(
@@ -115,9 +120,5 @@ constructor(
             document.documentElement.style.setProperty('--safe-area-inset-left', '${left}px');
             """
         this.evaluateJavascript(safeAreaJs, null)
-    }
-
-    fun navigate(path: String) {
-        postWebMessage(WebMessage("android-navigate/$path"), ORIGIN)
     }
 }

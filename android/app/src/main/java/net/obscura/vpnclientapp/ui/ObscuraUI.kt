@@ -42,15 +42,17 @@ private fun idFromView(view: OsStatus.NavigationView) =
         OsStatus.NavigationView.Location -> R.id.nav_location
         OsStatus.NavigationView.Account -> R.id.nav_account
         OsStatus.NavigationView.Settings -> R.id.nav_settings
-        OsStatus.NavigationView.About -> R.id.nav_about
+        OsStatus.NavigationView.About,
+        OsStatus.NavigationView.Help -> R.id.nav_about
         else -> {
-            log.error("view has no id: $view")
+            log.warn("view has no id: $view")
             null
         }
     }
 
 class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null) : FrameLayout(context, attrs) {
     private var purchaseTokenUploader: Job? = null
+    private lateinit var osStatusManager: OsStatusManager
     private lateinit var vpnStatusObserver: VpnStatusObserver
 
     val canGoBack
@@ -126,6 +128,8 @@ class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet?
                 }
             }
 
+        this.osStatusManager = osStatusManager
+
         this.vpnStatusObserver =
             VpnStatusObserver(
                 binder,
@@ -161,12 +165,14 @@ class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet?
         mainActivity.lifecycle.addObserver(this.vpnStatusObserver)
 
         this.bottomNavigation.setOnItemSelectedListener {
-            val view = viewFromId(it.itemId)
-            val didNavigate = view?.serialName()?.let { path -> this@ObscuraUI.webView?.navigate(path) } != null
-            if (didNavigate) osStatusManager.update { this.navigationView = view }
-            didNavigate
+            log.debug("selected $it")
+            osStatusManager.update { this.navigationView = viewFromId(it.itemId) }
+            true
         }
-        osStatusManager.update { this.navigationView = viewFromId(this@ObscuraUI.bottomNavigation.selectedItemId) }
+        if (this.bottomNavigation.selectedItemId != R.id.nav_connection) {
+            val view = viewFromId(this.bottomNavigation.selectedItemId)
+            osStatusManager.update { this.navigationView = view }
+        }
         this.webView =
             ObscuraWebView(WebCmdArgs(context, binder, mainActivity, osStatusManager, this)).also {
                 this.webViewContainer.addView(
@@ -205,15 +211,20 @@ class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet?
         bottomNavigation.selectedItemId = R.id.nav_connection
     }
 
-    fun setNavigationView(view: OsStatus.NavigationView) =
-        idFromView(view)?.let { this.bottomNavigation.selectedItemId = it }
+    fun setNavigationView(view: OsStatus.NavigationView) {
+        val id = idFromView(view)
+        if (id != null) {
+            this.bottomNavigation.selectedItemId = id
+        } else {
+            this.osStatusManager.update { this.navigationView = view }
+        }
+    }
 
     fun handleObscuraUri(uri: Uri) {
         log.debug("handling deep link: $uri")
         val id =
             when (uri.path) {
                 "/account" -> R.id.nav_account
-                "/location" -> R.id.nav_location
                 else -> {
                     log.error("unrecognized path for deep link: $uri")
                     return

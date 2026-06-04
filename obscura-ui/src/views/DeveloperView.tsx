@@ -3,17 +3,18 @@ import { useInterval } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import Cookies from 'js-cookie';
 import { useContext, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import * as commands from '../bridge/commands';
 import { jsonFfiCmd } from "../bridge/commands";
 import { PLATFORM } from '../bridge/SystemProvider';
 import { AppContext, NavigationView } from '../common/appContext';
 import { localStorageGet, LocalStorageKey } from '../common/localStorage';
-import { errMsg } from '../common/utils';
+import { errMsg, showErrorNotification } from '../common/utils';
 import DevSendCommand from '../components/DevSendCommand';
 import DevSetApiUrl from '../components/DevSetApiUrl';
+import { useTranslation } from 'react-i18next';
 
 export default function DeveloperViewer() {
+    const { t } = useTranslation();
     const { vpnConnected, connectionInProgress, appStatus, osStatus } = useContext(AppContext);
     const [trafficStats, setTrafficStats] = useState({});
     const cookieToDeleteRef = useRef<HTMLInputElement | null>(null);
@@ -35,7 +36,6 @@ export default function DeveloperViewer() {
     const [localStorageValue, setLocalStorageValue] = useState<string | null>(null);
 
     const [accordionValues, setAccordionValues] = useState<string[]>([]);
-    const navigate = useNavigate();
     return <Stack p={20} mb={50}>
         <Title order={3}>Developer View</Title>
         <Title order={4}>Statuses</Title>
@@ -135,14 +135,12 @@ export default function DeveloperViewer() {
         <Button onClick={async () => {
             if (osStatus?.navigationView) {
                 const targetView = NavigationView.Help;
-                const targetPath = `/${targetView}`;
                 try {
                     await commands.setNavigationView(targetView);
                 } catch (e) {
-                    console.error('setNavigationView failed:', e);
+                    showErrorNotification(t, e, 'navigationFailed');
                 }
-                console.log(`resetting to ${targetPath}`);
-                window.location.pathname = targetPath;
+                console.log(`resetting to ${targetView} (osStatus reports ${osStatus.navigationView})`);
             } else {
                 window.location.pathname = '/';
             }

@@ -8,8 +8,8 @@ import AppIcon from '../../../apple/client/Assets.xcassets/AppIcon.appiconset/ic
 import * as commands from '../bridge/commands';
 import { IS_HANDHELD_DEVICE, PLATFORM, Platform } from '../bridge/SystemProvider';
 import { LEGAL_WEBPAGE, OBSCURA_WEBPAGE } from '../common/accountUtils';
-import { AppContext, UpdaterStatusType } from '../common/appContext';
-import { MIN_LOAD_MS } from '../common/utils';
+import { AppContext, NavigationView, UpdaterStatusType } from '../common/appContext';
+import { MIN_LOAD_MS, showErrorNotification } from '../common/utils';
 import DebuggingArchive from '../components/DebuggingArchive';
 import ObscuraWordmark from '../components/ObscuraWordmark';
 import { Socials } from '../components/Socials';
@@ -32,7 +32,11 @@ export default function About() {
   const handleVersionClick = () => {
     setVersionClicks(clicks => {
       if (clicks === 4) {
-        navigate('/developer');
+        if (osStatus?.navigationView) {
+          commands.setNavigationView(NavigationView.Developer).catch(e => showErrorNotification(t, e, 'navigationFailed'));
+        } else {
+          navigate('/developer');
+        }
         return 0;
       }
       return clicks + 1;

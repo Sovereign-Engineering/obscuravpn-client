@@ -4,7 +4,7 @@ import { notifications } from '@mantine/notifications';
 import { ReactNode, useContext, useEffect, useRef, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useTranslation } from 'react-i18next';
-import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
 import classes from './App.module.css';
 import * as commands from './bridge/commands';
@@ -15,7 +15,7 @@ import { fmt } from './common/fmt';
 import { NotificationId } from './common/notifIds';
 import { useAsync } from './common/useAsync';
 import { useLoadable } from './common/useLoadable';
-import { MIN_LOAD_MS, normalizeError } from './common/utils';
+import { MIN_LOAD_MS, normalizeError, showErrorNotification } from './common/utils';
 import { CColorSchemeContext } from './components/CachedColorScheme';
 import { ScrollableView } from './components/ScrollableView';
 import { VpnError } from './components/VpnErrorFmt';
@@ -59,7 +59,8 @@ export default function () {
   const [isProcessingPayment, setPaymentProcessing] = useState(false);
   const ignoreConnectingErrors = useRef(false);
 
-  const views: View[] = [
+  const routes: View[] = [
+    { component: Connection, path: '/', needsScroll: false, selfInsets: true },
     { component: Connection, path: '/connection', needsScroll: false, selfInsets: true },
     { component: DeveloperView, path: '/developer', needsScroll: true },
     { component: Location, path: '/location', needsScroll: true },
@@ -248,25 +249,18 @@ export default function () {
 
   async function errorBoundaryOnReset() {
     if (osStatus?.navigationView) {
-      let targetPath: string;
       let targetView: NavigationView;
-      if (location.pathname !== `/${osStatus.navigationView}`) {
-        targetPath = `/${osStatus.navigationView}`;
-        targetView = osStatus.navigationView;
-      } else if (location.pathname !== '/help') {
-        targetPath = '/help';
+      if (osStatus.navigationView === NavigationView.Connection) {
         targetView = NavigationView.Help;
       } else {
-        targetPath = '/';
         targetView = NavigationView.Connection;
       }
       try {
         await commands.setNavigationView(targetView);
       } catch (e) {
-        console.error('setNavigationView failed:', e);
+        showErrorNotification(t, e, 'navigationFailed');
       }
-      console.log(`resetting to ${targetPath} (osStatus reports ${osStatus.navigationView})`);
-      window.location.pathname = targetPath;
+      console.log(`resetting to ${targetView} (osStatus reports ${osStatus.navigationView})`);
     } else if (location.pathname === '/connection') {
       window.location.pathname = '/help';
     } else {
@@ -287,20 +281,6 @@ export default function () {
     window.addEventListener('navUpdate', onNavUpdate);
     return () => window.removeEventListener('navUpdate', onNavUpdate);
   }, []);
-
-  // osStatus driven navigation. resetStateFromError() syncs the C# singleton to the
-  // destination before its hard reload, so the post-reload poll resolves with the
-  // correct view and this effect is a no-op.
-  useEffect(() => {
-    if (osStatus?.navigationView) {
-      console.log(`navigating to /${osStatus.navigationView}`);
-      navigate(`/${osStatus.navigationView}`);
-    }
-  }, [osStatus?.navigationView]);
-
-  useEffect(() => {
-    console.log(`new location: ${location.pathname}`);
-  }, [location]);
 
   const onPaymentSucceeded = () => {
     console.log("handling paymentSucceeded event");
@@ -388,9 +368,8 @@ export default function () {
       <AppShellMain>
         <AppContext.Provider value={appContext}>
           <ErrorBoundary FallbackComponent={FallbackAppRender} onReset={_details => errorBoundaryOnReset()} onError={logReactError}>
-            <Routes>
-              {views[0] !== undefined && window.location.pathname === '/' && <Route path='/' element={<Navigate to={views[0].path} />} />}
-              {views.map((view, index) => <Route key={index} path={view.path} element={<RenderView key={view.path} view={view} />} />)}
+            <Routes location={osStatus?.navigationView ? `/${osStatus.navigationView}` : undefined}>
+              {routes.map((view, index) => <Route key={index} path={view.path} element={<RenderView key={view.path} view={view} />} />)}
             </Routes>
           </ErrorBoundary>
         </AppContext.Provider>

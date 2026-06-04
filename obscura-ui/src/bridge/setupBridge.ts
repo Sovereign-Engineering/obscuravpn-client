@@ -5,7 +5,6 @@ switch (PLATFORM) {
   case Platform.Windows:
     addBridge(
       'windows/',
-      undefined,
       window.chrome.webview.addEventListener.bind(window.chrome.webview),
       (data, id) => {
         window.chrome.webview.postMessage({ data, id });
@@ -15,7 +14,6 @@ switch (PLATFORM) {
   case Platform.Android:
     addBridge(
       'android/',
-      'android-navigate/',
       window.addEventListener.bind(window),
       (data, id) => {
         // obscuraAndroidCommandBridge is defined by the Android WebView
@@ -30,12 +28,11 @@ let counter = 0;
 
 export function addBridge(
   messagePrefix: string,
-  navigatePrefix: string | undefined,
   addEventListener: (type: 'message', listener: (event: Event) => void) => void,
   nativePostMessage: (data: string, id: number) => void,
 ): void {
   addEventListener('message', event => {
-    handleMessageEvent(event as MessageEvent, messagePrefix, navigatePrefix);
+    handleMessageEvent(event as MessageEvent, messagePrefix);
   });
 
   Object.defineProperty(window, 'webkit', {
@@ -66,7 +63,6 @@ export function addBridge(
 function handleMessageEvent(
   event: MessageEvent,
   messagePrefix: string,
-  navigatePrefix?: string,
 ): void {
   if (typeof event.data !== 'string') {
     console.warn('got a non-data message event');
@@ -90,9 +86,5 @@ function handleMessageEvent(
     } else if (typeof message.data === 'string') {
       entry.resolve(message.data);
     }
-  } else if (navigatePrefix !== undefined && event.data.startsWith(navigatePrefix)) {
-    window.dispatchEvent(new CustomEvent('navUpdate', {
-      detail: event.data.substring(navigatePrefix.length),
-    }));
   }
 }

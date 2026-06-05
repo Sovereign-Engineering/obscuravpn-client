@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -10,14 +9,8 @@ using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace Obscura_Client.NotifyIcon;
 
-/// <summary>
-/// Loads tray .ico files into HICONs once and exposes them as <see cref="IconId"/>s
-/// suitable for repeated <c>TrayIcon.SetIcon</c> calls. WinUIEx's path-based SetIcon
-/// is unstable when called frequently; reusing pre-loaded IconIds avoids that path.
-/// </summary>
 internal sealed partial class NotifyIconAssets
 {
-    readonly List<HICON> _hicons = [];
     public IconId Disconnected { get; }
     public IconId Connected { get; }
     public IconId[] Connecting { get; }
@@ -51,8 +44,6 @@ internal sealed partial class NotifyIconAssets
         if (handle == IntPtr.Zero)
             throw new Win32Exception(Marshal.GetLastWin32Error(), $"LoadImage failed for {path}");
 
-        var hicon = (HICON)handle.Value;
-        _hicons.Add(hicon);
-        return Win32Interop.GetIconIdFromIcon((IntPtr)hicon.Value);
+        return Win32Interop.GetIconIdFromIcon((IntPtr)handle.Value);
     }
 }

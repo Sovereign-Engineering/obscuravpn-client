@@ -1,13 +1,18 @@
 using System;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using log4net;
 using log4net.Appender;
 using log4net.Config;
 using log4net.Layout;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
+using Microsoft.Windows.AppLifecycle;
 using Obscura_Client.NotifyIcon;
+using Windows.Win32;
+using Windows.Win32.Foundation;
+using Windows.Win32.System.Com;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -23,6 +28,10 @@ public partial class App : Application
     public new static App Current => (App)Application.Current;
     MainWindow? _window;
     NotifyIconManager? _notifyIcon;
+    DispatcherQueue? _uiDispatcher;
+    // A redirect activation can arrive before _uiDispatcher is set
+    // OnRedirectActivated waits on _uiDispatcherReady
+    static readonly TaskCompletionSource<DispatcherQueue> _uiDispatcherReady = new();
 
     /// <summary>
     /// Initializes the singleton application object.  This is the first line of authored code
@@ -30,8 +39,6 @@ public partial class App : Application
     /// </summary>
     public App()
     {
-        ConfigureLogging();
-        Log.Info("logging initialized");
         InitializeComponent();
 #if DEBUG
         DevServer.Start();
@@ -73,11 +80,28 @@ public partial class App : Application
         BasicConfigurator.Configure(traceAppender, fileAppender);
     }
 
-    protected override void OnLaunched(LaunchActivatedEventArgs args)
+    protected override void OnLaunched(LaunchActivatedEventArgs launchArgs)
     {
-        _notifyIcon = new NotifyIconManager(this, DispatcherQueue.GetForCurrentThread());
+        _uiDispatcher = DispatcherQueue.GetForCurrentThread();
+        _uiDispatcherReady.TrySetResult(_uiDispatcher);
+        _notifyIcon = new NotifyIconManager(this, _uiDispatcher);
         _window = new MainWindow();
-        _window.Activate();
+
+        var args = AppInstance.GetCurrent().GetActivatedEventArgs();
+        if (args.Kind != ExtendedActivationKind.StartupTask) {
+            _window.Activate();
+        }
+        HandleActivation(args);
+    }
+
+    private static void HandleActivation(AppActivationArguments activationArgs)
+    {
+        if (activationArgs.Kind == ExtendedActivationKind.Protocol
+            && activationArgs.Data is Windows.ApplicationModel.Activation.IProtocolActivatedEventArgs protocolArgs)
+        {
+            Log.Info($"handling protocol activation: {protocolArgs.Uri}");
+            Current?._window?.HandleObscuraUrl(protocolArgs.Uri);
+        }
     }
 
     internal void ShowMainWindow()
@@ -113,5 +137,89 @@ public partial class App : Application
             Log.Warn($"disconnect on quit failed: {ex.Message}");
         }
         Exit();
+    }
+
+    /// <summary>
+    /// Before booting the WinUI runtime, we claim the single-instance key. A redundant launch hands
+    /// its activation to the primary instance and exits immediately; One UI process ever runs.
+    /// </summary>
+    [STAThread]
+    static void Main()
+    {
+        ConfigureLogging();
+        Log.Info("App instance launched; Logging initialized");
+        WinRT.ComWrappersSupport.InitializeComWrappers();
+
+        if (DecideRedirection())
+        {
+            // Activation has been handed to the primary instance
+            return;
+        }
+
+        Start((p) =>
+        {
+            var context = new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread());
+            SynchronizationContext.SetSynchronizationContext(context);
+            _ = new App();
+        });
+    }
+
+    /// <summary>
+    /// Claims the single-instance key. Returns true if this process is a redundant launch whose
+    /// activation has been redirected to the primary instance (and should therefore exit).
+    /// </summary>
+    private static bool DecideRedirection()
+    {
+        var keyInstance = AppInstance.FindOrRegisterForKey("primary");
+        if (keyInstance.IsCurrent)
+        {
+            // Handle redirect activations of subsequent launches
+            keyInstance.Activated += OnRedirectActivated;
+            return false;
+        }
+        // Subsequent launches will redirect activation to the primary instance
+        var activationArgs = AppInstance.GetCurrent().GetActivatedEventArgs();
+        RedirectActivationTo(activationArgs, keyInstance);
+        return true;
+    }
+
+    private static void RedirectActivationTo(AppActivationArguments activationArgs, AppInstance keyInstance)
+    {
+        // A single-thread apartment (STA) must pump messages while idle to avoid jamming up window broadcasts
+        // The redirect activation is waited using a method that continues dispatching messages
+        using var redirectComplete = new ManualResetEvent(false);
+        var redirectTimeout = TimeSpan.FromSeconds(32);
+        using var cts = new CancellationTokenSource(redirectTimeout);
+        Task.Run(() =>
+        {
+            try
+            {
+                keyInstance.RedirectActivationToAsync(activationArgs).AsTask(cts.Token).GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Error($"Failed to activate existing instance; timed out after {redirectTimeout}.");
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Failed to activate existing instance", ex);
+            }
+            finally
+            {
+                redirectComplete.Set();
+            }
+        });
+        var handle = new HANDLE(redirectComplete.SafeWaitHandle.DangerousGetHandle());
+        PInvoke.CoWaitForMultipleObjects((uint)CWMO_FLAGS.CWMO_DEFAULT, PInvoke.INFINITE, [handle], out _);
+    }
+
+    private static async void OnRedirectActivated(object? sender, AppActivationArguments args)
+    {
+        var dispatcher = await _uiDispatcherReady.Task;
+        dispatcher.TryEnqueue(() =>
+        {
+            Current.ShowMainWindow();
+            HandleActivation(args);
+        });
     }
 }

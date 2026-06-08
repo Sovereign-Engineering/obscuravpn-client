@@ -25,6 +25,7 @@ use crate::config::feature_flags::FeatureFlags;
 use crate::exit_selection::ExitSelector;
 use crate::manager::TunnelArgs;
 use crate::network_config::{DnsConfig, DnsContentBlock};
+use strum::EnumIs;
 
 pub(super) const CONFIG_FILE: &str = "config.json";
 
@@ -273,6 +274,8 @@ pub struct Config {
     pub wireguard_key_cache: WireGuardKeyCache,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub dns: DnsConfig,
+    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
+    pub local_network_access: LocalNetworkAccess,
     #[serde(skip)]
     pub use_wireguard_key_cache: (), // Removed
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
@@ -289,6 +292,13 @@ impl Config {
             self.last_chosen_exit_selector = ExitSelector::Exit { id: exit.clone() };
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, Default, EnumIs, PartialEq, Eq, Serialize, Deserialize)]
+pub enum LocalNetworkAccess {
+    #[default]
+    Enabled,
+    Disabled,
 }
 
 // Redact sensitive fields by default
@@ -310,6 +320,7 @@ pub struct ConfigDebug {
     pub tunnel_active: bool,
     pub tunnel_args: TunnelArgs,
     pub dns: DnsConfig,
+    pub local_network_access: LocalNetworkAccess,
     pub has_account_id: bool,
     pub has_cached_auth_token: bool,
     pub auto_connect: bool,
@@ -337,6 +348,7 @@ impl From<Config> for ConfigDebug {
             sni_relay,
             wireguard_key_cache: _,
             dns,
+            local_network_access,
             use_wireguard_key_cache: (),
             cached_account_status: _,
             auto_connect,
@@ -359,6 +371,7 @@ impl From<Config> for ConfigDebug {
             api_host_alternate,
             sni_relay,
             dns,
+            local_network_access,
             has_account_id: account_id.is_some(),
             has_cached_auth_token: cached_auth_token.is_some(),
             auto_connect,

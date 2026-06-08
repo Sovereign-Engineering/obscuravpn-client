@@ -183,6 +183,9 @@ pub enum ManagerCmd {
     SetUseSystemDns {
         enable: bool,
     },
+    SetLocalNetworkAccess {
+        enable: bool,
+    },
 }
 
 #[derive(Debug, derive_more::From, Serialize)]
@@ -298,6 +301,7 @@ impl ManagerCmd {
             Self::SetSniRelay { host } => manager.run_on_client_state(|c| c.set_sni_relay(host)),
             Self::SetTunnelArgs { args, active } => manager.run_on_client_state(|c| c.set_tunnel_target_state(args, active)),
             Self::SetUseSystemDns { enable } => manager.run_on_client_state(|c| c.set_use_system_dns(enable)),
+            Self::SetLocalNetworkAccess { enable } => manager.run_on_client_state(|c| c.set_local_network_access(enable)),
         }
     }
 }

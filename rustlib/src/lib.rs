@@ -29,6 +29,7 @@ mod constants;
 mod debug_archive;
 mod dns;
 mod liveness;
+pub mod local_network;
 mod logging;
 pub mod os;
 pub mod positive_u31;

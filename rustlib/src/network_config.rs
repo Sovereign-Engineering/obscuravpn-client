@@ -1,3 +1,5 @@
+#[cfg(target_os = "android")]
+use crate::local_network::{Route, tunnel_routes};
 use ipnetwork::Ipv6Network;
 use obscuravpn_api::types::ObfuscatedTunnelConfig;
 use serde::{Deserialize, Serialize};
@@ -94,6 +96,8 @@ pub struct OsNetworkConfig {
     pub dns: Vec<IpAddr>,
     pub ipv4: Ipv4Addr,
     pub ipv6: Ipv6Network,
+    #[cfg(target_os = "android")]
+    pub routes: Vec<Route>,
     pub mtu: u16,
     pub use_system_dns: bool,
 }
@@ -104,6 +108,7 @@ impl OsNetworkConfig {
         exit_provider_name: &str,
         dns_content_block: DnsContentBlock,
         use_system_dns: bool,
+        #[cfg(target_os = "android")] allow_local_network_access: bool,
     ) -> Self {
         let dns = if exit_provider_name == MULLVAD_EXIT_PROVIDER_NAME
             && let Some(dns) = dns_content_block.mullvad_dns_ip()
@@ -114,6 +119,8 @@ impl OsNetworkConfig {
         };
 
         Self {
+            #[cfg(target_os = "android")]
+            routes: tunnel_routes(&dns, allow_local_network_access),
             dns,
             ipv4: tunnel_network_config.ipv4,
             ipv6: tunnel_network_config.ipv6,
@@ -123,12 +130,14 @@ impl OsNetworkConfig {
     }
 
     /// Dummy OS network config. May be used if valid values are needed by an API before the real values are known. The values are picked from ranges we expect for our tunnels.
-    pub fn dummy(dns_content_block: DnsContentBlock, use_system_dns: bool) -> Self {
+    pub fn dummy(dns_content_block: DnsContentBlock, use_system_dns: bool, #[cfg(target_os = "android")] allow_local_network_access: bool) -> Self {
         Self::new(
             &TunnelNetworkConfig::dummy(),
             MULLVAD_EXIT_PROVIDER_NAME,
             dns_content_block,
             use_system_dns,
+            #[cfg(target_os = "android")]
+            allow_local_network_access,
         )
     }
 }

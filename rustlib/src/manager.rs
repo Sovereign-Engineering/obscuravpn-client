@@ -55,6 +55,7 @@ pub struct Status {
     pub feature_flags: FeatureFlags,
     pub feature_flag_keys: Vec<String>,
     pub use_system_dns: bool,
+    pub local_network_access: bool,
     pub dns_content_block: DnsContentBlock,
 }
 
@@ -71,6 +72,7 @@ impl Status {
             feature_flags,
             dns,
             dns_content_block,
+            local_network_access,
             ..
         } = client_state.config();
         let api_url = client_state.base_url();
@@ -88,6 +90,7 @@ impl Status {
             feature_flags: feature_flags.clone(),
             feature_flag_keys: FeatureFlags::KEYS.iter().map(ToString::to_string).collect(),
             use_system_dns: dns.is_system(),
+            local_network_access: local_network_access.is_enabled(),
             dns_content_block: *dns_content_block,
         }
     }

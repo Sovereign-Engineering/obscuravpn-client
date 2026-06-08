@@ -370,8 +370,7 @@ class ObscuraVpnService : VpnService() {
 
                     networkConfig.ipv6.split("/").let { addAddress(it[0], if (it.size == 2) it[1].toInt() else 128) }
 
-                    addRoute("0.0.0.0", 0)
-                    addRoute("::", 0)
+                    networkConfig.routes.forEach { route -> addRoute(route.address, route.prefix) }
 
                     allowFamily(OsConstants.AF_INET)
                     allowFamily(OsConstants.AF_INET6)

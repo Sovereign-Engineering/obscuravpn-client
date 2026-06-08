@@ -26,6 +26,7 @@ pub struct TargetState {
     pub network_interface: Option<NetworkInterface>,
     pub dns_content_block: DnsContentBlock,
     pub use_system_dns: bool,
+    pub local_network_access: bool,
 }
 
 #[derive(derive_more::Debug, EnumIs)]
@@ -112,11 +113,14 @@ impl TunnelState {
             args: args.clone(),
             network_interface: network_interface.clone(),
             tunnel_id,
-            conn,
+            conn: conn.clone(),
             network_config,
             relay,
             exit,
-            offset_traffic_stats: self.traffic_stats(),
+            offset_traffic_stats: match self {
+                Self::Connected { conn: old_conn, offset_traffic_stats, .. } if Arc::ptr_eq(old_conn, &conn) => *offset_traffic_stats,
+                Self::Connected { .. } | Self::Connecting { .. } | Self::Disconnected => self.traffic_stats(),
+            },
         };
     }
 
@@ -200,12 +204,20 @@ impl TunnelState {
                 || disconnect_reason.is_some()
             {
                 tunnel_state.send_modify(|tunnel_state| match &target_state {
-                    TargetState { tunnel_args: None, network_interface: _, dns_content_block: _, use_system_dns: _ } => {
-                        tunnel_state.set_disconnected()
-                    }
-                    TargetState { tunnel_args: Some(target_args), network_interface, dns_content_block: _, use_system_dns: _ } => {
-                        tunnel_state.set_connecting(target_args, network_interface, disconnect_reason.take())
-                    }
+                    TargetState {
+                        tunnel_args: None,
+                        network_interface: _,
+                        dns_content_block: _,
+                        use_system_dns: _,
+                        local_network_access: _,
+                    } => tunnel_state.set_disconnected(),
+                    TargetState {
+                        tunnel_args: Some(target_args),
+                        network_interface,
+                        dns_content_block: _,
+                        use_system_dns: _,
+                        local_network_access: _,
+                    } => tunnel_state.set_connecting(target_args, network_interface, disconnect_reason.take()),
                 });
             }
 
@@ -215,7 +227,10 @@ impl TunnelState {
                     network_interface: Some(target_network_interface),
                     dns_content_block,
                     use_system_dns,
+                    local_network_access,
                 } => {
+                    #[cfg(not(target_os = "android"))]
+                    let _ = local_network_access;
                     let cf: ControlFlow<(), Connected> = if let Some(connected) = tunnel_state.borrow().get_connected() {
                         // Already connected, continue with next steps
                         ControlFlow::Continue(connected)
@@ -223,7 +238,12 @@ impl TunnelState {
                         // Not connected, but target state indicates that this is possible and desired. Start capturing traffic and connect.
                         if let Err(()) = os_impl
                             .set_os_network_config(
-                                OsNetworkConfig::dummy(*dns_content_block, *use_system_dns),
+                                OsNetworkConfig::dummy(
+                                    *dns_content_block,
+                                    *use_system_dns,
+                                    #[cfg(target_os = "android")]
+                                    *local_network_access,
+                                ),
                                 QuicWgConnPacketSender::new(None),
                             )
                             .await
@@ -278,6 +298,8 @@ impl TunnelState {
                             &connected.exit.provider_name,
                             *dns_content_block,
                             *use_system_dns,
+                            #[cfg(target_os = "android")]
+                            *local_network_access,
                         );
                         if let Err(()) = os_impl
                             .set_os_network_config(os_network_config, QuicWgConnPacketSender::new(Some(&conn)))
@@ -303,7 +325,13 @@ impl TunnelState {
                         }
                     }
                 }
-                TargetState { tunnel_args: None, network_interface: _, dns_content_block: _, use_system_dns: _ } => {
+                TargetState {
+                    tunnel_args: None,
+                    network_interface: _,
+                    dns_content_block: _,
+                    use_system_dns: _,
+                    local_network_access: _,
+                } => {
                     selection_state = ExitSelectionState::default();
                     tracing::info!(message_id = "axfILRQy", "reached disconnected target state");
                     if let Err(()) = os_impl.unset_os_network_config().await {
@@ -313,7 +341,13 @@ impl TunnelState {
                         poll_until_change(&mut client_state_watch, &target_state, pending::<Infallible>()).await;
                     }
                 }
-                TargetState { tunnel_args: Some(_), network_interface: None, dns_content_block: _, use_system_dns: _ } => {
+                TargetState {
+                    tunnel_args: Some(_),
+                    network_interface: None,
+                    dns_content_block: _,
+                    use_system_dns: _,
+                    local_network_access: _,
+                } => {
                     tracing::warn!(message_id = "0K9Nep8g", "stuck in connecting state without target interface");
                     selection_state = ExitSelectionState::default();
                     tunnel_state.send_modify(|tunnel_state| tunnel_state.set_connect_error(TunnelConnectError::NoInternet));

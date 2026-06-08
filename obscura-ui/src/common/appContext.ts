@@ -172,6 +172,7 @@ export interface AppStatus {
     featureFlags: Record<FeatureFlagKey, FeatureFlagValue>,
     featureFlagKeys: FeatureFlagKey[],
     useSystemDns: boolean,
+    localNetworkAccess: boolean,
 }
 
 interface IAppContext {

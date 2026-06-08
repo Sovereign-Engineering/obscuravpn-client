@@ -13,7 +13,7 @@ use crate::{config::KeychainSetSecretKeyFn, net::NetworkInterface, network_confi
 use crate::{config::PinnedLocation, exit_selection::ExitSelectionState};
 use crate::{config::cached::ConfigCached, exit_selection::ExitSelector};
 use crate::{
-    config::{self, Config, ConfigLoadError},
+    config::{self, Config, ConfigLoadError, LocalNetworkAccess},
     errors::RelaySelectionError,
     quicwg::QuicWgConn,
 };
@@ -111,6 +111,7 @@ impl ClientState {
                 DnsConfig::Default => false,
                 DnsConfig::System => true,
             },
+            local_network_access: self.config.local_network_access.is_enabled(),
         }
     }
 
@@ -341,6 +342,16 @@ impl ClientStateHandle {
 
     pub fn set_use_system_dns(&self, enable: bool) {
         self.change_config(|config| config.dns = if enable { DnsConfig::System } else { DnsConfig::Default })
+    }
+
+    pub fn set_local_network_access(&self, enable: bool) {
+        self.change_config(|config| {
+            config.local_network_access = if enable {
+                LocalNetworkAccess::Enabled
+            } else {
+                LocalNetworkAccess::Disabled
+            }
+        })
     }
 
     pub async fn connect(

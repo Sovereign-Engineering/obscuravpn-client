@@ -171,6 +171,12 @@ function NetworkSettings() {
         <Button onClick={rotateWgKey} bg={wgRotated ? 'teal' : undefined} rightSection={wgRotated ? <IoCheckmark /> : undefined} miw={200}>
           {wgRotated ? t('Rotated') : t('rotateWgKey')}
         </Button>
+        {IS_ANDROID && (
+          <>
+            <Divider w='100%' />
+            <LocalNetworkAccessSwitch />
+          </>
+        )}
       </Stack>
     </Card>
   );
@@ -275,6 +281,24 @@ function StrictLeakPreventionSwitch() {
         {t('strictLeakPreventionReliabilityWarning')}
       </Alert>
     </Stack>
+  );
+}
+
+function LocalNetworkAccessSwitch() {
+  const { t } = useTranslation();
+  const { appStatus } = useContext(AppContext);
+  const { localNetworkAccess } = appStatus;
+  const { showLoadingUI, error, execute: setLocalNetworkAccess } = commands.useCommand({ command: commands.setLocalNetworkAccess });
+
+  return (
+    <Switch
+      w='100%'
+      error={error}
+      checked={localNetworkAccess}
+      onChange={(event) => setLocalNetworkAccess(event.currentTarget.checked)}
+      disabled={showLoadingUI}
+      label={t('localNetworkAccessLabel')}
+    />
   );
 }
 

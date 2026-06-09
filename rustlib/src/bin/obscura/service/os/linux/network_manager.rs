@@ -45,13 +45,13 @@ impl NetworkManagerProxy<'_> {
             .await
             .map_err(|error| tracing::error!(message_id = "WKUw8Oww", ?error, "failed to get network manager version: {}", error))?;
         let version = Version::parse(&version)
-            .map_err(|error| tracing::error!(message_id = "WKUw8Oww", ?error, "failed to parse network manager version: {}", error))?;
+            .map_err(|error| tracing::error!(message_id = "f8cKm9sN", ?error, "failed to parse network manager version: {}", error))?;
         Ok((proxy, version))
     }
     pub async fn device_proxy(self, interface: &NetworkInterface) -> Result<DeviceProxy<'static>, ()> {
         let device_path = self.get_device_by_ip_iface(&interface.name).await.map_err(|error| {
             tracing::error!(
-                message_id = "WKUw8Oww",
+                message_id = "MJarj7xU",
                 ?error,
                 interface.name,
                 "failed to get network manager device path: {}",

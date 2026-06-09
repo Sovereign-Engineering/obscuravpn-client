@@ -43,7 +43,7 @@ impl ConnectErrorCode {
 impl From<&TunnelConnectError> for ConnectErrorCode {
     fn from(err: &TunnelConnectError) -> Self {
         use ApiErrorKind::*;
-        tracing::info!("deriving connect error code for {}", err);
+        tracing::info!(message_id = "qwt58GUq", "deriving connect error code for {}", err);
         match err {
             TunnelConnectError::ApiError(err) => match err {
                 ApiError::NoAccountId => Self::Other,

@@ -101,7 +101,7 @@ pub fn load(config_dir: &Path, keychain_wg_sk: Option<&[u8]>) -> Result<Config, 
                 tracing::warn!(
                     ?error,
                     config.path =? path,
-                    message_id = "Voosh7sa",
+                    message_id = "Szp2BpwR",
                     "Reading config file returned save error.");
                 return Err(error);
             }
@@ -117,6 +117,7 @@ pub fn load(config_dir: &Path, keychain_wg_sk: Option<&[u8]>) -> Result<Config, 
         Ok(()) => {}
         Err(error) => {
             tracing::error!(
+                message_id = "3ABMLYMb",
                 config.path =? path,
                 config.backup_path =? backup_path,
                 ?error,
@@ -511,7 +512,7 @@ impl WireGuardKeyCache {
         self.rotate_now_internal(set_keychain_wg_sk);
     }
     fn rotate_now_internal(&mut self, set_keychain_wg_sk: Option<&KeychainSetSecretKeyFn>) -> (StaticSecret, PublicKey) {
-        tracing::info!("rotating wireguard key pair");
+        tracing::info!(message_id = "65KkXAbB", "rotating wireguard key pair");
         let mut old_public_keys = std::mem::take(&mut self.old_public_keys);
         let current_public_key = match self.key_pair {
             Some(WireGuardKeyCacheKeyPair::Config { secret_key }) => Some(PublicKey::from(&StaticSecret::from(secret_key)).to_bytes()),
@@ -541,7 +542,7 @@ impl WireGuardKeyCache {
         if self.first_use.is_some_and(|t| t.elapsed().is_ok_and(|age| age > MAX_AGE)) {
             self.rotate_now(set_keychain_wg_sk);
         } else {
-            tracing::info!("no wireguard key pair rotation required");
+            tracing::info!(message_id = "i85mYSwz", "no wireguard key pair rotation required");
         }
     }
     pub fn need_registration(&mut self, set_keychain_wg_sk: Option<&KeychainSetSecretKeyFn>) -> Option<(PublicKey, Vec<PublicKey>)> {

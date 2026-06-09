@@ -30,7 +30,7 @@ impl FeatureFlags {
 
     fn change(&mut self, flag: &str, value: Option<bool>) {
         let Ok(flag) = FeatureFlagKey::from_str(flag) else {
-            tracing::error!("unknown feature flag: {:?}", flag);
+            tracing::error!(message_id = "DMArApj9", "unknown feature flag: {:?}", flag);
             return;
         };
         match flag {

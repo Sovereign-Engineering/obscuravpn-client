@@ -57,11 +57,23 @@ pub fn race_relay_handshakes(
             let (handshaking, rtt) = match result {
                 Ok(ok) => ok,
                 Err(error) => {
-                    tracing::warn!(?error, relay.id, port, "failed to connect during relay selection");
+                    tracing::warn!(
+                        message_id = "Drl0nTSh",
+                        ?error,
+                        relay.id,
+                        port,
+                        "failed to connect during relay selection"
+                    );
                     continue;
                 }
             };
-            tracing::info!(relay.id, port, rtt_ms = rtt.as_millis(), "successfully started handshake with relay");
+            tracing::info!(
+                message_id = "7NCuscqm",
+                relay.id,
+                port,
+                rtt_ms = rtt.as_millis(),
+                "successfully started handshake with relay"
+            );
             if let Err(SendError((_, _, _, handshaking))) = sender.send_async((relay, port, rtt, handshaking)).await {
                 spawn(handshaking.abandon());
             }

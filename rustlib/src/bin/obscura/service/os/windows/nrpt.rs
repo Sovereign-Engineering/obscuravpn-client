@@ -32,7 +32,7 @@ pub fn create_rule(name_servers: &[IpAddr]) -> Result<(), ()> {
     let (rule_key, _disposition) = hklm
         .create_subkey(&rule_path)
         .map_err(|error| tracing::error!(message_id = "zKKMdYSA", ?error, rule_path, "failed to create NRPT registry subkey"))?;
-    tracing::debug!(?rule_key, rule_path, "opened NRPT registry subkey");
+    tracing::debug!(message_id = "Sjh07FyK", ?rule_key, rule_path, "opened NRPT registry subkey");
     set_nrpt_value(&rule_key, "Comment", &NRPT_COMMENT_VALUE)?;
     set_nrpt_value(&rule_key, "DisplayName", &NRPT_DISPLAY_NAME_VALUE)?;
     // See Section 2.2.2.2 of MS-GPNRPT,

@@ -78,11 +78,11 @@ pub async fn try_group_refresh_fix() {
             tracing::debug!(message_id = "ZA5DS6pc", "IPC test succeeded, group refresh not necessary");
             return;
         }
-        Err(err) => {
+        Err(error) => {
             tracing::debug!(
                 message_id = "EP7be96J",
-                ?err,
-                "IPC test failed, but not due to insufficient permissions, not attempting group refresh: {err}"
+                ?error,
+                "IPC test failed, but not due to insufficient permissions, not attempting group refresh: {error}"
             );
             return;
         }
@@ -170,7 +170,7 @@ pub async fn try_group_refresh_fix() {
         let new_args_iter = once(NO_PERMISSION_FIX_ARG).chain(current_args.iter().map(String::as_str));
         let Ok(mut command) = build_sg_exec_cmd(&group.name, current_exe, new_args_iter).inspect_err(|error| {
             tracing::error!(
-                message_id = "TSjQoNIW",
+                message_id = "DD0zPnz8",
                 ?error,
                 "failed to quote current command for execution in new shell: {error}"
             )

@@ -9,7 +9,9 @@ use crate::manager::TunnelArgs;
 use crate::network_config::DnsContentBlock;
 use crate::tunnel_state::TargetState;
 use crate::{config::ConfigHandle, net::interface_mtu};
-use crate::{config::KeychainSetSecretKeyFn, net::NetworkInterface, network_config::DnsConfig, quicwg::QuicWgConnHandshaking};
+use crate::{
+    config::KeychainSetSecretKeyFn, config::RotationReason, net::NetworkInterface, network_config::DnsConfig, quicwg::QuicWgConnHandshaking,
+};
 use crate::{config::PinnedLocation, exit_selection::ExitSelectionState};
 use crate::{config::cached::ConfigCached, exit_selection::ExitSelector};
 use crate::{
@@ -289,7 +291,9 @@ impl ClientStateHandle {
         self.change(|inner| {
             inner.config.change(|config| {
                 config.api_url = url;
-                config.wireguard_key_cache.rotate_now(inner.set_keychain_wg_sk.as_ref());
+                config
+                    .wireguard_key_cache
+                    .rotate_now(RotationReason::ApiUrlChanged, inner.set_keychain_wg_sk.as_ref());
             });
             tracing::info!(message_id = "Eequ6ahz", "Clearing cached API client: API URL changed.");
             inner.cached_api_client = None;
@@ -473,9 +477,11 @@ impl ClientStateHandle {
                             "server indicated that key rotation is required immediately"
                         );
                         self.change(|inner| {
-                            inner
-                                .config
-                                .change(|config| config.wireguard_key_cache.rotate_now(inner.set_keychain_wg_sk.as_ref()))
+                            inner.config.change(|config| {
+                                config
+                                    .wireguard_key_cache
+                                    .rotate_now(RotationReason::ApiRequested, inner.set_keychain_wg_sk.as_ref())
+                            })
                         });
                         continue;
                     }
@@ -731,7 +737,9 @@ impl ClientStateHandle {
                     );
                     self.change(|inner| {
                         inner.config.change(|config| {
-                            config.wireguard_key_cache.rotate_now(inner.set_keychain_wg_sk.as_ref());
+                            config
+                                .wireguard_key_cache
+                                .rotate_now(RotationReason::ApiRequested, inner.set_keychain_wg_sk.as_ref());
                         })
                     })
                 }
@@ -743,7 +751,9 @@ impl ClientStateHandle {
     pub fn rotate_wg_key(&self) {
         self.change(|inner| {
             inner.config.change(|config| {
-                config.wireguard_key_cache.rotate_now(inner.set_keychain_wg_sk.as_ref());
+                config
+                    .wireguard_key_cache
+                    .rotate_now(RotationReason::Manual, inner.set_keychain_wg_sk.as_ref());
             })
         })
     }

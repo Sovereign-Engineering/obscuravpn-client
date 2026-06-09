@@ -218,6 +218,7 @@ impl ClientStateHandle {
                     config.cached_auth_token = auth_token.map(Into::into);
                 }
             });
+            tracing::info!(message_id = "Aish2eph", "Clearing cached API client: account ID or auth token changed.");
             inner.cached_api_client = None;
         });
         self.borrow().config.check_persisted()
@@ -261,6 +262,7 @@ impl ClientStateHandle {
                 );
                 config.api_host_alternate = value;
             });
+            tracing::info!(message_id = "ohj8Eich", "Clearing cached API client: API alternate host changed.");
             inner.cached_api_client = None;
         })
     }
@@ -289,6 +291,7 @@ impl ClientStateHandle {
                 config.api_url = url;
                 config.wireguard_key_cache.rotate_now(inner.set_keychain_wg_sk.as_ref());
             });
+            tracing::info!(message_id = "Eequ6ahz", "Clearing cached API client: API URL changed.");
             inner.cached_api_client = None;
         })
     }
@@ -330,6 +333,7 @@ impl ClientStateHandle {
                     .ok()
             });
             inner.network_interface = network_interface;
+            tracing::info!(message_id = "iew0Ahk9", "Clearing cached API client: network interface changed.");
             inner.cached_api_client = None;
         })
     }

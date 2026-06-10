@@ -32,6 +32,7 @@ public sealed partial class MainWindow : Window
     readonly WindowMessageMonitor _msgMonitor;
     // In case cold launch is from a `/payment-succeeded` URI protocol launch
     readonly TaskCompletionSource _webUIReady = new();
+    readonly StatusSubscriber _statusSubscriber = new();
 
     const uint WM_CLOSE = 0x0010;
 
@@ -57,6 +58,9 @@ public sealed partial class MainWindow : Window
         // Select the first navigation item (Connection) by default
         NavView.SelectedItem = NavView.MenuItems[0];
 
+        _statusSubscriber.StatusChanged += OnStatusChanged;
+        _statusSubscriber.Start();
+
         // Subclass WM_CLOSE *before* WinUI sees it. The standard AppWindow.Closing +
         // args.Cancel pattern destabilizes WebView2: each cancel-close leaves it partially
         // torn down, and the next show/focus event then NULL-derefs inside
@@ -67,6 +71,15 @@ public sealed partial class MainWindow : Window
         _msgMonitor.WindowMessageReceived += OnWindowMessageReceived;
 
         Closed += OnClosed;
+    }
+
+    private void OnStatusChanged(NeStatus status)
+    {
+        bool showNav = status.AccountId != null && !status.InNewAccountFlow;
+        DispatcherQueue.TryEnqueue(() => {
+            NavView.IsPaneVisible = showNav;
+            AppTitleBar.IsPaneToggleButtonVisible = showNav;
+        });
     }
 
     private void OnClosed(object sender, WindowEventArgs args)
@@ -312,13 +325,13 @@ public sealed partial class MainWindow : Window
         {
             var responseJson = await InvokeCommand.Parse(message.Data).RunAsync();
             var dataJson = WindowsCommandMessage.ReplyData(message.Id, responseJson);
-            WebView.CoreWebView2.PostWebMessageAsString(dataJson);
+            WebView?.CoreWebView2?.PostWebMessageAsString(dataJson);
         }
         catch (Exception ex)
         {
             var error = ex.Message;
             var errorJson = WindowsCommandMessage.ReplyError(message.Id, error);
-            WebView.CoreWebView2.PostWebMessageAsString(errorJson);
+            WebView?.CoreWebView2?.PostWebMessageAsString(errorJson);
         }
     }
 
@@ -407,7 +420,9 @@ public sealed partial class MainWindow : Window
         NavView.IsPaneOpen = !NavView.IsPaneOpen;
     }
 
-    internal static void NavView_SelectionChanged(XamlNavigationView _, NavigationViewSelectionChangedEventArgs args)
+#pragma warning disable CA1822
+    void NavView_SelectionChanged(XamlNavigationView _, NavigationViewSelectionChangedEventArgs args)
+#pragma warning restore CA1822
     {
         if (args.SelectedItem is NavigationViewItem item && item.Tag is int tagValue
             && typeof(NavigationView).IsEnumDefined(item.Tag))

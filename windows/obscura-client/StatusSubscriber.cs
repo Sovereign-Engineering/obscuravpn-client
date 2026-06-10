@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using log4net;
 
-namespace Obscura_Client.NotifyIcon;
+namespace Obscura_Client;
 
 /// <summary>
 /// Long-polls the Rust service's `getStatus` ManagerCmd, raising <see cref="StatusChanged"/>

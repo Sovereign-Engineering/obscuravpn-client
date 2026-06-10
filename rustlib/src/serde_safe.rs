@@ -9,7 +9,7 @@ pub fn deserialize<'de, T: Default + serde::Deserialize<'de>, D: serde::Deserial
     Ok(match serde::Deserialize::deserialize(deserializer)? {
         TryParse::Valid(v) => v,
         TryParse::Invalid(json) => {
-            tracing::error!(?json, "Deserialization invalid, using default");
+            tracing::error!(message_id = "1iEOjvq2", ?json, "Deserialization invalid, using default");
             Default::default()
         }
     })

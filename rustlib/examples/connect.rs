@@ -41,14 +41,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let conn = loop {
         match client_state.connect(&ExitSelector::Any {}, None, &mut exit_selection_state).await {
             Ok(connection) => break connection.conn,
-            Err(error) => tracing::error!("connection attempt failed: {error}"),
+            Err(error) => tracing::error!(message_id = "XrH7uWBj", "connection attempt failed: {error}"),
         }
         sleep(Duration::from_secs(1)).await;
     };
 
-    tracing::info!("connected");
+    tracing::info!(message_id = "6Y2NqBTq", "connected");
     loop {
         let packet = conn.receive().await?;
-        tracing::info!("received packet with {} bytes", packet.len());
+        tracing::info!(message_id = "F1VuMA9X", "received packet with {} bytes", packet.len());
     }
 }

@@ -270,7 +270,7 @@ impl ClientStateHandle {
     pub fn set_sni_relay(&self, value: Option<String>) {
         self.change_config(|config| {
             tracing::info!(
-                message_id = "jee1ieWa",
+                message_id = "OZYPX4xh",
                 sni_relay_new = value,
                 sni_relay_old = config.sni_relay,
                 "Changing Relay SNI.",
@@ -368,13 +368,14 @@ impl ClientStateHandle {
         let network_config = TunnelNetworkConfig::new(&tunnel_config, TUNNEL_MTU)?;
         let client_ip_v4 = network_config.ipv4;
         tracing::info!(
+            message_id = "AtKb082I",
             tunnel.id =% tunnel_id,
-            exit.pubkey =? tunnel_config.exit_pubkey,
+            exit.public_key =? tunnel_config.exit_pubkey,
             "finishing tunnel connection");
         let remote_pk = PublicKey::from(tunnel_config.exit_pubkey.0);
         let ping_keepalive_ip = tunnel_config.gateway_ip_v4;
         let conn = QuicWgConn::connect(handshaking, wg_sk.clone(), remote_pk, client_ip_v4, ping_keepalive_ip, tunnel_id).await?;
-        tracing::info!(tunnel.id =% tunnel_id, "tunnel connected");
+        tracing::info!(message_id = "A2FDGY4A", tunnel.id =% tunnel_id, "tunnel connected");
         let exit_id = exit.id.clone();
 
         self.change_config(|config| {
@@ -432,7 +433,7 @@ impl ClientStateHandle {
 
         let (tunnel_info, sk, tunnel_id) = loop {
             if let Err(err) = self.remove_local_tunnels().await {
-                tracing::warn!("error removing unused local tunnels: {}", err);
+                tracing::warn!(message_id = "MCGZaU8f", "error removing unused local tunnels: {}", err);
             }
 
             let tunnel_id = Uuid::new_v4();
@@ -444,6 +445,7 @@ impl ClientStateHandle {
             });
             let wg_pubkey = WgPubkey(pk.to_bytes());
             tracing::info!(
+                message_id = "n7XJsRLy",
                 client.pubkey =? wg_pubkey,
                 exit.id = exit,
                 message_id = "Ahv4Eequ",
@@ -465,7 +467,11 @@ impl ClientStateHandle {
                 Err(error) => match error.api_error_kind() {
                     Some(ApiErrorKind::TunnelLimitExceeded {}) => error,
                     Some(ApiErrorKind::WgKeyRotationRequired {}) => {
-                        tracing::warn!(?error, "server indicated that key rotation is required immediately");
+                        tracing::warn!(
+                            message_id = "1Dittpzj",
+                            ?error,
+                            "server indicated that key rotation is required immediately"
+                        );
                         self.change(|inner| {
                             inner
                                 .config
@@ -476,7 +482,7 @@ impl ClientStateHandle {
                     _ => return Err(error.into()),
                 },
             };
-            tracing::warn!(?error, "no tunnel slots left, trying to delete an unused one");
+            tracing::warn!(message_id = "dxiAM3dh", ?error, "no tunnel slots left, trying to delete an unused one");
             let last_used_threshold = Utc::now().timestamp() - 300;
             let mut tunnels: Vec<(String, i64)> = self
                 .api_request(ListTunnels {})
@@ -493,10 +499,10 @@ impl ClientStateHandle {
                 .collect();
             tunnels.sort_by_key(|t| t.1);
             let Some(id) = tunnels.into_iter().next().map(|t| t.0) else {
-                tracing::warn!("no unused obfuscated tunnel found");
+                tracing::warn!(message_id = "DC1YjUq2", "no unused obfuscated tunnel found");
                 return Err(error.into());
             };
-            tracing::warn!("deleting unused tunnel {}", &id);
+            tracing::warn!(message_id = "fZPQU7OS", "deleting unused tunnel {}", &id);
             self.api_request(DeleteTunnel { id }).await?;
         };
 
@@ -514,7 +520,7 @@ impl ClientStateHandle {
             let Some(local_tunnel_id) = self.borrow().config.local_tunnels_ids.first().cloned() else {
                 return Ok(());
             };
-            tracing::info!("removing previously used tunnel {}", &local_tunnel_id);
+            tracing::info!(message_id = "XcexL4hs", "removing previously used tunnel {}", &local_tunnel_id);
             self.api_request(DeleteTunnel { id: local_tunnel_id.clone() }).await?;
             self.0
                 .send_modify(|inner| inner.config.change(|config| config.local_tunnels_ids.retain(|x| x != &local_tunnel_id)))
@@ -592,7 +598,7 @@ impl ClientStateHandle {
         let Some((relay, port, rtt, handshaking)) = best_candidate else {
             return Err(RelaySelectionError::NoSuccess.into());
         };
-        tracing::info!(relay.id, port, rtt = rtt.as_millis(), "selected relay");
+        tracing::info!(message_id = "Xdbn2PYb", relay.id, port, rtt_ms = rtt.as_millis(), "selected relay");
         Ok((relay, handshaking))
     }
 
@@ -703,7 +709,7 @@ impl ClientStateHandle {
                 .change(|config| config.wireguard_key_cache.need_registration(inner.set_keychain_wg_sk.as_ref()))
         });
         let Some((current_public_key, old_public_keys)) = key_pair else {
-            tracing::info!("public wireguard key already registered");
+            tracing::info!(message_id = "DLRFU37X", "public wireguard key already registered");
             return Ok(());
         };
         let cmd = CacheWgKey {
@@ -713,12 +719,16 @@ impl ClientStateHandle {
         match self.api_request(cmd).await {
             Ok(()) => {
                 self.change_config(|config| config.wireguard_key_cache.registered(current_public_key, &old_public_keys));
-                tracing::info!("successfully registered public wireguard key");
+                tracing::info!(message_id = "OsG3QuGx", "successfully registered public wireguard key");
                 Ok(())
             }
             Err(error) => {
                 if matches!(error.api_error_kind(), Some(ApiErrorKind::WgKeyRotationRequired {})) {
-                    tracing::warn!(?error, "server indicated that key rotation is required immediately");
+                    tracing::warn!(
+                        message_id = "n89x3fJF",
+                        ?error,
+                        "server indicated that key rotation is required immediately"
+                    );
                     self.change(|inner| {
                         inner.config.change(|config| {
                             config.wireguard_key_cache.rotate_now(inner.set_keychain_wg_sk.as_ref());

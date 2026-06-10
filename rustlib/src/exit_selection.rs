@@ -64,7 +64,7 @@ impl ExitSelectionState {
                 .entry(selected.city_code.country_code.clone())
                 .or_insert(Saturating(0)) += 1;
         } else {
-            tracing::warn!("no exits left to select, clearing adaptive filters");
+            tracing::warn!(message_id = "PrOiO8XS", "no exits left to select, clearing adaptive filters");
             *self = Self::default();
         }
 

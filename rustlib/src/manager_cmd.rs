@@ -262,7 +262,7 @@ impl ManagerCmd {
                 .await
                 .map(ManagerCmdOk::CreateDebugArchive)
                 .map_err(|error| {
-                    tracing::error!(?error, "failed to create debug archive");
+                    tracing::error!(message_id = "5ZTsw9RY", ?error, "failed to create debug archive");
                     ManagerCmdErrorCode::Other
                 }),
             Self::GetDebugInfo {} => Ok(ManagerCmdOk::GetDebugInfo(manager.get_debug_info().await)),
@@ -273,7 +273,7 @@ impl ManagerCmd {
                 .await
                 .map(|status| ManagerCmdOk::GetStatus(status.clone()))
                 .map_err(|_err| {
-                    tracing::error!("status subscription channel closed");
+                    tracing::error!(message_id = "osj8eXtr", "status subscription channel closed");
                     ManagerCmdErrorCode::Other
                 }),
             Self::GetTrafficStats {} => Ok(ManagerCmdOk::GetTrafficStats(manager.traffic_stats())),

@@ -285,7 +285,7 @@ impl Manager {
                     })
                     .await;
                 let Ok(status) = status_result else {
-                    tracing::info!("status subscription closed unexpectedly");
+                    tracing::info!(message_id = "dvTbaTk7", "status subscription closed unexpectedly");
                     return;
                 };
                 last_status_version = Some(status.version);
@@ -295,7 +295,7 @@ impl Manager {
                 let Err(error) = this.client_state.register_cached_wireguard_key_if_new().await else {
                     continue;
                 };
-                tracing::warn!(?error, "failed attempt to register cached wireguard key");
+                tracing::warn!(message_id = "DhL1YJG0", ?error, "failed attempt to register cached wireguard key");
             }
         }
     }

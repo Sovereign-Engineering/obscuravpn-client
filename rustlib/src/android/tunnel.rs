@@ -56,7 +56,7 @@ impl Tun {
         if packet.len() > TUNNEL_MTU as usize {
             rate_limited_log!(
                 TUN_MIN_LOG_SILENCE,
-                tracing::warn!(message_id = "Yc1WxQBY", packet_len = packet.len(), "packet larger than MTU")
+                tracing::warn!(message_id = "Yc1WxQBY", packet_size = packet.len(), "packet larger than MTU")
             );
         }
         if let Err(error) = unistd::write(&self.fd, packet) {

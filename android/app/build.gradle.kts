@@ -18,7 +18,7 @@ extensions.configure<ApplicationExtension> {
         applicationId = "net.obscura.vpnclientapp"
         minSdk = 31
         targetSdk = 36
-        versionCode = 165
+        versionCode = project.getVersionCode(project.rootDir)
         versionName = project.getVersionName(project.rootDir)
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

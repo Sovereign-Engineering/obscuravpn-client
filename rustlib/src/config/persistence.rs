@@ -446,6 +446,16 @@ impl core::fmt::Debug for WireGuardKeyCache {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum RotationReason {
+    ApiRequested,
+    ApiUrlChanged,
+    KeychainInitFailed,
+    Manual,
+    NoKeyPair,
+    ScheduleBased,
+}
+
 impl WireGuardKeyCache {
     /// Sets secret key to provided value if it matches the known public key.
     pub fn try_set_secret_key_from_keychain(&mut self, keychain_secret_key: Option<&[u8]>) {
@@ -490,16 +500,9 @@ impl WireGuardKeyCache {
                 (secret_key, public_key)
             }
             Some(WireGuardKeyCacheKeyPair::Keychain { public_key: _, secret_key: None }) => {
-                tracing::error!(
-                    message_id = "804Y3Qdi",
-                    "only public wireguard key is known, initialization from keychain failed at load"
-                );
-                self.rotate_now_internal(set_keychain_wg_sk)
+                self.rotate_now_internal(RotationReason::KeychainInitFailed, set_keychain_wg_sk)
             }
-            None => {
-                tracing::info!(message_id = "RbSiOlzl", "no wireguard key pair exists yet");
-                self.rotate_now_internal(set_keychain_wg_sk)
-            }
+            None => self.rotate_now_internal(RotationReason::NoKeyPair, set_keychain_wg_sk),
         }
     }
     pub fn use_key_pair(&mut self, set_keychain_wg_sk: Option<&KeychainSetSecretKeyFn>) -> (StaticSecret, PublicKey) {
@@ -508,11 +511,11 @@ impl WireGuardKeyCache {
         self.first_use.get_or_insert(now);
         (secret_key, public_key)
     }
-    pub fn rotate_now(&mut self, set_keychain_wg_sk: Option<&KeychainSetSecretKeyFn>) {
-        self.rotate_now_internal(set_keychain_wg_sk);
+    pub fn rotate_now(&mut self, reason: RotationReason, set_keychain_wg_sk: Option<&KeychainSetSecretKeyFn>) {
+        self.rotate_now_internal(reason, set_keychain_wg_sk);
     }
-    fn rotate_now_internal(&mut self, set_keychain_wg_sk: Option<&KeychainSetSecretKeyFn>) -> (StaticSecret, PublicKey) {
-        tracing::info!(message_id = "65KkXAbB", "rotating wireguard key pair");
+    fn rotate_now_internal(&mut self, reason: RotationReason, set_keychain_wg_sk: Option<&KeychainSetSecretKeyFn>) -> (StaticSecret, PublicKey) {
+        tracing::info!(message_id = "65KkXAbB", ?reason, "rotating wireguard key pair");
         let mut old_public_keys = std::mem::take(&mut self.old_public_keys);
         let current_public_key = match self.key_pair {
             Some(WireGuardKeyCacheKeyPair::Config { secret_key }) => Some(PublicKey::from(&StaticSecret::from(secret_key)).to_bytes()),
@@ -540,7 +543,7 @@ impl WireGuardKeyCache {
     pub fn rotate_if_required(&mut self, set_keychain_wg_sk: Option<&KeychainSetSecretKeyFn>) {
         const MAX_AGE: Duration = Duration::from_secs(60 * 60 * 24 * 30); // 30 days
         if self.first_use.is_some_and(|t| t.elapsed().is_ok_and(|age| age > MAX_AGE)) {
-            self.rotate_now(set_keychain_wg_sk);
+            self.rotate_now(RotationReason::ScheduleBased, set_keychain_wg_sk);
         } else {
             tracing::info!(message_id = "i85mYSwz", "no wireguard key pair rotation required");
         }

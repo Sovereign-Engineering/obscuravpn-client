@@ -11,10 +11,10 @@ enum Command: Codable {
     case stopTunnel
     case setStrictLeakPrevention(enable: Bool)
     case setColorScheme(value: AppAppearance)
-    case debuggingArchive(userFeedback: String?)
+    case debugBundle(userFeedback: String?)
     case revealItemInDir(path: String)
-    case emailDebugArchive(path: String, subject: String, body: String)
-    case shareDebugArchive(path: String)
+    case emailDebugBundle(path: String, subject: String, body: String)
+    case shareDebugBundle(path: String)
     case registerAsLoginItem
     case unregisterAsLoginItem
     case resetUserDefaults
@@ -77,17 +77,17 @@ extension CommandHandler {
             )
         case .getOsStatus(knownVersion: let version):
             return try await appState.getOsStatus(knownVersion: version).json()
-        case .debuggingArchive(let userFeedback):
+        case .debugBundle(let userFeedback):
             let path: String
             do {
-                path = try await createDebuggingArchive(appState: appState, userFeedback: userFeedback)
+                path = try await createDebugBundle(appState: appState, userFeedback: userFeedback)
             } catch {
-                logger.error("could not create debugging archive \(error, privacy: .public)")
+                logger.error("could not create debug bundle \(error, privacy: .public)")
                 throw errorCodeOther
             }
             return try path.json()
         #if os(macOS)
-            case .emailDebugArchive, .shareDebugArchive, .purchaseSubscription, .restorePurchases, .associateAccount, .showOfferCodeRedemption, .resetOfferCodeRedemptionSuccess:
+            case .emailDebugBundle, .shareDebugBundle, .purchaseSubscription, .restorePurchases, .associateAccount, .showOfferCodeRedemption, .resetOfferCodeRedemptionSuccess:
                 throw errorUnsupportedOnOS
             case .revealItemInDir(let path):
                 NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
@@ -118,9 +118,9 @@ extension CommandHandler {
                 _ = appState.osStatus.update { value in
                     value.offerCodeRedemptionSuccess = false
                 }
-            case .emailDebugArchive(let path, let subject, let body):
-                try appState.emailDebugArchive(path: path, subject: subject, body: body)
-            case .shareDebugArchive(let path):
+            case .emailDebugBundle(let path, let subject, let body):
+                try appState.emailDebugBundle(path: path, subject: subject, body: body)
+            case .shareDebugBundle(let path):
                 appState.shareFile(path: path)
             case .revealItemInDir, .registerAsLoginItem, .unregisterAsLoginItem, .checkForUpdates, .installUpdate:
                 throw errorUnsupportedOnOS

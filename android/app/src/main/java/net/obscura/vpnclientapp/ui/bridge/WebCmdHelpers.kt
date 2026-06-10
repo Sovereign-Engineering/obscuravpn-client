@@ -3,9 +3,9 @@ package net.obscura.vpnclientapp.ui.bridge
 import android.content.Context
 import android.content.Intent
 import java.io.File
-import net.obscura.vpnclientapp.sharing.DebugArchiveFileProvider
+import net.obscura.vpnclientapp.sharing.DebugBundleFileProvider
 
-internal fun shareDebugArchive(
+internal fun shareDebugBundle(
     context: Context,
     path: String,
     email: Boolean,
@@ -13,9 +13,9 @@ internal fun shareDebugArchive(
     body: String? = null,
 ) {
     val uri =
-        DebugArchiveFileProvider.getUriForFile(
+        DebugBundleFileProvider.getUriForFile(
             context,
-            "${context.packageName}.debug_archive_file_provider",
+            "${context.packageName}.debug_bundle_file_provider",
             File(path),
         )
     val intent =

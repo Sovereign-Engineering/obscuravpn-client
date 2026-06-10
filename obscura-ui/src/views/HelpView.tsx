@@ -4,7 +4,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { AppContext } from '../common/appContext';
 import { EMAIL } from '../common/links';
 import useMailto from '../common/useMailto';
-import DebuggingArchive from '../components/DebuggingArchive';
+import DebugBundle from '../components/DebugBundle';
 import { Socials } from '../components/Socials';
 import MascotThinking from '../res/mascots/thinking-mascot.svg';
 
@@ -17,7 +17,7 @@ export default function Help() {
         <Image src={MascotThinking} w={100} />
         <Title>{t('havingTrouble')}</Title>
         <Text c='gray' component='span'><Trans i18nKey='supportMsg' values={{ email: EMAIL }} components={[<Anchor href={mailto} />]} /></Text>
-        <DebuggingArchive osStatus={osStatus} />
+        <DebugBundle osStatus={osStatus} />
         <Title order={3}>{t('socials')}</Title>
         <Socials />
     </Stack>

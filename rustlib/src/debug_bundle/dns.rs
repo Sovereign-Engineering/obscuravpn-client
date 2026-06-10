@@ -1,5 +1,5 @@
-use crate::debug_archive::task::DebugTask;
-use crate::debug_archive::task::run_debug_task;
+use crate::debug_bundle::task::DebugTask;
+use crate::debug_bundle::task::run_debug_task;
 use serde::Deserialize;
 use serde::Serialize;
 use std::net::IpAddr;

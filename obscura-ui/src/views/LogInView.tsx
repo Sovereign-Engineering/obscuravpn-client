@@ -14,7 +14,7 @@ import { AppContext } from '../common/appContext';
 import { HEADER_TITLE, multiRef, normalizeError } from '../common/utils';
 import { ButtonLink } from '../components/ButtonLink';
 import { ConfirmationDialog } from '../components/ConfirmationDialog';
-import DebuggingArchive, { DebuggingArchiveVariant } from '../components/DebuggingArchive';
+import DebugBundle, { DebugBundleVariant } from '../components/DebugBundle';
 import { PaymentManagementSheet } from '../components/PaymentManagementSheet';
 import DecoOrangeTop from '../res/deco/deco-orange-top.svg';
 import DecoOrangeBottom from '../res/deco/deco-signup-mobile.svg';
@@ -138,7 +138,7 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
                 <AccountNumberInput ref={inputRef} />
                 <Button disabled={loginWaiting} type='submit' variant='outline'>{loginWaiting ? <Loader size='sm' /> : t('Log In')}</Button>
               </Stack>
-              <DebuggingArchive osStatus={osStatus} variant={DebuggingArchiveVariant.LoginLabel} />
+              <DebugBundle osStatus={osStatus} variant={DebugBundleVariant.LoginLabel} />
             </Stack >
         }
     </Stack>

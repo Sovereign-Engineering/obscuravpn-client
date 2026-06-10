@@ -2,24 +2,24 @@ import { Anchor, Text } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { CommandError, debuggingArchive, revealItemInDir } from '../bridge/commands';
+import { CommandError, debugBundle, revealItemInDir } from '../bridge/commands';
 import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
 import { fmtErrorI18n } from '../translations/i18n';
 import { normalizeError } from './utils';
 
 type ArchiveState = { inProgress: boolean, error?: Error };
 
-export function useDebuggingArchive(): (userFeedback: string) => Promise<void> {
+export function useDebugBundle(): (userFeedback: string) => Promise<void> {
     const { t } = useTranslation();
     const [_, setArchiveState] = useState<ArchiveState>({ inProgress: false });
 
     const startCreatingArchive = async (userFeedback: string) => {
         setArchiveState({ inProgress: true });
         try {
-            const path = await debuggingArchive(userFeedback);
+            const path = await debugBundle(userFeedback);
             if (!IS_HANDHELD_DEVICE) {
               notifications.show({
-                  title: t('Debugging Archive Created'),
+                  title: t('Debug Bundle Created'),
                   message: <Text><Trans i18nKey='findDebugBundleInFinder' components={[<Anchor onClick={() => revealItemInDir(path)} />]} /></Text >
               });
             }
@@ -28,7 +28,7 @@ export function useDebuggingArchive(): (userFeedback: string) => Promise<void> {
           const message = error instanceof CommandError
               ? fmtErrorI18n(t, error) : error.message;
           notifications.show({
-              title: t('Debugging Archive Failed'),
+              title: t('Debug Bundle Failed'),
               message,
               color: 'red'
           });

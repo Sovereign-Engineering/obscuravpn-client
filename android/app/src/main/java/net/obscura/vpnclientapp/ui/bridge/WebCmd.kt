@@ -36,8 +36,8 @@ internal sealed interface WebCmd {
         ExternallyTaggedEnumSerializer<WebCmd>(
             WebCmd::class,
             listOf(
-                DebuggingArchive.Serializer,
-                EmailDebugArchive.Serializer,
+                DebugBundle.Serializer,
+                EmailDebugBundle.Serializer,
                 GetOsStatus.Serializer,
                 JsonFfiCmd.Serializer,
                 PurchaseSubscription.Serializer,
@@ -45,7 +45,7 @@ internal sealed interface WebCmd {
                 SetColorScheme.Serializer,
                 SetFeatureFlag.Serializer,
                 SetNavigationView.Serializer,
-                ShareDebugArchive.Serializer,
+                ShareDebugBundle.Serializer,
                 StartTunnel.Serializer,
                 StopTunnel.Serializer,
             ),
@@ -54,21 +54,21 @@ internal sealed interface WebCmd {
     suspend fun run(args: WebCmdArgs): String
 
     @KeepGeneratedSerializer
-    @Serializable(with = DebuggingArchive.Serializer::class)
-    data class DebuggingArchive(
+    @Serializable(with = DebugBundle.Serializer::class)
+    data class DebugBundle(
         val userFeedback: String?,
     ) : WebCmd {
         internal object Serializer :
-            ExternallyTaggedEnumVariantSerializer<DebuggingArchive>("debuggingArchive", generatedSerializer())
+            ExternallyTaggedEnumVariantSerializer<DebugBundle>("debugBundle", generatedSerializer())
 
-        // Eventually, all platforms should just use the JSON FFI command to create debug archives, but for now,
+        // Eventually, all platforms should just use the JSON FFI command to create debug bundles, but for now,
         // adapting the command here is the least invasive change.
         // TODO: https://linear.app/soveng/issue/OBS-3095/cross-platform-debug-archive-story
         override suspend fun run(args: WebCmdArgs) =
             jsonUnit.also {
                 args.osStatusManager.update { this.debugBundleStatus.inProgress = true }
                 val path = runCatching {
-                    JsonFfiCmd(jsonConfig.encodeToString(ManagerCmd.CreateDebugArchive(userFeedback))).run(args).let {
+                    JsonFfiCmd(jsonConfig.encodeToString(ManagerCmd.CreateDebugBundle(userFeedback))).run(args).let {
                         jsonConfig.decodeFromString<String>(it)
                     }
                 }
@@ -81,17 +81,17 @@ internal sealed interface WebCmd {
     }
 
     @KeepGeneratedSerializer
-    @Serializable(with = EmailDebugArchive.Serializer::class)
-    data class EmailDebugArchive(
+    @Serializable(with = EmailDebugBundle.Serializer::class)
+    data class EmailDebugBundle(
         val path: String,
         val subject: String,
         val body: String,
     ) : WebCmd {
         internal object Serializer :
-            ExternallyTaggedEnumVariantSerializer<EmailDebugArchive>("emailDebugArchive", generatedSerializer())
+            ExternallyTaggedEnumVariantSerializer<EmailDebugBundle>("emailDebugBundle", generatedSerializer())
 
         override suspend fun run(args: WebCmdArgs) =
-            jsonUnit.also { shareDebugArchive(args.context, path, true, subject, body) }
+            jsonUnit.also { shareDebugBundle(args.context, path, true, subject, body) }
     }
 
     @KeepGeneratedSerializer
@@ -202,17 +202,17 @@ internal sealed interface WebCmd {
     }
 
     @KeepGeneratedSerializer
-    @Serializable(with = ShareDebugArchive.Serializer::class)
-    data class ShareDebugArchive(
+    @Serializable(with = ShareDebugBundle.Serializer::class)
+    data class ShareDebugBundle(
         val path: String,
     ) : WebCmd {
         internal object Serializer :
-            ExternallyTaggedEnumVariantSerializer<ShareDebugArchive>(
-                "shareDebugArchive",
+            ExternallyTaggedEnumVariantSerializer<ShareDebugBundle>(
+                "shareDebugBundle",
                 generatedSerializer(),
             )
 
-        override suspend fun run(args: WebCmdArgs) = jsonUnit.also { shareDebugArchive(args.context, path, false) }
+        override suspend fun run(args: WebCmdArgs) = jsonUnit.also { shareDebugBundle(args.context, path, false) }
     }
 
     @KeepGeneratedSerializer

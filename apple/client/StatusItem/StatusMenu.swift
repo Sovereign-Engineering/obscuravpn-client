@@ -5,15 +5,15 @@ import SwiftUI
 import UserNotifications
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "StatusMenu")
-private let creatingDebuggingArchiveStr = "Creating Debugging Archive (takes a few minutes)"
-private let createDebuggingArchiveStr = "Create Debugging Archive"
+private let creatingDebugBundleStr = "Creating Debug Bundle (takes a few minutes)"
+private let createDebugBundleStr = "Create Debug Bundle"
 
 // https://multi.app/blog/pushing-the-limits-nsstatusitem
 final class StatusItemManager: ObservableObject {
     private var hostingView: NSHostingView<StatusItem>
     private var statusItem: NSStatusItem
 
-    private var debuggingMenuItem: NSMenuItem
+    private var debugBundleMenuItem: NSMenuItem
     private var viewLatestDebugItem: NSMenuItem
     private var accountMenuItemSeparator: NSMenuItem
     private var accountMenuItem: NSMenuItem
@@ -80,15 +80,15 @@ final class StatusItemManager: ObservableObject {
         let bandwidthStatusItem = NSMenuItem()
         bandwidthStatusItem.view = MenuItemView(BandwidthStatus(bandwidthStatusModel: self.bandwidthStatusModel))
 
-        self.debuggingMenuItem = NSMenuItem(
-            title: createDebuggingArchiveStr,
-            action: #selector(self.createDebuggingArchiveAction),
+        self.debugBundleMenuItem = NSMenuItem(
+            title: createDebugBundleStr,
+            action: #selector(self.createDebugBundleAction),
             keyEquivalent: ""
         )
 
         self.viewLatestDebugItem = NSMenuItem(
-            title: "View Latest Debug Archive",
-            action: #selector(self.viewLatestDebugArchive),
+            title: "View Latest Debug Bundle",
+            action: #selector(self.viewLatestDebugBundle),
             keyEquivalent: ""
         )
         self.viewLatestDebugItem.isHidden = true
@@ -119,7 +119,7 @@ final class StatusItemManager: ObservableObject {
         showWindowMenuItem.target = self
         self.quickConnectMenuItem.target = self
         self.accountMenuItem.target = self
-        self.debuggingMenuItem.target = self
+        self.debugBundleMenuItem.target = self
         self.viewLatestDebugItem.target = self
 
         let disconnectAndQuitItem = NSMenuItem(
@@ -139,7 +139,7 @@ final class StatusItemManager: ObservableObject {
             Self.createSectionHeaderMenuItem(title: "Live Usage"),
             bandwidthStatusItem,
             .separator(),
-            self.debuggingMenuItem,
+            self.debugBundleMenuItem,
             self.viewLatestDebugItem,
             .init(title: sourceVersion(), action: nil, keyEquivalent: ""),
             disconnectAndQuitItem,
@@ -313,26 +313,26 @@ final class StatusItemManager: ObservableObject {
         }
     }
 
-    @objc func viewLatestDebugArchive() {
+    @objc func viewLatestDebugBundle() {
         if let mostRecentPath = self.osStatusModel.osStatus?.debugBundleStatus.latestPath {
             NSWorkspace.shared.selectFile(mostRecentPath, inFileViewerRootedAtPath: "")
         }
     }
 
-    @objc func createDebuggingArchiveAction() {
+    @objc func createDebugBundleAction() {
         guard let osVpnStatus = self.osStatusModel.osStatus?.osVpnStatus else { return }
 
         let alert = NSAlert()
-        alert.messageText = "Disconnect to Create Debugging Archive?"
-        alert.informativeText = "For the best diagnostics, we recommend creating a debugging archive while disconnected. How do you want to create the debugging archive?"
+        alert.messageText = "Disconnect to Create Debug Bundle?"
+        alert.informativeText = "For the best diagnostics, we recommend creating a debug bundle while disconnected. How do you want to create the debug bundle?"
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Disconnect")
         alert.addButton(withTitle: "Stay Connected")
-        alert.addButton(withTitle: "Don't Create Debugging Archive")
+        alert.addButton(withTitle: "Don't Create Debug Bundle")
 
         DispatchQueue.main.async {
-            self.debuggingMenuItem.target = nil
-            self.debuggingMenuItem.title = creatingDebuggingArchiveStr
+            self.debugBundleMenuItem.target = nil
+            self.debugBundleMenuItem.title = creatingDebugBundleStr
         }
         Task {
             do {
@@ -347,7 +347,7 @@ final class StatusItemManager: ObservableObject {
                     }
                 }
 
-                let _ = try await createDebuggingArchive(appState: StartupModel.shared.appState, userFeedback: nil)
+                let _ = try await createDebugBundle(appState: StartupModel.shared.appState, userFeedback: nil)
             } catch {
                 logger.error("Error creating debug bundle: \(error, privacy: .public)")
 
@@ -378,12 +378,12 @@ final class StatusItemManager: ObservableObject {
         DispatchQueue.main.async {
             if let debugBundleStatus = self.osStatusModel.osStatus?.debugBundleStatus {
                 if debugBundleStatus.inProgress {
-                    self.debuggingMenuItem.target = nil
-                    self.debuggingMenuItem.title = creatingDebuggingArchiveStr
+                    self.debugBundleMenuItem.target = nil
+                    self.debugBundleMenuItem.title = creatingDebugBundleStr
                     self.viewLatestDebugItem.isHidden = true
-                } else if self.debuggingMenuItem.target == nil {
-                    self.debuggingMenuItem.target = self
-                    self.debuggingMenuItem.title = createDebuggingArchiveStr
+                } else if self.debugBundleMenuItem.target == nil {
+                    self.debugBundleMenuItem.target = self
+                    self.debugBundleMenuItem.title = createDebugBundleStr
                     let viewLatestAllowed = debugBundleStatus.latestPath != nil
                     self.viewLatestDebugItem.isHidden = !viewLatestAllowed
                 }

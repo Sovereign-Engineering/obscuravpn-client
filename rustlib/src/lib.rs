@@ -26,7 +26,7 @@ pub mod android;
 pub mod apple;
 mod cached_value;
 mod constants;
-mod debug_archive;
+mod debug_bundle;
 mod dns;
 mod liveness;
 pub mod local_network;

@@ -3,9 +3,9 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::debug_archive::dns::DnsTask;
-use crate::debug_archive::task::DebugTask;
-use crate::debug_archive::task::run_debug_task;
+use crate::debug_bundle::dns::DnsTask;
+use crate::debug_bundle::task::DebugTask;
+use crate::debug_bundle::task::run_debug_task;
 use reqwest::dns::Resolve;
 use reqwest::dns::Resolving;
 use serde::Deserialize;

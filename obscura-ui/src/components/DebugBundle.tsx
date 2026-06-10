@@ -5,28 +5,28 @@ import { useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { IoIosMail, IoIosShare } from 'react-icons/io';
 import * as commands from '../bridge/commands';
-import { emailDebugArchive, revealItemInDir, shareDebugArchive } from '../bridge/commands';
+import { emailDebugBundle, revealItemInDir, shareDebugBundle } from '../bridge/commands';
 import { IS_HANDHELD_DEVICE, systemName } from '../bridge/SystemProvider';
 import { NEVPNStatus, OsStatus, OsStatusWVpnStatus } from '../common/appContext';
-import { useDebuggingArchive } from '../common/debuggingArchiveHook';
+import { useDebugBundle } from '../common/debugBundleHook';
 import { EMAIL } from '../common/links';
 import useMailto from '../common/useMailto';
 import { normalizeError } from '../common/utils';
 import { ErrorI18n, fmtErrorI18n } from '../translations/i18n';
 import { ConfirmationDialog } from './ConfirmationDialog';
-import classes from './DebuggingArchive.module.css';
+import classes from './DebugBundle.module.css';
 
 const ICON_SIZE = 20;
 
-export enum DebuggingArchiveVariant {
+export enum DebugBundleVariant {
   Card = 'card',
   LoginLabel = 'label'
 }
 
 // this component may be used before appContext is created, and thus requires explicitly passing osStatus
-export default function DebuggingArchive({ osStatus, variant = DebuggingArchiveVariant.Card }: { osStatus: OsStatusWVpnStatus, variant?: DebuggingArchiveVariant }) {
+export default function DebugBundle({ osStatus, variant = DebugBundleVariant.Card }: { osStatus: OsStatusWVpnStatus, variant?: DebugBundleVariant }) {
   const { t } = useTranslation();
-  const createDebuggingArchive = useDebuggingArchive();
+  const createDebugBundle = useDebugBundle();
   const [opened, { open, close }] = useDisclosure(false);
   const { execute: disconnect } = commands.useCommand({ command: commands.disconnect, showNotification: false, rethrow: true });
   const [disconnectInProgress, setDisableButtons] = useState(false);
@@ -34,32 +34,32 @@ export default function DebuggingArchive({ osStatus, variant = DebuggingArchiveV
 
   const onContinue = () => {
     setDisableButtons(false);
-    void createDebuggingArchive(userFeedback);
+    void createDebugBundle(userFeedback);
     // For Label variant, keep modal open to show status
-    if (variant !== DebuggingArchiveVariant.LoginLabel) {
+    if (variant !== DebugBundleVariant.LoginLabel) {
       close();
       setUserFeedback('');
     }
   }
 
   const loadingSpinner = !!osStatus.debugBundleStatus.inProgress &&
-    <Group gap='sm' justify='center'><Text>{t('createDebugArchiveInProgress')}</Text><Loader size={ICON_SIZE} /></Group>;
+    <Group gap='sm' justify='center'><Text>{t('createDebugBundleInProgress')}</Text><Loader size={ICON_SIZE} /></Group>;
   const archiveAvailable = !osStatus.debugBundleStatus.inProgress && osStatus.debugBundleStatus.latestPath !== null;
   const showStatus = osStatus.debugBundleStatus.inProgress || osStatus.debugBundleStatus.latestPath !== null;
 
   const modal = (
-    <ConfirmationDialog title={t('Debugging Archive')} opened={opened} onClose={close}>
+    <ConfirmationDialog title={t('Debug Bundle')} opened={opened} onClose={close}>
       <Stack h='100%' justify='space-between' gap='xs'>
         {
           osStatus.osVpnStatus !== NEVPNStatus.Disconnected
           && <>
-            <Text>{t('debugArchiveDisconnectPrompt')}</Text>
+            <Text>{t('debugBundleDisconnectPrompt')}</Text>
           </>
         }
         <Textarea
           data-autofocus
-          label={t('debugArchiveFeedbackLabel')}
-          placeholder={t('debugArchiveFeedbackPrompt')}
+          label={t('debugBundleFeedbackLabel')}
+          placeholder={t('debugBundleFeedbackPrompt')}
           value={userFeedback}
           onChange={(event) => setUserFeedback(event.currentTarget.value)}
           minRows={3}
@@ -79,7 +79,7 @@ export default function DebuggingArchive({ osStatus, variant = DebuggingArchiveV
                 await commands.waitUntilDisconnected(osStatus);
                 onContinue();
               } catch (err) {
-                console.error('failed to disconnect before creating debugging archive');
+                console.error('failed to disconnect before creating debug bundle');
                 const error = normalizeError(err);
                 const message = error instanceof ErrorI18n
                   ? fmtErrorI18n(t, error)
@@ -94,7 +94,7 @@ export default function DebuggingArchive({ osStatus, variant = DebuggingArchiveV
             }}>{disconnectInProgress ? <Loader size={ICON_SIZE} /> : t('Disconnect')}</Button>
           }
         </Group>
-        {variant === DebuggingArchiveVariant.LoginLabel && showStatus && (
+        {variant === DebugBundleVariant.LoginLabel && showStatus && (
           <>
             {loadingSpinner ||
               <Stack gap='sm'>
@@ -108,7 +108,7 @@ export default function DebuggingArchive({ osStatus, variant = DebuggingArchiveV
     </ConfirmationDialog>
   );
 
-  if (variant === DebuggingArchiveVariant.LoginLabel) {
+  if (variant === DebugBundleVariant.LoginLabel) {
     /**
      * on hand held, the decoration is always at the bottom, even in landscape
      * we want the label just above the decoration in portrait, and at the top in landscape
@@ -137,7 +137,7 @@ export default function DebuggingArchive({ osStatus, variant = DebuggingArchiveV
 
   const createArchiveBtn = (
     <Button onClick={open} disabled={disconnectInProgress || !!osStatus.debugBundleStatus.inProgress} fullWidth={IS_HANDHELD_DEVICE}>
-      {t('createDebugArchive')}
+      {t('createDebugBundle')}
     </Button>
   );
   if (IS_HANDHELD_DEVICE) {
@@ -181,7 +181,7 @@ function SupportMessage({ osStatus, size, color }: SupportMessageProps) {
   const mailto = useMailto(osStatus);
   return (
     <Text size={size} c={color} ta='center' component={size ? undefined : 'span'}>
-      <Trans i18nKey='supportMsgOrDebugArchive' values={{ email: EMAIL }} components={[<Anchor href={mailto} />]} />
+      <Trans i18nKey='supportMsgOrDebugBundle' values={{ email: EMAIL }} components={[<Anchor href={mailto} />]} />
     </Text>
   );
 };
@@ -197,11 +197,11 @@ function ArchiveActionButtons({ osStatus, inProgress = false }: ArchiveActionBut
   if (IS_HANDHELD_DEVICE) {
     return (
       <>
-        <Button variant='light' onClick={() => shareDebugArchive(osStatus.debugBundleStatus.latestPath!)} data-disabled={inProgress} leftSection={<IoIosShare size={ICON_SIZE} />}>
-          {t('shareLatestDebugArchive')}
+        <Button variant='light' onClick={() => shareDebugBundle(osStatus.debugBundleStatus.latestPath!)} data-disabled={inProgress} leftSection={<IoIosShare size={ICON_SIZE} />}>
+          {t('shareLatestDebugBundle')}
         </Button>
-        <Button variant='light' onClick={() => emailDebugArchive(osStatus.debugBundleStatus.latestPath!, t('emailSubject', { platform: systemName(), version: osStatus.srcVersion }), t('emailBodyIntro'))} disabled={inProgress || !osStatus.canSendMail} leftSection={<IoIosMail size={ICON_SIZE} />}>
-          {t('emailLatestDebugArchive')}
+        <Button variant='light' onClick={() => emailDebugBundle(osStatus.debugBundleStatus.latestPath!, t('emailSubject', { platform: systemName(), version: osStatus.srcVersion }), t('emailBodyIntro'))} disabled={inProgress || !osStatus.canSendMail} leftSection={<IoIosMail size={ICON_SIZE} />}>
+          {t('emailLatestDebugBundle')}
         </Button>
         {!osStatus.canSendMail && <Text c='red.7' fw={500} size='sm' ta='center'>{t('emailServiceUnavailable')}</Text>}
       </>
@@ -209,7 +209,7 @@ function ArchiveActionButtons({ osStatus, inProgress = false }: ArchiveActionBut
   } else {
     return (
       <Button variant='light' onClick={() => revealItemInDir(osStatus.debugBundleStatus.latestPath!)} disabled={inProgress}>
-        {t('viewLatestDebugArchive')}
+        {t('viewLatestDebugBundle')}
       </Button>
     );
   }

@@ -20,7 +20,7 @@ use crate::{
     backoff::Backoff,
     client_state::{AccountStatus, ClientState},
     config::{Config, ConfigLoadError, KeychainSetSecretKeyFn, PinnedLocation, feature_flags::FeatureFlags},
-    debug_archive::create_debug_archive,
+    debug_bundle::create_debug_bundle,
     errors::{ApiError, ConnectErrorCode},
     exit_selection::ExitSelector,
     logging::LogPersistence,
@@ -29,7 +29,7 @@ use crate::{
     quicwg::TransportKind,
     tunnel_state::TunnelState,
 };
-use crate::{cached_value::CachedValue, debug_archive::info::DebugInfo};
+use crate::{cached_value::CachedValue, debug_bundle::info::DebugInfo};
 
 pub struct Manager {
     client_state: ClientStateHandle,
@@ -311,11 +311,11 @@ impl Manager {
         }
     }
 
-    pub async fn create_debug_archive(&self, user_feedback: Option<&str>) -> anyhow::Result<String> {
+    pub async fn create_debug_bundle(&self, user_feedback: Option<&str>) -> anyhow::Result<String> {
         let user_feedback = user_feedback.map(ToOwned::to_owned);
         let log_dir = self.log_persistence.as_ref().map(LogPersistence::log_dir).map(ToOwned::to_owned);
         let debug_info = self.get_debug_info().await;
-        tokio::task::spawn_blocking(move || create_debug_archive(user_feedback.as_deref(), debug_info, log_dir.as_deref()).map(Into::into)).await?
+        tokio::task::spawn_blocking(move || create_debug_bundle(user_feedback.as_deref(), debug_info, log_dir.as_deref()).map(Into::into)).await?
     }
 
     pub async fn get_debug_info(&self) -> DebugInfo {

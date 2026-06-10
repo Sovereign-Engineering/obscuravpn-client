@@ -4,13 +4,13 @@ pub mod http;
 pub mod info;
 pub mod task;
 mod zipper;
-use self::builder::DebugArchiveBuilder;
-use crate::debug_archive::info::DebugInfo;
+use self::builder::DebugBundleBuilder;
+use crate::debug_bundle::info::DebugInfo;
 use camino::{Utf8Path, Utf8PathBuf};
 
 // TODO: https://linear.app/soveng/issue/OBS-3095/cross-platform-debug-archive-story
-pub fn create_debug_archive(user_feedback: Option<&str>, debug_info: DebugInfo, rust_log_dir: Option<&Utf8Path>) -> anyhow::Result<Utf8PathBuf> {
-    let mut archive = DebugArchiveBuilder::new()?;
+pub fn create_debug_bundle(user_feedback: Option<&str>, debug_info: DebugInfo, rust_log_dir: Option<&Utf8Path>) -> anyhow::Result<Utf8PathBuf> {
+    let mut archive = DebugBundleBuilder::new()?;
     archive.add_json("ne-debug-info", &debug_info);
     if let Some(user_feedback) = user_feedback {
         archive.add_txt("user-feedback", user_feedback);

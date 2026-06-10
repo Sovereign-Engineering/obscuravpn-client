@@ -51,13 +51,13 @@
         </activity>
 
         <provider
-            android:authorities="${applicationId}.debug_archive_file_provider"
-            android:name=".sharing.DebugArchiveFileProvider"
+            android:authorities="${applicationId}.debug_bundle_file_provider"
+            android:name=".sharing.DebugBundleFileProvider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/debug_archive_file_provider_paths" />
+                android:resource="@xml/debug_bundle_file_provider_paths" />
         </provider>
 
         <service

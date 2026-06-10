@@ -2,7 +2,7 @@ use super::{
     errors::{ApiError, TunnelConnectError},
     network_config::TunnelNetworkConfig,
 };
-use crate::debug_archive::{dns::debug_dns, info::DebugInfo, task::debug_panic_error};
+use crate::debug_bundle::{dns::debug_dns, info::DebugInfo, task::debug_panic_error};
 use crate::dns::DnsResolver;
 use crate::errors::ConfigDirty;
 use crate::manager::TunnelArgs;
@@ -21,7 +21,7 @@ use crate::{
 };
 use crate::{
     constants::{DEFAULT_API_BACKUP_DOMAIN, DEFAULT_API_URL, DEFAULT_RELAY_SNI},
-    debug_archive::http::debug_http,
+    debug_bundle::http::debug_http,
 };
 use crate::{quicwg::TUNNEL_MTU, relay_selection::race_relay_handshakes};
 use boringtun::x25519::{PublicKey, StaticSecret};

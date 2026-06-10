@@ -10,7 +10,7 @@ import { IS_HANDHELD_DEVICE, PLATFORM, Platform } from '../bridge/SystemProvider
 import { LEGAL_WEBPAGE, OBSCURA_WEBPAGE } from '../common/accountUtils';
 import { AppContext, NavigationView, UpdaterStatusType } from '../common/appContext';
 import { MIN_LOAD_MS, showErrorNotification } from '../common/utils';
-import DebuggingArchive from '../components/DebuggingArchive';
+import DebugBundle from '../components/DebugBundle';
 import ObscuraWordmark from '../components/ObscuraWordmark';
 import { Socials } from '../components/Socials';
 import classes from './About.module.css';
@@ -81,7 +81,7 @@ export default function About() {
           </Group>
         </Stack>
         {IS_HANDHELD_DEVICE && <Stack gap='lg' p='md' pt={0} w='100%'>
-          <DebuggingArchive osStatus={osStatus} />
+          <DebugBundle osStatus={osStatus} />
           <Socials />
         </Stack>}
       </Stack>

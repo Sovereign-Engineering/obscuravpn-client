@@ -6,11 +6,11 @@ use serde::Serialize;
 use std::fmt::{Debug, Display};
 
 #[derive(Debug)]
-pub struct DebugArchiveBuilder {
+pub struct DebugBundleBuilder {
     zipper: Zipper,
 }
 
-impl DebugArchiveBuilder {
+impl DebugBundleBuilder {
     pub fn new() -> anyhow::Result<Self> {
         let dst_parent = Utf8PathBuf::try_from(std::env::temp_dir())
             .context("temp dir path wasn't valid UTF-8")?
@@ -19,7 +19,7 @@ impl DebugArchiveBuilder {
         let zipper = Zipper::new(
             &dst_parent,
             format!(
-                "Obscura Debugging Archive {}",
+                "Obscura Debug Bundle {}",
                 // On Android, colons can't be used in user data directories.
                 // Remove them in case users try to save the archive to one of these locations (and the saving app doesn't cleanse the name).
                 Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true).replace(':', "_")

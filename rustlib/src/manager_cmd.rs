@@ -20,7 +20,7 @@ use crate::{
     cached_value::CachedValue,
     manager::{Manager, ManagerTrafficStats, Status},
 };
-use crate::{client_state::ClientStateHandle, debug_archive::info::DebugInfo};
+use crate::{client_state::ClientStateHandle, debug_bundle::info::DebugInfo};
 use crate::{config::PinnedLocation, manager::TunnelArgs};
 
 /// High-level json command error codes, which are actionable for frontends.
@@ -126,7 +126,7 @@ pub enum ManagerCmd {
     ApiGoogleBillingDetails {
         promo_code: Option<String>,
     },
-    CreateDebugArchive {
+    CreateDebugBundle {
         user_feedback: Option<String>,
     },
     GetDebugInfo {},
@@ -199,7 +199,7 @@ pub enum ManagerCmdOk {
     ApiGetAccountInfo(AccountInfo),
     #[from]
     ApiGoogleBillingDetails(GoogleBillingDetailsOutput),
-    CreateDebugArchive(String),
+    CreateDebugBundle(String),
     Empty,
     GetDebugInfo(DebugInfo),
     GetExitList(CachedValue<Arc<ExitList>>),
@@ -257,12 +257,12 @@ impl ManagerCmd {
             }
             Self::ApiGoogleBillingDetails { promo_code } => map_result(manager.google_billing_details(promo_code).await),
             Self::SetFeatureFlag { flag, active } => manager.run_on_client_state(|c| c.set_feature_flag(&flag, active)),
-            Self::CreateDebugArchive { user_feedback } => manager
-                .create_debug_archive(user_feedback.as_deref())
+            Self::CreateDebugBundle { user_feedback } => manager
+                .create_debug_bundle(user_feedback.as_deref())
                 .await
-                .map(ManagerCmdOk::CreateDebugArchive)
+                .map(ManagerCmdOk::CreateDebugBundle)
                 .map_err(|error| {
-                    tracing::error!(message_id = "5ZTsw9RY", ?error, "failed to create debug archive");
+                    tracing::error!(message_id = "5ZTsw9RY", ?error, "failed to create debug bundle");
                     ManagerCmdErrorCode::Other
                 }),
             Self::GetDebugInfo {} => Ok(ManagerCmdOk::GetDebugInfo(manager.get_debug_info().await)),

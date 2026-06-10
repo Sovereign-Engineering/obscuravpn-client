@@ -41,7 +41,7 @@
     @media (orientation: portrait) {
         /* when the soft keyboard is open,
            this padding ensures that the background image
-           is below the debugging archive label
+           is below the debug bundle label
          */
         padding-bottom: 120px;
     }

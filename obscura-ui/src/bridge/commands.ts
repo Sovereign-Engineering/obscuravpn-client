@@ -142,21 +142,21 @@ export async function disconnect(): Promise<void> {
     await invoke('stopTunnel');
 }
 
-export async function debuggingArchive(userFeedback: string): Promise<String> {
-    return (await invoke('debuggingArchive', { userFeedback })) as String;
+export async function debugBundle(userFeedback: string): Promise<String> {
+    return (await invoke('debugBundle', { userFeedback })) as String;
 }
 
 export function revealItemInDir(path: String) {
     return invoke('revealItemInDir', { path });
 }
 
-export async function emailDebugArchive(path: String, subject: String, body: String): Promise<void> {
-    await invoke('emailDebugArchive', { path, subject, body });
+export async function emailDebugBundle(path: String, subject: String, body: String): Promise<void> {
+    await invoke('emailDebugBundle', { path, subject, body });
 }
 
 // trigger native share dialog
-export async function shareDebugArchive(path: String): Promise<void> {
-    await invoke('shareDebugArchive', { path });
+export async function shareDebugBundle(path: String): Promise<void> {
+    await invoke('shareDebugBundle', { path });
 }
 
 export interface Notice {

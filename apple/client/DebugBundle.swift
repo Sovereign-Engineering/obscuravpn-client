@@ -134,7 +134,7 @@ private class DebugBundleBuilder {
             create: true
         )
         self.archiveFolder = self.tmpFolder.appending(
-            component: "Obscura Debugging Archive \(utcDateFormat.string(from: self.bundleTimestamp))"
+            component: "Obscura Debug Bundle \(utcDateFormat.string(from: self.bundleTimestamp))"
         )
         try FileManager.default.createDirectory(
             at: self.archiveFolder,
@@ -740,7 +740,7 @@ private class DebugBundleBuilder {
     }
 
     func createArchive() throws -> URL {
-        let zipName = "Obscura Debugging Archive \(utcDateFormat.string(from: self.bundleTimestamp)).zip"
+        let zipName = "Obscura Debug Bundle \(utcDateFormat.string(from: self.bundleTimestamp)).zip"
 
         var zipPath: URL?
         var coordinatorError: NSError?
@@ -801,7 +801,7 @@ public class DebugBundleRC {
     }
 }
 
-func _createDebuggingArchive(appState: AppState?, userFeedback: String?) async throws -> String {
+func _createDebugBundle(appState: AppState?, userFeedback: String?) async throws -> String {
     let _ = ProcessInfo.processInfo.beginActivity(
         options: [
             .automaticTerminationDisabled,
@@ -827,7 +827,7 @@ func _createDebuggingArchive(appState: AppState?, userFeedback: String?) async t
     return zipPath.path
 }
 
-func createDebuggingArchive(appState: AppState?, userFeedback: String?) async throws -> String {
+func createDebugBundle(appState: AppState?, userFeedback: String?) async throws -> String {
     // ensure deinit occurs at the end of the method
     var _debugBundleRc: DebugBundleRC?
     defer { withExtendedLifetime(_debugBundleRc) {}}
@@ -835,7 +835,7 @@ func createDebuggingArchive(appState: AppState?, userFeedback: String?) async th
         _debugBundleRc = DebugBundleRC(appState)
     }
     do {
-        let path = try await _createDebuggingArchive(appState: appState, userFeedback: userFeedback)
+        let path = try await _createDebugBundle(appState: appState, userFeedback: userFeedback)
         _ = appState?.osStatus.update { value in
             value.debugBundleStatus.setPath(path)
         }

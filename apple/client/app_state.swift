@@ -453,7 +453,7 @@ class AppState: ObservableObject {
             rvc?.present(viewController, animated: true, completion: nil)
         }
 
-        func emailDebugArchive(path: String, subject: String, body: String) throws(String) {
+        func emailDebugBundle(path: String, subject: String, body: String) throws(String) {
             if !MFMailComposeViewController.canSendMail() {
                 Self.logger.info("Mail services are not available")
                 return
@@ -468,7 +468,7 @@ class AppState: ObservableObject {
             do {
                 data = try Data(contentsOf: url)
             } catch {
-                throw "Failed to read debugging archive: \(error)"
+                throw "Failed to read debug bundle: \(error)"
             }
             cvc.addAttachmentData(data, mimeType: "application/zip", fileName: url.lastPathComponent)
             self.presentFromRoot(viewController: cvc)

@@ -1,6 +1,6 @@
 use crate::{
     config::ConfigDebug,
-    debug_archive::{dns::DnsTask, http::HttpTask, task::DebugTask},
+    debug_bundle::{dns::DnsTask, http::HttpTask, task::DebugTask},
     net::NetworkInterface,
 };
 use serde::{Deserialize, Serialize};

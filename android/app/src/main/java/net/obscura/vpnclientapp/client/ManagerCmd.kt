@@ -32,12 +32,12 @@ sealed interface ManagerCmd {
     }
 
     @KeepGeneratedSerializer
-    @Serializable(with = CreateDebugArchive.Serializer::class)
-    data class CreateDebugArchive(
+    @Serializable(with = CreateDebugBundle.Serializer::class)
+    data class CreateDebugBundle(
         val userFeedback: String?,
     ) : ManagerCmd {
         internal object Serializer :
-            ExternallyTaggedEnumVariantSerializer<CreateDebugArchive>("createDebugArchive", generatedSerializer())
+            ExternallyTaggedEnumVariantSerializer<CreateDebugBundle>("createDebugBundle", generatedSerializer())
     }
 
     @KeepGeneratedSerializer

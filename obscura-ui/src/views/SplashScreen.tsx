@@ -2,7 +2,7 @@ import { Group, Image, Loader, Stack, Text } from '@mantine/core';
 import { useThrottledValue } from '@mantine/hooks';
 import AppIcon from '../../../apple/client/Assets.xcassets/AppIcon.appiconset/icon_128x128.png';
 import { OsStatusWVpnStatus } from '../common/appContext';
-import DebuggingArchive from '../components/DebuggingArchive';
+import DebugBundle from '../components/DebugBundle';
 import ObscuraWordmark from '../components/ObscuraWordmark';
 
 interface SplashScreenProps {
@@ -23,7 +23,7 @@ export default function SplashScreen({ text = '', osStatus }: SplashScreenProps)
       </Group>
       {
         osStatusThrottled !== null && osStatus !== null &&
-        <DebuggingArchive osStatus={osStatus} />
+        <DebugBundle osStatus={osStatus} />
       }
     </Stack>
   );

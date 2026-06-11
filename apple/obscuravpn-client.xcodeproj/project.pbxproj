@@ -217,7 +217,7 @@
 				INSTALL_MODE_FLAG = "";
 				INSTALL_OWNER = "";
 				PRODUCT_NAME = "obscuravpn-client";
-				PUBLIC_HEADERS_FOLDER_PATH = "include/$(PRODUCT_NAME)";
+				PUBLIC_HEADERS_FOLDER_PATH = "include";
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SUPPORTS_MACCATALYST = NO;
@@ -244,7 +244,7 @@
 				INSTALL_MODE_FLAG = "";
 				INSTALL_OWNER = "";
 				PRODUCT_NAME = "obscuravpn-client";
-				PUBLIC_HEADERS_FOLDER_PATH = "include/$(PRODUCT_NAME)";
+				PUBLIC_HEADERS_FOLDER_PATH = "include";
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SUPPORTS_MACCATALYST = NO;

@@ -13,6 +13,7 @@ import { Notifications } from '@mantine/notifications';
 import { PropsWithChildren } from 'react';
 import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
 import CachedColorScheme from './CachedColorScheme';
+import classes from './Mantine.module.css';
 
 export default function Mantine({ children }: PropsWithChildren) {
     // override theme for Mantine (default props and styles)
@@ -32,7 +33,8 @@ export default function Mantine({ children }: PropsWithChildren) {
             CopyButton: { defaultProps: { timeout: 1100 } },
             Switch: {
                 defaultProps: { labelPosition: 'left', size: IS_HANDHELD_DEVICE ? 'lg' : undefined },
-                styles: { body: { justifyContent: 'space-between' }, description: { fontSize: 'var(--mantine-font-size-sm)' } }
+                styles: { body: { justifyContent: 'space-between' }, description: { fontSize: 'var(--mantine-font-size-sm)' } },
+                classNames: { track: classes.switchTrack },
             },
             Alert: {
               styles: {

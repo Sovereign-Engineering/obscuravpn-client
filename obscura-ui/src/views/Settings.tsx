@@ -182,9 +182,20 @@ function NetworkSettings() {
   );
 }
 
+const AVAILABLE_FLAGS: Record<FeatureFlagKey, boolean> = {
+  [KnownFeatureFlagKey.KillSwitch]: IS_APPLE,
+};
+
 function ExperimentalSettings() {
   const { t } = useTranslation();
   const { appStatus } = useContext(AppContext);
+
+  const components = appStatus.featureFlagKeys
+    .filter(key => AVAILABLE_FLAGS[key] ?? true)
+    .map(key => <FeatureFlagToggle featureFlagKey={key} />);
+  if (IS_APPLE) {
+    components.push(<StrictLeakPreventionSwitch />);
+  }
 
   return (
     <Accordion variant='separated' w='100%' classNames={{ item: `${commonClasses.elevatedSurface} ${classes.experimentalAccordionControl}` }}>
@@ -194,18 +205,12 @@ function ExperimentalSettings() {
         </Accordion.Control>
         <Accordion.Panel style={{ borderTop: '1px solid var(--mantine-color-default-border)' }}>
           <Stack gap='lg' align='flex-start' my='xs'>
-            {appStatus.featureFlagKeys.map(featureFlagKey => {
-              if (featureFlagKey === KnownFeatureFlagKey.KillSwitch && !IS_APPLE) {
-                return null;
-              }
-              return (
-                <React.Fragment key={featureFlagKey}>
-                  <FeatureFlagToggle featureFlagKey={featureFlagKey} />
-                  <Divider w='100%' />
-                </React.Fragment>
-              );
-            })}
-            {IS_APPLE && <StrictLeakPreventionSwitch />}
+            {components.map((component, i) => (
+              <React.Fragment key={i}>
+                {i > 0 && <Divider w='100%' />}
+                {component}
+              </React.Fragment>
+            ))}
           </Stack>
         </Accordion.Panel>
       </Accordion.Item>

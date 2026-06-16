@@ -357,6 +357,7 @@
               pkgs.corepack_20
               pkgs.gnused
               pkgs.gradle
+              pkgs.jq
               pkgs.just
               pkgs.nixfmt-classic
               pkgs.nodejs_20

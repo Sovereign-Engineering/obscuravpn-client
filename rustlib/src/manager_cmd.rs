@@ -79,9 +79,9 @@ impl From<&ApiError> for ManagerCmdErrorCode {
                 ClientError::ApiError(err) => match err.body.error {
                     ApiErrorKind::AssociateAccountConflict {} => Self::ApiAssociateAccountConflict,
                     ApiErrorKind::NoLongerSupported {} => Self::ApiNoLongerSupported,
-                    ApiErrorKind::RateLimitExceeded {} => Self::ApiRateLimitExceeded,
+                    ApiErrorKind::RateLimitExceeded { pow_challenge: _ } => Self::ApiRateLimitExceeded,
                     ApiErrorKind::SaleNotFound {} => Self::ApiSaleNotFound,
-                    ApiErrorKind::SignupLimitExceeded {} => Self::ApiSignupLimitExceeded,
+                    ApiErrorKind::SignupLimitExceeded { pow_challenge: _ } => Self::ApiSignupLimitExceeded,
                     ApiErrorKind::InvalidAccountId {} => Self::ApiInvalidAccountId,
                     ApiErrorKind::AccountExpired {}
                     | ApiErrorKind::AlreadyExists {}
@@ -90,6 +90,7 @@ impl From<&ApiError> for ManagerCmdErrorCode {
                     | ApiErrorKind::IneligibleForReferral {}
                     | ApiErrorKind::InternalError {}
                     | ApiErrorKind::InvalidReferralCode {}
+                    | ApiErrorKind::LightningTopUpNotFound {}
                     | ApiErrorKind::MissingOrInvalidAuthToken {}
                     | ApiErrorKind::MiscUnauthorized {}
                     | ApiErrorKind::MoneroTopUpNotFound {}
@@ -99,6 +100,7 @@ impl From<&ApiError> for ManagerCmdErrorCode {
                     | ApiErrorKind::WgKeyRotationRequired {}
                     | ApiErrorKind::Unknown(_) => Self::ApiError,
                 },
+                ClientError::ProofOfWork(_) | ClientError::ProofOfWorkTimeout => Self::ApiRateLimitExceeded,
                 ClientError::RequestExecError(_) => Self::ApiUnreachable,
                 ClientError::ResponseTooLarge | ClientError::InvalidHeaderValue | ClientError::Other(_) | ClientError::ProtocolError(_) => {
                     Self::ApiError

@@ -115,6 +115,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "argon2"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c3610892ee6e0cbce8ae2700349fcf8f98adb0dbfbee85aec3c9179d29cc072"
+dependencies = [
+ "base64ct",
+ "blake2",
+ "cpufeatures",
+ "password-hash",
+]
+
+[[package]]
 name = "arrayvec"
 version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -373,6 +385,12 @@ name = "base64"
 version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
+
+[[package]]
+name = "base64ct"
+version = "1.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
 
 [[package]]
 name = "bindgen"
@@ -2205,12 +2223,14 @@ dependencies = [
 [[package]]
 name = "obscuravpn-api"
 version = "0.0.0"
-source = "git+https://github.com/Sovereign-Engineering/obscuravpn-api.git?rev=024ec3989a87da12daa8f0f2bbe8997bb9b78512#024ec3989a87da12daa8f0f2bbe8997bb9b78512"
+source = "git+https://github.com/Sovereign-Engineering/obscuravpn-api.git?rev=e987d002d87cdb4c3b31bb2952823b4d6917792e#e987d002d87cdb4c3b31bb2952823b4d6917792e"
 dependencies = [
  "anyhow",
+ "argon2",
  "base64 0.22.1",
  "bytes",
  "derive_more",
+ "hex",
  "http",
  "ipnetwork",
  "itertools 0.14.0",
@@ -2378,6 +2398,17 @@ dependencies = [
  "redox_syscall",
  "smallvec",
  "windows-targets 0.48.5",
+]
+
+[[package]]
+name = "password-hash"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "346f04948ba92c43e8469c1ee6736c7563d71012b17d40745260fe106aac2166"
+dependencies = [
+ "base64ct",
+ "rand_core 0.6.4",
+ "subtle",
 ]
 
 [[package]]

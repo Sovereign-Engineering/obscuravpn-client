@@ -53,7 +53,7 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
                         InvalidAccountId {} => Self::InvalidAccountId,
                         NoLongerSupported {} => Self::NoLongerSupported,
                         TunnelLimitExceeded {} => Self::NoSlotsLeft,
-                        RateLimitExceeded {} => Self::ApiRateLimitExceeded,
+                        RateLimitExceeded { pow_challenge: _ } => Self::ApiRateLimitExceeded,
                         AlreadyExists {}
                         | AlreadyReferred {}
                         | AssociateAccountConflict {}
@@ -61,16 +61,18 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
                         | IneligibleForReferral {}
                         | InternalError {}
                         | InvalidReferralCode {}
+                        | LightningTopUpNotFound {}
                         | MiscUnauthorized {}
                         | MissingOrInvalidAuthToken {}
                         | MoneroTopUpNotFound {}
                         | NoApiRoute {}
                         | NoMatchingExit {}
                         | SaleNotFound {}
-                        | SignupLimitExceeded {}
+                        | SignupLimitExceeded { pow_challenge: _ }
                         | WgKeyRotationRequired {}
                         | Unknown(_) => Self::ApiError,
                     },
+                    ClientError::ProofOfWork(_) | ClientError::ProofOfWorkTimeout => Self::ApiRateLimitExceeded,
                     ClientError::RequestExecError(_) => Self::ApiUnreachable,
                     ClientError::ResponseTooLarge | ClientError::InvalidHeaderValue | ClientError::Other(_) | ClientError::ProtocolError(_) => {
                         Self::Other

@@ -1,9 +1,9 @@
 using System;
-using System.Net.NetworkInformation;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using log4net;
+using Windows.Networking.Connectivity;
 
 namespace Obscura_Client;
 
@@ -68,13 +68,20 @@ public class OsStatus
 
     private OsStatus()
     {
-        InternetAvailable = NetworkInterface.GetIsNetworkAvailable();
+        InternetAvailable = GetInternetAvailable();
         Log.Info($"initial internet availability: {InternetAvailable}");
-        NetworkChange.NetworkAvailabilityChanged += (_, e) =>
+        NetworkInformation.NetworkStatusChanged += _ =>
         {
-            Log.Info($"internet availability changed: {e.IsAvailable}");
-            Update(s => s.InternetAvailable = e.IsAvailable);
+            var available = GetInternetAvailable();
+            Log.Info($"internet availability changed: {available}");
+            Update(s => s.InternetAvailable = available);
         };
+    }
+
+    private static bool GetInternetAvailable()
+    {
+        var profile = NetworkInformation.GetInternetConnectionProfile();
+        return profile?.GetNetworkConnectivityLevel() == NetworkConnectivityLevel.InternetAccess;
     }
 
     /// <summary>

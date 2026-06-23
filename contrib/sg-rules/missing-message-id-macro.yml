@@ -1,0 +1,12 @@
+id: missing-message-id-macro
+language: rust
+severity: error
+message: "tracing macro missing message_id"
+rule:
+  all:
+    - pattern: tracing::$METHOD!($$$ARGS)
+    - not:
+        regex: "message_id\\s*[=,)]"
+constraints:
+  METHOD:
+    regex: "^(error|warn|info|debug|trace)(_span)?$"

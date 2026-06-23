@@ -115,6 +115,11 @@
         rust-android = craneLib.buildPackage (rustArgs-android // rustLibArgs);
         rust-static = craneLib.buildPackage rustArgs-musl;
 
+        xtask = craneLib.buildPackage {
+          src = ./xtask;
+          strictDeps = true;
+        };
+
         nodeModules = pkgs.importNpmLock.buildNodeModules {
           npmRoot = ./obscura-ui;
           nodejs = pkgs.nodejs;
@@ -347,6 +352,26 @@
 
           nixfmt = pkgs.runCommand "nixfmt" { nativeBuildInputs = [ pkgs.nixfmt-classic ]; } ''
             nixfmt --width=120 --check ${nixFiles}
+            touch "$out"
+          '';
+          ast-grep-message-ids = let
+            src = lib.sources.cleanSourceWith {
+              src = self;
+              filter = path: type:
+                type == "directory" || lib.hasSuffix ".rs" path || baseNameOf path == "sgconfig.yml"
+                || lib.hasPrefix (toString ./contrib/sg-rules) path;
+            };
+          in pkgs.runCommand "ast-grep-message-ids" { nativeBuildInputs = [ pkgs.ast-grep ]; } ''
+            ast-grep scan --config ${src}/sgconfig.yml --report-style short ${src}
+            touch "$out"
+          '';
+          duplicate-message-ids = let
+            src = lib.sources.cleanSourceWith {
+              src = self;
+              filter = path: type: type == "directory" || lib.hasSuffix ".rs" path;
+            };
+          in pkgs.runCommand "duplicate-message-ids" { nativeBuildInputs = [ xtask ]; } ''
+            xtask check-duplicates ${src}
             touch "$out"
           '';
         };

@@ -108,7 +108,7 @@ impl Tun {
             }
             Err(_) => {
                 tracing::error!(
-                    message_id = "A1s4jdil",
+                    message_id = "wKm3Rvt8",
                     packet_size = packet_bytes.len(),
                     "ignoring oversized packet from tun device (exceeds u16::MAX)"
                 );

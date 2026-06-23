@@ -14,6 +14,7 @@ format-fix: _check-in-obscura-nix-shell
 	cd rustlib && cargo --offline fmt
 	./contrib/bin/nixfmt-auto-files.bash
 	taplo format
+	cargo run --manifest-path xtask/Cargo.toml -- fix rustlib
 
 # lint checks
 lint: _check-in-obscura-nix-shell
@@ -80,3 +81,6 @@ gen-license-rust:
 	}
 	if (-not (Get-Command "cargo-about" -ErrorAction SilentlyContinue)) { cargo install --locked cargo-about }
 	cd rustlib; cargo-about generate --format=json --fail -o "../{{licenses-rust-windows}}"
+
+fix-message-ids:
+	cargo run --manifest-path xtask/Cargo.toml -- fix rustlib

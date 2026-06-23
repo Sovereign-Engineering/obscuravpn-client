@@ -5,6 +5,9 @@ xcuserdata
 .DS_STORE
 /.claude/
 
+# Rust
+/xtask/target/
+
 # Nix
 result
 result-*

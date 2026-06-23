@@ -1,0 +1,13 @@
+[package]
+edition = "2021"
+name = "xtask"
+publish = false
+version = "0.0.0"
+
+[lints.clippy]
+large_enum_variant = "allow"
+too_many_arguments = "allow"
+type_complexity = "allow"
+
+[dependencies]
+rand = "0.10"

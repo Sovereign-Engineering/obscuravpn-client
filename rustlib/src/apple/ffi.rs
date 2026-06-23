@@ -55,7 +55,7 @@ pub unsafe extern "C" fn initialize(
     keychain_set_wg_secret_key: extern "C" fn(FfiBytes) -> bool,
     log_persistence: *mut LogPersistence,
 ) -> *const Global {
-    tracing::info!(message_id = "PRXlxa85", "starting ffi initialization");
+    tracing::info!(message_id = "nB7xQd4e", "starting ffi initialization");
     let mut first_init = false;
     let global: &'static Global = GLOBAL.get_or_init(|| {
         rustls::crypto::aws_lc_rs::default_provider()
@@ -87,7 +87,7 @@ pub unsafe extern "C" fn initialize(
         ) {
             Ok(manager) => {
                 first_init = true;
-                tracing::info!(message_id = "Y6cNkZXW", "ffi initialized");
+                tracing::info!(message_id = "hJ2pLs9f", "ffi initialized");
                 Global { manager, os_impl, runtime }
             }
             Err(err) => panic!("ffi initialization failed: could not load config: {}", err),

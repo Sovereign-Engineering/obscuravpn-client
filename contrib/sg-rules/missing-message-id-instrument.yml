@@ -1,0 +1,9 @@
+id: missing-message-id-instrument
+language: rust
+severity: error
+message: "#[tracing::instrument] missing message_id in fields"
+rule:
+  all:
+    - pattern: "#[tracing::instrument($$$ARGS)]"
+    - not:
+        regex: "message_id\\s*="

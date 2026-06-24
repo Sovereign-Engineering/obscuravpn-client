@@ -24,21 +24,26 @@ export enum DebugBundleVariant {
 }
 
 // this component may be used before appContext is created, and thus requires explicitly passing osStatus
-export default function DebugBundle({ osStatus, variant = DebugBundleVariant.Card }: { osStatus: OsStatusWVpnStatus, variant?: DebugBundleVariant }) {
+// feedback may be controlled by a parent (e.g. HelpView, so its support link can include it); otherwise DebugBundle manages it internally
+export default function DebugBundle({ osStatus, variant = DebugBundleVariant.Card, feedback, onFeedbackChange }: { osStatus: OsStatusWVpnStatus, variant?: DebugBundleVariant, feedback?: string, onFeedbackChange?: (value: string) => void }) {
   const { t } = useTranslation();
   const createDebugBundle = useDebugBundle();
-  const [opened, { open, close }] = useDisclosure(false);
+  const [opened, { open: openModal, close }] = useDisclosure(false);
+  const open = () => {
+    setUserFeedback('');
+    openModal();
+  };
   const { execute: disconnect } = commands.useCommand({ command: commands.disconnect, showNotification: false, rethrow: true });
   const [disconnectInProgress, setDisableButtons] = useState(false);
-  const [userFeedback, setUserFeedback] = useState('');
+  const [internalFeedback, setInternalFeedback] = useState('');
+  const userFeedback = feedback !== undefined ? feedback : internalFeedback;
+  const setUserFeedback = onFeedbackChange ?? setInternalFeedback;
 
   const onContinue = () => {
     setDisableButtons(false);
     void createDebugBundle(userFeedback);
-    // For Label variant, keep modal open to show status
     if (variant !== DebugBundleVariant.LoginLabel) {
       close();
-      setUserFeedback('');
     }
   }
 
@@ -98,8 +103,8 @@ export default function DebugBundle({ osStatus, variant = DebugBundleVariant.Car
           <>
             {loadingSpinner ||
               <Stack gap='sm'>
-                <SupportMessage osStatus={osStatus} size='sm' color='dimmed' />
-                <ArchiveActionButtons osStatus={osStatus} />
+                <SupportMessage osStatus={osStatus} size='sm' color='dimmed' userFeedback={userFeedback} />
+                <ArchiveActionButtons osStatus={osStatus} userFeedback={userFeedback} />
               </Stack>
             }
           </>
@@ -149,10 +154,10 @@ export default function DebugBundle({ osStatus, variant = DebugBundleVariant.Car
             <Title order={4} className={classes.havingTroubleTitle}>
               {t('havingTrouble')}
             </Title>
-            <SupportMessage osStatus={osStatus} color='gray' />
+            <SupportMessage osStatus={osStatus} color='gray' userFeedback={userFeedback} />
             {createArchiveBtn}
             {loadingSpinner}
-            {archiveAvailable && <Stack gap='sm' w='100%'><ArchiveActionButtons osStatus={osStatus} inProgress={!!osStatus.debugBundleStatus.inProgress} /></Stack>}
+            {archiveAvailable && <Stack gap='sm' w='100%'><ArchiveActionButtons osStatus={osStatus} inProgress={!!osStatus.debugBundleStatus.inProgress} userFeedback={userFeedback} /></Stack>}
           </Stack>
         </Card>
       </>
@@ -164,7 +169,7 @@ export default function DebugBundle({ osStatus, variant = DebugBundleVariant.Car
         <Group>
           {createArchiveBtn}
           {loadingSpinner}
-          {archiveAvailable && <ArchiveActionButtons osStatus={osStatus} inProgress={!!osStatus.debugBundleStatus.inProgress} />}
+          {archiveAvailable && <ArchiveActionButtons osStatus={osStatus} inProgress={!!osStatus.debugBundleStatus.inProgress} userFeedback={userFeedback} />}
         </Group>
       </>
     );
@@ -175,10 +180,11 @@ interface SupportMessageProps {
   osStatus: OsStatus;
   size?: 'sm';
   color?: string;
+  userFeedback?: string;
 }
 
-function SupportMessage({ osStatus, size, color }: SupportMessageProps) {
-  const mailto = useMailto(osStatus);
+function SupportMessage({ osStatus, size, color, userFeedback }: SupportMessageProps) {
+  const mailto = useMailto(osStatus, userFeedback);
   return (
     <Text size={size} c={color} ta='center' component={size ? undefined : 'span'}>
       <Trans i18nKey='supportMsgOrDebugBundle' values={{ email: EMAIL }} components={[<Anchor href={mailto} />]} />
@@ -189,9 +195,10 @@ function SupportMessage({ osStatus, size, color }: SupportMessageProps) {
 interface ArchiveActionButtonsProps {
   osStatus: OsStatus;
   inProgress?: boolean;
+  userFeedback?: string;
 }
 
-function ArchiveActionButtons({ osStatus, inProgress = false }: ArchiveActionButtonsProps) {
+function ArchiveActionButtons({ osStatus, inProgress = false, userFeedback = '' }: ArchiveActionButtonsProps) {
   const { t } = useTranslation();
 
   if (IS_HANDHELD_DEVICE) {
@@ -200,7 +207,7 @@ function ArchiveActionButtons({ osStatus, inProgress = false }: ArchiveActionBut
         <Button variant='light' onClick={() => shareDebugBundle(osStatus.debugBundleStatus.latestPath!)} data-disabled={inProgress} leftSection={<IoIosShare size={ICON_SIZE} />}>
           {t('shareLatestDebugBundle')}
         </Button>
-        <Button variant='light' onClick={() => emailDebugBundle(osStatus.debugBundleStatus.latestPath!, t('emailSubject', { platform: systemName(), version: osStatus.srcVersion }), t('emailBodyIntro'))} disabled={inProgress || !osStatus.canSendMail} leftSection={<IoIosMail size={ICON_SIZE} />}>
+        <Button variant='light' onClick={() => emailDebugBundle(osStatus.debugBundleStatus.latestPath!, t('emailSubject', { platform: systemName(), version: osStatus.srcVersion }), userFeedback ? t('emailBodyIntro') + ':\n\n' + userFeedback : t('emailBodyIntro'))} disabled={inProgress || !osStatus.canSendMail} leftSection={<IoIosMail size={ICON_SIZE} />}>
           {t('emailLatestDebugBundle')}
         </Button>
         {!osStatus.canSendMail && <Text c='red.7' fw={500} size='sm' ta='center'>{t('emailServiceUnavailable')}</Text>}

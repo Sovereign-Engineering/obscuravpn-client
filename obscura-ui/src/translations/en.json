@@ -113,7 +113,7 @@
   "Dark": "Dark",
   "Debug Bundle": "Debug Bundle",
   "debugBundleDisconnectPrompt": "For the best diagnostics, we recommend creating a debug bundle while disconnected. How do you want to create the debug bundle?",
-  "debugBundleFeedbackLabel": "Feedback (Optional)",
+  "debugBundleFeedbackLabel": "Feedback",
   "debugBundleFeedbackPrompt": "Please describe the issue you are experiencing...",
   "Debug Bundle Created": "Debug Bundle Created",
   "Debug Bundle Failed": "Debug Bundle Failed",

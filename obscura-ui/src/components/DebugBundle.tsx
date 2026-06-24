@@ -1,18 +1,14 @@
 import { Anchor, Button, Card, Group, Loader, Stack, Text, Textarea, Title } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { notifications } from '@mantine/notifications';
 import { useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { IoIosMail, IoIosShare } from 'react-icons/io';
-import * as commands from '../bridge/commands';
 import { emailDebugBundle, revealItemInDir, shareDebugBundle } from '../bridge/commands';
 import { IS_HANDHELD_DEVICE, systemName } from '../bridge/SystemProvider';
-import { NEVPNStatus, OsStatus, OsStatusWVpnStatus } from '../common/appContext';
+import { OsStatus, OsStatusWVpnStatus } from '../common/appContext';
 import { useDebugBundle } from '../common/debugBundleHook';
 import { EMAIL } from '../common/links';
 import useMailto from '../common/useMailto';
-import { normalizeError } from '../common/utils';
-import { ErrorI18n, fmtErrorI18n } from '../translations/i18n';
 import { ConfirmationDialog } from './ConfirmationDialog';
 import classes from './DebugBundle.module.css';
 
@@ -33,14 +29,11 @@ export default function DebugBundle({ osStatus, variant = DebugBundleVariant.Car
     setUserFeedback('');
     openModal();
   };
-  const { execute: disconnect } = commands.useCommand({ command: commands.disconnect, showNotification: false, rethrow: true });
-  const [disconnectInProgress, setDisableButtons] = useState(false);
   const [internalFeedback, setInternalFeedback] = useState('');
   const userFeedback = feedback !== undefined ? feedback : internalFeedback;
   const setUserFeedback = onFeedbackChange ?? setInternalFeedback;
 
   const onContinue = () => {
-    setDisableButtons(false);
     void createDebugBundle(userFeedback);
     if (variant !== DebugBundleVariant.LoginLabel) {
       close();
@@ -55,12 +48,6 @@ export default function DebugBundle({ osStatus, variant = DebugBundleVariant.Car
   const modal = (
     <ConfirmationDialog title={t('Debug Bundle')} opened={opened} onClose={close}>
       <Stack h='100%' justify='space-between' gap='xs'>
-        {
-          osStatus.osVpnStatus !== NEVPNStatus.Disconnected
-          && <>
-            <Text>{t('debugBundleDisconnectPrompt')}</Text>
-          </>
-        }
         <Textarea
           data-autofocus
           label={t('debugBundleFeedbackLabel')}
@@ -71,33 +58,7 @@ export default function DebugBundle({ osStatus, variant = DebugBundleVariant.Car
           maxRows={6}
         />
         <Group w='100%' grow>
-          <Button disabled={disconnectInProgress || !!loadingSpinner} miw={130} onClick={onContinue} variant='light'>{
-            osStatus.osVpnStatus === NEVPNStatus.Disconnected ?
-              t('Continue') : t('Stay Connected')
-          }</Button>
-          {
-            osStatus.osVpnStatus !== NEVPNStatus.Disconnected &&
-            <Button disabled={disconnectInProgress} miw={130} onClick={async () => {
-              setDisableButtons(true);
-              try {
-                await disconnect();
-                await commands.waitUntilDisconnected(osStatus);
-                onContinue();
-              } catch (err) {
-                console.error('failed to disconnect before creating debug bundle');
-                const error = normalizeError(err);
-                const message = error instanceof ErrorI18n
-                  ? fmtErrorI18n(t, error)
-                  : error.message;
-                notifications.show({
-                  color: 'red',
-                  title: t('Error'),
-                  message
-                });
-                setDisableButtons(false);
-              }
-            }}>{disconnectInProgress ? <Loader size={ICON_SIZE} /> : t('Disconnect')}</Button>
-          }
+          <Button disabled={!!loadingSpinner} miw={130} onClick={onContinue} variant='light'>{t('Continue')}</Button>
         </Group>
         {variant === DebugBundleVariant.LoginLabel && showStatus && (
           <>
@@ -141,7 +102,7 @@ export default function DebugBundle({ osStatus, variant = DebugBundleVariant.Car
   }
 
   const createArchiveBtn = (
-    <Button onClick={open} disabled={disconnectInProgress || !!osStatus.debugBundleStatus.inProgress} fullWidth={IS_HANDHELD_DEVICE}>
+    <Button onClick={open} disabled={!!osStatus.debugBundleStatus.inProgress} fullWidth={IS_HANDHELD_DEVICE}>
       {t('createDebugBundle')}
     </Button>
   );

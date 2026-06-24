@@ -292,32 +292,6 @@ export async function playPurchaseSubscription(promoCode: string | null): Promis
   return await invoke('purchaseSubscription', { promoCode }) as boolean;
 }
 
-export class DisconnectTimeoutError extends ErrorI18n {
-  i18nKey(): TranslationKey {
-    return 'error-timeoutDisconnect';
-  }
-}
-
-export async function waitUntilDisconnected(
-  initialOsStatus: OsStatusWVpnStatus,
-): Promise<void> {
-  if (initialOsStatus.osVpnStatus === NEVPNStatus.Disconnected) return;
-  const startTime = Date.now();
-  if (HAS_NE_VPN_STATUS) {
-    let latest = initialOsStatus;
-    while (latest.osVpnStatus !== NEVPNStatus.Disconnected) {
-      if (Date.now() - startTime >= 60_000) throw new DisconnectTimeoutError();
-      latest = await osStatus(latest.version) as OsStatusWVpnStatus;
-    }
-  } else {
-    let latest = await status(null);
-    while (latest.vpnStatus.disconnected === undefined) {
-      if (Date.now() - startTime >= 60_000) throw new DisconnectTimeoutError();
-      latest = await status(latest.version);
-    }
-  }
-}
-
 export interface UseCommandOptions<CommandArgs extends any[]> {
   command: (...args: CommandArgs) => Promise<void>;
   /** Whether to show a notification on error. Default: false */

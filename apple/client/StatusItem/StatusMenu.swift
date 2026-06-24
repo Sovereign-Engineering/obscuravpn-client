@@ -320,33 +320,12 @@ final class StatusItemManager: ObservableObject {
     }
 
     @objc func createDebugBundleAction() {
-        guard let osVpnStatus = self.osStatusModel.osStatus?.osVpnStatus else { return }
-
-        let alert = NSAlert()
-        alert.messageText = "Disconnect to Create Debug Bundle?"
-        alert.informativeText = "For the best diagnostics, we recommend creating a debug bundle while disconnected. How do you want to create the debug bundle?"
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Disconnect")
-        alert.addButton(withTitle: "Stay Connected")
-        alert.addButton(withTitle: "Don't Create Debug Bundle")
-
         DispatchQueue.main.async {
             self.debugBundleMenuItem.target = nil
             self.debugBundleMenuItem.title = creatingDebugBundleStr
         }
         Task {
             do {
-                if osVpnStatus == .connected {
-                    let response = await alert.runModal()
-                    if response == .alertFirstButtonReturn {
-                        try await self.waitForDisconnect()
-                    }
-                    if response == .alertThirdButtonReturn {
-                        self.updateDebugBundleMenuItem()
-                        return
-                    }
-                }
-
                 let _ = try await createDebugBundle(appState: StartupModel.shared.appState, userFeedback: nil)
             } catch {
                 logger.error("Error creating debug bundle: \(error, privacy: .public)")
@@ -357,15 +336,6 @@ final class StatusItemManager: ObservableObject {
                 content.interruptionLevel = .active
                 content.sound = UNNotificationSound.default
                 displayNotification(.debuggingBundleFailed, content)
-            }
-        }
-    }
-
-    private func waitForDisconnect(maxSeconds: Double = 30) async throws {
-        await StartupModel.shared.appState?.disableTunnel()
-        try await withTimeout(.seconds(maxSeconds)) {
-            while self.osStatusModel.osStatus?.osVpnStatus == .connected || self.osStatusModel.osStatus?.osVpnStatus == .disconnecting {
-                try await Task.sleep(for: .milliseconds(200))
             }
         }
     }

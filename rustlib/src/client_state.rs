@@ -450,12 +450,12 @@ impl ClientStateHandle {
             let wg_pubkey = WgPubkey(pk.to_bytes());
             tracing::info!(
                 message_id = "n7XJsRLy",
-                client.pubkey =? wg_pubkey,
+                client.pubkey =% wg_pubkey,
                 exit.id = exit,
                 message_id = "Ahv4Eequ",
-                relay.id =? &closest_relay.id,
+                relay.id = closest_relay.id,
                 relay.ip_v4 =% closest_relay.ip_v4,
-                tunnel.id = %tunnel_id,
+                tunnel.id =% tunnel_id,
                 "creating tunnel",
             );
 

@@ -404,8 +404,26 @@ private func receiveCallback(packet: FfiBytes) {
         return
     }
     let packet = packet.data()
+
+    guard let firstByte = packet.first else {
+        ffiLog(.Error, "Packet callback called with empty packet")
+        return
+    }
+    let highestNibble = firstByte >> 4
+    guard let family = switch highestNibble {
+    case 4:
+        AF_INET
+    case 6:
+        AF_INET6
+    default:
+        nil
+    } else {
+        ffiLog(.Error, "Packet callback called with packet with unknown IP version")
+        return
+    }
+
     Task {
-        inst.packetFlow.writePackets([packet], withProtocols: [NSNumber(value: AF_INET)])
+        inst.packetFlow.writePackets([packet], withProtocols: [NSNumber(value: family)])
     }
 }
 

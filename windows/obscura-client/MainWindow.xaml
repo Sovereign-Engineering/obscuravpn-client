@@ -110,6 +110,55 @@
                     x:Name="WebView"
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Stretch" />
+                <Grid
+                    x:Name="ErrorFallback"
+                    Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                    Padding="32"
+                    Visibility="{x:Bind ErrorVisibility(NativeUiError), Mode=OneWay}">
+                    <StackPanel
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        MaxWidth="560"
+                        Spacing="16">
+                        <FontIcon
+                            FontFamily="Segoe MDL2 Assets"
+                            Glyph="&#xE783;"
+                            FontSize="40"
+                            Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                            HorizontalAlignment="Center" />
+                        <TextBlock
+                            Text="Native UI Error"
+                            Style="{ThemeResource TitleTextBlockStyle}"
+                            HorizontalAlignment="Center" />
+                        <TextBlock
+                            Text="Please report this issue to us and include a debug bundle."
+                            Style="{ThemeResource BodyTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            TextWrapping="Wrap"
+                            TextAlignment="Center" />
+                        <HyperlinkButton
+                            Content="support@obscura.net"
+                            NavigateUri="mailto:support@obscura.net"
+                            HorizontalAlignment="Center" />
+                        <Border
+                            Background="{ThemeResource LayerFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="12"
+                            MaxHeight="200">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <TextBlock
+                                    Text="{x:Bind NativeUiError, Mode=OneWay}"
+                                    FontFamily="Consolas"
+                                    FontSize="12"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    TextWrapping="Wrap"
+                                    IsTextSelectionEnabled="True" />
+                            </ScrollViewer>
+                        </Border>
+                    </StackPanel>
+                </Grid>
             </Grid>
         </NavigationView>
     </Grid>

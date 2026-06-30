@@ -36,6 +36,7 @@ fn main() {
         let dll_src = get_wintun_dll_src(&crate_dir);
         copy_to_bin_dir(&dll_src, "wintun.dll");
         emit_wintun_dll_hash(&dll_src);
+        emit_package_family_name();
     }
 
     // Use var_os instead of var to isolate env var presence from Unicode parsing
@@ -91,6 +92,32 @@ fn emit_wintun_dll_hash(dll_path: &Path) {
     let hash_hex = hash.as_ref().iter().map(|b| format!("{b:02x}")).collect::<String>();
 
     println!("cargo:rustc-env=WINTUN_DLL_SHA256={hash_hex}");
+}
+
+#[cfg(target_os = "windows")]
+fn emit_package_family_name() {
+    // <Identity Name> from SparsePackage.appxmanifest.
+    const PACKAGE_NAME: &str = "SovereignEngineering.ObscuraVPN";
+    // Signing certificate subject (X.500 distinguished name).
+    const PUBLISHER: &str = "CN=Sovereign Engineering Inc., O=Sovereign Engineering Inc., L=New York, S=New York, C=US, SERIALNUMBER=7746810, OID.2.5.4.15=Private Organization, OID.1.3.6.1.4.1.311.60.2.1.2=Delaware, OID.1.3.6.1.4.1.311.60.2.1.3=US";
+
+    let publisher_id = crockford_publisher_id(PUBLISHER);
+    println!("cargo:rustc-env=OBSCURA_PACKAGE_FAMILY_NAME={PACKAGE_NAME}_{publisher_id}");
+}
+
+/// MSIX publisherId: the first 8 bytes of SHA-256(Publisher encoded as UTF-16LE), read as 65 bits
+/// (the 64 hash bits plus a trailing zero bit) and emitted as 13 Crockford base32 characters.
+#[cfg(target_os = "windows")]
+fn crockford_publisher_id(publisher: &str) -> String {
+    const ALPHABET: &[u8; 32] = b"0123456789abcdefghjkmnpqrstvwxyz";
+    let utf16le: Vec<u8> = publisher.encode_utf16().flat_map(|unit| unit.to_le_bytes()).collect();
+    let digest = ring::digest::digest(&ring::digest::SHA256, &utf16le);
+    let mut head = [0u8; 8];
+    head.copy_from_slice(&digest.as_ref()[..8]);
+    let bits = u128::from(u64::from_be_bytes(head)) << 1; // 65 bits, trailing zero
+    (0..13)
+        .map(|i| char::from(ALPHABET[usize::try_from((bits >> (60 - 5 * i)) & 0x1f).expect("masked to 5 bits")]))
+        .collect()
 }
 
 #[cfg(target_os = "windows")]

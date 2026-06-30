@@ -336,9 +336,11 @@ impl ClientStateHandle {
                     .inspect_err(|_| tracing::warn!(message_id = "uKFfXGSc", mtu, "MTU out of range"))
                     .ok()
             });
-            inner.network_interface = network_interface;
-            tracing::info!(message_id = "iew0Ahk9", "Clearing cached API client: network interface changed.");
-            inner.cached_api_client = None;
+            if network_interface != inner.network_interface {
+                inner.network_interface = network_interface;
+                tracing::info!(message_id = "iew0Ahk9", "Clearing cached API client: network interface changed.");
+                inner.cached_api_client = None;
+            }
         })
     }
 

@@ -630,9 +630,9 @@ impl ClientStateHandle {
         })
     }
 
-    fn cache_auth_token(&self) {
+    fn cache_auth_token(&self, api_client: &Client) {
+        let auth_token = api_client.get_auth_token();
         self.change(|inner| {
-            let auth_token = inner.cached_api_client.as_ref().and_then(|c| c.get_auth_token());
             inner.config.change(|config| {
                 config.cached_auth_token = auth_token.map(Into::into);
             });
@@ -642,15 +642,15 @@ impl ClientStateHandle {
     pub async fn api_request<C: Cmd>(&self, cmd: C) -> Result<C::Output, ApiError> {
         let api_client = self.api_client()?;
         let result = api_client.run(cmd).await;
-        self.cache_auth_token();
+        self.cache_auth_token(&api_client);
         Ok(result?)
     }
 
     pub async fn cached_api_request<C: ETagCmd>(&self, cmd: C, etag: Option<&[u8]>) -> Result<obscuravpn_api::Response<C::Output>, ApiError> {
         let api_client = self.api_client()?;
-        let result = api_client.run_with_etag(cmd, etag).await?;
-        self.cache_auth_token();
-        Ok(result)
+        let result = api_client.run_with_etag(cmd, etag).await;
+        self.cache_auth_token(&api_client);
+        Ok(result?)
     }
 
     pub fn base_url(&self) -> String {

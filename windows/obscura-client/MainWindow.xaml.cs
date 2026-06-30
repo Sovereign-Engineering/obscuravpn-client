@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -16,8 +17,26 @@ using XamlNavigationView = Microsoft.UI.Xaml.Controls.NavigationView;
 
 namespace Obscura_Client;
 
-public sealed partial class MainWindow : Window
+public sealed partial class MainWindow : Window, INotifyPropertyChanged
 {
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    string? _nativeUiError;
+    // When non-null, an overlay covering the WebView shows this error message.
+    public string? NativeUiError
+    {
+        get => _nativeUiError;
+        set
+        {
+            if (_nativeUiError == value) return;
+            _nativeUiError = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NativeUiError)));
+        }
+    }
+
+    Visibility ErrorVisibility(string? error) =>
+        string.IsNullOrEmpty(error) ? Visibility.Collapsed : Visibility.Visible;
+
 #if !DEBUG
     static readonly string HOSTNAME = "obscura-ui";
 #endif
@@ -100,7 +119,13 @@ public sealed partial class MainWindow : Window
 
     private async void InitializeWebView()
     {
-        await WebView.EnsureCoreWebView2Async();
+        try {
+            await WebView.EnsureCoreWebView2Async();
+        } catch (Exception ex) {
+            Log.Error($"WebView.EnsureCoreWebView2Async failed: {ex.Message}");
+            NativeUiError = ex.ToString();
+            return;
+        }
 
         await WebView.CoreWebView2.CallDevToolsProtocolMethodAsync("Log.enable", "{}");
         await WebView.CoreWebView2.CallDevToolsProtocolMethodAsync("Runtime.enable", "{}");

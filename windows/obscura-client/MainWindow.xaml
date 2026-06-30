@@ -23,7 +23,7 @@
             x:Name="AppTitleBar"
             Title="Obscura"
             IsBackButtonVisible="False"
-            IsPaneToggleButtonVisible="True"
+            IsPaneToggleButtonVisible="False"
             PaneToggleRequested="TitleBar_PaneToggleRequested">
             <TitleBar.IconSource>
                 <ImageIconSource ImageSource="/Assets/Square150x150Logo.scale-200.png" />
@@ -36,7 +36,8 @@
             IsBackButtonVisible="Collapsed"
             IsPaneToggleButtonVisible="False"
             IsSettingsVisible="False"
-            SelectionChanged="{x:Bind local:MainWindow.NavView_SelectionChanged}"
+            IsPaneVisible="False"
+            SelectionChanged="NavView_SelectionChanged"
             PaneDisplayMode="Auto"
             OpenPaneLength="170">
 

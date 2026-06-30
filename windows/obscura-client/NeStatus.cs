@@ -7,6 +7,7 @@ public sealed class NeStatus
 {
     public required string Version { get; set; }
     public required VpnStatusEnvelope VpnStatus { get; set; }
+    public string? AccountId { get; set; }
     public required bool InNewAccountFlow { get; set; }
     public required PinnedLocation[] PinnedLocations { get; set; }
     public required ExitSelector LastExit { get; set; }

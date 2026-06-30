@@ -8,6 +8,9 @@ fi
 
 version="$1"
 
+# TODO: https://linear.app/soveng/issue/OBS-3629/remove-requirement-to-bump-android-version-code
+sed -i "" -Ee "s/        versionCode = [0-9]+/        versionCode = ${version#*.}/" android/app/build.gradle.kts
+
 nix build '.#hash'
 hash="$(cat result)"
 
@@ -17,9 +20,6 @@ cat <<END >tag.json
   "version": "$version"
 }
 END
-
-# TODO: https://linear.app/soveng/issue/OBS-3629/remove-requirement-to-bump-android-version-code
-sed -i "" -Ee "s/        versionCode = [0-9]+/        versionCode = ${version#*.}/" android/app/build.gradle.kts
 
 git commit -a -m "Tag v$version."
 git tag -s "v/$version" -m "v/$version"

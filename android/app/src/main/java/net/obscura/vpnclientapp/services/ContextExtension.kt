@@ -44,7 +44,7 @@ sealed interface PrepareResult {
     data object LegacyAlwaysOn : PrepareResult
 }
 
-fun Context.prepareVpnService(): PrepareResult =
+fun Context.prepareVpnService() =
     try {
         log.info("preparing VPN service")
         prepare(this)?.let { PrepareResult.CreateProfile(it) } ?: PrepareResult.Ready
@@ -57,10 +57,15 @@ fun Context.prepareVpnService(): PrepareResult =
         PrepareResult.LegacyAlwaysOn
     }
 
-fun Context.startVpnService(): Result<Unit> =
+fun Context.startVpnService(exitSelector: String?) =
     try {
         log.info("starting VPN service")
-        this.startForegroundService(Intent(this, ObscuraVpnService::class.java))
+        this.startForegroundService(
+            Intent(this, ObscuraVpnService::class.java).apply {
+                this.action = ACTION_START_TUNNEL
+                this.putStartTunnelExtras(exitSelector)
+            }
+        )
         Result.success(Unit)
     } catch (e: SecurityException) {
         log.error("missing permissions or service not found", tr = e)

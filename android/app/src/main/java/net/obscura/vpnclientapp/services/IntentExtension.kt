@@ -2,6 +2,7 @@ package net.obscura.vpnclientapp.services
 
 import android.content.Intent
 import net.obscura.lib.util.Logger
+import net.obscura.vpnclientapp.BuildConfig
 import net.obscura.vpnclientapp.client.ErrorCodeException
 import net.obscura.vpnclientapp.client.errorCodeOther
 
@@ -10,6 +11,9 @@ private val log = Logger("IntentExtension")
 private const val EXTRA_ID = "id"
 private const val EXTRA_VALUE = "value"
 private const val EXTRA_ERROR_CODE = "errorCode"
+private const val EXTRA_EXIT_SELECTOR = "exitSelector"
+const val ACTION_START_TUNNEL = "${BuildConfig.APPLICATION_ID}.actionStartTunnel"
+const val ACTION_STOP_TUNNEL = "${BuildConfig.APPLICATION_ID}.actionStopTunnel"
 
 fun Intent.putJsonFfiExtras(id: Long, value: String?, exception: Throwable?) {
     this.putExtra(EXTRA_ID, id)
@@ -49,3 +53,7 @@ fun Intent.getJsonFfiExtras(): JsonFfiIntentPayload {
         },
     )
 }
+
+fun Intent.putStartTunnelExtras(exitSelector: String?) = this.putExtra(EXTRA_EXIT_SELECTOR, exitSelector)
+
+fun Intent.getStartTunnelExtras() = this.getStringExtra(EXTRA_EXIT_SELECTOR)

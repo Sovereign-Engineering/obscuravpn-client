@@ -228,8 +228,7 @@ internal sealed interface WebCmd {
 
         override suspend fun run(args: WebCmdArgs) =
             jsonUnit.also {
-                args.mainActivity.vpnPermissionRequestManager.requestVpnStart().getOrThrow()
-                args.binder.startTunnel(this@StartTunnel.tunnelArgs)
+                args.mainActivity.vpnPermissionRequestManager.requestVpnStart(this@StartTunnel.tunnelArgs).getOrThrow()
             }
     }
 

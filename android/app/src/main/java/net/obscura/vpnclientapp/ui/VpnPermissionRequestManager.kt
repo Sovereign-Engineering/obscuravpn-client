@@ -65,9 +65,9 @@ class VpnPermissionRequestManager @Inject constructor(private val activity: Frag
         }
     }
 
-    private fun onSuccess(): Result<Unit> {
+    private fun onSuccess(exitSelector: String?): Result<Unit> {
         this.requestNotificationPermission()
-        return this.activity.startVpnService()
+        return this.activity.startVpnService(exitSelector)
     }
 
     // Android 12+ has no API for checking if another app has Always-On enabled. Instead, the permission request
@@ -86,7 +86,7 @@ class VpnPermissionRequestManager @Inject constructor(private val activity: Frag
         }
     }
 
-    suspend fun requestVpnStart(): Result<Unit> =
+    suspend fun requestVpnStart(exitSelector: String?): Result<Unit> =
         when (val prepareResult = this.activity.prepareVpnService()) {
             is PrepareResult.CreateProfile -> {
                 val vpnPermissionRequestStart = TimeSource.Monotonic.markNow()
@@ -101,7 +101,7 @@ class VpnPermissionRequestManager @Inject constructor(private val activity: Frag
                             return Result.failure(errorCodeOther())
                         }
                 when (vpnPermissionRequestResult.resultCode) {
-                    RESULT_OK -> this.onSuccess()
+                    RESULT_OK -> this.onSuccess(exitSelector)
                     RESULT_CANCELED -> this.onCanceled(vpnPermissionRequestStart)
                     else -> {
                         log.error("unexpected VPN start activity result: $vpnPermissionRequestResult")
@@ -109,7 +109,7 @@ class VpnPermissionRequestManager @Inject constructor(private val activity: Frag
                     }
                 }
             }
-            is PrepareResult.Ready -> this.onSuccess()
+            is PrepareResult.Ready -> this.onSuccess(exitSelector)
             is PrepareResult.LegacyAlwaysOn -> Result.failure(errorCodeLegacyAlwaysOn())
         }
 }

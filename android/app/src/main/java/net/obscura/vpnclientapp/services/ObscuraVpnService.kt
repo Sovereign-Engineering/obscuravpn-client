@@ -1,10 +1,7 @@
 package net.obscura.vpnclientapp.services
 
-import android.Manifest
 import android.annotation.SuppressLint
-import android.app.PendingIntent
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.net.ConnectivityManager
 import android.net.ConnectivityManager.NetworkCallback
@@ -18,16 +15,11 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.system.OsConstants
-import androidx.core.app.NotificationChannelCompat
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import java.net.NetworkInterface
 import java.util.concurrent.CompletableFuture
+import kotlin.concurrent.Volatile
 import net.obscura.lib.util.Logger
 import net.obscura.vpnclientapp.BuildConfig
-import net.obscura.vpnclientapp.R
-import net.obscura.vpnclientapp.activities.MainActivity
 import net.obscura.vpnclientapp.client.ManagerCmd
 import net.obscura.vpnclientapp.client.ManagerCmdOk
 import net.obscura.vpnclientapp.client.RustFfi
@@ -37,16 +29,13 @@ import net.obscura.vpnclientapp.ui.JsonFfiBroadcastReceiver
 
 private val logNoFfi = Logger(ObscuraVpnService::class)
 
+const val PATH_REQUEST_VPN_START = "requestVpnStart"
+
 @SuppressLint("VpnServicePolicy")
 class ObscuraVpnService : VpnService() {
     private class Binder(
         val service: ObscuraVpnService,
     ) : IObscuraVpnService.Stub() {
-        override fun startTunnel(exitSelector: String?) {
-            service.log.info("startTunnel $exitSelector", "CddrThRg")
-            service.startTunnel(exitSelector)
-        }
-
         override fun stopTunnel() {
             service.log.info("stopTunnel", "Gf6f2lwW")
             service.stopTunnel()
@@ -73,9 +62,6 @@ class ObscuraVpnService : VpnService() {
     }
 
     companion object {
-        private const val NOTIFICATION_CHANNEL_ID = "vpn_channel"
-        private const val NOTIFICATION_ID = 1
-
         private val instance = java.util.concurrent.atomic.AtomicReference<ObscuraVpnService?>(null)
 
         @androidx.annotation.Keep
@@ -108,12 +94,13 @@ class ObscuraVpnService : VpnService() {
 
     private lateinit var rustFfi: RustFfi
     private lateinit var log: Logger
+    private lateinit var notificationManager: NotificationManager
     private lateinit var handler: Handler
 
     private val connectivityManager
         get() = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
 
-    private var vpnStatus: ManagerCmdOk.GetStatus.VpnStatus? = null
+    @Volatile private var vpnStatus: ManagerCmdOk.GetStatus.VpnStatus? = null
 
     private var currentNetwork: Network? = null
 
@@ -157,22 +144,37 @@ class ObscuraVpnService : VpnService() {
             handler,
         )
 
-        createNotificationChannel()
+        this.notificationManager = NotificationManager(this)
 
         loadStatus(null)
     }
 
-    private fun start() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            this.startForeground(
-                NOTIFICATION_ID,
-                this.buildNotification(),
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED,
-            )
-        } else {
-            this.startForeground(NOTIFICATION_ID, this.buildNotification())
-        }
-    }
+    private fun promoteToForeground(prepareResult: PrepareResult): Result<Unit> =
+        runCatching {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    // We only have permission to start a foreground service once our VPN profile has been created.
+                    if (prepareResult == PrepareResult.Ready) {
+                        this.startForeground(
+                            NotificationManager.NOTIFICATION_ID,
+                            this.notificationManager.buildNotification(this.vpnStatus, prepareResult),
+                            ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED,
+                        )
+                    } else {
+                        throw RuntimeException("VPN not prepared")
+                    }
+                } else {
+                    this.startForeground(
+                        NotificationManager.NOTIFICATION_ID,
+                        this.notificationManager.buildNotification(this.vpnStatus, prepareResult),
+                    )
+                }
+            }
+            .onFailure {
+                log.error(
+                    "failed to promote service to foreground: ${it.message}",
+                    "GKs2Deov",
+                )
+            }
 
     override fun onStartCommand(
         intent: Intent?,
@@ -180,10 +182,24 @@ class ObscuraVpnService : VpnService() {
         startId: Int,
     ): Int {
         log.info("onStartCommand $intent ${intent?.action} $flags $startId", "C9rsG0uh")
-        this.start()
-        if (intent?.action == SERVICE_INTERFACE) {
-            log.info("onStartCommand was system-initiated", "sktWFegO")
-            this.startTunnel(null)
+        val prepareResult = this.prepareVpnService()
+        val isForeground = this.promoteToForeground(prepareResult).isSuccess
+        when (intent?.action) {
+            ACTION_START_TUNNEL -> if (isForeground) this.startTunnel(intent.getStartTunnelExtras())
+            // `isForeground` is expected to always be true while disconnecting, but it's not a requirement.
+            ACTION_STOP_TUNNEL -> this.stopTunnel()
+            SERVICE_INTERFACE -> {
+                log.info("onStartCommand was system-initiated", "sktWFegO")
+                if (isForeground) this.startTunnel(null)
+            }
+        }
+        if (!isForeground) {
+            // This branch should only occur if the notification action is stale, which can happen if the user revokes
+            // VPN permissions while disconnected.
+            this.notificationManager.notify(this.vpnStatus, prepareResult)
+            // If this was started using `startForegroundService`/`getForegroundService`, not calling `startForeground`
+            // will still result in an ANR, but `START_STICKY` will recreate the service.
+            this.stopSelfResult(startId)
         }
         return START_STICKY
     }
@@ -192,9 +208,10 @@ class ObscuraVpnService : VpnService() {
         log.info("onBind $intent ${intent?.action}", "lckBR8hX")
         if (intent?.action == SERVICE_INTERFACE) {
             log.info("onBind was system-initiated", "4olaayXf")
-            this.start()
+            this.promoteToForeground(PrepareResult.Ready)
         }
-        return Binder(this)
+        // The default binder is what calls `onRevoke`, and will only be non-null if the action is `SERVICE_INTERFACE`.
+        return super.onBind(intent) ?: Binder(this)
     }
 
     override fun onRebind(intent: Intent?) {
@@ -202,7 +219,7 @@ class ObscuraVpnService : VpnService() {
         super.onRebind(intent)
         if (intent?.action == SERVICE_INTERFACE) {
             log.info("onRebind was system-initiated", "YsdxJ7Ni")
-            this.start()
+            this.promoteToForeground(PrepareResult.Ready)
         }
     }
 
@@ -210,7 +227,6 @@ class ObscuraVpnService : VpnService() {
         log.info("onUnbind $intent ${intent?.action}", "woAdA7g2")
         if (intent?.action == SERVICE_INTERFACE) {
             log.info("onUnbind was system-initiated", "oNOWQoPR")
-            this.stopTunnel()
             this.stopForeground(STOP_FOREGROUND_DETACH)
         }
         return true
@@ -218,16 +234,22 @@ class ObscuraVpnService : VpnService() {
 
     private fun onStatusUpdated(status: ManagerCmdOk.GetStatus) {
         log.info("status updated $status", "xXx7PxdD")
-        vpnStatus = status.vpnStatus
-        loadStatus(status.version)
-        updateNotification()
+        this.vpnStatus = status.vpnStatus
+        this.notificationManager.notify(
+            status.vpnStatus,
+            if (status.vpnStatus == ManagerCmdOk.GetStatus.VpnStatus.Disconnected) this.prepareVpnService()
+            else PrepareResult.Ready,
+        )
+        this.loadStatus(status.version)
     }
 
+    // This will only be called if the system (`SERVICE_INTERFACE`) is bound to this service.
+    // Unfortunately, the system unbinds after disconnecting the VPN, so this method will only be called if there's an
+    // active connection when VPN permissions are revoked.
     override fun onRevoke() {
-        super.onRevoke()
         log.info("onRevoke", "V3qS5kil")
         this.stopTunnel()
-        this.stopForeground(STOP_FOREGROUND_DETACH)
+        super.onRevoke()
     }
 
     override fun onDestroy() {
@@ -237,70 +259,6 @@ class ObscuraVpnService : VpnService() {
         }
         log.info("onDestroy", "yNLRpqaN")
         stopTunnel()
-    }
-
-    private fun updateNotification() {
-        // permission should already have been granted, but checking here to avoid crashes and to fix
-        // the lint errors
-        if (
-            ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.POST_NOTIFICATIONS,
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, buildNotification())
-        }
-    }
-
-    private fun buildNotification() =
-        NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setContentIntent(
-                PendingIntent.getActivity(
-                    this,
-                    0,
-                    Intent().apply {
-                        this.action = Intent.ACTION_MAIN
-                        this.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                        this.setClassName(
-                            BuildConfig.APPLICATION_ID,
-                            MainActivity::class.qualifiedName!!,
-                        )
-                    },
-                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-                )
-            )
-            .setContentTitle(getString(R.string.app_name))
-            .setContentText(
-                getString(
-                    R.string.notification_vpn_text,
-                    when (this.vpnStatus) {
-                        is ManagerCmdOk.GetStatus.VpnStatus.Connected ->
-                            getString(R.string.notification_vpn_status_connected)
-                        is ManagerCmdOk.GetStatus.VpnStatus.Connecting ->
-                            getString(R.string.notification_vpn_status_connecting)
-                        is ManagerCmdOk.GetStatus.VpnStatus.Disconnected,
-                        null -> getString(R.string.notification_vpn_status_disconnected)
-                    },
-                ),
-            )
-            .setSmallIcon(R.drawable.ic_stat_name)
-            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-            .setOngoing(true)
-            .setLocalOnly(true)
-            .setOnlyAlertOnce(true)
-            .setCategory(NotificationCompat.CATEGORY_SERVICE)
-            .build()
-
-    private fun createNotificationChannel() {
-        NotificationManagerCompat.from(this)
-            .createNotificationChannel(
-                NotificationChannelCompat.Builder(
-                        NOTIFICATION_CHANNEL_ID,
-                        NotificationManagerCompat.IMPORTANCE_LOW,
-                    )
-                    .setName(getString(R.string.notification_channel_vpn_name))
-                    .build(),
-            )
     }
 
     private fun loadStatus(knownVersion: String?) {

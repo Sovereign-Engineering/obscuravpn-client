@@ -2,7 +2,6 @@
 package net.obscura.vpnclientapp.services;
 
 interface IObscuraVpnService {
-    void startTunnel(String exitSelector);
     void stopTunnel();
 
     // Submits the command to the ObscuraLibrary.jsonFfi(String, CompletableFuture<String>)

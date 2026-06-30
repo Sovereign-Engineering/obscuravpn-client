@@ -40,6 +40,8 @@ class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.O
     private var isFreshLaunch: Boolean = true
     private var isVpnServiceBound: Boolean = false
 
+    private fun handleIntent(intent: Intent?) = intent?.data?.let { uri -> this.ui.handleObscuraUri(this, uri) }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -74,8 +76,7 @@ class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.O
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-
-        intent.data?.let { uri -> this.ui.handleObscuraUri(uri) }
+        this.handleIntent(intent)
     }
 
     override fun onResume() {
@@ -117,6 +118,8 @@ class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.O
             this,
             this.osStatusManager,
         )
+        // `getIntent` is preserved across activity recreation.
+        if (this.isFreshLaunch) this.handleIntent(this.intent)
         this.isFreshLaunch = false
     }
 

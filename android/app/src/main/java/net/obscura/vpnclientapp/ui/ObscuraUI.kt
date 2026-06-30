@@ -18,7 +18,9 @@ import net.obscura.vpnclientapp.R
 import net.obscura.vpnclientapp.activities.MainActivity
 import net.obscura.vpnclientapp.client.ErrorCodeException
 import net.obscura.vpnclientapp.client.ManagerCmdOk
+import net.obscura.vpnclientapp.client.jsonConfig
 import net.obscura.vpnclientapp.services.IObscuraVpnService
+import net.obscura.vpnclientapp.services.PATH_REQUEST_VPN_START
 import net.obscura.vpnclientapp.ui.bridge.WebCmdArgs
 
 private val log = Logger(ObscuraUI::class)
@@ -154,8 +156,7 @@ class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet?
                         this.isAutoConnectEligible = false
                         if (shouldAutoConnect) {
                             mainActivity.vpnPermissionRequestManager
-                                .requestVpnStart()
-                                .mapCatching { binder.startTunnel(null) }
+                                .requestVpnStart(null)
                                 .onSuccess { log.info("auto-connected VPN") }
                                 .onFailure { log.error("failed to auto-connect VPN: ${it.message}", tr = it) }
                         }
@@ -220,16 +221,24 @@ class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet?
         }
     }
 
-    fun handleObscuraUri(uri: Uri) {
-        log.debug("handling deep link: $uri")
-        val id =
-            when (uri.path) {
-                "/account" -> R.id.nav_account
+    fun handleObscuraUri(mainActivity: MainActivity, uri: Uri) {
+        log.debug("handling deep link $uri")
+        try {
+            when (val path = uri.path!!.drop(1)) {
+                PATH_REQUEST_VPN_START -> {
+                    this.bottomNavigation.selectedItemId = R.id.nav_connection
+                    mainActivity.lifecycleScope.launch {
+                        mainActivity.vpnPermissionRequestManager.requestVpnStart(null).onFailure {
+                            log.error("failed to request VPN start: ${it.message}")
+                        }
+                    }
+                }
                 else -> {
-                    log.error("unrecognized path for deep link: $uri")
-                    return
+                    this.setNavigationView(jsonConfig.decodeFromString<OsStatus.NavigationView>("\"$path\""))
                 }
             }
-        this.bottomNavigation.selectedItemId = id
+        } catch (e: Throwable) {
+            log.error("invalid deep link $uri: ${e.message}", tr = e)
+        }
     }
 }

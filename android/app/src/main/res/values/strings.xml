@@ -1,5 +1,8 @@
 <resources>
     <string name="app_name" translatable="false">Obscura VPN</string>
+    <string name="notification_action_disconnect">Disconnect</string>
+    <string name="notification_action_location">Location</string>
+    <string name="notification_action_quick_connect">Quick Connect</string>
     <string name="notification_channel_vpn_name" translatable="false">Obscura VPN</string>
     <string name="notification_vpn_text">Status: %1$s</string>
     <string name="notification_vpn_status_connecting">Connecting…</string>

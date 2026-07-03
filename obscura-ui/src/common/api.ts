@@ -34,9 +34,9 @@ export interface AccountInfo {
     id: AccountId,
     active: boolean,
     top_up: TopUpInfo | null,
-    subscription: SubscriptionInfo | null,
     apple_subscription: AppleSubscriptionInfo | null,
     google_subscription: GoogleSubscriptionInfo | null,
+    stripe_subscription: StripeSubscriptionInfo | null,
     auto_renews: number | null,
     current_expiry: number | null,
 }
@@ -50,8 +50,8 @@ export function hasCredit(accountInfo: AccountInfo | undefined): boolean {
     return new Date(expires * 1000).getTime() > new Date().getTime();
 }
 
-export interface SubscriptionInfo {
-    status: SubscriptionStatus,
+export interface StripeSubscriptionInfo {
+    status: StripeSubscriptionStatus,
     current_period_start: number,
     current_period_end: number,
     cancel_at_period_end: boolean,
@@ -67,7 +67,7 @@ export function hasActiveSubscription(account: AccountInfo): boolean {
     }
     if (hasGoogleSubscription(account)) {
         return true;
-    } 
+    }
     return false;
 }
 
@@ -116,7 +116,7 @@ export function accountTimeRemaining(account: AccountInfo): TimeRemaining {
 }
 
 /// https://docs.stripe.com/api/subscriptions/object#subscription_object-status
-export const enum SubscriptionStatus {
+export const enum StripeSubscriptionStatus {
     ACTIVE = "active",
     CANCELED = "canceled",
     INCOMPLETE = "incomplete",
@@ -129,12 +129,12 @@ export const enum SubscriptionStatus {
 
 // TODO: https://linear.app/soveng/issue/OBS-3495/add-active-fields-for-stripe-and-apple-subscriptions
 export function hasStripeSubscription(accountInfo: AccountInfo | undefined): boolean {
-  const subscription = accountInfo?.subscription;
+  const subscription = accountInfo?.stripe_subscription;
   const status = subscription?.status;
   const cancel_at_period_end = subscription?.cancel_at_period_end === true;
-  return status === SubscriptionStatus.ACTIVE
-    || status === SubscriptionStatus.TRIALING
-    || (status === SubscriptionStatus.PAST_DUE && !cancel_at_period_end);
+  return status === StripeSubscriptionStatus.ACTIVE
+    || status === StripeSubscriptionStatus.TRIALING
+    || (status === StripeSubscriptionStatus.PAST_DUE && !cancel_at_period_end);
 }
 
 // https://developer.apple.com/documentation/appstoreserverapi/status

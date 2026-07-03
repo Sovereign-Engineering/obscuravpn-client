@@ -3,7 +3,7 @@ import { useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as commands from '../bridge/commands';
 import * as ObscuraAccount from '../common/accountUtils';
-import { AccountInfo, AppleSubscriptionStatus, GoogleSubscriptionStatus, hasActiveSubscription, hasAppleSubscription, hasGoogleSubscription, SubscriptionStatus } from '../common/api';
+import { AccountInfo, AppleSubscriptionStatus, GoogleSubscriptionStatus, hasActiveSubscription, hasAppleSubscription, hasGoogleSubscription, StripeSubscriptionStatus } from '../common/api';
 import { AppContext, SubscriptionProductModel } from '../common/appContext';
 import { TranslationKey } from '../translations/i18n';
 import { ButtonLink } from './ButtonLink';
@@ -309,8 +309,8 @@ function useBuildSections(accountInfo: AccountInfo): Section[] {
   }
 
   // Stripe Subscription Section
-  const sub = accountInfo.subscription;
-  if (sub && sub.status !== SubscriptionStatus.CANCELED) {
+  const sub = accountInfo.stripe_subscription;
+  if (sub && sub.status !== StripeSubscriptionStatus.CANCELED) {
     sections.push([
       <InfoRow title={t('subscribedOnWeb')} importance='high' />,
       <InfoRow title={t('Status')} importance='medium' data={t(`stripeStatus-${sub.status}`)} dataColor={getStripeStatusColor(sub.status)} />,
@@ -366,18 +366,18 @@ function useBuildSections(accountInfo: AccountInfo): Section[] {
   return sections;
 }
 
-function getStripeStatusColor(status: SubscriptionStatus): string {
+function getStripeStatusColor(status: StripeSubscriptionStatus): string {
   switch (status) {
-    case SubscriptionStatus.ACTIVE:
-    case SubscriptionStatus.TRIALING:
+    case StripeSubscriptionStatus.ACTIVE:
+    case StripeSubscriptionStatus.TRIALING:
       return 'green';
-    case SubscriptionStatus.PAST_DUE:
-    case SubscriptionStatus.INCOMPLETE:
-    case SubscriptionStatus.PAUSED:
+    case StripeSubscriptionStatus.PAST_DUE:
+    case StripeSubscriptionStatus.INCOMPLETE:
+    case StripeSubscriptionStatus.PAUSED:
       return 'yellow';
-    case SubscriptionStatus.CANCELED:
-    case SubscriptionStatus.UNPAID:
-    case SubscriptionStatus.INCOMPLETE_EXPIRED:
+    case StripeSubscriptionStatus.CANCELED:
+    case StripeSubscriptionStatus.UNPAID:
+    case StripeSubscriptionStatus.INCOMPLETE_EXPIRED:
       return 'red';
     default:
       return 'gray';

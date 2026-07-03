@@ -183,22 +183,15 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         {
             // Hide at the HWND level. AppWindow.Hide() still nudges parts of WinUI's
             // window state machine that interact poorly with WebView2.
-            PInvoke.ShowWindow((HWND)GetWindowHandle(), SHOW_WINDOW_CMD.SW_HIDE);
+            PInvoke.ShowWindow(GetWindowHandle(), SHOW_WINDOW_CMD.SW_HIDE);
             e.Handled = true;
             e.Result = 0;
         }
     }
 
-    public void ShowAndActivate()
+    internal HWND GetWindowHandle()
     {
-        var hwnd = (HWND)GetWindowHandle();
-        PInvoke.ShowWindow(hwnd, PInvoke.IsIconic(hwnd) ? SHOW_WINDOW_CMD.SW_RESTORE : SHOW_WINDOW_CMD.SW_SHOW);
-        PInvoke.SetForegroundWindow(hwnd);
-    }
-
-    nint GetWindowHandle()
-    {
-        return WinRT.Interop.WindowNative.GetWindowHandle(this);
+        return (HWND)WinRT.Interop.WindowNative.GetWindowHandle(this);
     }
 
     class WindowsCommandMessage
@@ -404,15 +397,16 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
 
     internal async void HandleObscuraUrl(Uri uri)
     {
+        Log.Info("HandleObscuraUrl called");
         switch (uri.AbsolutePath)
         {
             case "/open":
                 break;
             case "/account":
-                OsStatus.Instance.SetNavigationView(NavigationView.Account);
+                SelectNavigationView(NavigationView.Account);
                 break;
             case "/location":
-                OsStatus.Instance.SetNavigationView(NavigationView.Location);
+                SelectNavigationView(NavigationView.Location);
                 break;
             case "/payment-succeeded":
                 await _webUIReady.Task;
@@ -443,6 +437,19 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     internal void TitleBar_PaneToggleRequested(TitleBar _, object _1)
     {
         NavView.IsPaneOpen = !NavView.IsPaneOpen;
+    }
+
+    internal void SelectNavigationView(NavigationView view)
+    {
+        var item = NavView.MenuItems.Concat(NavView.FooterMenuItems)
+            .OfType<NavigationViewItem>()
+            .FirstOrDefault(i => i.Tag is int tag && tag == (int)view);
+        if (item == null)
+        {
+            Log.Warn($"No navigation pane item for view: {view}");
+            return;
+        }
+        NavView.SelectedItem = item;
     }
 
 #pragma warning disable CA1822

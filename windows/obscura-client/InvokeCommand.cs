@@ -67,7 +67,7 @@ public class SetNavigationViewCommand : IObscuraCommand
 
     public Task<string> RunAsync()
     {
-        OsStatus.Instance.SetNavigationView(View);
+        App.Current.SelectNavigationView(View);
         return Task.FromResult("null");
     }
 }

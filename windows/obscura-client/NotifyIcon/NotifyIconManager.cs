@@ -227,8 +227,8 @@ public sealed partial class NotifyIconManager
         var more = new MenuFlyoutItem { Text = "More Locations..." };
         more.Click += (_, _) =>
         {
-            OsStatus.Instance.SetNavigationView(NavigationView.Location);
             _app.ShowMainWindow();
+            _app.SelectNavigationView(NavigationView.Location);
         };
         sub.Items.Add(more);
 

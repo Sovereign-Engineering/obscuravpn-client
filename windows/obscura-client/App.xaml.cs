@@ -89,7 +89,7 @@ public partial class App : Application
 
         var args = AppInstance.GetCurrent().GetActivatedEventArgs();
         if (args.Kind != ExtendedActivationKind.StartupTask) {
-            _window.Activate();
+            ShowMainWindow();
         }
         HandleActivation(args);
     }
@@ -104,16 +104,21 @@ public partial class App : Application
         }
     }
 
+    internal void SelectNavigationView(NavigationView view)
+    {
+        _window?.SelectNavigationView(view);
+    }
+
     internal void ShowMainWindow()
     {
+        Log.Info("activating main window");
         if (_window == null)
         {
-            Log.Warn("ShowMainWindow was called, but window has to be recreated");
+            Log.Warn("creating new main window");
             _window = new MainWindow();
-            _window.Activate();
-            return;
         }
-        _window.ShowAndActivate();
+        _window.DispatcherQueue.TryEnqueue(_window.Activate);
+        PInvoke.SetForegroundWindow(_window.GetWindowHandle());
     }
 
     /// <summary>
@@ -216,9 +221,9 @@ public partial class App : Application
     private static async void OnRedirectActivated(object? sender, AppActivationArguments args)
     {
         var dispatcher = await _uiDispatcherReady.Task;
+        Current.ShowMainWindow();
         dispatcher.TryEnqueue(() =>
         {
-            Current.ShowMainWindow();
             HandleActivation(args);
         });
     }

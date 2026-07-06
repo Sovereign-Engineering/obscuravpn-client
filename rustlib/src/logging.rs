@@ -1,6 +1,7 @@
 #![cfg_attr(target_os = "linux", allow(unused))]
 
 use camino::{Utf8Path, Utf8PathBuf};
+use std::sync::{Arc, Mutex, Weak};
 use tracing_appender::non_blocking::{NonBlocking, WorkerGuard};
 use tracing_subscriber::{
     Layer, Registry,
@@ -12,13 +13,37 @@ use tracing_subscriber::{
 #[derive(Debug)]
 pub struct LogPersistence {
     path: Utf8PathBuf,
-    _flush_guard: WorkerGuard,
+    guard: Weak<WorkerGuard>,
 }
 
 impl LogPersistence {
     pub fn log_dir(&self) -> &Utf8Path {
         &self.path
     }
+}
+
+impl Drop for LogPersistence {
+    fn drop(&mut self) {
+        LOG_GUARDS
+            .lock()
+            .unwrap()
+            .retain(|other| !Weak::ptr_eq(&self.guard, &Arc::downgrade(other)));
+    }
+}
+
+static LOG_GUARDS: Mutex<Vec<Arc<WorkerGuard>>> = Mutex::new(Vec::new());
+
+fn flush_and_stop_persisted_log() {
+    LOG_GUARDS.lock().unwrap().clear();
+}
+
+extern "C" fn at_exit() {
+    tracing::error!(
+        message_id = "kQ3xE7pv",
+        "process exiting via exit(); atexit probe backtrace:\n{:#}",
+        std::backtrace::Backtrace::force_capture()
+    );
+    flush_and_stop_persisted_log();
 }
 
 #[cfg(any(target_os = "android", target_os = "ios"))]
@@ -42,7 +67,12 @@ fn build_log_roller(log_dir: &Utf8Path) -> anyhow::Result<(NonBlocking, LogPersi
         .compression(Compression::XZ(2))
         .build()
         .map(NonBlocking::new)
-        .map(|(writer, guard)| (writer, LogPersistence { path: log_dir.to_owned(), _flush_guard: guard }))
+        .map(|(writer, guard)| {
+            let guard = Arc::new(guard);
+            let persistence = LogPersistence { path: log_dir.to_owned(), guard: Arc::downgrade(&guard) };
+            LOG_GUARDS.lock().unwrap().push(guard);
+            (writer, persistence)
+        })
         .map_err(Into::into)
 }
 
@@ -67,6 +97,7 @@ pub fn init(base_layer: impl Layer<Registry> + Send + Sync, persistence_dir: Opt
     }) {
         let fs_layer = tracing_subscriber::fmt::Layer::default().json().with_writer(writer).with_filter(filter());
         tracing::subscriber::set_global_default(registry.with(fs_layer)).expect("failed to set global subscriber");
+        unsafe { libc::atexit(at_exit) };
         Some(persistence)
     } else {
         tracing::subscriber::set_global_default(registry).expect("failed to set global subscriber");
@@ -75,6 +106,7 @@ pub fn init(base_layer: impl Layer<Registry> + Send + Sync, persistence_dir: Opt
     tracing::info!(message_id = "rrnKY3lZ", "logging initialized");
     std::panic::set_hook(Box::new(|panic_info| {
         tracing::error!(message_id = "W6fhvnSf", "{panic_info}\n{:#}", std::backtrace::Backtrace::force_capture());
+        flush_and_stop_persisted_log();
     }));
     tracing::info!(message_id = "o0PqqebH", "panic logging hook set");
     persistence

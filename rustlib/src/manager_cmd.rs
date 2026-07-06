@@ -13,15 +13,15 @@ use strum::IntoStaticStr;
 use tokio::spawn;
 use uuid::Uuid;
 
-use crate::errors::ApiError;
-use crate::errors::{ConfigDirty, ConfigDirtyOrApiError};
-use crate::network_config::DnsContentBlock;
 use crate::{
     cached_value::CachedValue,
-    manager::{Manager, ManagerTrafficStats, Status},
+    client_state::ClientStateHandle,
+    config::PinnedLocation,
+    debug_bundle::{bundle_info::BundleInfo, debug_info::DebugInfo},
+    errors::{ApiError, ConfigDirty, ConfigDirtyOrApiError},
+    manager::{Manager, ManagerTrafficStats, Status, TunnelArgs},
+    network_config::DnsContentBlock,
 };
-use crate::{client_state::ClientStateHandle, debug_bundle::info::DebugInfo};
-use crate::{config::PinnedLocation, manager::TunnelArgs};
 
 /// High-level json command error codes, which are actionable for frontends.
 /// Actionable means any of:
@@ -130,6 +130,7 @@ pub enum ManagerCmd {
     },
     CreateDebugBundle {
         user_feedback: Option<String>,
+        bundle_info: BundleInfo,
     },
     GetDebugInfo {},
     GetExitList {
@@ -259,8 +260,8 @@ impl ManagerCmd {
             }
             Self::ApiGoogleBillingDetails { promo_code } => map_result(manager.google_billing_details(promo_code).await),
             Self::SetFeatureFlag { flag, active } => manager.run_on_client_state(|c| c.set_feature_flag(&flag, active)),
-            Self::CreateDebugBundle { user_feedback } => manager
-                .create_debug_bundle(user_feedback.as_deref())
+            Self::CreateDebugBundle { user_feedback, bundle_info } => manager
+                .create_debug_bundle(user_feedback.as_deref(), bundle_info)
                 .await
                 .map(ManagerCmdOk::CreateDebugBundle)
                 .map_err(|error| {

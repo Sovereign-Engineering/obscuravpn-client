@@ -12,24 +12,22 @@ use tokio::select;
 use tokio::sync::watch::{Receiver, Sender, channel};
 use uuid::Uuid;
 
-use crate::client_state::ClientStateHandle;
-use crate::errors::{ConfigDirty, ConfigDirtyOrApiError};
-use crate::manager_cmd::{ManagerCmdErrorCode, ManagerCmdOk};
-use crate::os::os_trait::Os;
 use crate::{
     backoff::Backoff,
-    client_state::{AccountStatus, ClientState},
+    cached_value::CachedValue,
+    client_state::{AccountStatus, ClientState, ClientStateHandle},
     config::{Config, ConfigLoadError, KeychainSetSecretKeyFn, PinnedLocation, feature_flags::FeatureFlags},
-    debug_bundle::create_debug_bundle,
-    errors::{ApiError, ConnectErrorCode},
+    debug_bundle::{bundle_info::BundleInfo, create_debug_bundle, debug_info::DebugInfo},
+    errors::{ApiError, ConfigDirty, ConfigDirtyOrApiError, ConnectErrorCode},
     exit_selection::ExitSelector,
     logging::LogPersistence,
+    manager_cmd::{ManagerCmdErrorCode, ManagerCmdOk},
     net::NetworkInterface,
     network_config::DnsContentBlock,
+    os::os_trait::Os,
     quicwg::TransportKind,
     tunnel_state::TunnelState,
 };
-use crate::{cached_value::CachedValue, debug_bundle::info::DebugInfo};
 
 pub struct Manager {
     client_state: ClientStateHandle,
@@ -311,11 +309,14 @@ impl Manager {
         }
     }
 
-    pub async fn create_debug_bundle(&self, user_feedback: Option<&str>) -> anyhow::Result<String> {
+    pub async fn create_debug_bundle(&self, user_feedback: Option<&str>, bundle_info: BundleInfo) -> anyhow::Result<String> {
         let user_feedback = user_feedback.map(ToOwned::to_owned);
         let log_dir = self.log_persistence.as_ref().map(LogPersistence::log_dir).map(ToOwned::to_owned);
         let debug_info = self.get_debug_info().await;
-        tokio::task::spawn_blocking(move || create_debug_bundle(user_feedback.as_deref(), debug_info, log_dir.as_deref()).map(Into::into)).await?
+        tokio::task::spawn_blocking(move || {
+            create_debug_bundle(user_feedback.as_deref(), bundle_info, debug_info, log_dir.as_deref()).map(Into::into)
+        })
+        .await?
     }
 
     pub async fn get_debug_info(&self) -> DebugInfo {

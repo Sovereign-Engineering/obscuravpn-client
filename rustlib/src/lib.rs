@@ -26,7 +26,7 @@ pub mod android;
 pub mod apple;
 mod cached_value;
 mod constants;
-mod debug_bundle;
+pub mod debug_bundle;
 mod dns;
 #[cfg(target_os = "linux")]
 pub mod linux;

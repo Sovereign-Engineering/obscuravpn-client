@@ -35,9 +35,29 @@ sealed interface ManagerCmd {
     @Serializable(with = CreateDebugBundle.Serializer::class)
     data class CreateDebugBundle(
         val userFeedback: String?,
+        val bundleInfo: BundleInfo,
     ) : ManagerCmd {
         internal object Serializer :
             ExternallyTaggedEnumVariantSerializer<CreateDebugBundle>("createDebugBundle", generatedSerializer())
+
+        @Serializable
+        data class BundleInfo(
+            val androidSdk: Int?,
+            val appVersion: String,
+            val bootTimestamp: String?,
+            val brand: String?,
+            val lowPowerMode: Boolean?,
+            val memoryAvailGib: Double?,
+            val memoryTotalGib: Double?,
+            val model: String?,
+            val osVersion: String?,
+            val processId: Int?,
+            val processName: String?,
+            val processorCountActive: Int?,
+            val processorName: String?,
+            val thermalState: String?,
+            val uptimeHours: Double?,
+        )
     }
 
     @KeepGeneratedSerializer

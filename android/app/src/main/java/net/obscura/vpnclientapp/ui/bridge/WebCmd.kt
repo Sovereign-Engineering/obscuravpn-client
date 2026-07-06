@@ -68,9 +68,13 @@ internal sealed interface WebCmd {
             jsonUnit.also {
                 args.osStatusManager.update { this.debugBundleStatus.inProgress = true }
                 val path = runCatching {
-                    JsonFfiCmd(jsonConfig.encodeToString(ManagerCmd.CreateDebugBundle(userFeedback))).run(args).let {
-                        jsonConfig.decodeFromString<String>(it)
-                    }
+                    JsonFfiCmd(
+                            jsonConfig.encodeToString(
+                                ManagerCmd.CreateDebugBundle(userFeedback, bundleInfo(args.context))
+                            )
+                        )
+                        .run(args)
+                        .let { jsonConfig.decodeFromString<String>(it) }
                 }
                 args.osStatusManager.update {
                     this.debugBundleStatus.inProgress = false

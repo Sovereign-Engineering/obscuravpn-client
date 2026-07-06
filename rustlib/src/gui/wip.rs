@@ -8,6 +8,7 @@ use futures::StreamExt;
 use gtk4::gio::{DBusError, DBusProxy, ResourceLookupFlags};
 use gtk4::glib::translate::ToGlibPtr as _;
 use ksni::TrayMethods;
+use obscuravpn_client::debug_bundle::bundle_info::BundleInfo;
 use obscuravpn_client::exit_selection::ExitSelector;
 use obscuravpn_client::linux::{ClientError, run_command};
 use obscuravpn_client::manager::{self, TunnelArgs};
@@ -750,7 +751,10 @@ fn command_bridge(
             glib_async_run_mgr_cmd_and_reply(mgr_cmd, &value_context, reply, None);
         }
         Cmd::DebuggingArchive { user_feedback } => {
-            let mgr_cmd: ManagerCmd = ManagerCmd::CreateDebugBundle { user_feedback };
+            let mgr_cmd: ManagerCmd = ManagerCmd::CreateDebugBundle {
+                user_feedback,
+                bundle_info: BundleInfo { app_version: OsStatus::default().src_version, ..Default::default() },
+            };
 
             tokio_to_glib_local_fut_pipe::<Result<String, String>, _, _, _>(
                 glib::clone!(

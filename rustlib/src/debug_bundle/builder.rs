@@ -1,7 +1,6 @@
 use super::zipper::Zipper;
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
-use chrono::{SecondsFormat, Utc};
 use serde::Serialize;
 use std::fmt::{Debug, Display};
 
@@ -11,7 +10,7 @@ pub struct DebugBundleBuilder {
 }
 
 impl DebugBundleBuilder {
-    pub fn new() -> anyhow::Result<Self> {
+    pub fn new(bundle_timestamp: &str) -> anyhow::Result<Self> {
         let dst_parent = Utf8PathBuf::try_from(std::env::temp_dir())
             .context("temp dir path wasn't valid UTF-8")?
             .join("debug-archives");
@@ -20,9 +19,9 @@ impl DebugBundleBuilder {
             &dst_parent,
             format!(
                 "Obscura Debug Bundle {}",
-                // On Android, colons can't be used in user data directories.
-                // Remove them in case users try to save the archive to one of these locations (and the saving app doesn't cleanse the name).
-                Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true).replace(':', "_")
+                // On Android, colons can't be used in paths under user data directories. Not all apps normalize the
+                // name before saving, so we sanitize the name defensively.
+                bundle_timestamp.replace(':', "_")
             ),
         )?;
         Ok(Self { zipper })

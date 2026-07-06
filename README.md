@@ -328,9 +328,44 @@ To confirm that the Developer ID provisioning profile and codesigning are set up
 
 ## Linux
 
-> [!WARNING]
-> As of 2024-07-04, the Linux client is not maintained.
+For local development, build and run any of the binaries (each builds in the same Debian
+container as the release):
+
+- `contrib/bin/linux_run_gui.sh`: builds and runs the GUI.
+- `contrib/bin/linux_run_cli.sh`: builds and runs the `obscura` CLI, passing its arguments through.
+- `contrib/bin/linux_run_service.sh`: builds and runs the `obscura` system service the GUI and CLI talk to.
+
+### Building and signing packages
+
+Build all the packages (`obscura-cli`, `obscura-gui`, `obscura`) and the signed
+apt/dnf/pacman repositories:
 
 ```bash
-cargo build --release && sudo RUST_LOG=info ./target/release/obscuravpn-client
+./contrib/bin/linux-build-packages.bash
 ```
+
+It derives the signing key from `linux/signing_keys/current.public.asc` (exporting its secret
+from your gpg keyring) and prompts for its passphrase. Publish the three repository trees it
+produces, `result-linux/dist-prod/{deb,rpm,arch}`, at `https://linux-pkgs.obscura.com/{deb,rpm,arch}`.
+Pass `--test` to build instead with the committed keys in `linux/signing_keys_test/`.
+
+### Signing key rotation
+
+`linux/signing_keys/` holds `current.public.asc` (signs releases) and `next.public.asc`
+(the next key, shipped ahead). It also holds `rotate_signing_key.bash`. The directory is
+self-contained: copy it to the isolated machine that holds the secret keys, run the script
+there, and copy `current.public.asc`, `next.public.asc`, and `revocation.asc` back.
+
+Revoked keys ship in the repositories so already-installed clients stop trusting them. Each format handles revocation differently:
+
+- **deb**: nothing to do beyond dropping the key. `obscura-repository` replaces the keyring
+  file wholesale on upgrade, so the dropped key is gone from every client.
+- **rpm**: the revoked key is dropped from `RPM-GPG-KEY-obscura` (so new installs never
+  trust it) and its fingerprint is listed in `RPM-GPG-KEY-obscura-revoked`.
+  `obscura-package-signing-key-refresh.timer` (in `obscura-repository`) removes listed
+  keys from the rpm keystore within a day, and imports newly shipped keys, because rpm
+  itself never re-reads the key file once a key is imported (not on upgrade, and
+  scriptlets cannot import while the transaction lock is held).
+- **arch**: the fingerprint is added to `obscura-revoked` and the revoked key to `obscura.gpg`;
+  `pacman-key --populate obscura` (run from the keyring package's install hook on every
+  upgrade) disables it.

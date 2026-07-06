@@ -80,7 +80,11 @@
           src = ./rustlib;
 
           strictDeps = true;
-          nativeBuildInputs = [ pkgs.cmake ];
+          nativeBuildInputs = [ pkgs.cmake pkgs.pkg-config ];
+        };
+        rustDepsArgs-gui = rustDepsArgs // {
+          cargoExtraArgs = "--locked --bin obscura-gui --features=gui";
+          buildInputs = [ pkgs.glib pkgs.gtk4 pkgs.webkitgtk_6_0 ];
         };
         rustDepsArgs-android = rustDepsArgs // androidRustEnv // {
           buildInputs = [ android.androidsdk ];
@@ -89,19 +93,12 @@
           doCheck = false;
 
           # TODO: Long-term it is probably better to just configure the environment ourselves using nixpkgs's standard cross-compilation framework. Right now this is a weird state where we are "secretly" cross-compiling.
-          cargoBuildCommand = "cargo ndk -t arm64-v8a build --release";
-          cargoCheckCommand = "cargo ndk -t arm64-v8a check --release";
+          cargoBuildCommand = "cargo ndk -t arm64-v8a build --release --lib";
+          cargoCheckCommand = "cargo ndk -t arm64-v8a check --release --lib";
         };
-        rustDepsArgs-musl = rustDepsArgs // {
-          nativeBuildInputs = rustDepsArgs.nativeBuildInputs ++ [ pkgs.pkgsCross.musl64.stdenv.cc ];
-          CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
-          CC_x86_64_unknown_linux_musl =
-            "${pkgs.pkgsCross.musl64.stdenv.cc}/bin/${pkgs.pkgsCross.musl64.stdenv.cc.targetPrefix}cc";
-        };
-
         rustArgs = rustDepsArgs // { cargoArtifacts = craneLib.buildDepsOnly rustDepsArgs; };
         rustArgs-android = rustDepsArgs-android // { cargoArtifacts = craneLib.buildDepsOnly rustDepsArgs-android; };
-        rustArgs-musl = rustDepsArgs-musl // { cargoArtifacts = craneLib.buildDepsOnly rustDepsArgs-musl; };
+        rustArgs-gui = rustDepsArgs-gui // { cargoArtifacts = craneLib.buildDepsOnly rustDepsArgs-gui; };
 
         rustLibArgs = {
           # Environment variables for cbindgen, see rustlib/build.rs
@@ -113,7 +110,40 @@
 
         rust = craneLib.buildPackage (rustArgs // rustLibArgs);
         rust-android = craneLib.buildPackage (rustArgs-android // rustLibArgs);
-        rust-static = craneLib.buildPackage rustArgs-musl;
+        rust-cli-bin = craneLib.buildPackage (rustArgs // {
+          cargoExtraArgs = "--locked --bin obscura";
+          meta.mainProgram = "obscura";
+        });
+        gui-gresources = pkgs.stdenv.mkDerivation {
+          name = "gui-gresources";
+          src = lib.fileset.toSource {
+            root = ./rustlib;
+            fileset = lib.fileset.unions [
+              ./rustlib/gen-gresource-xml.py
+              ./rustlib/src/gui/icons.gresource.xml
+              ./rustlib/src/gui/icons
+            ];
+          };
+          nativeBuildInputs = with pkgs; [ glib libxml2 python3 ];
+          buildPhase = ''
+            runHook preBuild
+            glib-compile-resources --sourcedir=src/gui --target=icons.gresource src/gui/icons.gresource.xml
+            python3 gen-gresource-xml.py ${web-linux} webui.generated.xml
+            glib-compile-resources --target=webui.gresource webui.generated.xml
+            runHook postBuild
+          '';
+          installPhase = ''
+            runHook preInstall
+            mkdir -p "$out"
+            cp icons.gresource webui.gresource "$out"/
+            runHook postInstall
+          '';
+        };
+        rust-gui-bin = craneLib.buildPackage (rustArgs-gui // {
+          meta.mainProgram = "obscura-gui";
+          OBSCURA_VERSION = version;
+          OBSCURA_GRESOURCES_DIR = "${gui-gresources}";
+        });
 
         xtask = craneLib.buildPackage {
           src = ./xtask;
@@ -203,6 +233,7 @@
         web-android = mkWeb "android";
         web-ios = mkWeb "iphoneos";
         web-macos = mkWeb "macosx";
+        web-linux = mkWeb "linux";
 
         # https://nixos.org/manual/nixpkgs/stable/#gradle
         gradleDerivation = { name, task, appOutputs }@args:
@@ -322,9 +353,14 @@
             taplo format --check
             touch $out
           '';
-        } // lib.optionalAttrs pkgs.stdenv.isLinux { inherit rust-static; } // {
-          clippy =
-            craneLib.cargoClippy (rustArgs // { cargoClippyExtraArgs = "--all-features --all-targets -- -Dwarnings"; });
+        } // lib.optionalAttrs pkgs.stdenv.isLinux {
+          inherit rust-cli-bin rust-gui-bin;
+          clippy-gui = craneLib.cargoClippy (rustArgs-gui // {
+            cargoClippyExtraArgs = "-- -Dwarnings";
+            OBSCURA_GRESOURCES_DIR = "${gui-gresources}";
+          });
+        } // {
+          clippy = craneLib.cargoClippy (rustArgs // { cargoClippyExtraArgs = "--all-targets -- -Dwarnings"; });
 
           shellcheck = pkgs.runCommand "shellcheck" { nativeBuildInputs = [ pkgs.shellcheck ]; } ''
             shopt -s globstar
@@ -390,7 +426,8 @@
               pkgs.swiftformat
               pkgs.taplo
               rustToolchain.passthru.availableComponents.rustfmt # Just rustfmt, nothing else
-            ] ++ rustArgs.nativeBuildInputs ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.create-dmg ];
+            ] ++ lib.optionals pkgs.stdenv.isLinux rustArgs-gui.buildInputs ++ rustArgs.nativeBuildInputs
+              ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.create-dmg ];
 
             shellHook = ''
               export OBSCURA_MAGIC_IN_NIX_SHELL=1
@@ -429,11 +466,18 @@
               export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:${androidBuildTools}:$PATH"
             '';
           });
+        } // lib.optionalAttrs pkgs.stdenv.isLinux {
+          gui = pkgs.mkShell {
+            inputsFrom = [ rust-gui-bin ];
+            packages = [ pkgs.just pkgs.python3 ];
+            OBSCURA_GRESOURCES_DIR = "${gui-gresources}";
+          };
         };
 
         packages = {
-          inherit apks-foss apks-play aab-play-debug aab-play-release hash licenses licenses-node licenses-rust rust
-            web-android web-ios web-macos;
-        } // lib.optionalAttrs pkgs.stdenv.isLinux { inherit rust-static; };
+          inherit apks-foss apks-play aab-play-debug aab-play-release gui-gresources hash licenses licenses-node
+            licenses-rust rust web-android web-ios web-linux web-macos;
+          version = pkgs.writeText "version.txt" version;
+        } // lib.optionalAttrs pkgs.stdenv.isLinux { inherit rust-cli-bin rust-gui-bin; };
       });
 }

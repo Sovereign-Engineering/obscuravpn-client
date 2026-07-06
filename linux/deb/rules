@@ -1,0 +1,18 @@
+#!/usr/bin/make -f
+%:
+	dh $@
+
+override_dh_auto_install:
+	install -Dm755 obscura debian/obscura-cli/usr/bin/obscura
+	install -Dm644 /repo/linux/common/obscura.service debian/obscura-cli/lib/systemd/system/obscura.service
+	install -Dm755 obscura-gui debian/obscura-gui/usr/bin/obscura-gui
+	install -Dm644 /repo/linux/common/net.obscura.vpn.gui.desktop debian/obscura-gui/usr/share/applications/net.obscura.vpn.gui.desktop
+	install -Dm644 /repo/linux/common/icons/net.obscura.vpn.gui-128.png debian/obscura-gui/usr/share/icons/hicolor/128x128/apps/net.obscura.vpn.gui.png
+	install -Dm644 /repo/linux/common/icons/net.obscura.vpn.gui-256.png debian/obscura-gui/usr/share/icons/hicolor/256x256/apps/net.obscura.vpn.gui.png
+	install -Dm644 /repo/linux/deb/apparmor/obscura-gui debian/obscura-gui/etc/apparmor.d/obscura-gui
+	install -Dm644 obscura-archive-keyring.gpg debian/obscura-repository/usr/share/keyrings/obscura-archive-keyring.gpg
+	install -Dm644 obscura.sources debian/obscura-repository/etc/apt/sources.list.d/obscura.sources
+
+override_dh_install:
+	dh_apparmor --profile-name=obscura-gui -pobscura-gui
+	dh_installsysusers -pobscura-cli

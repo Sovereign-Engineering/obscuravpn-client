@@ -1,0 +1,31 @@
+Source: obscura
+Section: net
+Priority: optional
+Maintainer: Obscura Repository Signer <packages@obscura.com>
+Build-Depends: debhelper-compat (= 13), dh-apparmor
+Standards-Version: 4.6.2
+Homepage: https://obscura.com
+
+Package: obscura-cli
+Architecture: @ARCH@
+Depends: libc6 (>= 2.39), passwd, util-linux-extra, ${shlibs:Depends}, ${misc:Depends}
+Description: Obscura VPN command-line client and service
+ Privacy that's more than a promise.
+
+Package: obscura-gui
+Architecture: @ARCH@
+Depends: libc6 (>= 2.39), ${shlibs:Depends}, ${misc:Depends}, obscura-cli (= ${binary:Version})
+Description: Obscura VPN desktop application
+ Privacy that's more than a promise.
+
+Package: obscura
+Architecture: all
+Depends: obscura-gui
+Description: Obscura VPN (metapackage)
+ Privacy that's more than a promise.
+
+Package: obscura-repository
+Architecture: all
+Depends: ${misc:Depends}
+Description: Obscura VPN apt repository configuration and signing key
+ Privacy that's more than a promise.

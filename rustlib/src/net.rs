@@ -57,6 +57,7 @@ pub fn interface_mtu(interface: &NetworkInterface) -> anyhow::Result<i32> {
     // Note: It isn't clear if the name needs to be null terminated if it is the maximum length but we just assume so.
     anyhow::ensure!(name_buf.len() > name.len(), "Interface name too long.");
     name_buf[..name.len()].copy_from_slice(name.as_bytes());
+    #[allow(clippy::useless_transmute)]
     let name_buf: [libc::c_char; libc::IFNAMSIZ] = unsafe { mem::transmute(name_buf) };
 
     unsafe {

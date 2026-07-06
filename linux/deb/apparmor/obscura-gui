@@ -1,0 +1,8 @@
+abi <abi/4.0>,
+include <tunables/global>
+
+profile obscura-gui /usr/bin/obscura-gui flags=(unconfined) {
+  userns,
+
+  include if exists <local/obscura-gui>
+}

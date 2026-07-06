@@ -1,4 +1,4 @@
-url --mirrorlist=http://mirrors.fedoraproject.org/mirrorlist?repo=fedora-43&arch=x86_64
+url --mirrorlist=http://mirrors.fedoraproject.org/mirrorlist?repo=fedora-44&arch=x86_64
 
 text
 lang en_US.UTF-8

@@ -13,6 +13,16 @@ export enum NEVPNStatus {
     Disconnecting = 'disconnecting',
 }
 
+export type LinuxDegradation = 'stopped' | 'failed' | 'disabled' | 'notInstalled' | 'noAccess';
+export type Degradation = 'otherDegraded' | { linuxDegraded: LinuxDegradation };
+export type ServiceStatus = 'healthy' | { degraded: Degradation };
+
+export function linuxDegradation(serviceStatus: ServiceStatus | undefined): LinuxDegradation | undefined {
+    if (serviceStatus === undefined || serviceStatus === 'healthy') return undefined;
+    const degraded = serviceStatus.degraded;
+    return typeof degraded === 'object' ? degraded.linuxDegraded : undefined;
+}
+
 export enum UpdaterStatusType {
     Uninitiated = 'uninitiated',
     Initiated = 'initiated',
@@ -56,6 +66,7 @@ export interface OsStatusShared {
       inProgressCounter: number,
     },
     canSendMail: boolean,
+    serviceStatus?: ServiceStatus,
     loginItemStatus?: {
       registered: boolean,
       error?: string

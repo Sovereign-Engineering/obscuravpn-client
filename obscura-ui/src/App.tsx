@@ -9,7 +9,7 @@ import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import classes from './App.module.css';
 import * as commands from './bridge/commands';
 import { HAS_NE_VPN_STATUS, IS_HANDHELD_DEVICE, logReactError, PLATFORM, Platform, useSystemChecks } from './bridge/SystemProvider';
-import { AppContext, AppStatus, ConnectionInProgress, connectionIsIdle, getEffectiveOsStatus, NavigationView, NEVPNStatus, OsStatus, OsStatusWVpnStatus } from './common/appContext';
+import { AppContext, AppStatus, ConnectionInProgress, connectionIsIdle, getEffectiveOsStatus, linuxDegradation, NavigationView, NEVPNStatus, OsStatus, OsStatusWVpnStatus } from './common/appContext';
 import commonClasses from './common/common.module.css';
 import { fmt } from './common/fmt';
 import { NotificationId } from './common/notifIds';
@@ -327,6 +327,14 @@ export default function () {
     load: commands.checkForUpdates,
     returnError: true,
   });
+
+  if (osStatus !== null) {
+    const degradation = linuxDegradation(osStatus.serviceStatus);
+    if (degradation !== undefined) {
+      const effectiveOsStatus = { ...osStatus, osVpnStatus: getEffectiveOsStatus(osStatus, appStatus) };
+      return <SplashScreen osStatus={effectiveOsStatus} degradation={degradation} />;
+    }
+  }
 
   if (loading) {
     const effectiveOsStatus = osStatus === null ? null : { ...osStatus, osVpnStatus: getEffectiveOsStatus(osStatus, appStatus) };

@@ -8,6 +8,7 @@ export enum Platform {
   iOS = 'iphoneos',
   Android = 'android',
   Windows = 'windows',
+  Linux = 'linux',
 }
 
 export function systemName(): string {
@@ -20,6 +21,8 @@ export function systemName(): string {
       return "Android";
     case Platform.Windows:
       return "Windows";
+    case Platform.Linux:
+      return "Linux";
   }
 }
 

@@ -113,7 +113,7 @@ impl From<&ApiError> for ManagerCmdErrorCode {
 
 // Keep synchronized with ../../apple/shared/NetworkExtensionIpc.swift
 #[serde_with::serde_as]
-#[derive(derive_more::Debug, Serialize, Deserialize)]
+#[derive(derive_more::Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum ManagerCmd {
     ApiAppleAssociateAccount {

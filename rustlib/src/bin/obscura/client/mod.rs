@@ -1,13 +1,12 @@
-mod client_error;
 mod ipc;
 
-use crate::client::client_error::ClientError;
-use crate::client::ipc::{ipc_test, run_command, try_group_refresh_fix};
+use crate::client::ipc::ipc_test;
 use crate::{ClientCommand, ClientLoginArgs, ClientStatusArgs, GlobalArgs};
 use anyhow::Context;
 use chrono::{MappedLocalTime, TimeZone};
 use obscuravpn_api::types::{AccountId, AccountInfo};
 use obscuravpn_client::exit_selection::ExitSelector;
+use obscuravpn_client::linux::{ClientError, run_command};
 use obscuravpn_client::manager::{Status, TunnelArgs, VpnStatus};
 use obscuravpn_client::manager_cmd::ManagerCmd;
 
@@ -16,7 +15,7 @@ pub async fn run(global_args: GlobalArgs, cmd: ClientCommand) -> Result<(), Clie
     if global_args.no_group_refresh {
         tracing::debug!(message_id = "jpjl9cI9", "skipping group refresh fix due to CLI flag");
     } else {
-        try_group_refresh_fix().await;
+        obscuravpn_client::linux::try_group_refresh_fix().await;
     }
     match cmd {
         ClientCommand::Login(args) => login(args).await,

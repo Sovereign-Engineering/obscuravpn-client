@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Obscura VPN
+GenericName=VPN Client
+Comment=Privacy that's more than a promise
+Exec=obscura-gui
+Icon=net.obscura.vpn.gui
+Terminal=false
+Categories=Network;Security;
+Keywords=VPN;Privacy;Obscura;
+StartupWMClass=net.obscura.vpn.gui

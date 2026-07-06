@@ -28,6 +28,8 @@ mod cached_value;
 mod constants;
 mod debug_bundle;
 mod dns;
+#[cfg(target_os = "linux")]
+pub mod linux;
 mod liveness;
 pub mod local_network;
 mod logging;

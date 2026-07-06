@@ -17,9 +17,11 @@ fn add_operator_impl(mut users: Vec<String>) -> ! {
         users.push(user);
     }
 
+    let sudo = if nix::unistd::geteuid().is_root() { None } else { Some("sudo") };
+
     let mut failed_any = false;
     for user in &users {
-        let command = ["sudo", "usermod", "-a", "-G", "obscura", user.as_str()];
+        let command: Vec<&str> = sudo.into_iter().chain(["usermod", "-a", "-G", "obscura", user.as_str()]).collect();
         let failed = std::process::Command::new(command[0])
             .args(&command[1..])
             .status()
@@ -28,7 +30,7 @@ fn add_operator_impl(mut users: Vec<String>) -> ! {
             .is_err();
         failed_any |= failed;
         if failed {
-            match shlex::try_join(command) {
+            match shlex::try_join(command.iter().copied()) {
                 Ok(quoted_command) => eprintln!("Failed to add '{user}' to 'obscura' group using:\n    {quoted_command}"),
                 Err(_) => eprintln!("Failed to add {user}"),
             }
@@ -37,7 +39,7 @@ fn add_operator_impl(mut users: Vec<String>) -> ! {
         }
     }
     // Unlock the group (removes `!*` or `!` from `/etc/gshadow`). Otherwise, `sg` will ask for the non-existent group password on some systems
-    let command = ["sudo", "gpasswd", "-r", "obscura"];
+    let command: Vec<&str> = sudo.into_iter().chain(["gpasswd", "-r", "obscura"]).collect();
     let failed = std::process::Command::new(command[0])
         .args(&command[1..])
         .status()
@@ -46,7 +48,7 @@ fn add_operator_impl(mut users: Vec<String>) -> ! {
         .is_err();
     failed_any |= failed;
     if failed {
-        match shlex::try_join(command) {
+        match shlex::try_join(command.iter().copied()) {
             Ok(quoted_command) => eprintln!("Failed to unlock 'obscura' group using:\n    {quoted_command}"),
             Err(_) => {
                 eprintln!("Failed to unlock 'obscura' group. You may have to log out and log in once before using the obscura command without sudo.")

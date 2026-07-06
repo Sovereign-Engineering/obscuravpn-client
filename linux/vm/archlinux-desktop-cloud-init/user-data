@@ -102,6 +102,7 @@ write_files:
           "packages": [
               "curl",
               "net-tools",
+              "openssh",
               "firefox"
           ],
           "parallel_downloads": 0,

@@ -1,0 +1,7 @@
+[Unit]
+Description=Import updated Obscura package signing keys and revocations
+ConditionPathExists=/etc/pki/rpm-gpg/RPM-GPG-KEY-obscura
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/obscura-package-signing-key-refresh

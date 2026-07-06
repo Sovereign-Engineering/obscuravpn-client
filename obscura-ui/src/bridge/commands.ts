@@ -59,6 +59,12 @@ export async function jsonFfiCmd(cmd: string, arg = {}, timeoutMs: number | null
     })
 }
 
+export type LinuxFixAction = 'start' | 'enableAndStart' | 'addOperator';
+
+export async function linuxFix(action: LinuxFixAction): Promise<void> {
+    await invoke('linuxFix', { action });
+}
+
 export async function status(lastStatusId: string | null = null, timeoutMs: number | null = null): Promise<AppStatus> {
     return await jsonFfiCmd(
         'getStatus',

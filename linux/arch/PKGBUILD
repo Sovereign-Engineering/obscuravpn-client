@@ -1,0 +1,44 @@
+pkgbase=obscura
+pkgname=('obscura-cli' 'obscura-gui' 'obscura' 'obscura-keyring')
+pkgver=@VERSION@
+pkgrel=1
+arch=('@TARGET_ARCH@')
+url='https://obscura.com'
+license=('PolyForm-Noncommercial-1.0.0')
+options=('!debug' '!strip')
+
+package_obscura-cli() {
+	pkgdesc='Obscura VPN command-line client and service'
+	depends=('glibc' 'gcc-libs' 'shadow')
+	install -Dm755 "$srcdir/obscura" "$pkgdir/usr/bin/obscura"
+	install -Dm644 /repo/linux/common/obscura.service "$pkgdir/usr/lib/systemd/system/obscura.service"
+	install -Dm644 /repo/linux/common/obscura-sysusers.conf "$pkgdir/usr/lib/sysusers.d/obscura.conf"
+	install -Dm644 /repo/LICENSE.md "$pkgdir/usr/share/licenses/obscura-cli/LICENSE.md"
+}
+
+package_obscura-gui() {
+	pkgdesc='Obscura VPN desktop application'
+	depends=('obscura-cli' 'gtk4' 'webkitgtk-6.0' 'libsoup3' 'glib2' 'gcc-libs' 'glibc' 'hicolor-icon-theme')
+	install -Dm755 "$srcdir/obscura-gui" "$pkgdir/usr/bin/obscura-gui"
+	install -Dm644 /repo/linux/common/net.obscura.vpn.gui.desktop "$pkgdir/usr/share/applications/net.obscura.vpn.gui.desktop"
+	install -Dm644 /repo/linux/common/icons/net.obscura.vpn.gui-128.png "$pkgdir/usr/share/icons/hicolor/128x128/apps/net.obscura.vpn.gui.png"
+	install -Dm644 /repo/linux/common/icons/net.obscura.vpn.gui-256.png "$pkgdir/usr/share/icons/hicolor/256x256/apps/net.obscura.vpn.gui.png"
+	install -Dm644 /repo/LICENSE.md "$pkgdir/usr/share/licenses/obscura-gui/LICENSE.md"
+}
+
+package_obscura() {
+	pkgdesc='Obscura VPN'
+	arch=('any')
+	depends=('obscura-gui')
+	install -Dm644 /repo/LICENSE.md "$pkgdir/usr/share/licenses/obscura/LICENSE.md"
+}
+
+package_obscura-keyring() {
+	pkgdesc='Obscura VPN pacman signing keyring'
+	arch=('any')
+	install=obscura-keyring.install
+	install -Dm644 "$srcdir/obscura.gpg" "$pkgdir/usr/share/pacman/keyrings/obscura.gpg"
+	install -Dm644 "$srcdir/obscura-trusted" "$pkgdir/usr/share/pacman/keyrings/obscura-trusted"
+	install -Dm644 "$srcdir/obscura-revoked" "$pkgdir/usr/share/pacman/keyrings/obscura-revoked"
+	install -Dm644 /repo/LICENSE.md "$pkgdir/usr/share/licenses/obscura-keyring/LICENSE.md"
+}

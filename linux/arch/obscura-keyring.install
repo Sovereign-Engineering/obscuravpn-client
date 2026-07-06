@@ -1,0 +1,9 @@
+post_install() {
+	if usr/bin/pacman-key -l >/dev/null 2>&1; then
+		pacman-key --populate obscura
+	fi
+}
+
+post_upgrade() {
+	post_install
+}

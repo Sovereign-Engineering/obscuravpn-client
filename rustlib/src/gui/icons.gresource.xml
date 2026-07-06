@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/com/obscura/vpn/icons">
+    <file preprocess="xml-stripblanks">icons/scalable/actions/obscura-connection-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/obscura-location-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/obscura-account-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/obscura-settings-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/obscura-about-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/obscura-help-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/obscura-developer-symbolic.svg</file>
+  </gresource>
+</gresources>

@@ -10,6 +10,8 @@ use obscuravpn_api::types::AccountId;
 use obscuravpn_api::types::CityCode;
 use obscuravpn_api::types::CountryCode;
 use obscuravpn_api::types::OneExit;
+use obscuravpn_api::types::OneRelay;
+use obscuravpn_api::types::RelayPreferredExit;
 use tempfile::tempdir;
 use uuid::Uuid;
 
@@ -144,6 +146,18 @@ fn test_ignore_invalid_fields() {
                     tier: 0,
                 }],
             }),
+            super::cached::Version::artificial(),
+        )),
+        cached_relays: Some(ConfigCached::new(
+            Arc::new(vec![OneRelay {
+                id: "NYC-001".into(),
+                city_code: CityCode { country_code: CountryCode("us".into()), city_code: "nyc".into() },
+                city_name: "New York".into(),
+                preferred_exits: vec![RelayPreferredExit { id: "nyc-wg-30".into() }],
+                ip_v4: "8.8.31.3".parse().unwrap(),
+                ports: vec![53, 443],
+                tls_cert: vec![1, 2, 3],
+            }]),
             super::cached::Version::artificial(),
         )),
         pinned_locations: vec![PinnedLocation { country_code: "CA".into(), city_code: "yyz".into(), pinned_at: SystemTime::UNIX_EPOCH }],

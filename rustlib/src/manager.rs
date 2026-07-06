@@ -174,7 +174,7 @@ impl Manager {
     }
 
     pub async fn maybe_update_exits(&self, freshness: Duration) -> Result<(), ApiError> {
-        self.client_state.maybe_update_exits(freshness).await
+        self.client_state.maybe_update_exits(freshness).await.map(|_| ())
     }
 
     pub fn subscribe(&self) -> Receiver<Status> {
@@ -337,7 +337,7 @@ impl Manager {
                     .config()
                     .cached_exits
                     .clone()
-                    .is_some_and(|e| Some(e.version()) != known_version.as_deref())
+                    .is_some_and(|e| Some(e.version_bytes()) != known_version.as_deref())
             })
             .await
             .map_err(|error| {
@@ -345,7 +345,11 @@ impl Manager {
                 ManagerCmdErrorCode::Other
             })?;
         let cached = client_state.config().cached_exits.clone().unwrap();
-        Ok(CachedValue { version: cached.version().to_vec(), last_updated: cached.last_updated, value: cached.value.clone() })
+        Ok(CachedValue {
+            version: cached.version_bytes().to_vec(),
+            last_updated: cached.last_updated,
+            value: cached.value.clone(),
+        })
     }
 
     pub fn run_on_client_state(&self, f: impl FnOnce(&ClientStateHandle)) -> Result<ManagerCmdOk, ManagerCmdErrorCode> {

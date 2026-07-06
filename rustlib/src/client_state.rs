@@ -31,7 +31,6 @@ use obscuravpn_api::{
     cmd::{ApiErrorKind, Cmd, CreateTunnel, DeleteTunnel, ListRelays, ListTunnels},
     types::{ObfuscatedTunnelConfig, OneRelay, TunnelConfig},
 };
-use rand::{seq::SliceRandom, thread_rng};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::net::SocketAddr;
@@ -56,6 +55,7 @@ pub struct ClientState {
     exit_update_lock: Arc<tokio::sync::Mutex<()>>,
     mtu: Option<u16>,
     network_interface: Option<NetworkInterface>,
+    relay_update_lock: Arc<tokio::sync::Mutex<()>>,
     wg_key_store: WgKeyStore,
     user_agent: String,
 }
@@ -95,6 +95,7 @@ impl ClientState {
                 mtu: None,
                 network_interface: None,
                 exit_update_lock: Default::default(),
+                relay_update_lock: Default::default(),
                 user_agent,
             })
             .0
@@ -223,8 +224,12 @@ impl ClientStateHandle {
         self.borrow().config.check_persisted()
     }
 
-    pub fn get_exit_list(&self) -> Option<ConfigCached<Arc<ExitList>>> {
+    pub fn get_cached_exit_list(&self) -> Option<ConfigCached<Arc<ExitList>>> {
         self.borrow().config.cached_exits.clone()
+    }
+
+    pub fn get_cached_relay_list(&self) -> Option<ConfigCached<Arc<Vec<OneRelay>>>> {
+        self.borrow().config.cached_relays.clone()
     }
 
     pub fn set_pinned_exits(&self, pinned_locations: Vec<PinnedLocation>) {
@@ -389,34 +394,33 @@ impl ClientStateHandle {
         Ok(TunnelConnection { conn, exit, network_config, relay, tunnel_id })
     }
 
-    fn choose_exit(&self, selector: &ExitSelector, relay: &OneRelay, selection_state: &mut ExitSelectionState) -> Option<String> {
-        let Some(exit_list) = self.get_exit_list() else {
-            tracing::warn!(message_id = "Iu1ahnge", "No exit list, choosing random preferred exit.");
-            return relay.preferred_exits.choose(&mut thread_rng()).map(|e| e.id.clone());
-        };
-        selection_state
-            .select_next_exit(selector, &exit_list.value.exits, relay)
-            .map(|e| e.id.clone())
-    }
-
     async fn new_tunnel(
         &self,
         exit_selector: &ExitSelector,
         network_interface: Option<&NetworkInterface>,
         selection_state: &mut ExitSelectionState,
     ) -> anyhow::Result<(Uuid, ObfuscatedTunnelConfig, StaticSecret, OneExit, OneRelay, QuicWgConnHandshaking), TunnelConnectError> {
-        // Ideally we would avoid return a failure immediately if the relay selection fails and continue the exit update in the background but we currently have no ability to execute tasks in the background for this type. The downside of a slight delay in the failure case is suboptimal but minor.
-
-        let (select_relay, update_exits) = tokio::join!(self.select_relay(network_interface), self.maybe_update_exits(Duration::from_secs(60)),);
-        match update_exits {
-            Ok(()) => {}
-            Err(error) => {
-                tracing::warn!(message_id = "oH5aigha", ?error, "Ignoring failure to update exit list: {}", error,);
+        let this = self.clone();
+        let exit_update = tokio::spawn(async move {
+            let r = this.maybe_update_exits(Duration::from_secs(60)).await;
+            if let Err(error) = &r {
+                tracing::warn!(message_id = "oH5aigha", ?error, "Failed to update exit list: {}", error);
             }
-        };
-        let (closest_relay, handshaking) = select_relay?;
+            r
+        });
 
-        let Some(exit) = self.choose_exit(exit_selector, &closest_relay, selection_state) else {
+        let (closest_relay, handshaking) = self.select_relay(network_interface).await?;
+
+        let exit_list = if let Some(l) = self.get_cached_exit_list() {
+            l
+        } else {
+            exit_update.await.unwrap().map_err(TunnelConnectError::ApiError)?
+        };
+
+        let exit = selection_state
+            .select_next_exit(exit_selector, &exit_list.value.exits, &closest_relay)
+            .map(|e| e.id.clone());
+        let Some(exit) = exit else {
             tracing::error!(
                 message_id = "naiThei6",
                 exit_selector =? exit_selector,
@@ -527,12 +531,26 @@ impl ClientStateHandle {
     }
 
     pub async fn select_relay(&self, network_interface: Option<&NetworkInterface>) -> Result<(OneRelay, QuicWgConnHandshaking), TunnelConnectError> {
-        let relays = self.api_request(ListRelays {}).await?;
+        let this = self.clone();
+        let relay_update = tokio::spawn(async move {
+            let r = this.maybe_update_relays(Duration::from_secs(60)).await;
+            if let Err(error) = &r {
+                tracing::warn!(message_id = "J8LVTgQm", ?error, "Failed to update relay list: {}", error,);
+            }
+            r
+        });
+        let relays = if let Some(l) = self.get_cached_relay_list() {
+            l
+        } else {
+            relay_update.await.unwrap()?
+        };
+
         let sni = self.0.borrow().config.sni_relay.clone().unwrap_or_else(|| DEFAULT_RELAY_SNI.into());
 
         tracing::info!(
             message_id = "eech6Ier",
-            relays =? relays,
+            relays.staleness_s =? relays.staleness().as_secs_f32(),
+            relays.version =? relays.version(),
             sni = sni,
             "Racing relays",
         );
@@ -545,7 +563,15 @@ impl ClientStateHandle {
                 this.mtu,
             )
         };
-        let racing_handshakes = race_relay_handshakes(network_interface, relays, sni, use_tcp_tls, quic_frame_padding, force_small_mtu, mtu)?;
+        let racing_handshakes = race_relay_handshakes(
+            network_interface,
+            &relays.value,
+            sni,
+            use_tcp_tls,
+            quic_frame_padding,
+            force_small_mtu,
+            mtu,
+        )?;
 
         let start = Instant::now();
         let mut deadline = start + Duration::from_secs(30);
@@ -654,34 +680,117 @@ impl ClientStateHandle {
         self.borrow().user_agent.clone()
     }
 
-    pub async fn maybe_update_exits(&self, freshness: Duration) -> Result<(), ApiError> {
-        // Outstanding borrows should not be held over .await
+    pub async fn maybe_update_exits(&self, freshness: Duration) -> Result<ConfigCached<Arc<ExitList>>, ApiError> {
         let exit_update_lock = self.borrow().exit_update_lock.clone();
         let _exit_update_guard = exit_update_lock.lock().await;
 
         let prev = self.borrow().config.cached_exits.clone();
-        let prev = prev.as_ref();
-        if prev.is_some_and(|c| c.staleness() < freshness) {
-            tracing::info!(message_id = "fao5ciJu", "Exit list is already up to date.");
-            return Ok(());
+        if let Some(list) = &prev
+            && list.staleness() < freshness
+        {
+            tracing::info!(
+                message_id = "Io3jai7l",
+                exits.staleness_s =? list.staleness().as_secs_f32(),
+                exits.version =? list.version(),
+                "Exit list fresh.",
+            );
+            return Ok(prev.unwrap());
         }
 
         let res = self.cached_api_request(ListExits2 {}, prev.as_ref().and_then(|p| p.etag())).await?;
 
         let etag = res.etag().map(|e| e.to_vec());
 
-        let Some(body) = res.into_body() else { return Ok(()) };
+        let Some(body) = res.into_body() else {
+            let Some(prev) = prev else {
+                return Err(ClientError::Other(anyhow::anyhow!("got response without body despite sending no etag")).into());
+            };
+            tracing::info!(
+                message_id = "dd1oXUQV",
+                exits.staleness_s = prev.staleness().as_secs_f32(),
+                exits.version =? prev.version(),
+                "Exit list etag matches"
+            );
+            let cached_exits = prev.revalidated(etag);
+            self.change_config(|config| config.cached_exits = Some(cached_exits.clone()));
+            return Ok(cached_exits);
+        };
 
         let version = match etag {
             Some(b) => config::cached::Version::ETag(b),
             None => {
-                tracing::warn!(message_id = "meequa8P", "Exit list had not ETag.");
+                tracing::warn!(message_id = "meequa8P", "Exit list had no ETag.");
                 config::cached::Version::artificial()
             }
         };
         let cached_exits = ConfigCached::new(Arc::new(body), version);
+        tracing::info!(
+            message_id = "hvrg8jRW",
+            exits.count = cached_exits.value.exits.len(),
+            version_old =? prev.as_ref().map(|p| p.version()),
+            version_new =? cached_exits.version(),
+            staleness_s =? prev.as_ref().map(|p| p.staleness().as_secs_f32()),
+            "Exit list updated."
+        );
         self.change_config(|config| config.cached_exits = Some(cached_exits.clone()));
-        Ok(())
+        Ok(cached_exits)
+    }
+
+    pub async fn maybe_update_relays(&self, freshness: Duration) -> Result<ConfigCached<Arc<Vec<OneRelay>>>, ApiError> {
+        let relay_update_lock = self.borrow().relay_update_lock.clone();
+        let _relay_update_guard = relay_update_lock.lock().await;
+
+        let prev = self.borrow().config.cached_relays.clone();
+        if let Some(list) = &prev
+            && list.staleness() < freshness
+        {
+            tracing::info!(
+                message_id = "07da0OEW",
+                relays.staleness_s = list.staleness().as_secs_f32(),
+                relays.version =? list.version(),
+                "Relay list fresh.",
+            );
+            return Ok(prev.unwrap());
+        }
+
+        let res = self.cached_api_request(ListRelays {}, prev.as_ref().and_then(|p| p.etag())).await?;
+
+        let etag = res.etag().map(|e| e.to_vec());
+
+        let Some(body) = res.into_body() else {
+            let Some(prev) = prev else {
+                return Err(ClientError::Other(anyhow::anyhow!("got response without body despite sending no etag")).into());
+            };
+            tracing::info!(
+                message_id = "g7cbIVp2",
+                relays.staleness_s = prev.staleness().as_secs_f32(),
+                relays.version =? prev.version(),
+                "Relay list etag matches"
+            );
+            let cached_relays = prev.revalidated(etag);
+            self.change_config(|config| config.cached_relays = Some(cached_relays.clone()));
+            return Ok(cached_relays);
+        };
+
+        let version = match etag {
+            Some(b) => config::cached::Version::ETag(b),
+            None => {
+                tracing::warn!(message_id = "C0DRoScG", "Relay list had no ETag.");
+                config::cached::Version::artificial()
+            }
+        };
+        let cached_relays = ConfigCached::new(Arc::new(body), version);
+        tracing::info!(
+            message_id = "cAS1rZLA",
+            relays.count = cached_relays.value.len(),
+            version_old =? prev.as_ref().map(|p| p.version()),
+            version_new =? cached_relays.version(),
+            staleness_s =? prev.as_ref().map(|p| p.staleness().as_secs_f32()),
+            "Relay list updated."
+        );
+        self.change_config(|config| config.cached_relays = Some(cached_relays.clone()));
+
+        Ok(cached_relays)
     }
 
     pub fn update_account_info(&self, account_info: &AccountInfo) {

@@ -18,7 +18,7 @@ use crate::wg_key_store::{PlaintextWgSecretKey, SealedWgSecretKey, WgKeyStore};
 use boringtun::x25519::StaticSecret;
 use chrono::Utc;
 use obscuravpn_api::cmd::ExitList;
-use obscuravpn_api::types::{AccountId, WgPubkey};
+use obscuravpn_api::types::{AccountId, OneRelay, WgPubkey};
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -254,6 +254,8 @@ pub struct Config {
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub cached_exits: Option<ConfigCached<Arc<ExitList>>>,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
+    pub cached_relays: Option<ConfigCached<Arc<Vec<OneRelay>>>>,
+    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub pinned_locations: Vec<PinnedLocation>,
 
     // Deprecated, left in for migration only.
@@ -307,6 +309,7 @@ pub struct ConfigDebug {
     pub api_host_alternate: Option<String>,
     pub api_url: Option<String>,
     pub cached_exits: Option<ConfigCached<Arc<ExitList>>>,
+    pub cached_relays: Option<ConfigCached<Arc<Vec<OneRelay>>>>,
     pub dns_cache: DnsCache,
     pub dns_content_block: DnsContentBlock,
     pub local_tunnels_ids: Vec<String>,
@@ -341,6 +344,7 @@ impl From<Config> for ConfigDebug {
             in_new_account_flow,
             cached_auth_token,
             cached_exits,
+            cached_relays,
             pinned_locations,
             last_chosen_exit,
             last_chosen_exit_selector,
@@ -359,6 +363,7 @@ impl From<Config> for ConfigDebug {
         Self {
             api_url,
             cached_exits,
+            cached_relays,
             dns_content_block,
             dns_cache,
             local_tunnels_ids,

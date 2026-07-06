@@ -25,6 +25,8 @@ class OsStatusManager @Inject constructor(@ApplicationContext context: Context) 
             ),
         var internetAvailable: Boolean = false,
         var navigationView: OsStatus.NavigationView? = null,
+        var playBilling: Boolean =
+            @Suppress("KotlinConstantConditions", "SimplifyBooleanWithConstants") (BuildConfig.FLAVOR == "play"),
         var vpnStatus: OsStatus.OsVpnStatus = OsStatus.OsVpnStatus.Disconnected,
     )
 
@@ -62,9 +64,7 @@ class OsStatusManager @Inject constructor(@ApplicationContext context: Context) 
                     debugBundleStatus = this.current.state.debugBundleStatus,
                     canSendMail = true,
                     loginItemStatus = null,
-                    playBilling =
-                        @Suppress("KotlinConstantConditions", "SimplifyBooleanWithConstants")
-                        (BuildConfig.FLAVOR == "play"),
+                    playBilling = this.current.state.playBilling,
                 )
                 .let { jsonConfig.encodeToString(it) }
         }

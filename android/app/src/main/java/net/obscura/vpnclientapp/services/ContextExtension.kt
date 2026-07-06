@@ -7,7 +7,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.net.VpnService.prepare
 import net.obscura.lib.util.Logger
-import net.obscura.vpnclientapp.client.errorCodeOther
+import net.obscura.vpnclientapp.client.ErrorCodeException
 
 private val log = Logger("ContextExtension")
 
@@ -69,8 +69,8 @@ fun Context.startVpnService(exitSelector: String?) =
         Result.success(Unit)
     } catch (e: SecurityException) {
         log.error("missing permissions or service not found", tr = e)
-        Result.failure(errorCodeOther())
+        Result.failure(ErrorCodeException.other())
     } catch (e: IllegalStateException) {
         log.error("app not foregrounded", tr = e)
-        Result.failure(errorCodeOther())
+        Result.failure(ErrorCodeException.other())
     }

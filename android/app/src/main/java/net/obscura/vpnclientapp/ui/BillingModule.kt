@@ -8,7 +8,7 @@ import dagger.hilt.android.ActivityRetainedLifecycle
 import dagger.hilt.android.components.ActivityRetainedComponent
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ActivityRetainedScoped
-import net.obscura.vpnclientapp.BillingFacade
+import net.obscura.vpnclientapp.BillingImpl
 
 // Lifecycle/scope discussion:
 // https://www.revenuecat.com/blog/engineering/hilt-sdk-lifecycle/
@@ -20,8 +20,10 @@ object BillingModule {
     fun provideBillingFacade(
         @ApplicationContext context: Context,
         lifecycle: ActivityRetainedLifecycle,
+        osStatusManager: OsStatusManager,
     ): BillingFacade {
-        val billing = BillingFacade(context)
+        val billing = BillingImpl(context)
+        osStatusManager.update { this.playBilling = billing.isPlayBilling() }
         lifecycle.addOnClearedListener { billing.destroy() }
         return billing
     }

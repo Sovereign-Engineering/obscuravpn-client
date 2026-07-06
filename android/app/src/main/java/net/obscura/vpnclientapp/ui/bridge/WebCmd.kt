@@ -7,9 +7,9 @@ import net.obscura.lib.util.ExternallyTaggedEnumSerializer
 import net.obscura.lib.util.ExternallyTaggedEnumVariantSerializer
 import net.obscura.lib.util.Logger
 import net.obscura.vpnclientapp.activities.MainActivity
+import net.obscura.vpnclientapp.client.ErrorCodeException
 import net.obscura.vpnclientapp.client.ManagerCmd
 import net.obscura.vpnclientapp.client.ManagerCmdOk
-import net.obscura.vpnclientapp.client.errorCodeUnsupportedOnOS
 import net.obscura.vpnclientapp.client.jsonConfig
 import net.obscura.vpnclientapp.preferences.Preferences
 import net.obscura.vpnclientapp.services.IObscuraVpnService
@@ -154,7 +154,7 @@ internal sealed interface WebCmd {
                 generatedSerializer(),
             )
 
-        override suspend fun run(args: WebCmdArgs) = throw errorCodeUnsupportedOnOS()
+        override suspend fun run(args: WebCmdArgs) = throw ErrorCodeException.unsupportedOnOS()
     }
 
     @KeepGeneratedSerializer
@@ -184,7 +184,7 @@ internal sealed interface WebCmd {
                 generatedSerializer(),
             )
 
-        override suspend fun run(args: WebCmdArgs) = throw errorCodeUnsupportedOnOS()
+        override suspend fun run(args: WebCmdArgs) = throw ErrorCodeException.unsupportedOnOS()
     }
 
     @KeepGeneratedSerializer

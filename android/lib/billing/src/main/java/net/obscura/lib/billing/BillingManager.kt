@@ -19,17 +19,15 @@ import net.obscura.lib.util.Logger
 
 private val log = Logger(BillingManager::class)
 
-class BillingManager(
-    context: Context,
-) {
+class BillingManager(context: Context) {
     sealed interface PurchaseResult {
         data class Completed(val purchaseTokens: List<String>) : PurchaseResult
 
-        object Canceled : PurchaseResult
+        data object Canceled : PurchaseResult
 
-        object AlreadyOwned : PurchaseResult
+        data object AlreadyOwned : PurchaseResult
 
-        object Failed : PurchaseResult
+        data object Failed : PurchaseResult
     }
 
     private val connection =
@@ -184,7 +182,7 @@ class BillingManager(
             }
     }
 
-    fun destroy() {
-        this.connection.destroy()
-    }
+    fun destroy() =
+        runCatching { this.connection.destroy() }
+            .onFailure { log.error("failed to end billing connection: ${it.message}") }
 }

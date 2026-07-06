@@ -17,9 +17,11 @@ kotlin { jvmToolchain(21) }
 dependencies {
     implementation(libs.android.billingclient)
     implementation(libs.kotlin.stdlib)
+    implementation(libs.kotlinx.coroutines.playServices)
+    implementation(libs.playServices.base)
     // This is a dep of `billingclient`, but we specify it manually to override
     // an outdated dependency version:
     // https://github.com/mullvad/mullvadvpn-app/pull/9887
-    implementation(libs.play.services.location)
+    implementation(libs.playServices.location)
     implementation(project(":lib:util"))
 }

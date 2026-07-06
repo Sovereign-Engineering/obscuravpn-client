@@ -21,10 +21,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.onSubscription
 import net.obscura.lib.util.Logger
-import net.obscura.vpnclientapp.client.errorCodeLegacyAlwaysOn
-import net.obscura.vpnclientapp.client.errorCodeOther
-import net.obscura.vpnclientapp.client.errorCodeOtherAppAlwaysOn
-import net.obscura.vpnclientapp.client.errorCodePermissionNotGranted
+import net.obscura.vpnclientapp.client.ErrorCodeException
 import net.obscura.vpnclientapp.services.PrepareResult
 import net.obscura.vpnclientapp.services.prepareVpnService
 import net.obscura.vpnclientapp.services.startVpnService
@@ -79,10 +76,10 @@ class VpnPermissionRequestManager @Inject constructor(private val activity: Frag
         log.debug("$elapsed elapsed between VPN permission request launch and cancellation")
         return if (elapsed > this.vpnPermissionRequestCancelThreshold) {
             log.debug("heuristic determined that cancellation was user-initiated")
-            Result.failure(errorCodePermissionNotGranted())
+            Result.failure(ErrorCodeException.permissionNotGranted())
         } else {
             log.debug("heuristic determined that cancellation was automatic")
-            Result.failure(errorCodeOtherAppAlwaysOn())
+            Result.failure(ErrorCodeException.otherAppAlwaysOn())
         }
     }
 
@@ -98,18 +95,18 @@ class VpnPermissionRequestManager @Inject constructor(private val activity: Frag
                         .firstOrNull()
                         ?: run {
                             log.error("VPN permission request result flow was empty")
-                            return Result.failure(errorCodeOther())
+                            return Result.failure(ErrorCodeException.other())
                         }
                 when (vpnPermissionRequestResult.resultCode) {
                     RESULT_OK -> this.onSuccess(exitSelector)
                     RESULT_CANCELED -> this.onCanceled(vpnPermissionRequestStart)
                     else -> {
                         log.error("unexpected VPN start activity result: $vpnPermissionRequestResult")
-                        Result.failure(errorCodeOther())
+                        Result.failure(ErrorCodeException.other())
                     }
                 }
             }
             is PrepareResult.Ready -> this.onSuccess(exitSelector)
-            is PrepareResult.LegacyAlwaysOn -> Result.failure(errorCodeLegacyAlwaysOn())
+            is PrepareResult.LegacyAlwaysOn -> Result.failure(ErrorCodeException.legacyAlwaysOn())
         }
 }

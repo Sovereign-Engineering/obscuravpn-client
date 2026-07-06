@@ -10,7 +10,6 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import net.obscura.lib.util.Logger
 import net.obscura.vpnclientapp.client.ErrorCodeException
-import net.obscura.vpnclientapp.client.errorCodeOther
 import net.obscura.vpnclientapp.client.jsonConfig
 
 private val log = Logger(WebCmdBridge::class)
@@ -56,7 +55,7 @@ class WebCmdBridge(
                 this@WebCmdBridge.reject(id, exception)
             } catch (exception: Throwable) {
                 log.error("unexpected exception type: $exception", tr = exception)
-                this@WebCmdBridge.reject(id, errorCodeOther())
+                this@WebCmdBridge.reject(id, ErrorCodeException.other())
             }
         }
     }

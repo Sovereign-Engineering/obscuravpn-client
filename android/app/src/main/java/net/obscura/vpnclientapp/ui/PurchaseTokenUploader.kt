@@ -6,9 +6,6 @@ import net.obscura.lib.util.BinaryExponentialBackoff
 import net.obscura.lib.util.Logger
 import net.obscura.vpnclientapp.client.ErrorCodeException
 import net.obscura.vpnclientapp.client.ManagerCmd
-import net.obscura.vpnclientapp.client.errorCodeApiAssociateAccountConflict
-import net.obscura.vpnclientapp.client.errorCodeApiRateLimitExceeded
-import net.obscura.vpnclientapp.client.errorCodeOther
 import net.obscura.vpnclientapp.client.jsonConfig
 import net.obscura.vpnclientapp.services.IObscuraVpnService
 
@@ -43,14 +40,14 @@ private suspend fun associatePurchaseToken(
         throw e
     } catch (e: DeadObjectException) {
         log.error("binder is dead; giving up: ${e.message}")
-        AssociatePurchaseTokenResult.Fatal(errorCodeOther())
+        AssociatePurchaseTokenResult.Fatal(ErrorCodeException.other())
     } catch (e: Throwable) {
         when (e) {
-            errorCodeApiAssociateAccountConflict() -> {
+            ErrorCodeException.apiAssociateAccountConflict() -> {
                 log.error("purchase token already associated with another account")
-                AssociatePurchaseTokenResult.Fatal(errorCodeApiAssociateAccountConflict())
+                AssociatePurchaseTokenResult.Fatal(ErrorCodeException.apiAssociateAccountConflict())
             }
-            errorCodeApiRateLimitExceeded() -> {
+            ErrorCodeException.apiRateLimitExceeded() -> {
                 log.error("hit rate limit")
                 AssociatePurchaseTokenResult.RateLimit
             }

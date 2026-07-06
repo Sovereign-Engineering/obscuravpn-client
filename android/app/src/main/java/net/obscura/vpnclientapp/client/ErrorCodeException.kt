@@ -2,24 +2,35 @@ package net.obscura.vpnclientapp.client
 
 import androidx.annotation.Keep
 
-// This `Keep` annotation is applied defensively to ensure that this class won't be stripped even if
-// it's only constructed on the Rust side.
-@Keep data class ErrorCodeException(val errorCode: String) : Exception(errorCode)
+// This `Keep` annotation is applied defensively to ensure that this class won't be stripped even if it's only
+// constructed on the Rust side.
+@Keep
+data class ErrorCodeException(val errorCode: String) : Exception(errorCode) {
+    companion object {
+        fun apiAssociateAccountConflict() = ErrorCodeException("apiAssociateAccountConflict")
 
-fun errorCodeApiAssociateAccountConflict() = ErrorCodeException("apiAssociateAccountConflict")
+        fun apiRateLimitExceeded() = ErrorCodeException("apiRateLimitExceeded")
 
-fun errorCodeApiRateLimitExceeded() = ErrorCodeException("apiRateLimitExceeded")
+        fun other() = ErrorCodeException("other")
 
-fun errorCodeOther() = ErrorCodeException("other")
+        fun playServicesDisabled() = ErrorCodeException("playServicesDisabled")
 
-fun errorCodePurchaseFailed() = ErrorCodeException("purchaseFailed")
+        fun playServicesMissing() = ErrorCodeException("playServicesMissing")
 
-fun errorCodePurchaseFailedAlreadyOwned() = ErrorCodeException("purchaseFailedAlreadyOwned")
+        fun playServicesUpdateRequired() = ErrorCodeException("playServicesUpdateRequired")
 
-fun errorCodeLegacyAlwaysOn() = ErrorCodeException("errorLegacyAlwaysOn")
+        fun playServicesUpdating() = ErrorCodeException("playServicesUpdating")
 
-fun errorCodeOtherAppAlwaysOn() = ErrorCodeException("errorOtherAppAlwaysOn")
+        fun purchaseFailed() = ErrorCodeException("purchaseFailed")
 
-fun errorCodePermissionNotGranted() = ErrorCodeException("errorPermissionNotGranted")
+        fun purchaseFailedAlreadyOwned() = ErrorCodeException("purchaseFailedAlreadyOwned")
 
-fun errorCodeUnsupportedOnOS() = ErrorCodeException("errorUnsupportedOnOS")
+        fun legacyAlwaysOn() = ErrorCodeException("errorLegacyAlwaysOn")
+
+        fun otherAppAlwaysOn() = ErrorCodeException("errorOtherAppAlwaysOn")
+
+        fun permissionNotGranted() = ErrorCodeException("errorPermissionNotGranted")
+
+        fun unsupportedOnOS() = ErrorCodeException("errorUnsupportedOnOS")
+    }
+}

@@ -14,13 +14,13 @@ import androidx.core.view.WindowCompat
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import net.obscura.lib.util.Logger
-import net.obscura.vpnclientapp.BillingFacade
 import net.obscura.vpnclientapp.R
 import net.obscura.vpnclientapp.helpers.requireUIProcess
 import net.obscura.vpnclientapp.preferences.Preferences
 import net.obscura.vpnclientapp.services.IObscuraVpnService
 import net.obscura.vpnclientapp.services.bindVpnService
 import net.obscura.vpnclientapp.services.unbindVpnService
+import net.obscura.vpnclientapp.ui.BillingFacade
 import net.obscura.vpnclientapp.ui.ObscuraUI
 import net.obscura.vpnclientapp.ui.OsStatusManager
 import net.obscura.vpnclientapp.ui.VpnPermissionRequestManager

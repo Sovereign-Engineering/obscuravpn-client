@@ -11,15 +11,17 @@ detekt = "1.23.8"
 espresso-core = "3.7.0"
 junit = "4.13.2"
 kotlin = "2.3.10"
+kotlinx-coroutines-play-services = "1.11.0"
 kotlinx-serialization-json = "1.10.0"
 ksp = "2.3.6"
 ktfmt = "0.25.0"
 material = "1.13.0"
+play-services-base = "18.10.0"
 play-services-location = "21.3.0"
 webkit = "1.15.0"
 
 [libraries]
-android-billingclient = { module = "com.android.billingclient:billing-ktx", version.ref = "android-billingclient" }
+android-billingclient = { group = "com.android.billingclient", name = "billing-ktx", version.ref = "android-billingclient" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso-core" }
@@ -30,9 +32,11 @@ hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref
 hilt-android-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "dagger" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }
+kotlinx-coroutines-playServices = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "kotlinx-coroutines-play-services" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinx-serialization-json" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
-play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "play-services-location" }
+playServices-base = { group = "com.google.android.gms", name = "play-services-base", version.ref = "play-services-base" }
+playServices-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "play-services-location" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "android-gradle-plugin" }

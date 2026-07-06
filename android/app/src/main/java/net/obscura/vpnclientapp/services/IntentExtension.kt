@@ -4,7 +4,6 @@ import android.content.Intent
 import net.obscura.lib.util.Logger
 import net.obscura.vpnclientapp.BuildConfig
 import net.obscura.vpnclientapp.client.ErrorCodeException
-import net.obscura.vpnclientapp.client.errorCodeOther
 
 private val log = Logger("IntentExtension")
 
@@ -49,7 +48,7 @@ fun Intent.getJsonFfiExtras(): JsonFfiIntentPayload {
             Result.success(value)
         } else {
             log.trace("job $id completed with error code: $errorCode")
-            Result.failure(errorCode?.let { ErrorCodeException(it) } ?: errorCodeOther())
+            Result.failure(errorCode?.let { ErrorCodeException(it) } ?: ErrorCodeException.other())
         },
     )
 }

@@ -75,7 +75,7 @@ struct AccountInfo: Codable {
         case topUp = "top_up"
         case id
         case active
-        case stripeSubscription = "subscription"
+        case stripeSubscription = "stripe_subscription"
         case appleSubscription = "apple_subscription"
         case _autoRenews = "auto_renews"
         case currentExpiry = "current_expiry"

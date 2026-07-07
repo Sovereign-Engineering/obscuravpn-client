@@ -248,3 +248,37 @@ pub(super) async fn call_set_network_config(class_cache: Arc<ClassCache>, jvm: A
     .await
     .expect("spawn_blocking panicked")
 }
+
+pub(crate) fn process_exit_reasons_json() -> Option<String> {
+    let Some(global) = GLOBAL.get() else {
+        tracing::error!(message_id = "sQ4wPzXn", "global not initialized");
+        return None;
+    };
+    let jvm = global.os_impl.jvm();
+    let mut env = jvm
+        .attach_current_thread_as_daemon()
+        .map_err(|error| tracing::error!(message_id = "aY8dRk2J", ?error, "failed to attach thread to JVM: {error}"))
+        .ok()?;
+    let result = env
+        .call_static_method(global.class_cache.vpn_service(), "ffiGetProcessExitReasons", "()Ljava/lang/String;", &[])
+        .map_err(|error| tracing::error!(message_id = "Gv5tBm0e", ?error, "failed to call ffiGetProcessExitReasons: {error}"))
+        .ok()?;
+    let obj = match result.l() {
+        Ok(obj) if !obj.is_null() => JString::from(obj),
+        result => {
+            tracing::error!(message_id = "wN7cLq9i", ?result, "ffiGetProcessExitReasons did not return a string");
+            return None;
+        }
+    };
+    let json = env
+        .get_string(&obj)
+        .map_err(|error| {
+            tracing::error!(
+                message_id = "pE3hUf6s",
+                ?error,
+                "ffiGetProcessExitReasons result wasn't a String: {error}"
+            )
+        })
+        .ok()?;
+    Some(json.into())
+}

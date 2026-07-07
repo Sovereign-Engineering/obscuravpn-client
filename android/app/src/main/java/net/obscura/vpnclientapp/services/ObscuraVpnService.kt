@@ -1,6 +1,9 @@
 package net.obscura.vpnclientapp.services
 
 import android.annotation.SuppressLint
+import android.app.ActivityManager
+import android.app.Application
+import android.app.ApplicationExitInfo
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.net.ConnectivityManager
@@ -26,8 +29,41 @@ import net.obscura.vpnclientapp.client.RustFfi
 import net.obscura.vpnclientapp.client.jsonConfig
 import net.obscura.vpnclientapp.helpers.requireVpnServiceProcess
 import net.obscura.vpnclientapp.ui.JsonFfiBroadcastReceiver
+import org.json.JSONArray
+import org.json.JSONObject
 
 private val logNoFfi = Logger(ObscuraVpnService::class)
+
+private fun ApplicationExitInfo.toJson(): JSONObject =
+    JSONObject()
+        .put("processName", processName)
+        .put("pid", pid)
+        .put(
+            "reason",
+            when (reason) {
+                ApplicationExitInfo.REASON_EXIT_SELF -> "EXIT_SELF"
+                ApplicationExitInfo.REASON_SIGNALED -> "SIGNALED"
+                ApplicationExitInfo.REASON_LOW_MEMORY -> "LOW_MEMORY"
+                ApplicationExitInfo.REASON_CRASH -> "CRASH"
+                ApplicationExitInfo.REASON_CRASH_NATIVE -> "CRASH_NATIVE"
+                ApplicationExitInfo.REASON_ANR -> "ANR"
+                ApplicationExitInfo.REASON_INITIALIZATION_FAILURE -> "INITIALIZATION_FAILURE"
+                ApplicationExitInfo.REASON_PERMISSION_CHANGE -> "PERMISSION_CHANGE"
+                ApplicationExitInfo.REASON_EXCESSIVE_RESOURCE_USAGE -> "EXCESSIVE_RESOURCE_USAGE"
+                ApplicationExitInfo.REASON_USER_REQUESTED -> "USER_REQUESTED"
+                ApplicationExitInfo.REASON_USER_STOPPED -> "USER_STOPPED"
+                ApplicationExitInfo.REASON_DEPENDENCY_DIED -> "DEPENDENCY_DIED"
+                ApplicationExitInfo.REASON_OTHER -> "OTHER"
+                ApplicationExitInfo.REASON_FREEZER -> "FREEZER"
+                else -> "UNKNOWN"
+            } + "($reason)",
+        )
+        .put("status", status)
+        .put("importance", importance)
+        .put("pssKb", pss)
+        .put("rssKb", rss)
+        .put("timestamp", timestamp)
+        .put("description", description ?: JSONObject.NULL)
 
 const val PATH_REQUEST_VPN_START = "requestVpnStart"
 
@@ -88,6 +124,27 @@ class ObscuraVpnService : VpnService() {
                 }
             return pfd?.detachFd() ?: -1
         }
+
+        @androidx.annotation.Keep
+        @JvmStatic
+        fun ffiGetProcessExitReasons(): String? {
+            val service = instance.get()
+            if (service == null) {
+                logNoFfi.error("ffiGetProcessExitReasons called with no active service", "Qb3mR7tx")
+                return null
+            }
+            return try {
+                val activityManager = service.getSystemService(ActivityManager::class.java)
+                val array = JSONArray()
+                for (info in activityManager.getHistoricalProcessExitReasons(service.packageName, 0, 0)) {
+                    array.put(info.toJson())
+                }
+                array.toString()
+            } catch (e: Throwable) {
+                logNoFfi.error("ffiGetProcessExitReasons failed: $e", "V9nK4pLm", e)
+                null
+            }
+        }
     }
 
     private data class NetworkInterfaceProps(val name: String, val index: Int)
@@ -118,6 +175,8 @@ class ObscuraVpnService : VpnService() {
 
         log.info("onCreate", "vqiGa01f")
 
+        logLastExitReason()
+
         handler = Handler(Looper.getMainLooper())
 
         val networkRequest =
@@ -147,6 +206,20 @@ class ObscuraVpnService : VpnService() {
         this.notificationManager = NotificationManager(this)
 
         loadStatus(null)
+    }
+
+    private fun logLastExitReason() {
+        try {
+            val currentProcess = Application.getProcessName()
+            val info =
+                getSystemService(ActivityManager::class.java)
+                    .getHistoricalProcessExitReasons(packageName, 0, 0)
+                    .filter { it.processName == currentProcess }
+                    .maxByOrNull { it.timestamp }
+            log.info("last exit of this process: ${info?.toJson() ?: "none recorded"}", "sV2mHd7K")
+        } catch (e: Throwable) {
+            log.error("failed to query last exit reason: $e", "jW5pQn3F", e)
+        }
     }
 
     private fun promoteToForeground(prepareResult: PrepareResult): Result<Unit> =

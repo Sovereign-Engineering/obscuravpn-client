@@ -35,5 +35,9 @@ pub fn create_debug_bundle(
         // provide a proper API for this.
         archive.add_cmd("logcat", "txt", diva::Command::parse("logcat -d"));
     }
+    #[cfg(target_os = "android")]
+    if let Some(json) = crate::android::process_exit_reasons_json() {
+        archive.add_bytes("process-exit-reasons", "json", json.as_bytes());
+    }
     archive.finish()
 }

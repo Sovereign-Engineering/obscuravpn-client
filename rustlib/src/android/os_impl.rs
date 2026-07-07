@@ -21,6 +21,10 @@ impl AndroidOsImpl {
     pub fn set_network_interface(&self, network_interface: Option<NetworkInterface>) {
         self.network_interface.send_replace(network_interface);
     }
+
+    pub fn jvm(&self) -> Arc<JavaVM> {
+        self.jvm.clone()
+    }
 }
 
 impl Os for AndroidOsImpl {

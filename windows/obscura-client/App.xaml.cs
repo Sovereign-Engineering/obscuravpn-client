@@ -148,6 +148,11 @@ public partial class App : Application
         _window?.SelectNavigationView(view);
     }
 
+    internal void ApplyColorScheme(ElementTheme theme)
+    {
+        _window?.ApplyColorScheme(theme);
+    }
+
     internal void ShowMainWindow()
     {
         Log.Info("activating main window");

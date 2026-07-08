@@ -1,8 +1,9 @@
-import { Accordion, Autocomplete, Button, Group, JsonInput, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Accordion, Autocomplete, Button, Group, JsonInput, Stack, Text, TextInput, Title, useMantineColorScheme } from '@mantine/core';
 import { useInterval } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import Cookies from 'js-cookie';
 import { useContext, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import * as commands from '../bridge/commands';
 import { jsonFfiCmd } from "../bridge/commands";
 import { Platform, PLATFORM } from '../bridge/SystemProvider';
@@ -11,7 +12,6 @@ import { localStorageGet, LocalStorageKey } from '../common/localStorage';
 import { errMsg, showErrorNotification } from '../common/utils';
 import DevSendCommand from '../components/DevSendCommand';
 import DevSetApiUrl from '../components/DevSetApiUrl';
-import { useTranslation } from 'react-i18next';
 
 export default function DeveloperViewer() {
     const { t } = useTranslation();
@@ -34,6 +34,8 @@ export default function DeveloperViewer() {
 
     const [localStorageKey, setLocalStorageKey] = useState('');
     const [localStorageValue, setLocalStorageValue] = useState<string | null>(null);
+
+    const { colorScheme } = useMantineColorScheme();
 
     const [accordionValues, setAccordionValues] = useState<string[]>([]);
     return <Stack p={20} mb={50}>
@@ -62,6 +64,7 @@ export default function DeveloperViewer() {
         <Title order={4}>React variables</Title>
         <Text>vpn is connected: <b>{vpnConnected ? 'Yes' : 'No'}</b></Text>
         <Text>connection in progress: <b>{connectionInProgress ?? 'No'}</b></Text>
+        <Text>mantine color scheme: {colorScheme}</Text>
         <Button title='Preferences such as whether the user has been onboarded or if the app has tried to register as a login item' onClick={() => commands.developerResetUserDefaults().then(() => notifications.show({ title: 'Successfully Removed UserDefault Keys', color: 'green', message: '' }))}>Reset app UserDefaults</Button>
         <DevSetApiUrl />
         {PLATFORM === Platform.Windows && <Button onClick={async () => {

@@ -45,6 +45,7 @@ public partial class App : Application
         AppDomain.CurrentDomain.ProcessExit += (s, e) => DevServer.Stop();
         UnhandledException += (s, e) => DevServer.Stop();
 #endif
+        UnhandledException += (s, e) => _notifyIcon?.Close();
     }
 
     /// <summary>
@@ -129,6 +130,7 @@ public partial class App : Application
     internal async void RequestQuit()
     {
         _window?.Close();
+        _notifyIcon?.Close();
         try
         {
             // Bounded wait: if the service has accepted the pipe but is wedged before

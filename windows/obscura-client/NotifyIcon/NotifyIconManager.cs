@@ -9,8 +9,7 @@ namespace Obscura_Client.NotifyIcon;
 
 /// <summary>
 /// Owns the notification icon and the MenuFlyout that pops on right-click.
-/// Dispose() must run before the process exits — WinUIEx.TrayIcon will otherwise
-/// hang shutdown and leave a ghost icon in the notification area.
+/// Close must be called before the process exits to avoid a ghost icon in the notification status area.
 /// </summary>
 public sealed partial class NotifyIconManager
 {
@@ -57,6 +56,15 @@ public sealed partial class NotifyIconManager
         _statusSubscriber.StatusChanged += OnStatusChanged;
         _statusSubscriber.Start();
         _cityNames.Start();
+    }
+
+    // Explicitly clean up TrayIcon to prevent ghosting icon
+    public void Close()
+    {
+        _taskbarTheme.Changed -= OnTaskbarThemeChanged;
+        _statusSubscriber.StatusChanged -= OnStatusChanged;
+        _animTimer.Stop();
+        _notifyIcon.Dispose();
     }
 
     void OnStatusChanged(NeStatus status)

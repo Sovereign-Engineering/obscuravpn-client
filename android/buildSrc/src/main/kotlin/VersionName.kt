@@ -10,6 +10,9 @@ import org.slf4j.LoggerFactory
 
 private val logger: Logger = LoggerFactory.getLogger("version-name")
 
+// The minor component of the version is our monotonic release counter, so it serves as the Android build number.
+fun Project.getVersionCode(projectRootDir: File): Int = getVersionName(projectRootDir).split(".")[1].toInt()
+
 fun Project.getVersionName(projectRootDir: File): String =
     providers.of(VersionName::class.java) { it.parameters.projectRootDir.set(projectRootDir) }.get()
 

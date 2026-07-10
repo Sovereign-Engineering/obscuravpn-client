@@ -104,7 +104,7 @@ def main() -> int:
         default=WINDOWS_TRAY_ASSETS_DIR,
         help="output directory for .ico files",
     )
-    parser.add_argument("-t", "--tempdir" type=bool, default=False, help="export to temp dir")
+    parser.add_argument("-t", "--tempdir", action="store_true", help="export to temp dir")
     args = parser.parse_args()
 
     source: Path = args.source.expanduser().resolve()

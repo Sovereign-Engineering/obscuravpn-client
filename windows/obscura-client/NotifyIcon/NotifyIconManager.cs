@@ -25,6 +25,9 @@ public sealed partial class NotifyIconManager
     readonly TrayIcon _notifyIcon;
     readonly StatusSubscriber _statusSubscriber = new();
     readonly CityNameCache _cityNames = new();
+    readonly TaskbarTheme _taskbarTheme = new();
+    NotifyIconAssets.IconSet _icons;
+    TaskbarThemeKind _taskbarThemeKind;
 
     // Connecting animation timer
     readonly DispatcherQueueTimer _animTimer;
@@ -38,7 +41,11 @@ public sealed partial class NotifyIconManager
         _uiQueue = uiQueue;
 
         _assets = new NotifyIconAssets();
-        _notifyIcon = new TrayIcon(trayiconId: 1, _assets.Disconnected, "Obscura VPN") { IsVisible = true };
+        _taskbarTheme.Changed += OnTaskbarThemeChanged;
+        _taskbarThemeKind = TaskbarTheme.Current;
+        _icons = _assets.For(_taskbarThemeKind);
+
+        _notifyIcon = new TrayIcon(trayiconId: 1, _icons.Disconnected, "Obscura VPN") { IsVisible = true };
         _notifyIcon.Selected += (_, _) => _app.ShowMainWindow();
         _notifyIcon.ContextMenu += OnContextMenu;
 
@@ -58,6 +65,34 @@ public sealed partial class NotifyIconManager
         _uiQueue.TryEnqueue(() => ApplyStatusKind(kind));
     }
 
+    void OnTaskbarThemeChanged()
+    {
+        _uiQueue.TryEnqueue(() =>
+        {
+            var theme = TaskbarTheme.Current;
+            if (theme == _taskbarThemeKind) return;
+            _taskbarThemeKind = theme;
+            _icons = _assets.For(theme);
+            RefreshIcon();
+        });
+    }
+
+    void RefreshIcon()
+    {
+        switch (_lastKind)
+        {
+            case VpnStatusKind.Connecting:
+                _notifyIcon.SetIcon(_icons.Connecting[_animFrame]);
+                break;
+            case VpnStatusKind.Connected:
+                _notifyIcon.SetIcon(_icons.Connected);
+                break;
+            default:
+                _notifyIcon.SetIcon(_icons.Disconnected);
+                break;
+        }
+    }
+
     void ApplyStatusKind(VpnStatusKind kind)
     {
         if (_lastKind == kind) return;
@@ -70,12 +105,12 @@ public sealed partial class NotifyIconManager
                 break;
             case VpnStatusKind.Connected:
                 StopConnectingAnimation();
-                _notifyIcon.SetIcon(_assets.Connected);
+                _notifyIcon.SetIcon(_icons.Connected);
                 break;
             case VpnStatusKind.Disconnected:
             default:
                 StopConnectingAnimation();
-                _notifyIcon.SetIcon(_assets.Disconnected);
+                _notifyIcon.SetIcon(_icons.Disconnected);
                 break;
         }
     }
@@ -84,14 +119,14 @@ public sealed partial class NotifyIconManager
     {
         if (_animTimer.IsRunning) return;
         _animFrame = 0;
-        _notifyIcon.SetIcon(_assets.Connecting[_animFrame]);
+        _notifyIcon.SetIcon(_icons.Connecting[_animFrame]);
         _animTimer.Start();
     }
 
     void OnAnimTick(DispatcherQueueTimer sender, object args)
     {
-        _animFrame = (_animFrame + 1) % _assets.Connecting.Length;
-        _notifyIcon.SetIcon(_assets.Connecting[_animFrame]);
+        _animFrame = (_animFrame + 1) % _icons.Connecting.Length;
+        _notifyIcon.SetIcon(_icons.Connecting[_animFrame]);
     }
 
     void StopConnectingAnimation()

@@ -11,21 +11,34 @@ namespace Obscura_Client.NotifyIcon;
 
 internal sealed partial class NotifyIconAssets
 {
-    public IconId Disconnected { get; }
-    public IconId Connected { get; }
-    public IconId[] Connecting { get; }
+    internal sealed class IconSet
+    {
+        public required IconId Disconnected { get; init; }
+        public required IconId Connected { get; init; }
+        public required IconId[] Connecting { get; init; }
+    }
+    public IconSet OnDarkTaskbar { get; }
+    public IconSet OnLightTaskbar { get; }
 
     public NotifyIconAssets()
     {
-        Disconnected = Load("Disconnected.ico");
-        Connected = Load("Connected.ico");
+        OnDarkTaskbar = LoadSet("-light");
+        OnLightTaskbar = LoadSet("-dark");
+    }
+
+    public IconSet For(TaskbarThemeKind theme) => theme == TaskbarThemeKind.Light ? OnLightTaskbar : OnDarkTaskbar;
+
+    IconSet LoadSet(string suffix) => new()
+    {
+        Disconnected = Load($"Disconnected{suffix}.ico"),
+        Connected = Load($"Connected{suffix}.ico"),
         Connecting =
         [
-            Load("Connecting-1.ico"),
-            Load("Connecting-2.ico"),
-            Load("Connecting-3.ico"),
-        ];
-    }
+            Load($"Connecting-1{suffix}.ico"),
+            Load($"Connecting-2{suffix}.ico"),
+            Load($"Connecting-3{suffix}.ico"),
+        ],
+    };
 
     unsafe IconId Load(string filename)
     {

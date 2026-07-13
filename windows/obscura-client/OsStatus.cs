@@ -20,9 +20,14 @@ public enum NavigationView
 
 public class DebugBundleStatus
 {
-    public bool InProgress { get; set; } = false;
-    public string? LatestPath { get; set; } = null;
     public int InProgressCounter { get; set; } = 0;
+    public bool InProgress => InProgressCounter > 0;
+    public string? LatestPath { get; set; } = null;
+
+    public void Start() => InProgressCounter += 1;
+    public void Finish() => InProgressCounter -= 1;
+    public void SetPath(string path) => LatestPath = path;
+    public void MarkError() => LatestPath = null;
 }
 
 public class LoginItemStatus
@@ -52,13 +57,13 @@ public class OsStatus
     public bool InternetAvailable { get; private set; } = false;
     public string SrcVersion { get; } = GetSrcVersion();
 
-    private static string GetSrcVersion()
+    public static string GetSrcVersion()
     {
         var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(2) ?? "unknown";
 #if DEBUG
-        return $"{version}-dev";
+        return $"v{version}-dev";
 #else
-        return version;
+        return $"v{version}";
 #endif
     }
     public DebugBundleStatus DebugBundleStatus { get; set; } = new();

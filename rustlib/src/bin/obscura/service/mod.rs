@@ -4,11 +4,11 @@ use crate::ServiceArgs;
 use std::convert::Infallible;
 
 use anyhow::Context;
-use obscuravpn_client::manager::Manager;
+use obscuravpn_client::{logging::LogPersistence, manager::Manager};
 use std::error::Error;
 use std::sync::Arc;
 
-pub async fn run(args: ServiceArgs) -> Result<Infallible, Box<dyn Error>> {
+pub async fn run(args: ServiceArgs, log_persistence: Option<LogPersistence>) -> Result<Infallible, Box<dyn Error>> {
     tracing::info!(message_id = "MNqPkSTH", "starting service");
 
     #[cfg(target_os = "linux")]
@@ -24,7 +24,7 @@ pub async fn run(args: ServiceArgs) -> Result<Infallible, Box<dyn Error>> {
         format!("obscura.net/{}/v0.0-alpha", std::env::consts::OS),
         os_impl.clone(),
         None,
-        None,
+        log_persistence,
         false,
     )
     .context("failed to create manager")?;

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
@@ -47,6 +47,7 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.1839" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.0.1" />
+    <PackageReference Include="System.Management" Version="10.0.9" />
     <PackageReference Include="WinUIEx" Version="2.9.0" />
   </ItemGroup>
   <ItemGroup>
@@ -99,7 +100,7 @@
     <ItemGroup>
         <WebUiBuild Include="..\..\obscura-ui\build\**\*" />
     </ItemGroup>
-    <Message Text="FileWrites: @(WebUiBuild)" Importance="high"/>
+    <Message Text="FileWrites: @(WebUiBuild)" Importance="high" />
     <ItemGroup>
         <None Include="@(WebUiBuild)" Link="Assets\webui\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>

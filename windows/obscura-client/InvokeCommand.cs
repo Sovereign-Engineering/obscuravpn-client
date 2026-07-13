@@ -1,10 +1,11 @@
+using log4net;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using log4net;
 
 namespace Obscura_Client;
 
@@ -18,7 +19,7 @@ public class InvokeCommand
     public StartTunnelCommand? StartTunnel { get; set; }
     public StopTunnelCommand? StopTunnel { get; set; }
     public RevealItemInDirCommand? RevealItemInDir { get; set; }
-    public DebuggingArchiveCommand? DebuggingArchive { get; set; }
+    public DebugBundleCommand? DebugBundle { get; set; }
 
     public static IObscuraCommand Parse(string commandJson)
     {
@@ -40,7 +41,7 @@ public class InvokeCommand
         if (invoke.StartTunnel != null) return invoke.StartTunnel;
         if (invoke.StopTunnel != null) return invoke.StopTunnel;
         if (invoke.RevealItemInDir != null) return invoke.RevealItemInDir;
-        if (invoke.DebuggingArchive != null) return invoke.DebuggingArchive;
+        if (invoke.DebugBundle != null) return invoke.DebugBundle;
         Log.Warn($"Unknown command: {commandJson}");
         throw new NotSupportedException($"Unknown command: {commandJson}");
     }
@@ -48,6 +49,8 @@ public class InvokeCommand
 
 public interface IObscuraCommand
 {
+    static readonly Task<string> UnitResponse = Task.FromResult("null");
+
     Task<string> RunAsync();
 }
 
@@ -68,7 +71,7 @@ public class SetNavigationViewCommand : IObscuraCommand
     public Task<string> RunAsync()
     {
         App.Current.SelectNavigationView(View);
-        return Task.FromResult("null");
+        return IObscuraCommand.UnitResponse;
     }
 }
 
@@ -217,21 +220,65 @@ public class StopTunnelCommand : IObscuraCommand
 
 public class RevealItemInDirCommand : IObscuraCommand
 {
+    private static readonly ILog Log = LogManager.GetLogger(typeof(RevealItemInDirCommand));
     public required string Path { get; set; }
     public Task<string> RunAsync()
     {
-        throw new NotImplementedException();
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = $"/select,\"{Path}\"",
+                UseShellExecute = true,
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"Reveal failed for {Path}: {ex}");
+        }
+        return IObscuraCommand.UnitResponse;
     }
 }
 
-public class DebuggingArchiveCommand : IObscuraCommand, IIPCCommandArg
+public class DebugBundleCommand : IObscuraCommand
 {
-    public string CommandName() => "createDebugArchive";
+    private static readonly ILog Log = LogManager.GetLogger(typeof(DebugBundleCommand));
     public string? UserFeedback { get; set; }
-    async public Task<string> RunAsync()
+    public async Task<string> RunAsync()
     {
-        // TODO: this updates OsStatus
-        var archive = await IPCCommand.RunWithArgAsync(this);
-        throw new NotImplementedException();
+        OsStatus.Instance.Update(s => s.DebugBundleStatus.Start());
+        string? path = null;
+        try
+        {
+            var bundleInfo = new BundleInfo();
+            var resultJson = await IPCCommand.RunWithArgAsync(new CreateDebugBundleArgs
+            {
+                UserFeedback = UserFeedback,
+                BundleInfo = bundleInfo,
+            });
+            path = JsonSerializer.Deserialize<string>(resultJson, JsonConfig.Options);
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"Failed to create debug bundle: {ex}");
+            throw;
+        }
+        finally
+        {
+            OsStatus.Instance.Update(s =>
+            {
+                if (path is not null)
+                {
+                    s.DebugBundleStatus.SetPath(path);
+                }
+                else
+                {
+                    s.DebugBundleStatus.MarkError();
+                }
+                s.DebugBundleStatus.Finish();
+            });
+        }
+        return JsonSerializer.Serialize(path);
     }
 }

@@ -1,5 +1,3 @@
-#![cfg_attr(target_os = "linux", allow(unused))]
-
 use camino::{Utf8Path, Utf8PathBuf};
 use std::sync::{Arc, Mutex, Weak};
 use tracing_appender::non_blocking::{NonBlocking, WorkerGuard};
@@ -46,7 +44,7 @@ extern "C" fn at_exit() {
     flush_and_stop_persisted_log();
 }
 
-#[cfg(any(target_os = "android", target_os = "ios"))]
+#[cfg(not(target_os = "macos"))]
 fn build_log_roller(log_dir: &Utf8Path) -> anyhow::Result<(NonBlocking, LogPersistence)> {
     use logroller::{Compression, LogRollerBuilder, Rotation, RotationSize, TimeZone};
 
@@ -76,7 +74,7 @@ fn build_log_roller(log_dir: &Utf8Path) -> anyhow::Result<(NonBlocking, LogPersi
         .map_err(Into::into)
 }
 
-#[cfg(not(any(target_os = "android", target_os = "ios")))]
+#[cfg(target_os = "macos")]
 fn build_log_roller(log_dir: &Utf8Path) -> anyhow::Result<(NonBlocking, LogPersistence)> {
     anyhow::bail!("specified log dir on a platform that doesn't support log persistence: {log_dir}")
 }
@@ -88,20 +86,20 @@ fn filter() -> EnvFilter {
 
 pub fn init(base_layer: impl Layer<Registry> + Send + Sync, persistence_dir: Option<&Utf8Path>) -> Option<LogPersistence> {
     let registry = registry().with(base_layer.with_filter(filter()));
-    let persistence = if let Some((writer, persistence)) = persistence_dir.and_then(|log_dir| {
-        build_log_roller(log_dir)
-            .inspect_err(|error| {
+    let persistence = match persistence_dir.map(build_log_roller) {
+        Some(Ok((writer, persistence))) => {
+            let fs_layer = tracing_subscriber::fmt::Layer::default().json().with_writer(writer).with_filter(filter());
+            tracing::subscriber::set_global_default(registry.with(fs_layer)).expect("failed to set global subscriber");
+            unsafe { libc::atexit(at_exit) };
+            Some(persistence)
+        }
+        result => {
+            tracing::subscriber::set_global_default(registry).expect("failed to set global subscriber");
+            if let Some(Err(error)) = result {
                 tracing::error!(message_id = "RlVghVYB", ?error, "failed to initialize log persistence");
-            })
-            .ok()
-    }) {
-        let fs_layer = tracing_subscriber::fmt::Layer::default().json().with_writer(writer).with_filter(filter());
-        tracing::subscriber::set_global_default(registry.with(fs_layer)).expect("failed to set global subscriber");
-        unsafe { libc::atexit(at_exit) };
-        Some(persistence)
-    } else {
-        tracing::subscriber::set_global_default(registry).expect("failed to set global subscriber");
-        None
+            }
+            None
+        }
     };
     tracing::info!(message_id = "rrnKY3lZ", "logging initialized");
     std::panic::set_hook(Box::new(|panic_info| {

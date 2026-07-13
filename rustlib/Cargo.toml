@@ -135,7 +135,7 @@ windows = { version = "0.62", features = [
 winreg = "0.55"
 wintun = "0.5"
 
-[target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
+[target.'cfg(not(target_os = "macos"))'.dependencies]
 logroller = { version = "0.1.10", features = ["xz"] }
 
 [build-dependencies]

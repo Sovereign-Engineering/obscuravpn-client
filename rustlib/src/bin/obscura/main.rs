@@ -1,8 +1,9 @@
+use camino::Utf8PathBuf;
 use clap::{Args, Parser, Subcommand};
 use derive_more::From;
+use obscuravpn_client::logging::{self, LogPersistence};
 use std::process::exit;
 use strum::EnumIs;
-use tracing_subscriber::EnvFilter;
 
 #[cfg(target_os = "linux")]
 mod add_operator;
@@ -89,6 +90,22 @@ pub enum Command {
     IpcTest(ClientIpcTestArgs),
 }
 
+impl Command {
+    fn log_persistence_dir(&self) -> Option<Utf8PathBuf> {
+        match self {
+            #[cfg(target_os = "windows")]
+            Self::Service(ServiceArgs { config_dir, .. }) => {
+                let dir = Utf8PathBuf::from_iter([config_dir.as_str(), "logs"]);
+                if let Err(error) = std::fs::create_dir_all(&dir) {
+                    eprintln!("failed to create log dir {dir}: {error}");
+                }
+                Some(dir)
+            }
+            _ => None,
+        }
+    }
+}
+
 #[derive(Parser)]
 pub struct Cli {
     #[command(subcommand)]
@@ -105,19 +122,16 @@ pub struct GlobalArgs {
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()))
-        .init();
-
     rustls::crypto::aws_lc_rs::default_provider()
         .install_default()
         .expect("Failed to install aws-lc crypto provider");
 
     let cli = Cli::parse();
+    let log_persistence = logging::init(tracing_subscriber::fmt::Layer::default(), cli.command.log_persistence_dir().as_deref());
     let client_command: ClientCommand = match cli.command {
         #[cfg(target_os = "linux")]
         Command::AddOperator { users } => add_operator::run_add_operator(users).await,
-        Command::Service(args) => run_service(args).await,
+        Command::Service(args) => run_service(args, log_persistence).await,
         Command::Start(args) => args.into(),
         Command::Stop(args) => args.into(),
         Command::Status(args) => args.into(),
@@ -128,14 +142,14 @@ async fn main() {
 }
 
 #[cfg(any(target_os = "windows", target_os = "linux"))]
-async fn run_service(args: ServiceArgs) -> ! {
-    let Err(error) = service::run(args).await;
+async fn run_service(args: ServiceArgs, log_persistence: Option<LogPersistence>) -> ! {
+    let Err(error) = service::run(args, log_persistence).await;
     eprintln!("failed to start service: {}", error);
     exit(1)
 }
 
 #[cfg(not(any(target_os = "windows", target_os = "linux")))]
-async fn run_service(_args: ServiceArgs) -> ! {
+async fn run_service(_args: ServiceArgs, _log_persistence: Option<LogPersistence>) -> ! {
     eprintln!("unsupported OS");
     exit(1)
 }

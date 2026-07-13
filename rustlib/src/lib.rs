@@ -32,7 +32,7 @@ mod dns;
 pub mod linux;
 mod liveness;
 pub mod local_network;
-mod logging;
+pub mod logging;
 pub mod os;
 pub mod positive_u31;
 mod wake_instant;

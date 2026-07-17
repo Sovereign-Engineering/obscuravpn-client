@@ -1,4 +1,3 @@
-using log4net;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -6,6 +5,9 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using log4net;
+using Microsoft.Windows.AppNotifications;
+using Microsoft.Windows.AppNotifications.Builder;
 
 namespace Obscura_Client;
 
@@ -20,6 +22,7 @@ public class InvokeCommand
     public StopTunnelCommand? StopTunnel { get; set; }
     public RevealItemInDirCommand? RevealItemInDir { get; set; }
     public DebugBundleCommand? DebugBundle { get; set; }
+    public SendNotificationCommand? SendNotification { get; set; }
 
     public static IObscuraCommand Parse(string commandJson)
     {
@@ -42,6 +45,7 @@ public class InvokeCommand
         if (invoke.StopTunnel != null) return invoke.StopTunnel;
         if (invoke.RevealItemInDir != null) return invoke.RevealItemInDir;
         if (invoke.DebugBundle != null) return invoke.DebugBundle;
+        if (invoke.SendNotification != null) return invoke.SendNotification;
         Log.Warn($"Unknown command: {commandJson}");
         throw new NotSupportedException($"Unknown command: {commandJson}");
     }
@@ -280,5 +284,25 @@ public class DebugBundleCommand : IObscuraCommand
             });
         }
         return JsonSerializer.Serialize(path);
+    }
+}
+
+public class SendNotificationCommand : IObscuraCommand
+{
+    public required List<string> Texts { get; set; }
+
+    public Task<string> RunAsync()
+    {
+        if (AppNotificationManager.IsSupported())
+        {
+            var manager = AppNotificationManager.Default;
+            var builder = new AppNotificationBuilder();
+            foreach (var text in Texts)
+            {
+                builder.AddText(text);
+            }
+            manager.Show(builder.BuildNotification());
+        }
+        return Task.FromResult("null");
     }
 }

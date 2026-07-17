@@ -9,6 +9,8 @@ using log4net.Layout;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppLifecycle;
+using Microsoft.Windows.AppNotifications;
+using Microsoft.Windows.AppNotifications.Builder;
 using Obscura_Client.NotifyIcon;
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -88,11 +90,45 @@ public partial class App : Application
         _notifyIcon = new NotifyIconManager(this, _uiDispatcher);
         _window = new MainWindow();
 
+        AppNotificationManager.Default.NotificationInvoked += (s, a) => HandleNotification(a);
+        Log.Info("registering notification manager");
+        AppNotificationManager.Default.Register();
+
         var args = AppInstance.GetCurrent().GetActivatedEventArgs();
-        if (args.Kind != ExtendedActivationKind.StartupTask) {
+        if (args.Kind == ExtendedActivationKind.AppNotification)
+        {
+            var notificationArgs = (AppNotificationActivatedEventArgs)args.Data;
+            HandleNotification(notificationArgs);
+        } else if (args.Kind != ExtendedActivationKind.StartupTask) {
             ShowMainWindow();
         }
         HandleActivation(args);
+        ShowFirstRunNotification();
+    }
+
+    static void ShowFirstRunNotification()
+    {
+        Log.Info("checking first-run state");
+        try
+        {
+            if (!ClientSettings.IsFirstRun)
+            {
+                Log.Info("not first run; skipping notification");
+                return;
+            }
+            Log.Info("notification manager registered");
+            AppNotificationManager.Default.Show(new AppNotificationBuilder()
+                .AddText("Obscura VPN is running in the tray.")
+                .AddText("You can find it by pressing the arrow (^).")
+                .AddText("Obscura VPN will continue running in status notification area if the window is closed.")
+                .BuildNotification());
+            ClientSettings.SetFirstRunCompleted();
+            Log.Info("first-run notification shown");
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"first-run notification failed: {ex}");
+        }
     }
 
     private static void HandleActivation(AppActivationArguments activationArgs)
@@ -104,6 +140,8 @@ public partial class App : Application
             Current?._window?.HandleObscuraUrl(protocolArgs.Uri);
         }
     }
+
+    private void HandleNotification(AppNotificationActivatedEventArgs _) => ShowMainWindow();
 
     internal void SelectNavigationView(NavigationView view)
     {

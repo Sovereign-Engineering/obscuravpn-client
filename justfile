@@ -79,7 +79,8 @@ gen-license-rust:
 		Write-Host "gen-license-rust: up to date"
 		exit 0
 	}
-	if (-not (Get-Command "cargo-about" -ErrorAction SilentlyContinue)) { cargo install --locked cargo-about }
+	# Pinned: Latest rejects our about.toml (`no-clearly-defined` was removed).
+	if (-not (Get-Command "cargo-about" -ErrorAction SilentlyContinue)) { cargo install --locked cargo-about@0.6.4 }
 	cd rustlib; cargo-about generate --format=json --fail -o "../{{licenses-rust-windows}}"
 
 fix-message-ids:

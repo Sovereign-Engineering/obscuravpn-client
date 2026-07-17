@@ -26,8 +26,3 @@ result-*
 *.rpm
 *.pkg.tar.zst
 *.deb
-
-# Windows
-windows/wintun*/*
-windows/webui-build/*
-windows/obscura-client/*.csproj.lscache

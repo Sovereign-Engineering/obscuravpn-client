@@ -1,0 +1,14 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Fragment>
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="Obscura VPN" />
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="AppShortcutFolder" Name="Obscura VPN" />
+    </StandardDirectory>
+    <!-- %LOCALAPPDATA%\Obscura: per-user logs + WebView2 data, removed on uninstall. -->
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="ObscuraDataFolder" Name="Obscura" />
+    </StandardDirectory>
+  </Fragment>
+</Wix>

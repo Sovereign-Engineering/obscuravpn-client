@@ -8,6 +8,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Windows.Win32;
@@ -100,6 +101,13 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NativeUiErrorVisibility)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NativeUiErrorDismissVisibility)));
         };
+        if (!PackageIdentity.IsPackagedProcess())
+        {
+            Log.Error("Process has no package identity; Obscura VPN service named pipe will be unreachable.");
+#if !DEBUG
+            AddNativeUiError("This installation is missing its app identity, so it can't reach the Obscura VPN service. Try reinstalling Obscura VPN or contacting us.");
+#endif
+        }
         // Use the modern TitleBar control as the custom title bar
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
@@ -161,7 +169,13 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     private async void InitializeWebView()
     {
         try {
-            await WebView.EnsureCoreWebView2Async();
+            // The default user data folder is next to the executable,
+            // however the install dir (i.e. Program Files) is protected.
+            var userDataFolder = Path.Combine(App.ObscuraLocalAppDir, "WebView2");
+            Log.Info($"WebView2 user data folder: {userDataFolder}");
+            var env = await CoreWebView2Environment.CreateWithOptionsAsync(
+                null, userDataFolder, new CoreWebView2EnvironmentOptions());
+            await WebView.EnsureCoreWebView2Async(env);
         } catch (Exception ex) {
             Log.Error($"WebView.EnsureCoreWebView2Async failed: {ex.Message}");
             AddNativeUiError(ex.ToString());
@@ -573,6 +587,10 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
 
     internal void SelectNavigationView(NavigationView view)
     {
+        if (view == NavigationView.Developer)
+        {
+            DeveloperNavItem.Visibility = Visibility.Visible;
+        }
         var item = NavView.MenuItems.Concat(NavView.FooterMenuItems)
             .OfType<NavigationViewItem>()
             .FirstOrDefault(i => i.Tag is int tag && tag == (int)view);

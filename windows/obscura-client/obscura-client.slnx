@@ -3,9 +3,11 @@
     <Platform Name="ARM64" />
     <Platform Name="x64" />
   </Configurations>
+  <Project Path="../wix-msi/wix-msi.wixproj" Type="b7dd6f7e-def8-4e67-b5b7-07ef123db6f0" Id="69d1b0f1-87e6-4803-8908-70c9c0fc5167" />
   <Project Path="obscura-client.csproj">
     <Platform Solution="*|ARM64" Project="ARM64" />
     <Platform Solution="*|x64" Project="x64" />
-    <Deploy />
+    <Deploy Solution="*|ARM64" />
+    <Deploy Solution="*|x64" />
   </Project>
 </Solution>

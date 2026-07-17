@@ -1,4 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="local.props" Condition="Exists('local.props')" />
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
@@ -8,26 +9,51 @@
     <Platforms>x64;ARM64</Platforms>
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
     <PublishProfile>win-$(Platform).pubxml</PublishProfile>
+    <SelfContained>true</SelfContained>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <UseWinUI>true</UseWinUI>
     <WinUISDKReferences>false</WinUISDKReferences>
+    <!-- Necessary for resources.pri to be included when publishing https://github.com/microsoft/WindowsAppSDK/issues/3718 -->
     <EnableMsixTooling>true</EnableMsixTooling>
+    <!-- Pinning the published PRI name fixes missing taskbar icon on x64 -->
+    <ProjectPriFileName>resources.pri</ProjectPriFileName>
     <Nullable>enable</Nullable>
+    <!-- Applicable to: Windows 10 Fallback Activation -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <!-- A fresh 21H1 19041 Windows 10 does not work with CETCompat enabled -->
+    <CETCompat>false</CETCompat>
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Update="Assets\Icon.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Tray\*.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Assets\SplashScreen.scale-200.png" />
     <Content Include="Assets\LockScreenLogo.scale-200.png" />
-    <Content Include="Assets\Square150x150Logo.scale-200.png" />
-    <Content Include="Assets\Square44x44Logo.scale-200.png" />
-    <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
-    <Content Include="Assets\StoreLogo.png" />
+    <Content Include="Assets\Square150x150Logo.*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Square44x44Logo.*.png">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
   </ItemGroup>
 
   <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
+  <!--
+    DEBUG builds can run as packaged (package identity) since the service is not bundled
+    Published RELEASE builds must be unpackaged because it's included in the MSI alongside the service
+    Installed RELEASE builds get a package identity via Sparse MSIX (SparsePackage.appxmanifest.xml + app.manifest)
+  -->
+  <PropertyGroup Condition="'$(Configuration)' != 'Debug'">
+    <WindowsPackageType>None</WindowsPackageType>
+  </PropertyGroup>
 
   <!--
     Defining the "Msix" ProjectCapability here allows the Single-project MSIX Packaging
@@ -38,27 +64,18 @@
     <ProjectCapability Include="Msix" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="log4net" Version="3.3.1" />
+    <PackageReference Include="log4net" Version="3.3.2" />
     <PackageReference Include="log4net.Ext.Json" Version="3.0.3" />
-    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3967.48" />
-    <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.275">
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4078.44" />
+    <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.298">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.1839" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.2.0" />
-    <PackageReference Include="System.Management" Version="10.0.9" />
-    <PackageReference Include="WinUIEx" Version="2.9.0" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2270" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.3.1" />
+    <PackageReference Include="System.Management" Version="10.0.10" />
+    <PackageReference Include="WinUIEx" Version="2.9.2" />
   </ItemGroup>
-  <ItemGroup>
-    <Content Update="Assets\Icon.ico">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Assets\Tray\*.ico">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-
   <!--
     Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution
     Explorer "Package and Publish" context menu entry to be enabled for this project even if
@@ -70,6 +87,21 @@
 
   <PropertyGroup>
     <ObscuraUiDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\..\obscura-ui'))</ObscuraUiDir>
+  </PropertyGroup>
+
+  <!-- Rust service ("obscura.exe") build/bundle locations, derived from the MSBuild platform. -->
+  <PropertyGroup>
+    <RustlibDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\..\rustlib'))</RustlibDir>
+    <RustTarget Condition="'$(Platform)' == 'x64'">x86_64-pc-windows-msvc</RustTarget>
+    <RustTarget Condition="'$(Platform)' == 'ARM64'">aarch64-pc-windows-msvc</RustTarget>
+    <!-- OSArchitecture reports the real host arch even when MSBuild runs under x64 emulation. -->
+    <HostArch>$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)</HostArch>
+    <CrossCompilingX64OnArm64 Condition="'$(Platform)' == 'x64' and '$(HostArch)' == 'Arm64'">true</CrossCompilingX64OnArm64>
+    <RustServiceOutDir>$(RustlibDir)\target\$(RustTarget)\release</RustServiceOutDir>
+    <!-- Force aws-lc-sys's CMake-free cc builder: the CMake builder nests object paths past Windows' MAX_PATH on CI runners. -->
+    <RustBuildEnv Condition="'$(CrossCompilingX64OnArm64)' != 'true'">AWS_LC_SYS_CMAKE_BUILDER=0</RustBuildEnv>
+    <!-- Support compiling for x64 on ARM64 -->
+    <RustBuildEnv Condition="'$(CrossCompilingX64OnArm64)' == 'true'">AWS_LC_SYS_CMAKE_BUILDER=1;CMAKE_GENERATOR=Ninja</RustBuildEnv>
   </PropertyGroup>
 
   <PropertyGroup Label="Globals">
@@ -85,9 +117,29 @@
     <ApplicationIcon>Assets\Icon.ico</ApplicationIcon>
     <TagJsonVersion>$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\..\..\tag.json')), '"version":\s*"([^"]+)"').Groups[1].Value)</TagJsonVersion>
     <AssemblyVersion Condition="'$(OBSCURA_VERSION)' != ''">$(OBSCURA_VERSION)</AssemblyVersion>
-    <AssemblyVersion Condition="'$(OBSCURA_VERSION)' == ''">$(TagJsonVersion)</AssemblyVersion>
+    <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">$(TagJsonVersion)</AssemblyVersion>
     <PublishAot>False</PublishAot>
   </PropertyGroup>
+  <!-- log4net does not support PublishTrimmed (see https://github.com/apache/logging-log4net/issues/142) -->
+  <ItemGroup>
+    <TrimmerRootAssembly Include="log4net" />
+    <TrimmerRootAssembly Include="System.Configuration.ConfigurationManager" />
+  </ItemGroup>
+
+  <!-- Debug-only MSIX packaging: temporary signing key used by the F5 deploy. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
+    <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
+    <PackageCertificateKeyFile>obscura-client_TemporaryKey.pfx</PackageCertificateKeyFile>
+  </PropertyGroup>
+
+  <Target Name="BuildRustService" BeforeTargets="PreBuildEvent" Condition="'$(Configuration)' != 'Debug'">
+    <Exec Command="cargo build --release --target $(RustTarget) --bin obscura" WorkingDirectory="$(RustlibDir)" EnvironmentVariables="$(RustBuildEnv)" />
+    <ItemGroup>
+      <None Include="$(RustServiceOutDir)\obscura.exe" Link="obscura.exe" CopyToOutputDirectory="PreserveNewest" />
+      <None Include="$(RustServiceOutDir)\wintun.dll" Link="wintun.dll" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
 
   <Target Name="InstallWebUiDeps">
     <Exec Command="pnpm install --frozen-lockfile" WorkingDirectory="$(ObscuraUiDir)" />

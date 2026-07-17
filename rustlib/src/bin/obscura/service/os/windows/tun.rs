@@ -49,7 +49,7 @@ impl Tun {
                 // If loading fails (e.g. doesn't exist), create one
                 // THIS REQUIRES Administrator privileges
                 // The GUID can be hard coded and provided
-                wintun::Adapter::create(&wintun, TUN_NAME, "QUICWG", None).map_err(WindowsServiceStartError::CreateWintunAdapter)?
+                wintun::Adapter::create(&wintun, TUN_NAME, "Obscura QUICWG", None).map_err(WindowsServiceStartError::CreateWintunAdapter)?
             }
         };
         let session = adapter

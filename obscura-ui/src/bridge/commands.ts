@@ -183,6 +183,10 @@ export async function developerResetUserDefaults(): Promise<void> {
   await invoke('resetUserDefaults');
 }
 
+export async function showNotification(...texts: string[]): Promise<void> {
+  await invoke('sendNotification', { texts });
+}
+
 export async function checkForUpdates(): Promise<void> {
   await invoke('checkForUpdates');
 }

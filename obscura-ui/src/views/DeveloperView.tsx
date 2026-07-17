@@ -5,7 +5,7 @@ import Cookies from 'js-cookie';
 import { useContext, useEffect, useRef, useState } from 'react';
 import * as commands from '../bridge/commands';
 import { jsonFfiCmd } from "../bridge/commands";
-import { PLATFORM } from '../bridge/SystemProvider';
+import { Platform, PLATFORM } from '../bridge/SystemProvider';
 import { AppContext, NavigationView } from '../common/appContext';
 import { localStorageGet, LocalStorageKey } from '../common/localStorage';
 import { errMsg, showErrorNotification } from '../common/utils';
@@ -64,6 +64,13 @@ export default function DeveloperViewer() {
         <Text>connection in progress: <b>{connectionInProgress ?? 'No'}</b></Text>
         <Button title='Preferences such as whether the user has been onboarded or if the app has tried to register as a login item' onClick={() => commands.developerResetUserDefaults().then(() => notifications.show({ title: 'Successfully Removed UserDefault Keys', color: 'green', message: '' }))}>Reset app UserDefaults</Button>
         <DevSetApiUrl />
+        {PLATFORM === Platform.Windows && <Button onClick={async () => {
+            try {
+                await commands.showNotification('Obscura VPN', 'This is a test notification from the developer view.');
+            } catch (e) {
+                notifications.show({ title: 'Failed to send test notification', color: 'red', message: errMsg(e) });
+            }
+        }}>Windows: Test Notification</Button>}
         <Title order={4}>Debug Configuration</Title>
         <Group>
             <TextInput ref={apiHostAlternate} placeholder='api.example.com' style={{ flex: 1 }} />

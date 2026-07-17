@@ -39,6 +39,8 @@
             IsPaneVisible="False"
             SelectionChanged="NavView_SelectionChanged"
             PaneDisplayMode="Auto"
+            CompactModeThresholdWidth="548"
+            ExpandedModeThresholdWidth="671"
             OpenPaneLength="170">
 
             <NavigationView.MenuItems>
@@ -115,7 +117,7 @@
                     x:Name="ErrorFallback"
                     Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
                     Padding="32"
-                    Visibility="{x:Bind ErrorVisibility(NativeUiError), Mode=OneWay}">
+                    Visibility="{x:Bind NativeUiErrorVisibility, Mode=OneWay}">
                     <StackPanel
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
@@ -149,15 +151,27 @@
                             Padding="12"
                             MaxHeight="200">
                             <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                <TextBlock
-                                    Text="{x:Bind NativeUiError, Mode=OneWay}"
-                                    FontFamily="Consolas"
-                                    FontSize="12"
-                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    TextWrapping="Wrap"
-                                    IsTextSelectionEnabled="True" />
+                                <ItemsControl ItemsSource="{x:Bind NativeUiErrors, Mode=OneWay}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="local:NativeUiError">
+                                            <TextBlock
+                                                Text="{x:Bind Message}"
+                                                FontFamily="Consolas"
+                                                FontSize="12"
+                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                TextWrapping="Wrap"
+                                                IsTextSelectionEnabled="True"
+                                                Margin="0,0,0,8" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                             </ScrollViewer>
                         </Border>
+                        <Button
+                            Content="Dismiss"
+                            HorizontalAlignment="Center"
+                            Visibility="{x:Bind NativeUiErrorDismissVisibility, Mode=OneWay}"
+                            Click="OnDismissErrorsClick" />
                     </StackPanel>
                 </Grid>
             </Grid>

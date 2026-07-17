@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -73,20 +74,58 @@ public class OsStatus
 
     private OsStatus()
     {
-        InternetAvailable = GetInternetAvailable();
-        Log.Info($"initial internet availability: {InternetAvailable}");
-        NetworkInformation.NetworkStatusChanged += _ =>
+        // On first run, getting internet profiles on the default thread can cause issues on Windows 10
+        NetworkInformation.NetworkStatusChanged += OnNetworkStatusChanged;
+        Task.Run(() =>
+        {
+            try
+            {
+                var available = GetInternetAvailable();
+                Log.Info($"initial internet availability: {available}");
+                Update(s => s.InternetAvailable = available);
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"failed to initialize internet availability: {ex}");
+            }
+        });
+    }
+
+    // Fires on an MTA worker thread, outside any XAML handler: an exception escaping here
+    // takes down the process.
+    static void OnNetworkStatusChanged(object? sender)
+    {
+        try
         {
             var available = GetInternetAvailable();
             Log.Info($"internet availability changed: {available}");
-            Update(s => s.InternetAvailable = available);
-        };
+            Instance.Update(s => s.InternetAvailable = available);
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"network status update failed: {ex.Message}");
+        }
     }
 
     private static bool GetInternetAvailable()
     {
         var profile = NetworkInformation.GetInternetConnectionProfile();
-        return profile?.GetNetworkConnectivityLevel() == NetworkConnectivityLevel.InternetAccess;
+        if (profile != null)
+        {
+            var level = profile.GetNetworkConnectivityLevel();
+            Log.Info($"internet connectivity level: {level}");
+            return level == NetworkConnectivityLevel.InternetAccess;
+        }
+        Log.Info($"GetInternetConnectionProfile() returned null");
+        var profiles = NetworkInformation.GetConnectionProfiles()
+            .Select(p => (p.ProfileName, AdapterId: p.NetworkAdapter?.NetworkAdapterId, Level: p.GetNetworkConnectivityLevel()))
+            .Where(p => p.Level != NetworkConnectivityLevel.None)
+            .ToList();
+        foreach (var (name, adapterId, level) in profiles)
+        {
+            Log.Info($"profile '{name}' adapter={adapterId} level={level}");
+        }
+        return profiles.Any(p => p.Level == NetworkConnectivityLevel.InternetAccess);
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
@@ -17,25 +18,46 @@ using XamlNavigationView = Microsoft.UI.Xaml.Controls.NavigationView;
 
 namespace Obscura_Client;
 
+public sealed class NativeUiError
+{
+    public string Message { get; set; } = "";
+    public bool Fatal { get; set; } = true;
+}
+
 public sealed partial class MainWindow : Window, INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    string? _nativeUiError;
-    // When non-null, an overlay covering the WebView shows this error message.
-    public string? NativeUiError
+    // When non-empty, an overlay covering the WebView lists these errors.
+    public ObservableCollection<NativeUiError> NativeUiErrors { get; } = [];
+
+    public Visibility NativeUiErrorVisibility =>
+        NativeUiErrors.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility NativeUiErrorDismissVisibility =>
+        NativeUiErrors.Count > 0 && NativeUiErrors.All(e => !e.Fatal)
+            ? Visibility.Visible : Visibility.Collapsed;
+
+    internal void AddNativeUiError(string error, bool fatal = true)
     {
-        get => _nativeUiError;
-        set
+        var item = new NativeUiError { Message = error, Fatal = fatal };
+        if (DispatcherQueue.HasThreadAccess)
         {
-            if (_nativeUiError == value) return;
-            _nativeUiError = value;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NativeUiError)));
+            NativeUiErrors.Add(item);
+        }
+        else
+        {
+            DispatcherQueue.TryEnqueue(() => NativeUiErrors.Add(item));
         }
     }
 
-    Visibility ErrorVisibility(string? error) =>
-        string.IsNullOrEmpty(error) ? Visibility.Collapsed : Visibility.Visible;
+    void OnDismissErrorsClick(object sender, RoutedEventArgs e)
+    {
+        foreach (var error in NativeUiErrors.Where(err => !err.Fatal).ToList())
+        {
+            NativeUiErrors.Remove(error);
+        }
+    }
 
 #if !DEBUG
     static readonly string HOSTNAME = "obscura-ui";
@@ -67,6 +89,13 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         string iconPath = Path.Combine(AppContext.BaseDirectory, "Assets/Icon.ico");
         AppWindow.SetIcon(iconPath);
 
+        // The error overlay's visibility is a OneWay x:Bind on NativeUiErrorVisibility, which doesn't
+        // observe the collection itself; fire event whenever the error set changes.
+        NativeUiErrors.CollectionChanged += (_, _) =>
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NativeUiErrorVisibility)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NativeUiErrorDismissVisibility)));
+        };
         // Use the modern TitleBar control as the custom title bar
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
@@ -123,7 +152,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             await WebView.EnsureCoreWebView2Async();
         } catch (Exception ex) {
             Log.Error($"WebView.EnsureCoreWebView2Async failed: {ex.Message}");
-            NativeUiError = ex.ToString();
+            AddNativeUiError(ex.ToString());
             return;
         }
 

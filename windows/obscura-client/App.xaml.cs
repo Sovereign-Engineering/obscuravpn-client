@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,9 +16,8 @@ using Obscura_Client.NotifyIcon;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.System.Com;
-
-// To learn more about WinUI, the WinUI project structure,
-// and more about our project templates, see: http://aka.ms/winui-project-info.
+using Windows.Win32.System.DataExchange;
+using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace Obscura_Client;
 
@@ -29,11 +29,10 @@ public partial class App : Application
     static readonly ILog Log = LogManager.GetLogger(typeof(App));
     public new static App Current => (App)Application.Current;
     MainWindow? _window;
+    // Completed once OnLaunched creates the window; lets activations that arrive earlier wait for it.
+    readonly TaskCompletionSource<MainWindow> _windowReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     NotifyIconManager? _notifyIcon;
     DispatcherQueue? _uiDispatcher;
-    // A redirect activation can arrive before _uiDispatcher is set
-    // OnRedirectActivated waits on _uiDispatcherReady
-    static readonly TaskCompletionSource<DispatcherQueue> _uiDispatcherReady = new();
 
     /// <summary>
     /// Initializes the singleton application object.  This is the first line of authored code
@@ -47,7 +46,20 @@ public partial class App : Application
         AppDomain.CurrentDomain.ProcessExit += (s, e) => DevServer.Stop();
         UnhandledException += (s, e) => DevServer.Stop();
 #endif
-        UnhandledException += (s, e) => _notifyIcon?.Close();
+        UnhandledException += OnUnhandledException;
+    }
+
+    void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
+    {
+        Log.Error("Unhandled Exception", e.Exception);
+        try
+        {
+            _window?.AddNativeUiError($"Unhandled exception: {e.Exception?.ToString() ?? e.Message}", fatal: false);
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"failed to surface unhandled exception: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -56,8 +68,11 @@ public partial class App : Application
     /// <param name="args">Details about the launch request and process.</param>
     private static void ConfigureLogging()
     {
+        GlobalContext.Properties["pid"] = Environment.ProcessId;
+
         var layout = new SerializedLayout();
         layout.AddArrangement(new log4net.Layout.Arrangements.DefaultArrangement());
+        layout.AddMember("pid");
         layout.ActivateOptions();
 
         var traceAppender = new TraceAppender { Layout = layout };
@@ -65,7 +80,7 @@ public partial class App : Application
 
         var logDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Obscura VPN", "logs");
+            "Obscura", "logs");
         Directory.CreateDirectory(logDir);
 
         var fileAppender = new RollingFileAppender
@@ -77,6 +92,8 @@ public partial class App : Application
             MaximumFileSize = "10MB",
             StaticLogFileName = true,
             Layout = layout,
+            // The default ExclusiveLock silently drops all log output of a second app instance
+            LockingModel = new FileAppender.MinimalLock(),
         };
         fileAppender.ActivateOptions();
 
@@ -86,9 +103,9 @@ public partial class App : Application
     protected override void OnLaunched(LaunchActivatedEventArgs launchArgs)
     {
         _uiDispatcher = DispatcherQueue.GetForCurrentThread();
-        _uiDispatcherReady.TrySetResult(_uiDispatcher);
-        _notifyIcon = new NotifyIconManager(this, _uiDispatcher);
         _window = new MainWindow();
+        _windowReady.TrySetResult(_window);
+        _notifyIcon = new NotifyIconManager(this, _uiDispatcher);
 
         AppNotificationManager.Default.NotificationInvoked += (s, a) => HandleNotification(a);
         Log.Info("registering notification manager");
@@ -131,13 +148,14 @@ public partial class App : Application
         }
     }
 
-    private static void HandleActivation(AppActivationArguments activationArgs)
+    private async void HandleActivation(AppActivationArguments activationArgs)
     {
         if (activationArgs.Kind == ExtendedActivationKind.Protocol
             && activationArgs.Data is Windows.ApplicationModel.Activation.IProtocolActivatedEventArgs protocolArgs)
         {
             Log.Info($"handling protocol activation: {protocolArgs.Uri}");
-            Current?._window?.HandleObscuraUrl(protocolArgs.Uri);
+            var window = await _windowReady.Task;
+            window.DispatcherQueue.TryEnqueue(() => window.HandleObscuraUrl(protocolArgs.Uri));
         }
     }
 
@@ -156,13 +174,26 @@ public partial class App : Application
     internal void ShowMainWindow()
     {
         Log.Info("activating main window");
-        if (_window == null)
+        if (_window != null)
         {
-            Log.Warn("creating new main window");
-            _window = new MainWindow();
+            var hwnd = _window.GetWindowHandle();
+            PInvoke.ShowWindow(hwnd, SHOW_WINDOW_CMD.SW_NORMAL);
+            PInvoke.SetForegroundWindow(hwnd);
+            Log.Info("activated main window");
+        } else
+        {
+            Log.Warn("main window not created yet");
         }
-        _window.DispatcherQueue.TryEnqueue(_window.Activate);
-        PInvoke.SetForegroundWindow(_window.GetWindowHandle());
+    }
+
+    /// <summary>
+    /// Exit because the session is ending or the installer asked us to close. Unlike
+    /// RequestQuit, the tunnel is left alone: the service owns it.
+    /// </summary>
+    internal void ExitForShutdown()
+    {
+        _notifyIcon?.Close();
+        Exit();
     }
 
     /// <summary>
@@ -198,7 +229,13 @@ public partial class App : Application
     {
         ConfigureLogging();
         Log.Info("App instance launched; Logging initialized");
-        WinRT.ComWrappersSupport.InitializeComWrappers();
+        try {
+            WinRT.ComWrappersSupport.InitializeComWrappers();
+            Log.Info("COM wrappers initialized");
+        } catch (Exception ex)
+        {
+            Log.Error($"Failed to initialize COM wrappers. Not pumping COM. {ex}");
+        }
 
         if (DecideRedirection())
         {
@@ -229,6 +266,7 @@ public partial class App : Application
         }
         // Subsequent launches will redirect activation to the primary instance
         var activationArgs = AppInstance.GetCurrent().GetActivatedEventArgs();
+        Log.Info($"Secondary instance; redirecting activation (kind={activationArgs.Kind}) to primary instance (pid {keyInstance.ProcessId})");
         RedirectActivationTo(activationArgs, keyInstance);
         return true;
     }
@@ -238,13 +276,14 @@ public partial class App : Application
         // A single-thread apartment (STA) must pump messages while idle to avoid jamming up window broadcasts
         // The redirect activation is waited using a method that continues dispatching messages
         using var redirectComplete = new ManualResetEvent(false);
-        var redirectTimeout = TimeSpan.FromSeconds(32);
+        var redirectTimeout = TimeSpan.FromSeconds(5);
         using var cts = new CancellationTokenSource(redirectTimeout);
         Task.Run(() =>
         {
             try
             {
                 keyInstance.RedirectActivationToAsync(activationArgs).AsTask(cts.Token).GetAwaiter().GetResult();
+                Log.Info("Redirected activation to primary instance");
             }
             catch (OperationCanceledException)
             {
@@ -252,7 +291,15 @@ public partial class App : Application
             }
             catch (Exception ex)
             {
-                Log.Error("Failed to activate existing instance", ex);
+                Log.Error("Failed to activate existing instance; using WM_COPYDATA fallback", ex);
+                try
+                {
+                    FallbackActivatePrimary(activationArgs, keyInstance);
+                }
+                catch (Exception fallbackEx)
+                {
+                    Log.Error("WM_COPYDATA fallback failed", fallbackEx);
+                }
             }
             finally
             {
@@ -263,13 +310,85 @@ public partial class App : Application
         PInvoke.CoWaitForMultipleObjects((uint)CWMO_FLAGS.CWMO_DEFAULT, PInvoke.INFINITE, [handle], out _);
     }
 
+    // "OBS"; distinguishes our activation hand-off from other WM_COPYDATA traffic
+    internal const nuint OBS_ACTIVATION_TAG = 0x4F4253;
+
+    /// <summary>
+    /// RedirectActivationToAsync marshals IAppActivationArguments via WinRT metadata resolution,
+    /// which fails (0x80040155) on Windows 10 for self-contained deployments with sparse package
+    /// identity: https://github.com/microsoft/WindowsAppSDK/issues/3439#issuecomment-4970200486.
+    /// Hand the payload to the primary instance via WM_COPYDATA instead;
+    /// MainWindow replies 1 when it accepts.
+    /// </summary>
+    private static void FallbackActivatePrimary(AppActivationArguments activationArgs, AppInstance keyInstance)
+    {
+        var payload = activationArgs.Kind == ExtendedActivationKind.Protocol
+            && activationArgs.Data is Windows.ApplicationModel.Activation.IProtocolActivatedEventArgs protocolArgs
+            ? protocolArgs.Uri.ToString()
+            : "";
+
+        var candidates = new List<HWND>();
+        PInvoke.EnumWindows((hwnd, _) =>
+        {
+            if (GetWindowPid(hwnd) == keyInstance.ProcessId)
+            {
+                candidates.Add(hwnd);
+            }
+            return true;
+        }, 0);
+
+        PInvoke.AllowSetForegroundWindow(keyInstance.ProcessId);
+        foreach (var hwnd in candidates)
+        {
+            if (SendActivationPayload(hwnd, payload))
+            {
+                Log.Info("Activated primary instance via WM_COPYDATA fallback");
+                return;
+            }
+        }
+        Log.Error($"WM_COPYDATA fallback not accepted by any of {candidates.Count} windows of pid {keyInstance.ProcessId}");
+    }
+
+    /// <summary>
+    /// Isolates call to unsafe method GetWindowThreadProcessId
+    /// </summary>
+    private static unsafe uint GetWindowPid(HWND hwnd)
+    {
+        uint pid;
+        // SAFETY: &pid is not null; points to the stack-allocated variable pid
+        var _ = PInvoke.GetWindowThreadProcessId(hwnd, &pid);
+        return pid;
+    }
+
+    /// <summary>
+    /// Isolates WM_COPYDATA marshaling: building a COPYDATASTRUCT requires
+    /// pinning the payload string and passing raw addresses.
+    /// </summary>
+    private static unsafe bool SendActivationPayload(HWND hwnd, string payload)
+    {
+        fixed (char* payloadPtr = payload)
+        {
+            var copyData = new COPYDATASTRUCT
+            {
+                dwData = OBS_ACTIVATION_TAG,
+                cbData = (uint)(payload.Length * sizeof(char)),
+                lpData = payloadPtr,
+            };
+            nuint result = 0;
+            // SAFETY: SendMessageTimeout is synchronous, so the fixed pin and the stack-allocated
+            // copyData/result outlive the call; the OS copies the buffer into the receiving
+            // process, so nothing is referenced after return.
+            PInvoke.SendMessageTimeout(hwnd, PInvoke.WM_COPYDATA, 0, (nint)(&copyData),
+                SEND_MESSAGE_TIMEOUT_FLAGS.SMTO_ABORTIFHUNG, 5000, &result);
+            return result == 1;
+        }
+    }
+
     private static async void OnRedirectActivated(object? sender, AppActivationArguments args)
     {
-        var dispatcher = await _uiDispatcherReady.Task;
+        Log.Info($"received redirected activation (kind={args.Kind})");
+        await Current._windowReady.Task;
         Current.ShowMainWindow();
-        dispatcher.TryEnqueue(() =>
-        {
-            HandleActivation(args);
-        });
+        Current.HandleActivation(args);
     }
 }

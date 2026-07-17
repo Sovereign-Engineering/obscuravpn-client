@@ -1102,7 +1102,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -2575,7 +2575,7 @@ dependencies = [
 [[package]]
 name = "obscuravpn-api"
 version = "0.0.0"
-source = "git+https://github.com/Sovereign-Engineering/obscuravpn-api.git?rev=992874dc52fd9c5180fa629639d0715f18b28786#992874dc52fd9c5180fa629639d0715f18b28786"
+source = "git+https://github.com/Sovereign-Engineering/obscuravpn-api.git?rev=89859db4381a8a7be5a95138b3917762e7f4f75e#89859db4381a8a7be5a95138b3917762e7f4f75e"
 dependencies = [
  "anyhow",
  "argon2",
@@ -3312,7 +3312,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.11.0",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -3392,7 +3392,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs 1.0.1",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]

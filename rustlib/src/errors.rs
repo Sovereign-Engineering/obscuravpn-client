@@ -54,8 +54,7 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
                         NoLongerSupported {} => Self::NoLongerSupported,
                         TunnelLimitExceeded {} => Self::NoSlotsLeft,
                         RateLimitExceeded { pow_challenge: _ } => Self::ApiRateLimitExceeded,
-                        AlreadyExists {}
-                        | AlreadyReferred {}
+                        AlreadyReferred {}
                         | AssociateAccountConflict {}
                         | BadRequest {}
                         | IneligibleForReferral {}

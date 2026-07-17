@@ -196,7 +196,7 @@ impl Manager {
                     // TODO: https://linear.app/soveng/issue/OBS-2268/override-web-url-for-apple-demo-accounts
                     self.set_api_url(Some(url_override.api));
                 } else {
-                    auth_token = Some(output.auth_token.into());
+                    auth_token = Some(output.auth_token);
                     break;
                 }
             }

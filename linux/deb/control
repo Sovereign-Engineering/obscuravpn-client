@@ -8,7 +8,7 @@ Homepage: https://obscura.com
 
 Package: obscura-cli
 Architecture: @ARCH@
-Depends: libc6 (>= 2.39), passwd, util-linux-extra, ${shlibs:Depends}, ${misc:Depends}
+Depends: libc6 (>= 2.39), passwd, util-linux-extra, libtss2-tcti-device0, ${shlibs:Depends}, ${misc:Depends}
 Description: Obscura VPN command-line client and service
  Privacy that's more than a promise.
 

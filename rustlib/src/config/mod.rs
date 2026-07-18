@@ -7,6 +7,7 @@ pub mod feature_flags;
 mod persistence_test;
 
 use crate::errors::ConfigDirty;
+use crate::wg_key_store::WgKeyStore;
 pub use persistence::*;
 use std::path::PathBuf;
 
@@ -17,8 +18,8 @@ pub struct ConfigHandle {
 }
 
 impl ConfigHandle {
-    pub fn new(config_dir: PathBuf, keychain_wg_sk: Option<&[u8]>) -> Result<Self, ConfigLoadError> {
-        let mut config = load(&config_dir, keychain_wg_sk)?;
+    pub fn new(config_dir: PathBuf, key_store: &WgKeyStore) -> Result<Self, ConfigLoadError> {
+        let mut config = load(&config_dir, key_store)?;
         config.migrate();
         Ok(Self { dirty: false, config_dir, config })
     }

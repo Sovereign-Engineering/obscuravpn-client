@@ -3,6 +3,7 @@ use obscuravpn_api::types::AccountId;
 use obscuravpn_client::client_state::ClientState;
 use obscuravpn_client::config::feature_flags::FeatureFlagKey;
 use obscuravpn_client::exit_selection::{ExitSelectionState, ExitSelector};
+use obscuravpn_client::wg_key_store::WgKeyStore;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
@@ -29,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let args = Args::parse();
 
-    let client_state = Arc::new(ClientState::new(".".into(), None, "list-relays".into(), None, true)?);
+    let client_state = Arc::new(ClientState::new(".".into(), WgKeyStore::Plaintext, "list-relays".into(), true)?);
     client_state.set_api_url(args.base_url);
     client_state.set_feature_flag(FeatureFlagKey::TcpTlsTunnel.into(), args.force_tcp_tls);
     if let Some(account_no) = args.account_no {

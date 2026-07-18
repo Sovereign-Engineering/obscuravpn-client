@@ -332,7 +332,7 @@ async fn set_dns_servers_netsh(adapter: &wintun::Adapter, dns: &[IpAddr]) -> Res
         .arg("validate=no");
     result = result.and(run_command(&mut cmd, "netsh set dns servers", "jYNNDpN6").await);
 
-    for (_, nameserver) in dns.iter().skip(1).enumerate() {
+    for nameserver in dns.iter().skip(1) {
         let ip_str = if nameserver.is_ipv4() { "ipv4" } else { "ipv6" };
         let mut cmd = tokio::process::Command::new(&netsh);
         cmd.args(["interface", ip_str, "add", "dnsservers", &name])

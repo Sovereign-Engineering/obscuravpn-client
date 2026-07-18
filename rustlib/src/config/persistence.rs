@@ -7,17 +7,6 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::SystemTime;
 
-use boringtun::x25519::StaticSecret;
-use chrono::Utc;
-use obscuravpn_api::cmd::ExitList;
-use obscuravpn_api::types::{AccountId, WgPubkey};
-use rand::rngs::OsRng;
-use serde::{Deserialize, Serialize};
-use std::time::Duration;
-use tempfile::{NamedTempFile, PersistError};
-use thiserror::Error;
-use x25519_dalek::PublicKey;
-
 use crate::client_state::AccountStatus;
 use crate::config::cached::ConfigCached;
 use crate::config::dns_cache::DnsCache;
@@ -25,7 +14,17 @@ use crate::config::feature_flags::FeatureFlags;
 use crate::exit_selection::ExitSelector;
 use crate::manager::TunnelArgs;
 use crate::network_config::{DnsConfig, DnsContentBlock};
+use crate::wg_key_store::{PlaintextWgSecretKey, SealedWgSecretKey, WgKeyStore};
+use boringtun::x25519::StaticSecret;
+use chrono::Utc;
+use obscuravpn_api::cmd::ExitList;
+use obscuravpn_api::types::{AccountId, WgPubkey};
+use rand::rngs::OsRng;
+use serde::{Deserialize, Serialize};
+use std::time::Duration;
 use strum::EnumIs;
+use tempfile::{NamedTempFile, PersistError};
+use thiserror::Error;
 
 pub(super) const CONFIG_FILE: &str = "config.json";
 
@@ -73,13 +72,13 @@ fn try_load(path: &Path) -> Result<Option<Config>, ConfigLoadError> {
 /// Load a single config path.
 ///
 /// TODO: Remove after some migration period.
-pub fn load(config_dir: &Path, keychain_wg_sk: Option<&[u8]>) -> Result<Config, ConfigLoadError> {
+pub fn load(config_dir: &Path, key_store: &WgKeyStore) -> Result<Config, ConfigLoadError> {
     let path = Path::new(config_dir).join(CONFIG_FILE);
 
     let err = match try_load(&path) {
         Ok(config) => {
             let mut config = config.unwrap_or_default();
-            config.wireguard_key_cache.try_set_secret_key_from_keychain(keychain_wg_sk);
+            config.wireguard_key_cache.try_set_secret_key(key_store);
             tracing::info!(
                 config.dir =? config_dir,
                 message_id = "q9XZcBvj",
@@ -109,7 +108,7 @@ pub fn load(config_dir: &Path, keychain_wg_sk: Option<&[u8]>) -> Result<Config, 
     };
 
     // This may collide if failing in a tight loop, that is fine. Possibly even a feature.
-    let backup_path = Path::new(config_dir).join(format!("config-backup-{}.json", Utc::now().to_rfc3339()));
+    let backup_path = Path::new(config_dir).join(format!("config-backup-{}.json", Utc::now().format("%Y-%m-%dT%H-%M-%S%.3f")));
 
     // TODO: Do we want to try to clean up old backup configs?
 
@@ -401,47 +400,77 @@ pub struct WireGuardKeyCache {
     first_use: Option<SystemTime>,
     #[serde_as(as = "Option<serde_with::TimestampSeconds>")]
     registered_at: Option<SystemTime>,
-    #[serde_as(as = "Vec<serde_with::base64::Base64>")]
-    old_public_keys: Vec<[u8; 32]>,
+    old_public_keys: Vec<WgPubkey>,
 }
 
 #[serde_with::serde_as]
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
-#[serde(untagged)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, strum::IntoStaticStr)]
+#[serde(tag = "type", rename_all = "snake_case", from = "UntaggedWireGuardKeyCacheKeyPair")]
+#[strum(serialize_all = "snake_case")]
 pub enum WireGuardKeyCacheKeyPair {
     // secret key is stored in plain text in config
-    Config {
-        #[serde_as(as = "serde_with::base64::Base64")]
-        secret_key: [u8; 32],
+    Plaintext {
+        secret_key: PlaintextWgSecretKey,
     },
-    // secret key is stored in keychain (only public key is stored in plain text in config)
-    Keychain {
-        #[serde_as(as = "serde_with::base64::Base64")]
-        public_key: [u8; 32],
+    // secret key is stored in config sealed with the machine's TPM
+    Sealed {
+        sealed_secret_key: SealedWgSecretKey,
+        public_key: WgPubkey,
         #[serde(skip)]
-        secret_key: Option<[u8; 32]>,
+        secret_key: Option<PlaintextWgSecretKey>,
+    },
+    // secret key is not persisted in config (held in keychain or in memory only)
+    Detached {
+        public_key: WgPubkey,
+        #[serde(skip)]
+        secret_key: Option<PlaintextWgSecretKey>,
     },
 }
 
-pub type KeychainSetSecretKeyFn = Box<dyn (Fn(&[u8; 32]) -> bool) + Sync + Send>;
+// TODO: Remove after a transition period. Only needed to parse configs written before the "type" tag.
+#[serde_with::serde_as]
+#[derive(Deserialize)]
+#[serde(untagged)]
+pub enum UntaggedWireGuardKeyCacheKeyPair {
+    Plaintext {
+        secret_key: PlaintextWgSecretKey,
+    },
+    Sealed {
+        sealed_secret_key: SealedWgSecretKey,
+        public_key: WgPubkey,
+    },
+    Detached {
+        public_key: WgPubkey,
+    },
+}
+
+impl From<UntaggedWireGuardKeyCacheKeyPair> for WireGuardKeyCacheKeyPair {
+    fn from(key_pair: UntaggedWireGuardKeyCacheKeyPair) -> Self {
+        match key_pair {
+            UntaggedWireGuardKeyCacheKeyPair::Plaintext { secret_key } => Self::Plaintext { secret_key },
+            UntaggedWireGuardKeyCacheKeyPair::Sealed { sealed_secret_key, public_key } => {
+                Self::Sealed { sealed_secret_key, public_key, secret_key: None }
+            }
+            UntaggedWireGuardKeyCacheKeyPair::Detached { public_key } => Self::Detached { public_key, secret_key: None },
+        }
+    }
+}
 
 impl core::fmt::Debug for WireGuardKeyCache {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self { key_pair, old_public_keys, first_use, registered_at } = self;
         let (secret_key_exists, public_key) = match key_pair {
-            Some(WireGuardKeyCacheKeyPair::Config { secret_key }) => {
-                (true, Some(WgPubkey(PublicKey::from(&StaticSecret::from(*secret_key)).to_bytes())))
-            }
-            Some(WireGuardKeyCacheKeyPair::Keychain { public_key, secret_key }) => (secret_key.is_some(), Some(WgPubkey(*public_key))),
+            Some(WireGuardKeyCacheKeyPair::Plaintext { secret_key }) => (true, Some(secret_key.public_key())),
+            Some(WireGuardKeyCacheKeyPair::Sealed { sealed_secret_key: _, public_key, secret_key }) => (secret_key.is_some(), Some(*public_key)),
+            Some(WireGuardKeyCacheKeyPair::Detached { public_key, secret_key }) => (secret_key.is_some(), Some(*public_key)),
             None => (false, None),
         };
-        let old_public_keys: Vec<WgPubkey> = old_public_keys.iter().map(|b| WgPubkey(*b)).collect();
         f.debug_struct("WireGuardKeyCache")
             .field("secret_key", &secret_key_exists.then_some("redacted"))
             .field("public_key", &public_key)
             .field("first_use", first_use)
             .field("registered_at", registered_at)
-            .field("old_public_keys", &old_public_keys)
+            .field("old_public_keys", old_public_keys)
             .finish()
     }
 }
@@ -450,37 +479,53 @@ impl core::fmt::Debug for WireGuardKeyCache {
 pub enum RotationReason {
     ApiRequested,
     ApiUrlChanged,
-    KeychainInitFailed,
+    SecretUnavailable,
     Manual,
     NoKeyPair,
     ScheduleBased,
 }
 
 impl WireGuardKeyCache {
-    /// Sets secret key to provided value if it matches the known public key.
-    pub fn try_set_secret_key_from_keychain(&mut self, keychain_secret_key: Option<&[u8]>) {
-        let Some(keychain_secret_key) = keychain_secret_key else {
-            tracing::info!(message_id = "0wth7DUt", "no secret key from keychain provided");
-            return;
-        };
-        let Ok(keychain_secret_key): Result<[u8; 32], _> = keychain_secret_key.try_into() else {
-            tracing::error!(
-                message_id = "qEGlqS8N",
-                "provided secret key from keychain has wrong length: {}",
-                keychain_secret_key.len()
-            );
-            return;
-        };
-        match self.key_pair {
-            Some(WireGuardKeyCacheKeyPair::Config { secret_key: _ } | WireGuardKeyCacheKeyPair::Keychain { public_key: _, secret_key: Some(_) }) => {
-                tracing::error!(message_id = "9BXU4iWo", "secret already set ignoring secret key from keychain");
+    fn try_set_secret_key(&mut self, key_store: &WgKeyStore) {
+        match (key_store, &mut self.key_pair) {
+            (_, None) => {}
+            (WgKeyStore::Plaintext, Some(WireGuardKeyCacheKeyPair::Plaintext { secret_key: _ })) => {}
+            (WgKeyStore::None, Some(WireGuardKeyCacheKeyPair::Detached { public_key: _, secret_key: _ })) => {}
+            (WgKeyStore::Sealed(sealing_key), Some(WireGuardKeyCacheKeyPair::Sealed { sealed_secret_key, public_key, secret_key })) => {
+                match sealing_key.unseal(sealed_secret_key) {
+                    Ok(unsealed_secret_key) => {
+                        if unsealed_secret_key.public_key() == *public_key {
+                            tracing::info!(message_id = "mF8xVd3J", "unsealed wireguard secret key matches stored public key");
+                            *secret_key = Some(unsealed_secret_key);
+                        } else {
+                            tracing::error!(message_id = "yN3rWv7q", "unsealed wireguard secret key does not match stored public key");
+                        }
+                    }
+                    Err(()) => {
+                        tracing::error!(message_id = "Dk3wZr7M", "failed to unseal wireguard secret key");
+                    }
+                }
             }
-            Some(WireGuardKeyCacheKeyPair::Keychain { public_key, secret_key: None }) => {
-                let keychain_secret_key = StaticSecret::from(keychain_secret_key);
-                let keychain_public_key = PublicKey::from(&keychain_secret_key);
-                if keychain_public_key.as_bytes() == &public_key {
+            (
+                WgKeyStore::Keychain { secret_key: keychain_secret_key, set_secret_key: _ },
+                Some(WireGuardKeyCacheKeyPair::Detached { public_key, secret_key }),
+            ) => {
+                let Some(keychain_secret_key) = keychain_secret_key else {
+                    tracing::info!(message_id = "0wth7DUt", "no secret key from keychain provided");
+                    return;
+                };
+                let Ok(keychain_secret_key): Result<[u8; 32], _> = keychain_secret_key.as_slice().try_into() else {
+                    tracing::error!(
+                        length = keychain_secret_key.len(),
+                        message_id = "qEGlqS8N",
+                        "provided secret key from keychain has wrong length"
+                    );
+                    return;
+                };
+                let keychain_secret_key = PlaintextWgSecretKey::new(keychain_secret_key);
+                if keychain_secret_key.public_key() == *public_key {
                     tracing::info!(message_id = "5ZRaCxBA", "secret key from keychain matches public key");
-                    self.key_pair = Some(WireGuardKeyCacheKeyPair::Keychain { secret_key: Some(keychain_secret_key.to_bytes()), public_key });
+                    *secret_key = Some(keychain_secret_key);
                 } else {
                     tracing::error!(
                         message_id = "SzJPkoJA",
@@ -488,83 +533,106 @@ impl WireGuardKeyCache {
                     );
                 }
             }
-            None => tracing::error!(message_id = "S6uSP4ql", "no key pair set, ignoring secret key from keychain"),
+            (key_store, Some(key_pair)) => {
+                let key_store_type: &'static str = key_store.into();
+                let key_pair_type: &'static str = (&*key_pair).into();
+                tracing::warn!(
+                    key_pair_type,
+                    key_store_type,
+                    message_id = "hV2mQx9c",
+                    "persisted wireguard key pair does not match key store"
+                );
+            }
         }
     }
-    fn ensure_key_pair(&mut self, set_keychain_wg_sk: Option<&KeychainSetSecretKeyFn>) -> (StaticSecret, PublicKey) {
-        match self.key_pair {
-            Some(WireGuardKeyCacheKeyPair::Config { secret_key })
-            | Some(WireGuardKeyCacheKeyPair::Keychain { public_key: _, secret_key: Some(secret_key) }) => {
-                let secret_key = StaticSecret::from(secret_key);
-                let public_key = PublicKey::from(&secret_key);
-                (secret_key, public_key)
-            }
-            Some(WireGuardKeyCacheKeyPair::Keychain { public_key: _, secret_key: None }) => {
-                self.rotate_now_internal(RotationReason::KeychainInitFailed, set_keychain_wg_sk)
-            }
-            None => self.rotate_now_internal(RotationReason::NoKeyPair, set_keychain_wg_sk),
+    fn ensure_key_pair(&mut self, key_store: &WgKeyStore) -> (StaticSecret, WgPubkey) {
+        match &self.key_pair {
+            Some(
+                WireGuardKeyCacheKeyPair::Plaintext { secret_key }
+                | WireGuardKeyCacheKeyPair::Sealed { sealed_secret_key: _, public_key: _, secret_key: Some(secret_key) }
+                | WireGuardKeyCacheKeyPair::Detached { public_key: _, secret_key: Some(secret_key) },
+            ) => (secret_key.static_secret(), secret_key.public_key()),
+            Some(
+                WireGuardKeyCacheKeyPair::Sealed { sealed_secret_key: _, public_key: _, secret_key: None }
+                | WireGuardKeyCacheKeyPair::Detached { public_key: _, secret_key: None },
+            ) => self.rotate_now_internal(RotationReason::SecretUnavailable, key_store),
+            None => self.rotate_now_internal(RotationReason::NoKeyPair, key_store),
         }
     }
-    pub fn use_key_pair(&mut self, set_keychain_wg_sk: Option<&KeychainSetSecretKeyFn>) -> (StaticSecret, PublicKey) {
-        let (secret_key, public_key) = self.ensure_key_pair(set_keychain_wg_sk);
+    pub fn use_key_pair(&mut self, key_store: &WgKeyStore) -> (StaticSecret, WgPubkey) {
+        let (secret_key, public_key) = self.ensure_key_pair(key_store);
         let now = SystemTime::now();
         self.first_use.get_or_insert(now);
         (secret_key, public_key)
     }
-    pub fn rotate_now(&mut self, reason: RotationReason, set_keychain_wg_sk: Option<&KeychainSetSecretKeyFn>) {
-        self.rotate_now_internal(reason, set_keychain_wg_sk);
+    pub fn rotate_now(&mut self, reason: RotationReason, key_store: &WgKeyStore) {
+        self.rotate_now_internal(reason, key_store);
     }
-    fn rotate_now_internal(&mut self, reason: RotationReason, set_keychain_wg_sk: Option<&KeychainSetSecretKeyFn>) -> (StaticSecret, PublicKey) {
+    fn rotate_now_internal(&mut self, reason: RotationReason, key_store: &WgKeyStore) -> (StaticSecret, WgPubkey) {
         tracing::info!(message_id = "65KkXAbB", ?reason, "rotating wireguard key pair");
         let mut old_public_keys = std::mem::take(&mut self.old_public_keys);
-        let current_public_key = match self.key_pair {
-            Some(WireGuardKeyCacheKeyPair::Config { secret_key }) => Some(PublicKey::from(&StaticSecret::from(secret_key)).to_bytes()),
-            Some(WireGuardKeyCacheKeyPair::Keychain { public_key, secret_key: _ }) => Some(public_key),
+        let current_public_key = match &self.key_pair {
+            Some(WireGuardKeyCacheKeyPair::Plaintext { secret_key }) => Some(secret_key.public_key()),
+            Some(WireGuardKeyCacheKeyPair::Sealed { sealed_secret_key: _, public_key, secret_key: _ }) => Some(*public_key),
+            Some(WireGuardKeyCacheKeyPair::Detached { public_key, secret_key: _ }) => Some(*public_key),
             None => None,
         };
         if let Some(current_public_key) = current_public_key {
             old_public_keys.push(current_public_key);
         }
 
-        let secret_key = StaticSecret::random_from_rng(OsRng);
-        let public_key = PublicKey::from(&secret_key);
-        let key_pair = if let Some(set_keychain_wg_sk) = set_keychain_wg_sk {
-            if !set_keychain_wg_sk(&secret_key.to_bytes()) {
-                tracing::error!(message_id = "WuqX5xSE", "failed to set secret key in keychain");
+        let secret_key = PlaintextWgSecretKey::new(StaticSecret::random_from_rng(OsRng).to_bytes());
+        let public_key = secret_key.public_key();
+        let static_secret = secret_key.static_secret();
+        let key_pair = match key_store {
+            WgKeyStore::Plaintext => WireGuardKeyCacheKeyPair::Plaintext { secret_key },
+            WgKeyStore::Keychain { secret_key: _, set_secret_key } => {
+                if !set_secret_key(&static_secret.to_bytes()) {
+                    tracing::error!(message_id = "WuqX5xSE", "failed to set secret key in keychain");
+                }
+                WireGuardKeyCacheKeyPair::Detached { public_key, secret_key: Some(secret_key) }
             }
-            WireGuardKeyCacheKeyPair::Keychain { public_key: public_key.to_bytes(), secret_key: Some(secret_key.to_bytes()) }
-        } else {
-            WireGuardKeyCacheKeyPair::Config { secret_key: secret_key.to_bytes() }
+            WgKeyStore::None => {
+                tracing::warn!(message_id = "qF7dLw3X", "no wireguard key store, keeping secret key in memory only");
+                WireGuardKeyCacheKeyPair::Detached { public_key, secret_key: Some(secret_key) }
+            }
+            WgKeyStore::Sealed(sealing_key) => match sealing_key.seal(&secret_key) {
+                Ok(sealed_secret_key) => WireGuardKeyCacheKeyPair::Sealed { sealed_secret_key, public_key, secret_key: Some(secret_key) },
+                Err(()) => {
+                    tracing::error!(message_id = "kR6wHb3N", "failed to seal wireguard secret key, keeping it in memory only");
+                    WireGuardKeyCacheKeyPair::Detached { public_key, secret_key: Some(secret_key) }
+                }
+            },
         };
 
         *self = Self { key_pair: Some(key_pair), first_use: None, registered_at: None, old_public_keys };
-        (secret_key, public_key)
+        (static_secret, public_key)
     }
-    pub fn rotate_if_required(&mut self, set_keychain_wg_sk: Option<&KeychainSetSecretKeyFn>) {
+    pub fn rotate_if_required(&mut self, key_store: &WgKeyStore) {
         const MAX_AGE: Duration = Duration::from_secs(60 * 60 * 24 * 30); // 30 days
         if self.first_use.is_some_and(|t| t.elapsed().is_ok_and(|age| age > MAX_AGE)) {
-            self.rotate_now(RotationReason::ScheduleBased, set_keychain_wg_sk);
+            self.rotate_now(RotationReason::ScheduleBased, key_store);
         } else {
             tracing::info!(message_id = "i85mYSwz", "no wireguard key pair rotation required");
         }
     }
-    pub fn need_registration(&mut self, set_keychain_wg_sk: Option<&KeychainSetSecretKeyFn>) -> Option<(PublicKey, Vec<PublicKey>)> {
-        let (_, public_key) = self.ensure_key_pair(set_keychain_wg_sk);
+    pub fn need_registration(&mut self, key_store: &WgKeyStore) -> Option<(WgPubkey, Vec<WgPubkey>)> {
+        let (_, public_key) = self.ensure_key_pair(key_store);
         if self.registered_at.is_none() {
-            let old_public_keys = self.old_public_keys.iter().copied().map(Into::into).collect();
-            return Some((public_key, old_public_keys));
+            return Some((public_key, self.old_public_keys.clone()));
         }
         None
     }
-    pub fn registered(&mut self, registered_public_key: PublicKey, removed_public_keys: &[PublicKey]) {
-        let current_public_key = match self.key_pair {
-            Some(WireGuardKeyCacheKeyPair::Config { secret_key }) => Some(PublicKey::from(&StaticSecret::from(secret_key))),
-            Some(WireGuardKeyCacheKeyPair::Keychain { public_key, secret_key: _ }) => Some(PublicKey::from(public_key)),
+    pub fn registered(&mut self, registered_public_key: WgPubkey, removed_public_keys: &[WgPubkey]) {
+        let current_public_key = match &self.key_pair {
+            Some(WireGuardKeyCacheKeyPair::Plaintext { secret_key }) => Some(secret_key.public_key()),
+            Some(WireGuardKeyCacheKeyPair::Sealed { sealed_secret_key: _, public_key, secret_key: _ }) => Some(*public_key),
+            Some(WireGuardKeyCacheKeyPair::Detached { public_key, secret_key: _ }) => Some(*public_key),
             None => None,
         };
         if Some(registered_public_key) == current_public_key {
             self.registered_at = Some(SystemTime::now());
         }
-        self.old_public_keys.retain(|b| !removed_public_keys.contains(&PublicKey::from(*b)));
+        self.old_public_keys.retain(|b| !removed_public_keys.contains(b));
     }
 }

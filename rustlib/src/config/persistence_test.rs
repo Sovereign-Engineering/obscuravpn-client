@@ -1,4 +1,5 @@
 use std::fs;
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::sync::Arc;
@@ -19,6 +20,7 @@ use crate::config::cached::ConfigCached;
 use crate::config::load;
 use crate::config::save;
 use crate::exit_selection::ExitSelector;
+use crate::wg_key_store::WgKeyStore;
 
 fn random_config() -> Config {
     Config {
@@ -33,7 +35,7 @@ fn random_config() -> Config {
 #[test]
 fn load_no_config() {
     let dir = Path::new("/var/empty/");
-    assert_eq!(load(dir, None).unwrap(), Default::default());
+    assert_eq!(load(dir, &WgKeyStore::Plaintext).unwrap(), Default::default());
 }
 
 #[test]
@@ -44,7 +46,7 @@ fn load_config() {
 
     save(dir.as_ref(), &config).unwrap();
 
-    assert_eq!(load(dir.as_ref(), None).unwrap(), config);
+    assert_eq!(load(dir.as_ref(), &WgKeyStore::Plaintext).unwrap(), config);
 }
 
 #[test]
@@ -56,7 +58,7 @@ fn load_invalid_json() {
     fs::write(&file, corrupted).unwrap();
 
     // Load returns a default config.
-    assert_eq!(load(dir.as_ref(), None).unwrap(), Default::default());
+    assert_eq!(load(dir.as_ref(), &WgKeyStore::Plaintext).unwrap(), Default::default());
 
     let backup_files = fs::read_dir(&dir)
         .unwrap()
@@ -85,7 +87,7 @@ fn load_empty() {
     fs::write(&file, empty).unwrap();
 
     // Load returns a default config.
-    assert_eq!(load(dir.as_ref(), None).unwrap(), Default::default());
+    assert_eq!(load(dir.as_ref(), &WgKeyStore::Plaintext).unwrap(), Default::default());
 
     let backup_files = fs::read_dir(&dir)
         .unwrap()
@@ -96,6 +98,7 @@ fn load_empty() {
     assert_eq!(backup_files.len(), 0);
 }
 
+#[cfg(unix)]
 #[test]
 fn load_no_permission() {
     let config = random_config();
@@ -113,7 +116,7 @@ fn load_no_permission() {
     permissions.set_mode(0o0);
     fs::set_permissions(&file, permissions).unwrap();
 
-    assert!(load(dir.as_ref(), None).is_err());
+    assert!(load(dir.as_ref(), &WgKeyStore::Plaintext).is_err());
 }
 
 #[test]

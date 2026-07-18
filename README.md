@@ -154,7 +154,7 @@ You can use `Get-FileHash -Path .\wintun-0.14.1.zip -Algorithm SHA256` to verify
 
 Extract to `windows/wintun-0.14.1` such that `windows/wintun-0.14.1/bin/arm64/wintun.dll` is a file.
 
-To test the service, run `sudo cargo run service`. You need to enable `sudo` under System > Advanced settings. Alternatively, you can run `cargo run service` in an administrative terminal.
+To test the service, run `cargo build --bin obscura` and then `sudo .\target\debug\obscura.exe service`. You need to enable `sudo` under System > Advanced settings. Alternatively, you can run `.\target\debug\obscura.exe service` in an administrative terminal.
 
 The default config directory is `%APPDATA%\Obscura`. When testing the service, you may find it beneficial to manually add in an account number.
 

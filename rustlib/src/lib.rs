@@ -16,6 +16,7 @@ pub mod relay_selection;
 mod serde_safe;
 pub mod tokio;
 pub mod tunnel_state;
+pub mod wg_key_store;
 
 #[cfg(test)]
 mod backoff_test;

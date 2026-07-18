@@ -76,6 +76,6 @@ pub fn delete_rules() -> Result<bool, ()> {
 #[test]
 fn test_rule_path() {
     let path = get_rule_path();
-    assert!(path.contains(&NRPT_RULE_GUID));
+    assert!(path.contains(NRPT_RULE_GUID));
     println!("{path}");
 }

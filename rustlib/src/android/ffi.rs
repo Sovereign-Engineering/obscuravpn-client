@@ -4,6 +4,7 @@ use super::{
     os_impl::AndroidOsImpl,
     util::{Utf8JavaStr, throw_runtime_exception},
 };
+use crate::wg_key_store::WgKeyStore;
 use crate::{manager::Manager, manager_cmd::ManagerCmd, net::NetworkInterface, positive_u31::PositiveU31};
 use anyhow::Context as _;
 use jni::{
@@ -57,10 +58,10 @@ fn initialize(env: &mut JNIEnv, j_config_dir: &JString, j_user_agent: &JString, 
     let os_impl = Arc::new(AndroidOsImpl::new(jvm, class_cache.clone()));
     let manager = Manager::new(
         config_dir.as_path().into(),
-        None, // TODO: https://linear.app/soveng/issue/OBS-2699/android-keychain-equivalent
+        // TODO: https://linear.app/soveng/issue/OBS-2699/android-keychain-equivalent
+        WgKeyStore::Plaintext,
         user_agent.as_str().into(),
         os_impl.clone(),
-        None, // TODO: https://linear.app/soveng/issue/OBS-2699/android-keychain-equivalent
         log_persistence,
         true,
     )?;

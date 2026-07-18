@@ -2,7 +2,6 @@ use std::sync::{Arc, OnceLock};
 use tokio::runtime::Runtime;
 
 use super::os_impl::AppleOsImpl;
-use crate::config::KeychainSetSecretKeyFn;
 use crate::ffi_helpers::*;
 use crate::logging::LogPersistence;
 use crate::manager::Manager;
@@ -10,6 +9,7 @@ use crate::manager_cmd::ManagerCmd;
 use crate::manager_cmd::ManagerCmdErrorCode;
 use crate::net::NetworkInterface;
 use crate::positive_u31::PositiveU31;
+use crate::wg_key_store::WgKeyStore;
 
 /// cbindgen:ignore
 static APPLE_LOG_INIT: std::sync::Once = std::sync::Once::new();
@@ -67,8 +67,10 @@ pub unsafe extern "C" fn initialize(
 
         let config_dir = config_dir.to_string().into();
         let user_agent = user_agent.to_string();
-        let keychain_wg_sk = Some(keychain_wg_secret_key.to_vec()).filter(|v| !v.is_empty());
-        let keychain_set_wg_secret_key: KeychainSetSecretKeyFn = Box::new(move |sk: &[u8; 32]| keychain_set_wg_secret_key(sk.ffi()));
+        let wg_key_store = WgKeyStore::Keychain {
+            secret_key: Some(keychain_wg_secret_key.to_vec()).filter(|v| !v.is_empty()),
+            set_secret_key: Box::new(move |sk: &[u8; 32]| keychain_set_wg_secret_key(sk.ffi())),
+        };
         let log_persistence = std::ptr::NonNull::new(log_persistence).map(|log_persistence|
             // SAFETY:
             // - `log_persistence` was checked to be non-null
@@ -78,10 +80,9 @@ pub unsafe extern "C" fn initialize(
         let os_impl = Arc::new(AppleOsImpl::new(receive_cb, set_network_config_cb));
         match Manager::new(
             config_dir,
-            keychain_wg_sk.as_deref(),
+            wg_key_store,
             user_agent,
             os_impl.clone(),
-            Some(keychain_set_wg_secret_key),
             log_persistence,
             true, // persistent tunnel activation must be handled by the on-demand OS feature on Apple platforms
         ) {

@@ -226,7 +226,7 @@ fn verify_and_load_wintun() -> Result<Wintun, WindowsServiceStartError> {
     let actual_hash = digest::digest(&digest::SHA256, &dll_bytes);
     let actual_hex: String = actual_hash.as_ref().iter().map(|b| format!("{b:02x}")).collect();
 
-    (&actual_hex == WINTUN_DLL_SHA256)
+    (actual_hex == WINTUN_DLL_SHA256)
         .then_some(())
         .ok_or_else(|| WindowsServiceStartError::WintunDllHashMismatch {
             dll_path: dll_path.clone(),

@@ -82,9 +82,10 @@
           strictDeps = true;
           nativeBuildInputs = [ pkgs.cmake pkgs.pkg-config ];
         };
-        rustDepsArgs-gui = rustDepsArgs // {
+        rustDepsArgsNative = rustDepsArgs // { buildInputs = lib.optionals pkgs.stdenv.isLinux [ pkgs.tpm2-tss ]; };
+        rustDepsArgsNative-gui = rustDepsArgsNative // {
           cargoExtraArgs = "--locked --bin obscura-gui --features=gui";
-          buildInputs = [ pkgs.glib pkgs.gtk4 pkgs.webkitgtk_6_0 ];
+          buildInputs = rustDepsArgsNative.buildInputs ++ [ pkgs.glib pkgs.gtk4 pkgs.webkitgtk_6_0 ];
         };
         rustDepsArgs-android = rustDepsArgs // androidRustEnv // {
           buildInputs = [ android.androidsdk ];
@@ -96,9 +97,11 @@
           cargoBuildCommand = "cargo ndk -t arm64-v8a build --release --lib";
           cargoCheckCommand = "cargo ndk -t arm64-v8a check --release --lib";
         };
-        rustArgs = rustDepsArgs // { cargoArtifacts = craneLib.buildDepsOnly rustDepsArgs; };
+        rustArgs = rustDepsArgsNative // { cargoArtifacts = craneLib.buildDepsOnly rustDepsArgsNative; };
         rustArgs-android = rustDepsArgs-android // { cargoArtifacts = craneLib.buildDepsOnly rustDepsArgs-android; };
-        rustArgs-gui = rustDepsArgs-gui // { cargoArtifacts = craneLib.buildDepsOnly rustDepsArgs-gui; };
+        rustArgsNative-gui = rustDepsArgsNative-gui // {
+          cargoArtifacts = craneLib.buildDepsOnly rustDepsArgsNative-gui;
+        };
 
         rustLibArgs = {
           # Environment variables for cbindgen, see rustlib/build.rs
@@ -139,7 +142,7 @@
             runHook postInstall
           '';
         };
-        rust-gui-bin = craneLib.buildPackage (rustArgs-gui // {
+        rust-gui-bin = craneLib.buildPackage (rustArgsNative-gui // {
           meta.mainProgram = "obscura-gui";
           OBSCURA_VERSION = version;
           OBSCURA_GRESOURCES_DIR = "${gui-gresources}";
@@ -355,7 +358,7 @@
           '';
         } // lib.optionalAttrs pkgs.stdenv.isLinux {
           inherit rust-cli-bin rust-gui-bin;
-          clippy-gui = craneLib.cargoClippy (rustArgs-gui // {
+          clippy-gui = craneLib.cargoClippy (rustArgsNative-gui // {
             cargoClippyExtraArgs = "-- -Dwarnings";
             OBSCURA_GRESOURCES_DIR = "${gui-gresources}";
           });
@@ -426,7 +429,7 @@
               pkgs.swiftformat
               pkgs.taplo
               rustToolchain.passthru.availableComponents.rustfmt # Just rustfmt, nothing else
-            ] ++ lib.optionals pkgs.stdenv.isLinux rustArgs-gui.buildInputs ++ rustArgs.nativeBuildInputs
+            ] ++ lib.optionals pkgs.stdenv.isLinux rustArgsNative-gui.buildInputs ++ rustArgs.nativeBuildInputs
               ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.create-dmg ];
 
             shellHook = ''

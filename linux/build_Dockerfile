@@ -2,7 +2,7 @@ FROM debian:bookworm@sha256:30482e873082e906a4908c10529180aefb6f77620aea7404b909
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates curl git build-essential pkg-config \
-      libgtk-4-dev libwebkitgtk-6.0-dev libsoup-3.0-dev libglib2.0-dev \
+      libgtk-4-dev libwebkitgtk-6.0-dev libsoup-3.0-dev libglib2.0-dev libtss2-dev \
  && rm -rf /var/lib/apt/lists/*
 
 ENV RUSTUP_HOME=/usr/local/rustup \

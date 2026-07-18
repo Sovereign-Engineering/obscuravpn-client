@@ -9,10 +9,8 @@ use crate::manager::TunnelArgs;
 use crate::network_config::DnsContentBlock;
 use crate::tunnel_state::TargetState;
 use crate::{config::ConfigHandle, net::interface_mtu};
-use crate::{
-    config::KeychainSetSecretKeyFn, config::RotationReason, net::NetworkInterface, network_config::DnsConfig, quicwg::QuicWgConnHandshaking,
-};
 use crate::{config::PinnedLocation, exit_selection::ExitSelectionState};
+use crate::{config::RotationReason, net::NetworkInterface, network_config::DnsConfig, quicwg::QuicWgConnHandshaking, wg_key_store::WgKeyStore};
 use crate::{config::cached::ConfigCached, exit_selection::ExitSelector};
 use crate::{
     config::{self, Config, ConfigLoadError, LocalNetworkAccess},
@@ -31,7 +29,7 @@ use obscuravpn_api::types::{AccountId, AccountInfo, AuthToken, OneExit};
 use obscuravpn_api::{
     Client, ClientError,
     cmd::{ApiErrorKind, Cmd, CreateTunnel, DeleteTunnel, ListRelays, ListTunnels},
-    types::{ObfuscatedTunnelConfig, OneRelay, TunnelConfig, WgPubkey},
+    types::{ObfuscatedTunnelConfig, OneRelay, TunnelConfig},
 };
 use rand::{seq::SliceRandom, thread_rng};
 use serde::{Deserialize, Serialize};
@@ -58,7 +56,7 @@ pub struct ClientState {
     exit_update_lock: Arc<tokio::sync::Mutex<()>>,
     mtu: Option<u16>,
     network_interface: Option<NetworkInterface>,
-    set_keychain_wg_sk: Option<KeychainSetSecretKeyFn>,
+    wg_key_store: WgKeyStore,
     user_agent: String,
 }
 
@@ -80,12 +78,11 @@ impl ClientState {
     #[allow(clippy::new_ret_no_self)]
     pub fn new(
         config_dir: PathBuf,
-        keychain_wg_sk: Option<&[u8]>,
+        wg_key_store: WgKeyStore,
         user_agent: String,
-        set_keychain_wg_sk: Option<KeychainSetSecretKeyFn>,
         force_init_inactive: bool,
     ) -> Result<ClientStateHandle, ConfigLoadError> {
-        let mut config = ConfigHandle::new(config_dir, keychain_wg_sk)?;
+        let mut config = ConfigHandle::new(config_dir, &wg_key_store)?;
         if force_init_inactive {
             config.change(|config| config.tunnel_active = false)
         }
@@ -94,7 +91,7 @@ impl ClientState {
                 this: WeakClientStateHandle(weak.clone()),
                 config,
                 cached_api_client: None,
-                set_keychain_wg_sk,
+                wg_key_store,
                 mtu: None,
                 network_interface: None,
                 exit_update_lock: Default::default(),
@@ -291,9 +288,7 @@ impl ClientStateHandle {
         self.change(|inner| {
             inner.config.change(|config| {
                 config.api_url = url;
-                config
-                    .wireguard_key_cache
-                    .rotate_now(RotationReason::ApiUrlChanged, inner.set_keychain_wg_sk.as_ref());
+                config.wireguard_key_cache.rotate_now(RotationReason::ApiUrlChanged, &inner.wg_key_store);
             });
             tracing::info!(message_id = "Eequ6ahz", "Clearing cached API client: API URL changed.");
             inner.cached_api_client = None;
@@ -446,13 +441,12 @@ impl ClientStateHandle {
             let (sk, pk) = self.change(|inner| {
                 inner.config.change(|config| {
                     config.local_tunnels_ids.push(tunnel_id.to_string());
-                    config.wireguard_key_cache.use_key_pair(inner.set_keychain_wg_sk.as_ref())
+                    config.wireguard_key_cache.use_key_pair(&inner.wg_key_store)
                 })
             });
-            let wg_pubkey = WgPubkey(pk.to_bytes());
             tracing::info!(
                 message_id = "Ahv4Eequ",
-                client.pubkey =% wg_pubkey,
+                client.pubkey =% pk,
                 exit.id = exit,
                 relay.id = closest_relay.id,
                 relay.ip_v4 =% closest_relay.ip_v4,
@@ -463,7 +457,7 @@ impl ClientStateHandle {
             let cmd = CreateTunnel::Obfuscated {
                 id: Some(tunnel_id),
                 label: None,
-                wg_pubkey,
+                wg_pubkey: pk,
                 relay: Some(closest_relay.id.clone()),
                 exit: Some(exit.clone()),
             };
@@ -478,11 +472,9 @@ impl ClientStateHandle {
                             "server indicated that key rotation is required immediately"
                         );
                         self.change(|inner| {
-                            inner.config.change(|config| {
-                                config
-                                    .wireguard_key_cache
-                                    .rotate_now(RotationReason::ApiRequested, inner.set_keychain_wg_sk.as_ref())
-                            })
+                            inner
+                                .config
+                                .change(|config| config.wireguard_key_cache.rotate_now(RotationReason::ApiRequested, &inner.wg_key_store))
                         });
                         continue;
                     }
@@ -703,7 +695,7 @@ impl ClientStateHandle {
     pub fn rotate_wireguard_key_if_required(&self) {
         self.change(|inner| {
             inner.config.change(|config| {
-                config.wireguard_key_cache.rotate_if_required(inner.set_keychain_wg_sk.as_ref());
+                config.wireguard_key_cache.rotate_if_required(&inner.wg_key_store);
             })
         })
     }
@@ -713,16 +705,13 @@ impl ClientStateHandle {
         let key_pair = self.change(|inner| {
             inner
                 .config
-                .change(|config| config.wireguard_key_cache.need_registration(inner.set_keychain_wg_sk.as_ref()))
+                .change(|config| config.wireguard_key_cache.need_registration(&inner.wg_key_store))
         });
         let Some((current_public_key, old_public_keys)) = key_pair else {
             tracing::info!(message_id = "DLRFU37X", "public wireguard key already registered");
             return Ok(());
         };
-        let cmd = CacheWgKey {
-            public_key: WgPubkey(current_public_key.to_bytes()),
-            previous_public_keys: old_public_keys.iter().map(|p| WgPubkey(p.to_bytes())).collect(),
-        };
+        let cmd = CacheWgKey { public_key: current_public_key, previous_public_keys: old_public_keys.clone() };
         match self.api_request(cmd).await {
             Ok(()) => {
                 self.change_config(|config| config.wireguard_key_cache.registered(current_public_key, &old_public_keys));
@@ -738,9 +727,7 @@ impl ClientStateHandle {
                     );
                     self.change(|inner| {
                         inner.config.change(|config| {
-                            config
-                                .wireguard_key_cache
-                                .rotate_now(RotationReason::ApiRequested, inner.set_keychain_wg_sk.as_ref());
+                            config.wireguard_key_cache.rotate_now(RotationReason::ApiRequested, &inner.wg_key_store);
                         })
                     })
                 }
@@ -752,9 +739,7 @@ impl ClientStateHandle {
     pub fn rotate_wg_key(&self) {
         self.change(|inner| {
             inner.config.change(|config| {
-                config
-                    .wireguard_key_cache
-                    .rotate_now(RotationReason::Manual, inner.set_keychain_wg_sk.as_ref());
+                config.wireguard_key_cache.rotate_now(RotationReason::Manual, &inner.wg_key_store);
             })
         })
     }

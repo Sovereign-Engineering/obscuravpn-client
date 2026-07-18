@@ -16,7 +16,7 @@ use crate::{
     backoff::Backoff,
     cached_value::CachedValue,
     client_state::{AccountStatus, ClientState, ClientStateHandle},
-    config::{Config, ConfigLoadError, KeychainSetSecretKeyFn, PinnedLocation, feature_flags::FeatureFlags},
+    config::{Config, ConfigLoadError, PinnedLocation, feature_flags::FeatureFlags},
     debug_bundle::{bundle_info::BundleInfo, create_debug_bundle, debug_info::DebugInfo},
     errors::{ApiError, ConfigDirty, ConfigDirtyOrApiError, ConnectErrorCode},
     exit_selection::ExitSelector,
@@ -27,6 +27,7 @@ use crate::{
     os::os_trait::Os,
     quicwg::TransportKind,
     tunnel_state::TunnelState,
+    wg_key_store::WgKeyStore,
 };
 
 pub struct Manager {
@@ -156,14 +157,13 @@ impl Manager {
     /// The constructed `Arc<Manager>` can not be dropped due to spawned tasks, which hold references.
     pub fn new(
         config_dir: PathBuf,
-        keychain_wg_sk: Option<&[u8]>,
+        wg_key_store: WgKeyStore,
         user_agent: String,
         os_impl: Arc<impl Os>,
-        set_keychain_wg_sk: Option<KeychainSetSecretKeyFn>,
         log_persistence: Option<LogPersistence>,
         force_init_inactive: bool,
     ) -> Result<Arc<Self>, ConfigLoadError> {
-        let client_state = ClientState::new(config_dir, keychain_wg_sk, user_agent, set_keychain_wg_sk, force_init_inactive)?;
+        let client_state = ClientState::new(config_dir, wg_key_store, user_agent, force_init_inactive)?;
         let tunnel_state = TunnelState::new(client_state.clone(), os_impl.clone());
         let initial_status = Status::new(Uuid::new_v4(), VpnStatus::Disconnected {}, &client_state.borrow());
         let this = Arc::new(Self { tunnel_state, client_state, status_watch: channel(initial_status).0, log_persistence });

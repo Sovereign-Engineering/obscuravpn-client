@@ -4,6 +4,7 @@ use crate::ServiceArgs;
 use std::convert::Infallible;
 
 use anyhow::Context;
+use obscuravpn_client::wg_key_store::WgKeyStore;
 use obscuravpn_client::{logging::LogPersistence, manager::Manager};
 use std::error::Error;
 use std::sync::Arc;
@@ -18,12 +19,25 @@ pub async fn run(args: ServiceArgs, log_persistence: Option<LogPersistence>) -> 
 
     let os_impl = Arc::new(os_impl);
 
+    let wg_key_store = match WgKeyStore::sealed().await {
+        Ok(wg_key_store) => wg_key_store,
+        #[cfg(target_os = "linux")]
+        Err(()) => {
+            tracing::warn!(message_id = "Vt8mJc5R", "TPM sealing unavailable, storing the wireguard key in plaintext");
+            WgKeyStore::Plaintext
+        }
+        #[cfg(target_os = "windows")]
+        Err(()) => {
+            tracing::warn!(message_id = "Bq4xNw7L", "TPM sealing unavailable, keeping the wireguard key in memory");
+            WgKeyStore::None
+        }
+    };
+
     let manager = Manager::new(
         args.config_dir.into(),
-        None,
+        wg_key_store,
         format!("obscura.net/{}/v0.0-alpha", std::env::consts::OS),
         os_impl.clone(),
-        None,
         log_persistence,
         false,
     )

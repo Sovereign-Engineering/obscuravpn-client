@@ -341,6 +341,8 @@ The released packages support:
 
 - Debian 13
 - Ubuntu 26.04
+- Fedora 44
+- RHEL 10 (requires EPEL)
 
 ### Building and signing packages
 

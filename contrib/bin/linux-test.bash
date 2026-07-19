@@ -81,6 +81,7 @@ function autoinstall() {
       ["debian13-desktop"]="debian13"
       ["ubuntu26.04-desktop"]="ubuntu24.04"
       ["fedora44-desktop"]="fedora41"
+      ["almalinux10-desktop"]="almalinux10"
       ["archlinux-desktop"]="archlinux"
     )
     if [[ ! -v map[${distro}-${flavor}] ]]; then
@@ -92,7 +93,8 @@ function autoinstall() {
     declare -A map=(
       ["debian13-desktop"]="https://deb.debian.org/debian/dists/trixie/main/installer-amd64/"
       ["ubuntu26.04-desktop"]="./linux/vm/ubuntu26.04-desktop.iso,kernel=casper/vmlinuz,initrd=casper/initrd"
-      ["fedora44-desktop"]="https://download.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/"
+      ["fedora44-desktop"]="https://dl.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/"
+      ["almalinux10-desktop"]="https://repo.almalinux.org/almalinux/10/BaseOS/x86_64/os/"
       ["archlinux-desktop"]="https://mirrors.edge.kernel.org/archlinux/iso/latest/,kernel=arch/boot/x86_64/vmlinuz-linux,initrd=arch/boot/x86_64/initramfs-linux.img"
     )
     if [[ ! -v map[${distro}-${flavor}] ]]; then
@@ -114,6 +116,7 @@ function autoinstall() {
       ["debian13-desktop"]="auto=true priority=critical file=/debian-desktop.preseed.cfg console=ttyS0"
       ["ubuntu26.04-desktop"]="autoinstall console=ttyS0"
       ["fedora44-desktop"]="inst.ks=file:/fedora44-desktop.ks console=tty0 console=ttyS0"
+      ["almalinux10-desktop"]="inst.ks=file:/almalinux10-desktop.ks console=tty0 console=ttyS0"
       ["archlinux-desktop"]="ip=dhcp net.ifnames=0 archisobasedir=arch archiso_http_srv=https://mirrors.edge.kernel.org/archlinux/iso/latest/ console=ttyS0"
     )
     if [[ ! -v map[${distro}-${flavor}] ]]; then
@@ -124,6 +127,7 @@ function autoinstall() {
     declare -A map=(
       ["debian13-desktop"]="./linux/vm/debian-desktop.preseed.cfg"
       ["fedora44-desktop"]="./linux/vm/fedora44-desktop.ks"
+      ["almalinux10-desktop"]="./linux/vm/almalinux10-desktop.ks"
     )
     if [[ -v map[${distro}-${flavor}] ]]; then
       echo "--initrd-inject"
@@ -153,6 +157,7 @@ function start_vm() {
 
   qemu-system-x86_64 \
     -enable-kvm \
+    -cpu host \
     -m 4G \
     -smp $(($(nproc) - 1)) \
     -drive file="$(disk_image_path --distro "${distro}" --flavor "${flavor}"),format=qcow2,if=virtio,snapshot=on" \

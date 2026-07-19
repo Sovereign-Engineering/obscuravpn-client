@@ -3,12 +3,12 @@ Section: net
 Priority: optional
 Maintainer: Obscura Repository Signer <packages@obscura.com>
 Build-Depends: debhelper-compat (= 13), dh-apparmor
-Standards-Version: 4.6.2
+Standards-Version: 4.7.2
 Homepage: https://obscura.com
 
 Package: obscura-cli
 Architecture: @ARCH@
-Depends: libc6 (>= 2.39), passwd, util-linux-extra, libtss2-tcti-device0, ${shlibs:Depends}, ${misc:Depends}
+Depends: libc6 (>= 2.39), passwd, util-linux-extra, libtss2-tcti-device0t64, ${shlibs:Depends}, ${misc:Depends}
 Description: Obscura VPN command-line client and service
  Privacy that's more than a promise.
 

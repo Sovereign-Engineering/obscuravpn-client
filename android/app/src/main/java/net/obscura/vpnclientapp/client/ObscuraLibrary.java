@@ -28,4 +28,6 @@ public class ObscuraLibrary {
     static native void unsetNetworkInterface(FfiHandle handle);
 
     static native void forwardLog(int level, String tag, String message, String messageId, String throwableString);
+
+    static native void flushAndStopPersistedLog();
 }

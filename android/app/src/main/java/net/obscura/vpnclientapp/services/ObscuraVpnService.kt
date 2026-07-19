@@ -99,6 +99,7 @@ class ObscuraVpnService : VpnService() {
 
     companion object {
         private val instance = java.util.concurrent.atomic.AtomicReference<ObscuraVpnService?>(null)
+        private val shutdownHookRegistered = java.util.concurrent.atomic.AtomicBoolean(false)
 
         @androidx.annotation.Keep
         @JvmStatic
@@ -176,6 +177,23 @@ class ObscuraVpnService : VpnService() {
         log.info("onCreate", "vqiGa01f")
 
         logLastExitReason()
+
+        if (shutdownHookRegistered.compareAndSet(false, true)) {
+            Runtime.getRuntime()
+                .addShutdownHook(
+                    Thread {
+                        val stacks =
+                            Thread.getAllStackTraces().entries.joinToString("\n\n") { (thread, stack) ->
+                                "${thread.name} (${thread.state})\n" + stack.joinToString("\n") { "    at $it" }
+                            }
+                        log.error(
+                            "shutdown hook fired, System.exit in progress, all thread stacks:\n$stacks",
+                            "aJx0R5wq",
+                        )
+                        rustFfi.flushAndStopPersistedLog()
+                    },
+                )
+        }
 
         handler = Handler(Looper.getMainLooper())
 

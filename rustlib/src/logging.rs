@@ -31,7 +31,7 @@ impl Drop for LogPersistence {
 
 static LOG_GUARDS: Mutex<Vec<Arc<WorkerGuard>>> = Mutex::new(Vec::new());
 
-fn flush_and_stop_persisted_log() {
+pub fn flush_and_stop_persisted_log() {
     LOG_GUARDS.lock().unwrap().clear();
 }
 

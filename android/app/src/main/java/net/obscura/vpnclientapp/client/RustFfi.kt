@@ -33,4 +33,8 @@ class RustFfi(context: Context, userAgent: String) {
     fun unsetNetworkInterface() {
         ObscuraLibrary.unsetNetworkInterface(handle)
     }
+
+    fun flushAndStopPersistedLog() {
+        ObscuraLibrary.flushAndStopPersistedLog()
+    }
 }

@@ -174,6 +174,13 @@ pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_unsetNetwo
     global.os_impl.set_network_interface(None)
 }
 
+/// cbindgen:ignore
+#[unsafe(no_mangle)]
+pub extern "C" fn Java_net_obscura_vpnclientapp_client_ObscuraLibrary_flushAndStopPersistedLog(_env: JNIEnv, _: JClass) {
+    tracing::info!(message_id = "nR7wFqLm", "flushing and stopping log persistence on Java request");
+    crate::logging::flush_and_stop_persisted_log();
+}
+
 // We'd need to use `getStackTrace` to get more information than this, but that
 // seems relatively expensive, has a fiddly API, and still isn't exactly what we
 // want (i.e. line numbers are for `return` statements).

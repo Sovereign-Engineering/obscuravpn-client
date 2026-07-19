@@ -3,10 +3,11 @@ import { notifications } from '@mantine/notifications';
 import React, { ReactNode, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsCircleHalf } from 'react-icons/bs';
-import { IoCheckmark, IoInformationCircleOutline, IoMoon, IoSunnySharp } from 'react-icons/io5';
+import { IoCheckmark, IoHelpCircleOutline, IoInformationCircleOutline, IoMoon, IoSunnySharp } from 'react-icons/io5';
 import { MdBlock, MdWarning } from 'react-icons/md';
 import * as commands from '../bridge/commands';
 import { PLATFORM, Platform } from '../bridge/SystemProvider';
+import { DNS_OPTIONS_WEBPAGE } from '../common/accountUtils';
 import { AppContext, DNSContentBlock, featureFlagEnabled, FeatureFlagKey, KnownFeatureFlagKey } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { NotificationId } from '../common/notifIds';
@@ -32,7 +33,7 @@ export default function Settings() {
 
 function DnsSettings() {
   const { t } = useTranslation();
-  const { appStatus } = useContext(AppContext);
+  const { appStatus, osStatus } = useContext(AppContext);
   const { dnsContentBlock, useSystemDns } = appStatus;
 
   const onBlockChange = (key: keyof DNSContentBlock, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -40,8 +41,6 @@ function DnsSettings() {
     const newBlock = { ...dnsContentBlock, [key]: checked };
     commands.setDnsContentBlock(newBlock);
   };
-
-  const titleKey = IS_ANDROID ? 'dnsContentBlocking' : 'dnsSetting';
 
   const checkboxes = (
     <>
@@ -59,15 +58,20 @@ function DnsSettings() {
       <Stack gap='xs'>
         <Group gap='xs'>
           <MdBlock size='1.5em' style={{ color: 'var(--mantine-color-dimmed)' }} />
-          <Title order={4}>{t(titleKey)}</Title>
+          <Title order={4}>{t('dnsSetting')}</Title>
+          <ActionIcon component='a' href={DNS_OPTIONS_WEBPAGE} target='_blank' variant='subtle' color='gray' ml='auto' aria-label={t('dnsSettingHelp')}>
+            <IoHelpCircleOutline size='1.5em' />
+          </ActionIcon>
         </Group>
         {IS_ANDROID ? (
           /* no "Use system DNS" on Android. See applyNetworkConfig in ObscuraVpnService.kt for the reasons. */
           <>
             <Stack gap='xs'>{checkboxes}</Stack>
-            <Alert icon={<IoInformationCircleOutline />} color='blue' variant='light'>
-              {t('androidPrivateDnsAlert')}
-            </Alert>
+            {osStatus.privateDnsActive && (
+              <Alert icon={<MdWarning />} color='orange' variant='light'>
+                {t('androidPrivateDnsAlert')}
+              </Alert>
+            )}
           </>
         ) : (
           <Radio.Group value={useSystemDns ? 'system' : 'obscura'} onChange={(val) => commands.setUseSystemDns(val === 'system')}>

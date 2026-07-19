@@ -130,6 +130,7 @@ export function formatPartialAccountId(accountId: string): string {
 export const OBSCURA_WEBPAGE = 'https://obscura.com';
 export const CHECK_STATUS_WEBPAGE = `${OBSCURA_WEBPAGE}/check`;
 export const LEGAL_WEBPAGE = `${OBSCURA_WEBPAGE}/legal`;
+export const DNS_OPTIONS_WEBPAGE = `${OBSCURA_WEBPAGE}/knowledge/dns-options`;
 export const APP_ACCOUNT_TAB = 'obscuravpn:///account';
 
 export const APP_MANAGE_SUBSCRIPTION = `obscuravpn:///manage-subscription`;

@@ -15,6 +15,7 @@ data class OsStatus(
     val canSendMail: Boolean,
     val loginItemStatus: LoginItemStatus?,
     val playBilling: Boolean,
+    val privateDnsActive: Boolean,
 ) {
     // TODO: https://linear.app/soveng/issue/OBS-2640/change-nevpnstatus-to-be-platform-agnostic
     @Serializable

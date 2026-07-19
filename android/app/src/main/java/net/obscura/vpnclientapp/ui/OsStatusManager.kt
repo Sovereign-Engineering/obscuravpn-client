@@ -15,7 +15,8 @@ import net.obscura.vpnclientapp.client.jsonConfig
 private val log = Logger(OsStatusManager::class)
 
 @Singleton // Prevents loss of state on activity destruction
-class OsStatusManager @Inject constructor(@ApplicationContext context: Context) : NetworkStatusObserver.Callback {
+class OsStatusManager @Inject constructor(@ApplicationContext context: Context) :
+    NetworkStatusObserver.Callback, PrivateDnsObserver.Callback {
     data class State(
         var debugBundleStatus: OsStatus.DebugBundleStatus =
             OsStatus.DebugBundleStatus(
@@ -27,6 +28,7 @@ class OsStatusManager @Inject constructor(@ApplicationContext context: Context) 
         var navigationView: OsStatus.NavigationView? = null,
         var playBilling: Boolean =
             @Suppress("KotlinConstantConditions", "SimplifyBooleanWithConstants") (BuildConfig.FLAVOR == "play"),
+        var privateDnsActive: Boolean = false,
         var vpnStatus: OsStatus.OsVpnStatus = OsStatus.OsVpnStatus.Disconnected,
     )
 
@@ -37,10 +39,15 @@ class OsStatusManager @Inject constructor(@ApplicationContext context: Context) 
 
     init {
         NetworkStatusObserver(context, this)
+        PrivateDnsObserver(context, this)
     }
 
     override fun onAvailableNetworksChanged(availableNetworks: Int) {
         this.update { this.internetAvailable = availableNetworks > 0 }
+    }
+
+    override fun onPrivateDnsChanged(strictMode: Boolean) {
+        this.update { this.privateDnsActive = strictMode }
     }
 
     @Synchronized
@@ -65,6 +72,7 @@ class OsStatusManager @Inject constructor(@ApplicationContext context: Context) 
                     canSendMail = true,
                     loginItemStatus = null,
                     playBilling = this.current.state.playBilling,
+                    privateDnsActive = this.current.state.privateDnsActive,
                 )
                 .let { jsonConfig.encodeToString(it) }
         }

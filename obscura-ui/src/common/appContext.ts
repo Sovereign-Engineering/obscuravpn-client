@@ -81,6 +81,7 @@ export interface OsStatusShared {
     offerCodeRedemptionSuccess?: boolean,
     // Android-specific
     playBilling?: boolean,
+    privateDnsActive?: boolean,
 }
 
 export interface OsStatusWVpnStatus extends OsStatusShared {

@@ -186,17 +186,14 @@ function add_repo() {
   require_args "distro" "$@"
 
   if [[ ${distro} == debian* ]] || [[ ${distro} == ubuntu* ]]; then
-    local pkgs=(result-linux/dist-test/deb/pool/main/obscura-repository_*.deb)
-    scp_run --src "${pkgs[0]}" --dest /home/user/obscura-repository.deb
+    scp_run --src result-linux/dist-test/deb/obscura-repository.deb --dest /home/user/obscura-repository.deb
     ssh_run sudo apt-get install -y /home/user/obscura-repository.deb
     ssh_run sudo apt-get update
   elif [[ ${distro} == fedora* ]] || [[ ${distro} == alma* ]]; then
-    local pkgs=(result-linux/dist-test/rpm/x86_64/obscura-repository-*.rpm)
-    scp_run --src "${pkgs[0]}" --dest /home/user/obscura-repository.rpm
+    scp_run --src result-linux/dist-test/rpm/obscura-repository.rpm --dest /home/user/obscura-repository.rpm
     ssh_run sudo dnf install -y --nogpgcheck /home/user/obscura-repository.rpm
   elif [[ ${distro} == archlinux* ]]; then
-    local pkgs=(result-linux/dist-test/arch/x86_64/obscura-keyring-*.pkg.tar.zst)
-    scp_run --src "${pkgs[0]}" --dest /home/user/obscura-keyring.pkg.tar.zst
+    scp_run --src result-linux/dist-test/arch/obscura-keyring.pkg.tar.zst --dest /home/user/obscura-keyring.pkg.tar.zst
     ssh_run sudo pacman -U --noconfirm /home/user/obscura-keyring.pkg.tar.zst
     ssh_run "printf '[obscura]\nServer = %s/arch/\$arch\n' 'http://${REPO_IP}:${REPO_PORT}' | sudo tee -a /etc/pacman.conf"
     ssh_run sudo pacman -Sy

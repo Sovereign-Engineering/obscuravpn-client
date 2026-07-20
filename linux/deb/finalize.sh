@@ -41,6 +41,8 @@ main() {
     release dists/stable >dists/stable/Release
   gpg --batch --yes --local-user "$fingerprint" --clearsign -o dists/stable/InRelease dists/stable/Release
   gpg --batch --yes --local-user "$fingerprint" --detach-sign --armor -o dists/stable/Release.gpg dists/stable/Release
+
+  cp pool/main/obscura-repository_*_all.deb obscura-repository.deb
 }
 
 main "$@"

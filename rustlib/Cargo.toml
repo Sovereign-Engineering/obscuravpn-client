@@ -60,7 +60,7 @@ tempfile = "3.10.1"
 thiserror = "1.0.56"
 tokio = { version = "1.44", features = ["full"] }
 tokio-rustls = "0.26.2"
-tokio-util = "0.7.13"
+tokio-util = { version = "0.7.13", features = ["rt"] }
 tracing = "0.1.40"
 tracing-appender = "0.2.3"
 tracing-subscriber = { version = "0.3.18", features = [
@@ -104,9 +104,10 @@ oslog = "0.2.0"
 tracing-oslog = "0.3.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-ksni = { version = "0.3", default-features = false, features = ["async-io"] }
+ksni = { version = "0.3.4", default-features = false, features = ["async-io"] }
 nix = { version = "0.31.1", features = ["user"] }
 open = "5.3.3"
+resvg = { version = "0.47", default-features = false }
 rtnetlink = "0.18.1"
 shlex = "1.3.0"
 tss-esapi = "7.7.0"

@@ -2,7 +2,7 @@ use crate::service::os::MAX_IPC_MESSAGE_LEN;
 use crate::service::os::linux::service_lock::ServiceLock;
 use crate::service::os::linux::start_error::LinuxServiceStartError;
 use flume::{Receiver, Sender, bounded};
-use obscuravpn_client::linux::SOCKET_PATH;
+use obscuravpn_client::linux::ipc::SOCKET_PATH;
 use std::fs;
 use std::io::ErrorKind;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};

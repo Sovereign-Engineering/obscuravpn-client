@@ -1,6 +1,6 @@
 use crate::ClientIpcTestArgs;
 use anyhow::anyhow;
-use obscuravpn_client::linux::{ClientError, run_command};
+use obscuravpn_client::linux::ipc::{ClientError, run_command};
 use obscuravpn_client::manager_cmd::ManagerCmd;
 
 pub async fn ipc_test(_: ClientIpcTestArgs) -> Result<(), ClientError> {

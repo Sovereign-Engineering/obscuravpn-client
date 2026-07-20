@@ -6,7 +6,7 @@ use anyhow::Context;
 use chrono::{MappedLocalTime, TimeZone};
 use obscuravpn_api::types::{AccountId, AccountInfo};
 use obscuravpn_client::exit_selection::ExitSelector;
-use obscuravpn_client::linux::{ClientError, run_command};
+use obscuravpn_client::linux::ipc::{ClientError, run_command};
 use obscuravpn_client::manager::{Status, TunnelArgs, VpnStatus};
 use obscuravpn_client::manager_cmd::ManagerCmd;
 
@@ -15,7 +15,7 @@ pub async fn run(global_args: GlobalArgs, cmd: ClientCommand) -> Result<(), Clie
     if global_args.no_group_refresh {
         tracing::debug!(message_id = "jpjl9cI9", "skipping group refresh fix due to CLI flag");
     } else {
-        obscuravpn_client::linux::try_group_refresh_fix().await;
+        obscuravpn_client::linux::ipc::try_group_refresh_fix().await;
     }
     match cmd {
         ClientCommand::Login(args) => login(args).await,

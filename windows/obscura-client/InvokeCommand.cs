@@ -6,6 +6,7 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using log4net;
+using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppNotifications;
 using Microsoft.Windows.AppNotifications.Builder;
 
@@ -17,6 +18,7 @@ public class InvokeCommand
 
     public GetOsStatusCommand? GetOsStatus { get; set; }
     public SetNavigationViewCommand? SetNavigationView { get; set; }
+    public SetColorSchemeCommand? SetColorScheme { get; set; }
     public IPCCommand? JsonFfiCmd { get; set; }
     public StartTunnelCommand? StartTunnel { get; set; }
     public StopTunnelCommand? StopTunnel { get; set; }
@@ -40,6 +42,7 @@ public class InvokeCommand
 
         if (invoke.GetOsStatus != null) return invoke.GetOsStatus;
         if (invoke.SetNavigationView != null) return invoke.SetNavigationView;
+        if (invoke.SetColorScheme != null) return invoke.SetColorScheme;
         if (invoke.JsonFfiCmd != null) return invoke.JsonFfiCmd;
         if (invoke.StartTunnel != null) return invoke.StartTunnel;
         if (invoke.StopTunnel != null) return invoke.StopTunnel;
@@ -76,6 +79,31 @@ public class SetNavigationViewCommand : IObscuraCommand
     {
         App.Current.SelectNavigationView(View);
         return IObscuraCommand.UnitResponse;
+    }
+}
+
+public enum AppColorScheme
+{
+    Dark,
+    Light,
+    Auto,
+}
+
+public class SetColorSchemeCommand : IObscuraCommand
+{
+    public required AppColorScheme Value { get; set; }
+
+    public Task<string> RunAsync()
+    {
+        var theme = Value switch
+        {
+            AppColorScheme.Dark => ElementTheme.Dark,
+            AppColorScheme.Light => ElementTheme.Light,
+            _ => ElementTheme.Default,
+        };
+        App.Current.ApplyColorScheme(theme);
+        ClientSettings.ColorScheme = theme;
+        return Task.FromResult("null");
     }
 }
 

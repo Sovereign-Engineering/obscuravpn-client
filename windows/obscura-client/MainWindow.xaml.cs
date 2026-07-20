@@ -74,6 +74,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     // In case cold launch is from a `/payment-succeeded` URI protocol launch
     readonly TaskCompletionSource _webUIReady = new();
     readonly StatusSubscriber _statusSubscriber = new();
+    ElementTheme _colorScheme = ElementTheme.Default;
 
     const uint WM_CLOSE = 0x0010;
 
@@ -99,6 +100,14 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         // Use the modern TitleBar control as the custom title bar
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
+        try
+        {
+            ApplyColorScheme(ClientSettings.ColorScheme);
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"failed to restore color scheme: {ex.Message}");
+        }
         InitializeWebView();
 #if DEBUG
         DeveloperNavItem.Visibility = Visibility.Visible;
@@ -156,6 +165,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             return;
         }
 
+        ApplyWebViewColorScheme();
         await WebView.CoreWebView2.CallDevToolsProtocolMethodAsync("Log.enable", "{}");
         await WebView.CoreWebView2.CallDevToolsProtocolMethodAsync("Runtime.enable", "{}");
 
@@ -461,6 +471,40 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         {
             Log.Warn($"Failed to open URL in default browser: {url}: {ex.Message}");
         }
+    }
+
+    internal void ApplyColorScheme(ElementTheme theme)
+    {
+        void Apply()
+        {
+            _colorScheme = theme;
+            if (Content is FrameworkElement root)
+            {
+                root.RequestedTheme = theme;
+            }
+            ApplyWebViewColorScheme();
+        }
+        if (DispatcherQueue.HasThreadAccess)
+        {
+            Apply();
+        }
+        else
+        {
+            DispatcherQueue.TryEnqueue(Apply);
+        }
+    }
+
+    // The webview's prefers-color-scheme follows the OS theme unless overridden per profile.
+    void ApplyWebViewColorScheme()
+    {
+        var profile = WebView.CoreWebView2?.Profile;
+        if (profile == null) return;
+        profile.PreferredColorScheme = _colorScheme switch
+        {
+            ElementTheme.Light => CoreWebView2PreferredColorScheme.Light,
+            ElementTheme.Dark => CoreWebView2PreferredColorScheme.Dark,
+            _ => CoreWebView2PreferredColorScheme.Auto,
+        };
     }
 
     internal void TitleBar_PaneToggleRequested(TitleBar _, object _1)

@@ -1,3 +1,7 @@
+using log4net;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.Web.WebView2.Core;
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -6,12 +10,9 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
-using log4net;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.Web.WebView2.Core;
 using Windows.Win32;
 using Windows.Win32.Foundation;
+using Windows.Win32.System.DataExchange;
 using Windows.Win32.UI.WindowsAndMessaging;
 using WinUIEx.Messaging;
 using XamlNavigationView = Microsoft.UI.Xaml.Controls.NavigationView;
@@ -77,6 +78,8 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     ElementTheme _colorScheme = ElementTheme.Default;
 
     const uint WM_CLOSE = 0x0010;
+    const uint WM_QUERYENDSESSION = 0x0011;
+    const uint WM_ENDSESSION = 0x0016;
 
     public MainWindow()
     {
@@ -226,6 +229,62 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             e.Handled = true;
             e.Result = 0;
         }
+        else if (e.Message.MessageId == WM_QUERYENDSESSION)
+        {
+            // Logoff/shutdown, or the installer closing us (ENDSESSION_CLOSEAPP): always agree.
+            e.Handled = true;
+            e.Result = 1;
+        }
+        else if (e.Message.MessageId == WM_ENDSESSION && e.Message.WParam != 0)
+        {
+            // The session (or this app, when uninstalling/upgrading) is ending; exit now so no
+            // ghost tray icon or locked files remain. WM_CLOSE only hides, so this is the one
+            // path that actually terminates on external request.
+            Log.Info("end session requested; exiting");
+            e.Handled = true;
+            e.Result = 0;
+            App.Current.ExitForShutdown();
+        }
+        else if (e.Message.MessageId == PInvoke.WM_COPYDATA)
+        {
+            // Activation hand-off from a secondary instance when RedirectActivationToAsync
+            // is broken (see App.FallbackActivatePrimary). Payload is a protocol URI or empty.
+            if (!TryReadActivationPayload(e.Message.LParam, out var payload))
+            {
+                return;
+            }
+            e.Handled = true;
+            e.Result = 1;
+            Log.Info($"received fallback activation (payload: {payload})");
+            App.Current.ShowMainWindow();
+            if (Uri.TryCreate(payload, UriKind.Absolute, out var uri))
+            {
+                DispatcherQueue.TryEnqueue(() => HandleObscuraUrl(uri));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Exists to isolate reading the sender's COPYDATASTRUCT out of a raw WM_COPYDATA lParam;
+    /// returns false if the message is not our activation hand-off.
+    /// SAFETY: for WM_COPYDATA, the OS maps the sender's COPYDATASTRUCT and its lpData buffer
+    /// (cbData bytes) into this process and keeps them valid while the message is being
+    /// handled; the read stays within cbData and the string constructor copies, so no
+    /// pointer escapes the handler.
+    /// </summary>
+    private static unsafe bool TryReadActivationPayload(nint lParam, out string payload)
+    {
+        payload = "";
+        var copyData = (COPYDATASTRUCT*)lParam;
+        if (copyData == null || copyData->dwData != App.OBS_ACTIVATION_TAG)
+        {
+            return false;
+        }
+        if (copyData->cbData != 0)
+        {
+            payload = new string((char*)copyData->lpData, 0, (int)(copyData->cbData / sizeof(char)));
+        }
+        return true;
     }
 
     internal HWND GetWindowHandle()

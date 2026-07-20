@@ -117,7 +117,7 @@ function autoinstall() {
       ["ubuntu26.04-desktop"]="autoinstall console=ttyS0"
       ["fedora44-desktop"]="inst.ks=file:/fedora44-desktop.ks console=tty0 console=ttyS0"
       ["almalinux10-desktop"]="inst.ks=file:/almalinux10-desktop.ks console=tty0 console=ttyS0"
-      ["archlinux-desktop"]="ip=dhcp net.ifnames=0 archisobasedir=arch archiso_http_srv=https://mirrors.edge.kernel.org/archlinux/iso/latest/ console=ttyS0"
+      ["archlinux-desktop"]="ip=:::::eth0:dhcp net.ifnames=0 archisobasedir=arch archiso_http_srv=https://mirrors.edge.kernel.org/archlinux/iso/latest/ console=ttyS0"
     )
     if [[ ! -v map[${distro}-${flavor}] ]]; then
         die "unknown autoinstall extra-args for ${distro}-${flavor}"

@@ -343,6 +343,7 @@ The released packages support:
 - Ubuntu 26.04
 - Fedora 44
 - RHEL 10 (requires EPEL)
+- Arch Linux
 
 ### Building and signing packages
 

@@ -1,4 +1,5 @@
-url --mirrorlist=http://mirrors.fedoraproject.org/mirrorlist?repo=fedora-44&arch=x86_64
+url --url=https://repo.almalinux.org/almalinux/10/BaseOS/x86_64/os/
+repo --name=AppStream --baseurl=https://repo.almalinux.org/almalinux/10/AppStream/x86_64/os/
 
 text
 xconfig --startxonboot
@@ -23,4 +24,5 @@ openssh-server
 %post
 echo 'user ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/user
 chmod 0440 /etc/sudoers.d/user
+dnf install -y epel-release
 %end

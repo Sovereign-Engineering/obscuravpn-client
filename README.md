@@ -335,6 +335,16 @@ container as the release):
 - `contrib/bin/linux_run_cli.sh`: builds and runs the `obscura` CLI, passing its arguments through.
 - `contrib/bin/linux_run_service.sh`: builds and runs the `obscura` system service the GUI and CLI talk to.
 
+### Supported distributions
+
+The released packages support:
+
+- Debian 13
+- Ubuntu 26.04
+- Fedora 44
+- RHEL 10 (requires EPEL)
+- Arch Linux
+
 ### Building and signing packages
 
 Build all the packages (`obscura-cli`, `obscura-gui`, `obscura`) and the signed

@@ -89,21 +89,6 @@
     <ObscuraUiDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\..\obscura-ui'))</ObscuraUiDir>
   </PropertyGroup>
 
-  <!-- Rust service ("obscura.exe") build/bundle locations, derived from the MSBuild platform. -->
-  <PropertyGroup>
-    <RustlibDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\..\rustlib'))</RustlibDir>
-    <RustTarget Condition="'$(Platform)' == 'x64'">x86_64-pc-windows-msvc</RustTarget>
-    <RustTarget Condition="'$(Platform)' == 'ARM64'">aarch64-pc-windows-msvc</RustTarget>
-    <!-- OSArchitecture reports the real host arch even when MSBuild runs under x64 emulation. -->
-    <HostArch>$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)</HostArch>
-    <CrossCompilingX64OnArm64 Condition="'$(Platform)' == 'x64' and '$(HostArch)' == 'Arm64'">true</CrossCompilingX64OnArm64>
-    <RustServiceOutDir>$(RustlibDir)\target\$(RustTarget)\release</RustServiceOutDir>
-    <!-- Force aws-lc-sys's CMake-free cc builder: the CMake builder nests object paths past Windows' MAX_PATH on CI runners. -->
-    <RustBuildEnv Condition="'$(CrossCompilingX64OnArm64)' != 'true'">AWS_LC_SYS_CMAKE_BUILDER=0</RustBuildEnv>
-    <!-- Support compiling for x64 on ARM64 -->
-    <RustBuildEnv Condition="'$(CrossCompilingX64OnArm64)' == 'true'">AWS_LC_SYS_CMAKE_BUILDER=1;CMAKE_GENERATOR=Ninja</RustBuildEnv>
-  </PropertyGroup>
-
   <PropertyGroup Label="Globals">
     <WebView2UseWinRT>False</WebView2UseWinRT>
   </PropertyGroup>
@@ -120,6 +105,24 @@
     <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">$(TagJsonVersion)</AssemblyVersion>
     <PublishAot>False</PublishAot>
   </PropertyGroup>
+
+  <!-- Rust service ("obscura.exe") build location derived from the MSBuild platform. -->
+  <PropertyGroup>
+    <RustlibDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\..\rustlib'))</RustlibDir>
+    <RustTarget Condition="'$(Platform)' == 'x64'">x86_64-pc-windows-msvc</RustTarget>
+    <RustTarget Condition="'$(Platform)' == 'ARM64'">aarch64-pc-windows-msvc</RustTarget>
+    <!-- OSArchitecture reports the real host arch even when MSBuild runs under x64 emulation. -->
+    <HostArch>$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)</HostArch>
+    <CrossCompilingX64OnArm64 Condition="'$(Platform)' == 'x64' and '$(HostArch)' == 'Arm64'">true</CrossCompilingX64OnArm64>
+    <RustServiceOutDir>$(RustlibDir)\target\$(RustTarget)\release</RustServiceOutDir>
+    <!-- Force aws-lc-sys's CMake-free cc builder: the CMake builder nests object paths past Windows' MAX_PATH on CI runners. -->
+    <RustBuildEnv Condition="'$(CrossCompilingX64OnArm64)' != 'true'">AWS_LC_SYS_CMAKE_BUILDER=0</RustBuildEnv>
+    <!-- Support compiling for x64 on ARM64 -->
+    <RustBuildEnv Condition="'$(CrossCompilingX64OnArm64)' == 'true'">AWS_LC_SYS_CMAKE_BUILDER=1;CMAKE_GENERATOR=Ninja</RustBuildEnv>
+    <!-- User Agent -->
+    <RustBuildEnv>$(RustBuildEnv);OBSCURA_VERSION=v$(AssemblyVersion)</RustBuildEnv>
+  </PropertyGroup>
+
   <!-- log4net does not support PublishTrimmed (see https://github.com/apache/logging-log4net/issues/142) -->
   <ItemGroup>
     <TrimmerRootAssembly Include="log4net" />

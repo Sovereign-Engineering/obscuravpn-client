@@ -3,7 +3,7 @@ import { notifications } from '@mantine/notifications';
 import { useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { CommandError, debugBundle, revealItemInDir } from '../bridge/commands';
-import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
+import { IS_HANDHELD_DEVICE, PLATFORM } from '../bridge/SystemProvider';
 import { fmtErrorI18n } from '../translations/i18n';
 import { normalizeError } from './utils';
 
@@ -20,7 +20,7 @@ export function useDebugBundle(): (userFeedback: string) => Promise<void> {
             if (!IS_HANDHELD_DEVICE) {
               notifications.show({
                   title: t('Debug Bundle Created'),
-                  message: <Text><Trans i18nKey='findDebugBundleInFinder' components={[<Anchor onClick={() => revealItemInDir(path)} />]} /></Text >
+                  message: <Text><Trans i18nKey='findDebugBundleInFinder' context={PLATFORM} components={[<Anchor onClick={() => revealItemInDir(path)} />]} /></Text >
               });
             }
         } catch (e) {

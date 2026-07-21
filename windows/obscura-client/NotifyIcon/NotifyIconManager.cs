@@ -175,6 +175,10 @@ public sealed partial class NotifyIconManager
         openWindow.Click += (_, _) => _app.ShowMainWindow();
         menu.Items.Add(openWindow);
 
+        var checkForUpdates = new MenuFlyoutItem { Text = "Check for Updates..." };
+        checkForUpdates.Click += (_, _) => _ = _app.Updater.CheckAndPromptAsync();
+        menu.Items.Add(checkForUpdates);
+
         menu.Items.Add(new MenuFlyoutSeparator());
         var version = new MenuFlyoutItem { Text = OsStatus.Instance.SrcVersion, IsEnabled = false };
         menu.Items.Add(version);

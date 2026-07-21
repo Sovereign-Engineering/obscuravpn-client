@@ -29,6 +29,8 @@ public class InvokeCommand
     public RegisterAsLoginItemCommand? RegisterAsLoginItem { get; set; }
     public UnregisterAsLoginItemCommand? UnregisterAsLoginItem { get; set; }
     public WindowsFixCommand? WindowsFix { get; set; }
+    public CheckForUpdatesCommand? CheckForUpdates { get; set; }
+    public InstallUpdateCommand? InstallUpdate { get; set; }
 
     public static IObscuraCommand Parse(string commandJson)
     {
@@ -57,6 +59,8 @@ public class InvokeCommand
         if (invoke.RegisterAsLoginItem != null) return invoke.RegisterAsLoginItem;
         if (invoke.UnregisterAsLoginItem != null) return invoke.UnregisterAsLoginItem;
         if (invoke.WindowsFix != null) return invoke.WindowsFix;
+        if (invoke.CheckForUpdates != null) return invoke.CheckForUpdates;
+        if (invoke.InstallUpdate != null) return invoke.InstallUpdate;
         Log.Warn($"Unknown command: {commandJson}");
         throw new NotSupportedException($"Unknown command: {commandJson}");
     }
@@ -332,6 +336,16 @@ public class RefreshLoginItemStatus : IObscuraCommand
     }
 }
 
+public class CheckForUpdatesCommand : IObscuraCommand
+{
+    public async Task<string> RunAsync()
+    {
+        // Outcome (including errors) is reported through osStatus.updaterStatus
+        await App.Current.Updater.CheckForUpdatesAsync();
+        return await IObscuraCommand.UnitResponse;
+    }
+}
+
 public class RegisterAsLoginItemCommand : IObscuraCommand
 {
     public async Task<string> RunAsync()
@@ -347,6 +361,14 @@ public class UnregisterAsLoginItemCommand : IObscuraCommand
     {
         await LoginItem.UnregisterAsync();
         return await IObscuraCommand.UnitResponse;
+    }
+}
+public class InstallUpdateCommand : IObscuraCommand
+{
+    public Task<string> RunAsync()
+    {
+        App.Current.Updater.PromptInstall();
+        return IObscuraCommand.UnitResponse;
     }
 }
 

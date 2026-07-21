@@ -13,7 +13,6 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Windows.Win32;
 using Windows.Win32.Foundation;
-using Windows.Win32.System.DataExchange;
 using Windows.Win32.UI.WindowsAndMessaging;
 using WinUIEx.Messaging;
 using XamlNavigationView = Microsoft.UI.Xaml.Controls.NavigationView;
@@ -262,43 +261,47 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         else if (e.Message.MessageId == PInvoke.WM_COPYDATA)
         {
             // Activation hand-off from a secondary instance when RedirectActivationToAsync
-            // is broken (see App.FallbackActivatePrimary). Payload is a protocol URI or empty.
-            if (!TryReadActivationPayload(e.Message.LParam, out var payload))
+            // is broken (see FallbackActivation.ActivatePrimary). Payload is a JSON FallbackActivation.
+            if (!FallbackActivation.TryReadPayload(e.Message.LParam, out var payload))
             {
                 return;
             }
             e.Handled = true;
             e.Result = 1;
             Log.Info($"received fallback activation (payload: {payload})");
-            App.Current.ShowMainWindow();
-            if (Uri.TryCreate(payload, UriKind.Absolute, out var uri))
+            FallbackActivation? activation = null;
+            try
             {
-                DispatcherQueue.TryEnqueue(() => HandleObscuraUrl(uri));
+                activation = JsonSerializer.Deserialize<FallbackActivation>(payload);
+            }
+            catch (JsonException ex)
+            {
+                Log.Warn($"malformed fallback activation payload: {ex.Message}");
+            }
+            if (activation != null && NotificationActions.IsNotificationKind(activation.Kind))
+            {
+                string? action = null;
+                activation.NotificationArguments?.TryGetValue(NotificationActions.ArgumentKey, out action);
+                DispatcherQueue.TryEnqueue(() => App.Current.HandleNotificationAction(action));
+                return;
+            }
+            App.Current.ShowMainWindow();
+            if (activation?.Kind == Microsoft.Windows.AppLifecycle.ExtendedActivationKind.Protocol)
+            {
+                if (Uri.TryCreate(activation.ProtocolUri, UriKind.Absolute, out var uri))
+                {
+                    DispatcherQueue.TryEnqueue(() => HandleObscuraUrl(uri));
+                }
+                else
+                {
+                    Log.Warn($"protocol fallback activation with malformed uri: {activation.ProtocolUri}");
+                }
+            }
+            else if (activation != null && activation.Kind != Microsoft.Windows.AppLifecycle.ExtendedActivationKind.Launch)
+            {
+                Log.Warn($"unexpected fallback activation kind: {activation.Kind}");
             }
         }
-    }
-
-    /// <summary>
-    /// Exists to isolate reading the sender's COPYDATASTRUCT out of a raw WM_COPYDATA lParam;
-    /// returns false if the message is not our activation hand-off.
-    /// SAFETY: for WM_COPYDATA, the OS maps the sender's COPYDATASTRUCT and its lpData buffer
-    /// (cbData bytes) into this process and keeps them valid while the message is being
-    /// handled; the read stays within cbData and the string constructor copies, so no
-    /// pointer escapes the handler.
-    /// </summary>
-    private static unsafe bool TryReadActivationPayload(nint lParam, out string payload)
-    {
-        payload = "";
-        var copyData = (COPYDATASTRUCT*)lParam;
-        if (copyData == null || copyData->dwData != App.OBS_ACTIVATION_TAG)
-        {
-            return false;
-        }
-        if (copyData->cbData != 0)
-        {
-            payload = new string((char*)copyData->lpData, 0, (int)(copyData->cbData / sizeof(char)));
-        }
-        return true;
     }
 
     internal HWND GetWindowHandle()
@@ -583,6 +586,11 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     internal void TitleBar_PaneToggleRequested(TitleBar _, object _1)
     {
         NavView.IsPaneOpen = !NavView.IsPaneOpen;
+    }
+
+    internal void SetUpdateBadgeVisible(bool visible)
+    {
+        UpdateAvailableBadge.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
     }
 
     internal void SelectNavigationView(NavigationView view)

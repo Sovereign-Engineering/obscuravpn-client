@@ -17,7 +17,7 @@ import classes from './About.module.css';
 
 const Licenses = lazy(() => import('../components/Licenses'));
 
-const UPDATE_CHECKING_SUPPORTED = PLATFORM === Platform.macOS;
+const UPDATE_CHECKING_SUPPORTED = PLATFORM === Platform.macOS || PLATFORM === Platform.Windows;
 
 export default function About() {
   const { t } = useTranslation();

@@ -21,9 +21,16 @@
     <!-- Applicable to: Windows 10 Fallback Activation -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <DefineConstants Condition="'$(Platform)' == 'x64'">$(DefineConstants);TARGET_AMD64</DefineConstants>
+    <DefineConstants Condition="'$(Platform)' == 'ARM64'">$(DefineConstants);TARGET_ARM64</DefineConstants>
     <!-- A fresh 21H1 19041 Windows 10 does not work with CETCompat enabled -->
     <CETCompat>false</CETCompat>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="BuildDate" Value="$([System.DateTime]::UtcNow.ToString('yyyyMMddHHmmss'))"/>
+  </ItemGroup>
 
   <ItemGroup>
     <Content Update="Assets\Icon.ico">
@@ -64,6 +71,7 @@
     <ProjectCapability Include="Msix" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Labs.WinUI.Controls.MarkdownTextBlock" Version="0.1.260617-build.2640" />
     <PackageReference Include="log4net" Version="3.3.2" />
     <PackageReference Include="log4net.Ext.Json" Version="3.0.3" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4078.44" />
@@ -73,6 +81,7 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2270" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.3.1" />
+    <PackageReference Include="NetSparkleUpdater.SparkleUpdater" Version="3.1.0" />
     <PackageReference Include="System.Management" Version="10.0.10" />
     <PackageReference Include="WinUIEx" Version="2.9.2" />
   </ItemGroup>
@@ -117,6 +126,8 @@
     <TagJsonVersion>$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\..\..\tag.json')), '"version":\s*"([^"]+)"').Groups[1].Value)</TagJsonVersion>
     <AssemblyVersion Condition="'$(OBSCURA_VERSION)' != ''">$(OBSCURA_VERSION)</AssemblyVersion>
     <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">$(TagJsonVersion)</AssemblyVersion>
+    <!-- NetSparkle compares the appcast version against InformationalVersion -->
+    <InformationalVersion>$(AssemblyVersion)</InformationalVersion>
     <PublishAot>False</PublishAot>
   </PropertyGroup>
 

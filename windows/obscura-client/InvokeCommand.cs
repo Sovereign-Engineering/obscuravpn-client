@@ -262,6 +262,10 @@ public class DebugBundleCommand : IObscuraCommand
                 BundleInfo = bundleInfo,
             });
             path = JsonSerializer.Deserialize<string>(resultJson, JsonConfig.Options);
+            if (path is not null)
+            {
+                await new RevealItemInDirCommand { Path = path }.RunAsync();
+            }
         }
         catch (Exception ex)
         {
@@ -303,6 +307,6 @@ public class SendNotificationCommand : IObscuraCommand
             }
             manager.Show(builder.BuildNotification());
         }
-        return Task.FromResult("null");
+        return IObscuraCommand.UnitResponse;
     }
 }

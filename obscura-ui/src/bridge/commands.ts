@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AccountId } from '../common/accountUtils';
 import { AccountInfo, Exit } from '../common/api';
-import { AppStatus, DNSContentBlock, FeatureFlagKey, NavigationView, NEVPNStatus, OsStatus, OsStatusWVpnStatus, PinnedLocation, SubscriptionProductModel } from '../common/appContext';
+import { AppStatus, DNSContentBlock, FeatureFlagKey, NavigationView, OsStatus, PinnedLocation, SubscriptionProductModel } from '../common/appContext';
 import { normalizeError } from '../common/utils';
-import { ErrorI18n, fmtErrorI18n, TranslationKey } from '../translations/i18n';
-import { HAS_NE_VPN_STATUS, Platform, PLATFORM } from './SystemProvider';
+import { ErrorI18n, fmtErrorI18n } from '../translations/i18n';
+import { Platform, PLATFORM } from './SystemProvider';
 import './setupBridge';
 
 async function WKWebViewInvoke(command: string, args: Object) {
@@ -170,6 +170,12 @@ export interface Notice {
   content: string
 }
 
+
+// Windows-only
+export async function refreshLoginItemStatus(): Promise<void> {
+  if (PLATFORM !== Platform.Windows) return;
+  await invoke('refreshLoginItemStatus');
+}
 
 export async function registerAsLoginItem(): Promise<void> {
   await invoke('registerAsLoginItem');

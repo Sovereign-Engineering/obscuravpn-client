@@ -4,13 +4,14 @@
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
   xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
   xmlns:win32dependencies="http://schemas.microsoft.com/appx/manifest/externaldependencies"
   xmlns:uap18="http://schemas.microsoft.com/appx/manifest/uap/windows10/18"
   xmlns:appdata="http://schemas.microsoft.com/appx/manifest/appdata/windows10"
-  IgnorableNamespaces="uap rescap win32dependencies uap18 appdata com desktop">
+  IgnorableNamespaces="uap uap5 rescap win32dependencies uap18 appdata com desktop">
 
   <Identity
     Name="SovereignEngineering.ObscuraVPN"
@@ -72,6 +73,16 @@
             </com:ExeServer>
           </com:ComServer>
         </com:Extension>
+
+        <uap5:Extension
+            Category="windows.startupTask"
+            Executable="Obscura VPN.exe"
+            EntryPoint="Windows.FullTrustApplication">
+            <uap5:StartupTask
+              TaskId="ObscuraVPNStartup"
+              Enabled="true"
+              DisplayName="Obscura VPN" />
+        </uap5:Extension>
       </Extensions>
     </Application>
   </Applications>

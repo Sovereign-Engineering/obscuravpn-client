@@ -25,6 +25,9 @@ public class InvokeCommand
     public RevealItemInDirCommand? RevealItemInDir { get; set; }
     public DebugBundleCommand? DebugBundle { get; set; }
     public SendNotificationCommand? SendNotification { get; set; }
+    public RefreshLoginItemStatus? RefreshLoginItemStatus { get; set; }
+    public RegisterAsLoginItemCommand? RegisterAsLoginItem { get; set; }
+    public UnregisterAsLoginItemCommand? UnregisterAsLoginItem { get; set; }
 
     public static IObscuraCommand Parse(string commandJson)
     {
@@ -49,6 +52,9 @@ public class InvokeCommand
         if (invoke.RevealItemInDir != null) return invoke.RevealItemInDir;
         if (invoke.DebugBundle != null) return invoke.DebugBundle;
         if (invoke.SendNotification != null) return invoke.SendNotification;
+        if (invoke.RefreshLoginItemStatus != null) return invoke.RefreshLoginItemStatus;
+        if (invoke.RegisterAsLoginItem != null) return invoke.RegisterAsLoginItem;
+        if (invoke.UnregisterAsLoginItem != null) return invoke.UnregisterAsLoginItem;
         Log.Warn($"Unknown command: {commandJson}");
         throw new NotSupportedException($"Unknown command: {commandJson}");
     }
@@ -103,19 +109,15 @@ public class SetColorSchemeCommand : IObscuraCommand
         };
         App.Current.ApplyColorScheme(theme);
         ClientSettings.ColorScheme = theme;
-        return Task.FromResult("null");
+        return IObscuraCommand.UnitResponse;
     }
 }
 
-public class ManagerError : Exception
+public class ManagerError(string errorJson) : Exception(errorJson)
 {
-    public string ErrorJson { get; }
-
-    public ManagerError(string errorJson) : base(errorJson)
-    {
-        ErrorJson = errorJson;
-    }
+    public string ErrorJson { get; } = errorJson;
 }
+
 public interface IIPCCommandArg
 {
     public string CommandName();
@@ -312,6 +314,33 @@ public class DebugBundleCommand : IObscuraCommand
             });
         }
         return JsonSerializer.Serialize(path);
+    }
+}
+
+public class RefreshLoginItemStatus : IObscuraCommand
+{
+    public async Task<string> RunAsync()
+    {
+        await LoginItem.RefreshStatusAsync();
+        return await IObscuraCommand.UnitResponse;
+    }
+}
+
+public class RegisterAsLoginItemCommand : IObscuraCommand
+{
+    public async Task<string> RunAsync()
+    {
+        await LoginItem.RegisterAsync();
+        return await IObscuraCommand.UnitResponse;
+    }
+}
+
+public class UnregisterAsLoginItemCommand : IObscuraCommand
+{
+    public async Task<string> RunAsync()
+    {
+        await LoginItem.UnregisterAsync();
+        return await IObscuraCommand.UnitResponse;
     }
 }
 

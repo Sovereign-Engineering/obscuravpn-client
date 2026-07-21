@@ -59,6 +59,6 @@
     min-height: 29vh;
     max-height: 51vh;
     @media (orientation: landscape) {
-        min-height: 54vh;
+        min-height: 41vh;
     }
 }

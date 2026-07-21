@@ -66,7 +66,7 @@ export default function () {
     { component: Location, path: '/location', needsScroll: true },
     { component: Account, path: '/account', needsScroll: false },
     { component: Help, path: '/help', needsScroll: false },
-    { component: About, path: '/about', needsScroll: false },
+    { component: About, path: '/about', needsScroll: true },
     { component: Settings, path: '/settings', needsScroll: true },
   ];
 

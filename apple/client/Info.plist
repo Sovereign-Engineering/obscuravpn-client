@@ -107,7 +107,5 @@
 	<string>R4CNa/L1zQGVdNot8RDQOpAxJdwzBGnZnLR/6G/Zyts=</string>
 	<key>SUScheduledCheckInterval</key>
 	<integer>21600</integer>
-	<key>UIDesignRequiresCompatibility</key>
-	<true/>
 </dict>
 </plist>

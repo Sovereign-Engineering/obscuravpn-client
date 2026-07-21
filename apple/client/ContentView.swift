@@ -153,6 +153,7 @@ struct ContentView: View {
     @State private var accountBadge: String?
     @State private var badgeColor: Color?
     @State private var indicateUpdateAvailable: Bool = false
+    @State private var navigationWidth: CGFloat = 200.0
 
     #if os(macOS)
         @EnvironmentObject private var appDelegate: AppDelegate
@@ -177,7 +178,7 @@ struct ContentView: View {
         let forceHide =
             appState.status.accountId == nil || appState.status.inNewAccountFlow
         self.loginViewShown = forceHide
-        self.splitViewVisibility = forceHide ? .detailOnly : .automatic
+        self.splitViewVisibility = forceHide ? .detailOnly : .all
     }
 
     var body: some View {
@@ -209,9 +210,16 @@ struct ContentView: View {
                 } else if self.loginViewShown {
                     // If previously force closed pop it open.
                     self.loginViewShown = false
-                    self.splitViewVisibility = .automatic
+                    self.splitViewVisibility = .all
                 }
             }
+        #if os(macOS)
+            .onChange(of: self.splitViewVisibility) { viz in
+                if #available(macOS 26.0, *) {
+                    self.webviewsController.safeAreaTx.yield(ObscuraUIWebView.Insets(left: viz == .detailOnly ? 0 : self.navigationWidth))
+                }
+            }
+        #endif
             .onChange(of: self.webviewsController.showSubscriptionManageSheet) { newValue in
                 if !newValue {
                     Task {
@@ -276,16 +284,31 @@ struct ContentView: View {
                         self.viewLabel(view)
                     }
                     .environment(\.sidebarRowSize, .large)
-                    .navigationSplitViewColumnWidth(min: 175, ideal: 200)
+                    .onGeometryChange(for: CGFloat.self) { proxy in
+                        proxy.size.width
+                    } action: { newValue in
+                        if #available(macOS 26.0, *), self.splitViewVisibility != .detailOnly {
+                            self.webviewsController.safeAreaTx.yield(ObscuraUIWebView.Insets(left: newValue))
+                        }
+                        self.navigationWidth = newValue
+                    }
+                    .navigationSplitViewColumnWidth(min: 160, ideal: 200)
                 } detail: {
-                    ObscuraUIMacOSWrapper(
-                        webView: obscuraWebView)
+                    let detail = ObscuraUIMacOSWrapper(webView: obscuraWebView)
+                        .navigationSplitViewColumnWidth(min: 525, ideal: 525)
                         .navigationTitle(
                             self.loginViewShown
                                 ? "Obscura" : self.webviewsController.tab.rawValue.capitalized
                         )
-                        .frame(minWidth: 390)
+                    if #available(macOS 26.0, *) {
+                        detail.ignoresSafeArea()
+                    } else {
+                        detail
+                    }
                 }
+                .navigationSplitViewStyle(.prominentDetail)
+                // The WebView resizes too slowly to keep up with the animation for revealing the sidebar.
+                .animation(nil, value: self.splitViewVisibility)
             #else
                 ObscuraUIIOSViewAndTabsWrapper(
                     webView: obscuraWebView,

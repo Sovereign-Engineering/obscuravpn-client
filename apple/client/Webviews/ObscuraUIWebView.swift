@@ -85,6 +85,34 @@ class ObscuraUIWebView: WKWebView {
             window.dispatchEvent(new CustomEvent("screenshotDetected"))
         """
     }
+
+    struct Insets: CustomStringConvertible {
+        var top: CGFloat?
+        var left: CGFloat?
+        var right: CGFloat?
+        var bottom: CGFloat?
+
+        var description: String {
+            return "Insets(top: \(String(describing: self.top)), left: \(String(describing: self.left)), right: \(String(describing: self.right)), bottom: \(String(describing: self.bottom)))"
+        }
+    }
+
+    func updateSafeArea(_ insets: Insets) {
+        self.evaluateJavaScript(
+            [
+                (k: "top", v: insets.top),
+                (k: "left", v: insets.left),
+                (k: "right", v: insets.right),
+                (k: "bottom", v: insets.bottom),
+            ]
+            .compactMap { pair in
+                pair.v.map { v in
+                    "document.documentElement.style.setProperty('--safe-area-inset-\(pair.k)', '\(v)px');"
+                }
+            }
+            .joined()
+        )
+    }
 }
 
 #if !os(macOS)

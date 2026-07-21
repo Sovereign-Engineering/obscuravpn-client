@@ -9,6 +9,11 @@ private let logger = Logger(
 
 // This is the navigation for all web views within the app
 class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
+    let safeAreaTx: AsyncStream<ObscuraUIWebView.Insets>.Continuation
+    private let safeAreaRx: AsyncStream<ObscuraUIWebView.Insets>
+    private var safeAreaTask: Task<Void, Never>?
+    private var safeAreaPrev: ObscuraUIWebView.Insets?
+
     @Published var showModalWebview: Bool = false
     @Published var showSubscriptionManageSheet: Bool = false
 
@@ -37,6 +42,12 @@ class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
         }
     }
 
+    override init() {
+        let (stream, continuation) = AsyncStream.makeStream(of: ObscuraUIWebView.Insets.self, bufferingPolicy: .bufferingNewest(1))
+        self.safeAreaTx = continuation
+        self.safeAreaRx = stream
+    }
+
     func initializeWebviews(appState: AppState) {
         self.obscuraWebView = ObscuraUIWebView(appState: appState)
         self.externalWebView = ExternalWebView(appState: appState)
@@ -60,6 +71,32 @@ class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
                 self.handleObscuraURL(url: url)
             }
             decisionHandler(.allow)
+        }
+    }
+
+    private func updateSafeArea(_ insets: ObscuraUIWebView.Insets) {
+        logger.trace("updateSafeArea \(insets, privacy: .public)")
+        self.safeAreaPrev = insets
+        self.obscuraWebView?.updateSafeArea(insets)
+    }
+
+    // After `didFinish`, the DOM is ready and `evaluateJavaScript` can interact with it.
+    // https://developer.apple.com/forums/thread/826932
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        logger.trace("webView didFinish")
+        if webView === self.obscuraWebView {
+            if self.safeAreaTask != nil {
+                logger.warning("navigated more than once")
+                if let insets = self.safeAreaPrev {
+                    self.updateSafeArea(insets)
+                }
+            } else {
+                self.safeAreaTask = Task {
+                    for await insets in self.safeAreaRx {
+                        self.updateSafeArea(insets)
+                    }
+                }
+            }
         }
     }
 

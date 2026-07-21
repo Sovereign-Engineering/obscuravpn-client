@@ -10,6 +10,8 @@ import WebKit
 // going to just use UIKit.
 
 class ObscuraUIIOSViewAndTabsViewController: UIViewController {
+    private var insetBottom = 0.0
+    private var isKeyboardOpen = false
     private let webView: ObscuraUIWebView
     private let tabBar: UITabBar
     private let tabBarItems: [UITabBarItem]
@@ -59,6 +61,50 @@ class ObscuraUIIOSViewAndTabsViewController: UIViewController {
         fatalError("init(coder:) has not been implemented")
     }
 
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    private func sendSafeArea() {
+        if #available(iOS 26.0, *) {
+            self.webviewsController.safeAreaTx.yield(ObscuraUIWebView.Insets(bottom: self.isKeyboardOpen ? 0.0 : self.insetBottom))
+        }
+    }
+
+    @objc private func keyboardWillShow(notification: NSNotification) {
+        self.isKeyboardOpen = true
+        self.sendSafeArea()
+    }
+
+    @objc private func keyboardWillHide(notification: NSNotification) {
+        self.isKeyboardOpen = false
+        self.sendSafeArea()
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(self.keyboardWillShow),
+            name: UIResponder.keyboardWillShowNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(self.keyboardWillHide),
+            name: UIResponder.keyboardWillHideNotification,
+            object: nil
+        )
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        if #available(iOS 26.0, *) {
+            self.insetBottom = self.showTabBar ? UIScreen.main.bounds.height - self.tabBar.frame.minY : self.view.safeAreaInsets.bottom
+            self.sendSafeArea()
+        }
+    }
+
     private func setupTabBar() {
         self.tabBar.items = self.tabBarItems
         self.tabBar.selectedItem = self.tabBarItems.first
@@ -78,15 +124,23 @@ class ObscuraUIIOSViewAndTabsViewController: UIViewController {
             view.insertSubview(self.tabBar, aboveSubview: self.webView)
             self.tabBar.translatesAutoresizingMaskIntoConstraints = false
 
+            var webViewBottomAnchor = self.tabBar.topAnchor
+            var tabBarBottomAnchor = view.safeAreaLayoutGuide.bottomAnchor
+            if #available(iOS 26.0, *) {
+                webViewBottomAnchor = view.bottomAnchor
+                // Using the safe area here appears to result in double padding.
+                tabBarBottomAnchor = view.bottomAnchor
+            }
+
             NSLayoutConstraint.activate([
                 self.webView.topAnchor.constraint(equalTo: view.topAnchor),
                 self.webView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
                 self.webView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-                self.webView.bottomAnchor.constraint(equalTo: self.tabBar.topAnchor),
+                self.webView.bottomAnchor.constraint(equalTo: webViewBottomAnchor),
 
                 self.tabBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
                 self.tabBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-                self.tabBar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+                self.tabBar.bottomAnchor.constraint(equalTo: tabBarBottomAnchor),
             ])
         } else {
             NSLayoutConstraint.activate([

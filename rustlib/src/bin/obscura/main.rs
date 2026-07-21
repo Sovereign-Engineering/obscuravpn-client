@@ -22,7 +22,7 @@ fn get_data_dir() -> String {
     use standard_paths::{LocationType, StandardPaths};
 
     let sp = StandardPaths::new("Obscura", "");
-    sp.writable_location(LocationType::AppDataLocation)
+    sp.writable_location(LocationType::AppLocalDataLocation)
         .expect("failed to determine config directory")
         .to_string_lossy()
         .into_owned()
@@ -88,13 +88,16 @@ pub enum Command {
     Status(ClientStatusArgs),
     #[command(hide = true)]
     IpcTest(ClientIpcTestArgs),
+    #[cfg(target_os = "windows")]
+    #[command(hide = true)]
+    WindowsService(ServiceArgs),
 }
 
 impl Command {
     fn log_persistence_dir(&self) -> Option<Utf8PathBuf> {
         match self {
             #[cfg(target_os = "windows")]
-            Self::Service(ServiceArgs { config_dir, .. }) => {
+            Self::Service(ServiceArgs { config_dir, .. }) | Self::WindowsService(ServiceArgs { config_dir, .. }) => {
                 let dir = Utf8PathBuf::from_iter([config_dir.as_str(), "logs"]);
                 if let Err(error) = std::fs::create_dir_all(&dir) {
                     eprintln!("failed to create log dir {dir}: {error}");
@@ -137,15 +140,28 @@ async fn main() {
         Command::Status(args) => args.into(),
         Command::Login(args) => args.into(),
         Command::IpcTest(args) => args.into(),
+        #[cfg(target_os = "windows")]
+        Command::WindowsService(args) => {
+            if let Err(error) = service::os::windows::scm::run(args.config_dir.clone(), log_persistence) {
+                eprintln!("failed to run as windows service: {}", error);
+                exit(1);
+            }
+            return;
+        }
     };
     run_client(cli.global_args, client_command).await
 }
 
 #[cfg(any(target_os = "windows", target_os = "linux"))]
 async fn run_service(args: ServiceArgs, log_persistence: Option<LogPersistence>) -> ! {
-    let Err(error) = service::run(args, log_persistence).await;
-    eprintln!("failed to start service: {}", error);
-    exit(1)
+    // Foreground `service` runs until the process is terminated; the Windows service path supplies a real stop signal.
+    match service::run(args, log_persistence, None).await {
+        Ok(()) => exit(0),
+        Err(error) => {
+            eprintln!("failed to start service: {}", error);
+            exit(1)
+        }
+    }
 }
 
 #[cfg(not(any(target_os = "windows", target_os = "linux")))]

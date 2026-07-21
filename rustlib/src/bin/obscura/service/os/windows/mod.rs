@@ -1,5 +1,6 @@
 mod ipc;
 pub mod nrpt;
+pub mod scm;
 mod start_error;
 pub mod tun;
 

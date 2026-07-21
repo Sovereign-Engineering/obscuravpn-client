@@ -135,6 +135,7 @@ windows = { version = "0.62", features = [
     "Win32_Security_Cryptography",
     "Win32_UI_Shell",
 ] }
+windows-service = "0.8"
 winreg = "0.55"
 wintun = "0.5"
 

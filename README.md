@@ -139,8 +139,13 @@ Install [Visual Studio](https://visualstudio.microsoft.com/downloads/) with the 
 
 - Desktop development with C++ (for Rust)
 - WinUI application development
+- Afterwards, install [HeatWave for Visual Studio](https://marketplace.visualstudio.com/items?itemName=FireGiant.FireGiantHeatWaveDev17) (for the `wix-msi` project)
 
 Install [Rust](https://rust-lang.org/learn/get-started/).
+
+Install [just](https://github.com/casey/just/releases) (`winget install Casey.Just`)
+
+Install [nvm-windows](https://github.com/coreybutler/nvm-windows/releases) (`winget install nvm-windows`) and then run `nvm install lts && nvm use lts && corepack enable`.
 
 You may also need to install [Windows App SDK](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads) manually to get the client app running.
 
@@ -154,25 +159,67 @@ You can use `Get-FileHash -Path .\wintun-0.14.1.zip -Algorithm SHA256` to verify
 
 Extract to `windows/wintun-0.14.1` such that `windows/wintun-0.14.1/bin/arm64/wintun.dll` is a file.
 
-To test the service, run `cargo build --bin obscura` and then `sudo .\target\debug\obscura.exe service`. You need to enable `sudo` under System > Advanced settings. Alternatively, you can run `.\target\debug\obscura.exe service` in an administrative terminal.
+To test the service, if you have sudo enabled (System > Advanced settings), you can run `sudo cargo run --bin obscura service` in the rustlib dir. Alternatively, open an admin-enabled terminal and run the command without sudo.
 
-The default config directory is `%APPDATA%\Obscura`. When testing the service, you may find it beneficial to manually add in an account number.
+The default config directory is `%APPDATA%\Obscura`. When testing the service, you may find it beneficial to manually add in an account number to `config.json`.
 
-A helpful command to clean DNS query manually is `Remove-DnsClientNrptRule -Name "{fb157da8-6578-4f53-81ea-0a9168e96c1f}"`.
+To clean DNS query manually from powershell, run `Remove-DnsClientNrptRule -Name "{fb157da8-6578-4f53-81ea-0a9168e96c1f}"`
 
-To run the desktop app, you need to install [nvm-windows](https://github.com/coreybutler/nvm-windows/releases) (`winget install nvm-windows`) and then run `nvm install lts && nvm use lts && corepack enable`.
+#### Cross-Compiling
 
-### Tips
+- If on x64, install ARM64 `rustup target add aarch64-pc-windows-msvc`
+- If on ARM64 install x64 `rustup target add x86_64-pc-windows-msvc`
+
+The Rust service links `aws-lc-sys`/`ring`, which compiles C and assembly.
+
+Cross-compiling x64 from a **ARM64 host**:
+
+1. **NASM + Ninja** installed,
+
+    ```pwsh
+    winget install NASM.NASM Ninja-build.Ninja
+    ```
+
+    Add NASM installation (`%LOCALAPPDATA%\bin\NASM`) to PATH environment variable.
+
+2. When building `obscura-client.csproj` for x64 on ARM64, `AWS_LC_SYS_CMAKE_BUILDER=1;CMAKE_GENERATOR=Ninja` is automatically set.
+
+Cross-compiling ARM64 on a **x64 host** has the following requirements:
+
+1. Have **NASM** installed
+2. When building `obscura-client.csproj` on x64, `AWS_LC_SYS_CMAKE_BUILDER=0` is automatically set, forcing `aws-lc-sys`'s CMake-free `cc` builder (the CMake builder nests object paths past Windows' `MAX_PATH`).
+
+#### Tips
+
+To override the version (or any other properties) of a build, you can either set the `OBSCURA_VERSION` environment variable or set `AssemblyVersion` in [local.props](/windows/obscura-client/local.props) and `Version` in [local.props](/windows/wix-msi/local.props).
+
+```xml
+<!-- windows/wix-msi/local.props -->
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Version>0.165.2</Version>
+  </PropertyGroup>
+</Project>
+```
+
+GUI logs are written to `%LOCALAPPDATA%\Obscura\logs`
+
+When service is running as as system service, teh config file is written to `%SystemRoot%\System32\config\systemprofile\AppData\Local\Obscura`
 
 The [WinUI 3 Gallery](https://apps.microsoft.com/detail/9p3jfpwwdzrc) app is very useful at showcasing features currently available with code snippets.
 
-If for some reason you don't want to modify `tag.json` to set the version of the app, you can also add the following to manually create the environment variable (assuming non-CLI build).
-
-```csproj
-<OBSCURA_VERSION Condition="'$(OBSCURA_VERSION)' == ''">1.156</OBSCURA_VERSION>
-```
-
 [Segoe Fluent Icons](https://learn.microsoft.com/windows/apps/design/iconography/segoe-ui-symbol-font#icon-list)
+
+When updating the .NET version, ensure [windows-build.yml](./.github/workflows/windows-build.yml) is updated as well.
+
+#### Packaging
+
+Inside Visual Studio,
+
+1. `obscura-client` unpackaged should be selected at the top.
+2. Select Release, x64 (or ARM64).
+3. Build the `wix-msi` project.
 
 ## Swift unit tests
 

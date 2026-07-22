@@ -1,0 +1,78 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+  <Fragment>
+    <!-- Records %LOCALAPPDATA%\Obscura for RemoveFolderEx on full uninstall. -->
+    <Property Id="OBSCURADATAFOLDER" Secure="yes">
+      <RegistrySearch Id="ObscuraDataFolderSearch" Root="HKCU"
+      Key="Software\Sovereign Engineering\Obscura VPN" Name="DataFolder" Type="raw" />
+    </Property>
+
+    <!-- Records LocalSystem's AppData\Local\Obscura for RemoveFolderEx on full uninstall. -->
+    <SetProperty Id="SERVICEDATAFOLDER"
+                 Value="[System64Folder]config\systemprofile\AppData\Local\Obscura"
+                 After="AppSearch" />
+
+    <ComponentGroup Id="ObscuraComponents" Directory="INSTALLFOLDER">
+      <Files Include="!(bindpath.bin)\**">
+        <Exclude Files="!(bindpath.bin)\obscura.exe" />
+        <Exclude Files="!(bindpath.bin)\Obscura VPN.exe" />
+      </Files>
+
+      <File Id="ObscuraVPNExe" Source="!(bindpath.bin)\Obscura VPN.exe" KeyPath="yes" />
+
+      <!-- obscura.exe + the Windows service registration. -->
+      <Component Id="ObscuraService" Bitness="always64">
+        <File Id="ObscuraExe" Source="!(bindpath.bin)\obscura.exe" KeyPath="yes" />
+        <ServiceInstall Id="ServiceInstaller"
+                        Type="ownProcess"
+                        Name="Obscura VPN Service"
+                        DisplayName="Obscura VPN Service"
+                        Description="Manages the Obscura VPN tunnel."
+                        Start="auto"
+                        ErrorControl="normal"
+                        Account="LocalSystem"
+                        Arguments="windows-service" />
+        <ServiceControl Id="StartService"
+                        Start="install"
+                        Stop="uninstall"
+                        Remove="uninstall"
+                        Name="Obscura VPN Service" />
+      </Component>
+
+      <!-- Start menu shortcut to the app. -->
+      <Component Id="AppShortcut" Directory="AppShortcutFolder" Bitness="always64">
+        <Shortcut Id="ObscuraStartMenuShortcut"
+                  Name="Obscura VPN"
+                  Target="[INSTALLFOLDER]Obscura VPN.exe"
+                  WorkingDirectory="INSTALLFOLDER" />
+        <RemoveFolder Id="RemoveAppShortcutFolder" On="uninstall" />
+        <RegistryValue Root="HKCU" Key="Software\Sovereign Engineering\Obscura VPN"
+                       Name="installed" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+
+      <!-- Per-user cleanup of %LOCALAPPDATA%\Obscura (logs + WebView2 data) on full uninstall.
+           HKCU-keyed, so it only removes the data of the user running the uninstall. The
+           NOT UPGRADINGPRODUCTCODE conditions keep upgrades from wiping user data. -->
+      <Component Id="CleanupUserData" Directory="ObscuraDataFolder" Bitness="always64">
+        <RegistryValue Root="HKCU" Key="Software\Sovereign Engineering\Obscura VPN"
+                       Name="DataFolder" Type="string" Value="[ObscuraDataFolder]" KeyPath="yes" />
+        <util:RemoveFolderEx On="uninstall" Property="OBSCURADATAFOLDER"
+                             Condition="NOT UPGRADINGPRODUCTCODE" />
+        <RemoveFolder On="uninstall" />
+        <util:RemoveRegistryKey Root="HKCU" Key="Software\Sovereign Engineering\Obscura VPN"
+                                On="uninstall" Condition="NOT UPGRADINGPRODUCTCODE" />
+        <util:RemoveRegistryKey Root="HKCU" Key="Software\Classes\Local Settings\Software\Sovereign Engineering\Obscura VPN"
+                                On="uninstall" Condition="NOT UPGRADINGPRODUCTCODE" />
+      </Component>
+
+      <!-- Cleanup of the service's config dir (SERVICEDATAFOLDER above) on full uninstall. -->
+      <Component Id="CleanupServiceData" Bitness="always64">
+        <RegistryValue Root="HKLM" Key="Software\Sovereign Engineering\Obscura VPN"
+                       Name="installed" Type="integer" Value="1" KeyPath="yes" />
+        <util:RemoveFolderEx On="uninstall" Property="SERVICEDATAFOLDER"
+                             Condition="NOT UPGRADINGPRODUCTCODE" />
+      </Component>
+
+    </ComponentGroup>
+  </Fragment>
+</Wix>

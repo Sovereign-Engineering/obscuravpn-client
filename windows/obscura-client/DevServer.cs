@@ -16,9 +16,9 @@ internal static class DevServer
     {
         Log.Debug(Environment.CurrentDirectory);
         var obscuraUiDir = Path.GetFullPath(
-            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "..", "..", "obscura-ui"));
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "..", "..", "..", "obscura-ui"));
         var licensesJson = Path.GetFullPath(
-            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "..", "webui-build", "licenses.json"));
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "..", "..", "webui-build", "licenses.json"));
 
         if (!Directory.Exists(obscuraUiDir))
         {

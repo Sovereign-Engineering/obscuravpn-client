@@ -23,6 +23,9 @@ indent_size = 2
 [*.nix]
 indent_size = 2
 
+[*.{wxs,wixproj,wxl}]
+indent_size = 2
+
 [*.plist]
 indent_style = tab
 indent_size = tab

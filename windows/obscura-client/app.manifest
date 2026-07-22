@@ -16,4 +16,10 @@
       <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
     </windowsSettings>
   </application>
+  <!-- Binds this EXE to the registered sparse package so it runs with package identity.
+       publisher, packageName, applicationId must match SparsePackage.appxmanifest.xml -->
+  <msix xmlns="urn:schemas-microsoft-com:msix.v1"
+        publisher="CN=Sovereign Engineering Inc., O=Sovereign Engineering Inc., L=New York, S=New York, C=US, SERIALNUMBER=7746810, OID.2.5.4.15=Private Organization, OID.1.3.6.1.4.1.311.60.2.1.2=Delaware, OID.1.3.6.1.4.1.311.60.2.1.3=US"
+        packageName="SovereignEngineering.ObscuraVPN"
+        applicationId="Obscura" />
 </assembly>

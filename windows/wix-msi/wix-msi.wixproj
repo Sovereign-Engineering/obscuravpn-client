@@ -1,0 +1,62 @@
+﻿<Project Sdk="WixToolset.Sdk/7.0.0">
+  <Import Project="local.props" Condition="Exists('local.props')" />
+  <PropertyGroup>
+    <!-- One MSI per architecture; pass /p:InstallerPlatform=arm64 for the ARM64 build. -->
+    <PlatformLC>$(Platform.ToLowerInvariant())</PlatformLC>
+    <AcceptEula>wix7</AcceptEula>
+    <SignOutput>true</SignOutput>
+    <!-- During the Files harvest in Components, bundled .NET/native runtime DLLs declare language ids that ICE03 rejects. Since File.Language is cosmetic, we can skip the check. -->
+    <SuppressIces>ICE03</SuppressIces>
+  <!--
+    Inputs (override on the command line in CI):
+      Version     - product version, $OBSCURA_VERSION > wix-msi.wixproj.user > tag.json.
+      PublishDir  - `dotnet publish` output for the WinUI app (Obscura VPN.exe, obscura.exe,
+                    wintun.dll, signed Obscura.msix, runtime, Assets\...)
+    Defaults assume a local Release publish.
+  -->
+    <TagJsonVersion>$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)..\..\tag.json')), '"version":\s*"([^"]+)"').Groups[1].Value)</TagJsonVersion>
+    <Version Condition="'$(OBSCURA_VERSION)' != ''">$(OBSCURA_VERSION)</Version>
+    <Version Condition="'$(Version)' == ''">$(TagJsonVersion)</Version>
+    <OutputName>Obscura_$(Version)_$(Platform)</OutputName>
+    <DefineConstants>Version=$(Version)</DefineConstants>
+    <PublishProfile>win-$(PlatformLC)</PublishProfile>
+    <PublishDir Condition="'$(PublishDir)' == ''">$(MSBuildThisFileDirectory)..\obscura-client\bin\$(PublishProfile)\publish</PublishDir>
+    <!-- SignKeypairAlias: KeyLocker keypair alias, forwarded to the signing scripts as -KeypairAlias.
+         Set via /p:SignKeypairAlias=<alias> (CI) or wix-msi.wixproj.user (Visual Studio). When empty,
+         the scripts sign self-signed (or skip signing entirely when SignOutput != true). -->
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Named bind path "bin": the publish folder harvested by Files (!(bindpath.bin)). -->
+    <BindPath Include="$(PublishDir)" BindName="bin" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="WixToolset.Util.wixext" Version="7.0.0" />
+    <PackageReference Include="WixToolset.UI.wixext" Version="7.0.0" />
+  </ItemGroup>
+  <Target Name="PublishObscuraClient" BeforeTargets="ResolveProjectReferences">
+    <Exec Command="dotnet publish &quot;$(MSBuildThisFileDirectory)..\obscura-client\obscura-client.csproj&quot; -c $(Configuration) -p:Platform=$(Platform)" />
+  </Target>
+
+  <!--
+    Build + sign the sparse identity package (Obscura.msix) and drop it into PublishDir so the
+    Files harvest bundles it. build-sparse.ps1 stages a sparse-staging\ folder under its -OutDir,
+    so build into wix-msi\build\ and copy only the .msix into PublishDir (never harvest staging).
+  -->
+  <Target Name="BuildSparsePackage" AfterTargets="ResolveProjectReferences">
+    <PropertyGroup>
+      <_SparseBuildDir>$(MSBuildThisFileDirectory)build</_SparseBuildDir>
+      <_SparseSignArgs Condition="'$(SignKeypairAlias)' != '' AND '$(SignOutput)' == 'true'">-KeypairAlias "$(SignKeypairAlias)"</_SparseSignArgs>
+      <_SparseSignArgs Condition="'$(SignOutput)' != 'true'">$(_SparseSignArgs) -SkipSign</_SparseSignArgs>
+    </PropertyGroup>
+      <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)build-sparse.ps1&quot; -Version $(Version) -OutDir &quot;$(_SparseBuildDir)&quot; $(_SparseSignArgs)" />
+    <MakeDir Directories="$(PublishDir)" />
+    <Copy SourceFiles="$(_SparseBuildDir)\Obscura.msix" DestinationFolder="$(PublishDir)" />
+  </Target>
+
+  <Target Name="SignMsi">
+    <PropertyGroup>
+      <_MsiSignArgs Condition="'$(SignKeypairAlias)' != '' AND '$(SignOutput)' == 'true'">-KeypairAlias "$(SignKeypairAlias)"</_MsiSignArgs>
+    </PropertyGroup>
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)sign.ps1&quot; -Files &quot;%(SignMsi.FullPath)&quot; $(_MsiSignArgs)" />
+  </Target>
+</Project>

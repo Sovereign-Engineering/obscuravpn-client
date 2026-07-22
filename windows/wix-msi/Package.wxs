@@ -1,0 +1,144 @@
+<!--
+  Obscura VPN MSI (per-machine). It:
+    1. Installs the unpackaged WinUI app + obscura.exe + wintun.dll to Program Files.
+    2. Registers obscura.exe as the "Obscura VPN Service" (LocalSystem, auto-start) via ServiceInstall.
+    3. Registers the sparse identity package (Obscura.msix) for all users so "Obscura VPN.exe" runs
+       with package identity, which the service's named-pipe SDDL ACE requires.
+
+  No certificate is installed: the MSI and the sparse .msix are EV-signed and trusted by Windows.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <Package Name="Obscura VPN"
+           Manufacturer="Sovereign Engineering"
+           Version="$(var.Version)"
+           UpgradeCode="6b1f4d6a-2f3e-4c8a-9d1b-0a7c5e2f9b34"
+           Scope="perMachine"
+           Compressed="yes">
+
+    <MajorUpgrade Schedule="afterInstallValidate" DowngradeErrorMessage="!(loc.DowngradeError)" />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="ObscuraIcon.ico" SourceFile="..\obscura-client\Assets\Icon.ico" />
+    <Property Id="ARPPRODUCTICON" Value="ObscuraIcon.ico" />
+
+    <!-- AllowExternalContent (sparse package) requires Windows 10, version 2004 (build 19041). -->
+    <Property Id="WINDOWSBUILDNUMBER" Secure="yes">
+        <RegistrySearch Id="BuildNumberSearch" Root="HKLM" Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion" Name="CurrentBuildNumber" Type="raw" />
+    </Property>
+    <Launch Condition="Installed OR (WINDOWSBUILDNUMBER &gt;= 19041)" Message="[ProductName] requires Windows 10 version 20H1 (build 19041) or newer." />
+
+    <Feature Id="Main" Title="Obscura VPN" Level="1">
+      <ComponentGroupRef Id="ObscuraComponents" />
+    </Feature>
+
+    <Property Id="LAUNCHAPPLICATION" Value="1" Secure="yes" />
+    <SetProperty Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" After="CostFinalize" Condition="LAUNCHAPPLICATION &lt;&gt; 0" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch !(bind.Property.ProductName)" />
+
+    <!-- Obscura branding for the dialog set: dialog.bmp (493x312) backs the Exit/Welcome dialogs,
+         banner.bmp (493x58) is the top banner on Progress. Both carry the Obscura logo. -->
+    <WixVariable Id="WixUIBannerBmp" Value="branding\banner.bmp" />
+    <WixVariable Id="WixUIDialogBmp" Value="branding\dialog.bmp" />
+
+    <!-- EULA free exit dialog -->
+    <UI Id="ObscuraUI">
+      <TextStyle Id="WixUI_Font_Normal" FaceName="Tahoma" Size="8" />
+      <TextStyle Id="WixUI_Font_Bigger" FaceName="Tahoma" Size="12" />
+      <TextStyle Id="WixUI_Font_Title" FaceName="Tahoma" Size="9" Bold="yes" />
+      <Property Id="DefaultUIFont" Value="WixUI_Font_Normal" />
+
+      <DialogRef Id="ErrorDlg" />
+      <DialogRef Id="FatalError" />
+      <DialogRef Id="FilesInUse" />
+      <DialogRef Id="MsiRMFilesInUse" />
+      <DialogRef Id="PrepareDlg" />
+      <DialogRef Id="ProgressDlg" />
+      <DialogRef Id="ResumeDlg" />
+      <DialogRef Id="UserExit" />
+      <DialogRef Id="ExitDialog" />
+
+      <!-- Run the GUI when the user clicks Finish with the checkbox ticked, then close the dialog. -->
+      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApplication"
+               Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT Installed" Order="1" />
+      <Publish Dialog="ExitDialog" Control="Finish" Event="EndDialog" Value="Return" Order="999" />
+
+      <!-- No <InstallUISequence>/<Show> here: in WiX v7 these dialogs are virtual symbols already
+           scheduled by the UI extension, so referencing them via DialogRef is enough. Manually
+           scheduling them collides with the virtual symbol (WIX7009). Omitting WelcomeEulaDlg /
+           LicenseAgreementDlg is what keeps the flow EULA-free. -->
+    </UI>
+    <UIRef Id="WixUI_Common" />
+    <Property Id="WixUnelevatedShellExecTarget" Value="[#ObscuraVPNExe]" />
+    <CustomAction Id="LaunchApplication"
+                  BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)"
+                  DllEntry="WixUnelevatedShellExec"
+                  Execute="immediate"
+                  Return="ignore" />
+
+    <!-- Close the running GUI before files are replaced (upgrade) or removed (uninstall).
+         EndSessionMessage sends WM_QUERYENDSESSION/WM_ENDSESSION with ENDSESSION_CLOSEAPP, which
+         the app answers by exiting cleanly (tray icon removed); WM_CLOSE is useless here because
+         the app hides instead of closing. TerminateProcess=0 kills any straggler so the install
+         never needs a files-in-use reboot. -->
+    <util:CloseApplication Id="CloseObscuraGui"
+                           Target="Obscura VPN.exe"
+                           CloseMessage="no"
+                           EndSessionMessage="yes"
+                           RebootPrompt="no"
+                           TerminateProcess="0"
+                           Timeout="5" />
+    <!--
+      Sparse package registration (per-machine, all users): stage with the external location, then
+      provision for all current and future users.
+
+      Each operation is split into two custom actions (e.g. RegisterSparsePackage immediate +
+      RegisterSparsePackageCmd deferred) because:
+        - Provisioning for all users requires the elevated LocalSystem context, which only the
+          deferred execute script has. Immediate CAs run in the client process under the invoking
+          user's token.
+        - But a deferred CA cannot read installer properties like [INSTALLFOLDER]; its only input is
+          CustomActionData, populated from a property named after the deferred CA's id.
+      So the immediate CA resolves the properties into a command line and writes it to the
+      like-named property; the *Cmd deferred CA runs it as LocalSystem via WixQuietExec64.
+    -->
+    <CustomAction Id="RegisterSparsePackage" Property="RegisterSparsePackageCmd"
+                  Execute="immediate"
+                  Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command &quot;Add-AppxPackage -Stage '[INSTALLFOLDER]Obscura.msix' -ExternalLocation '[INSTALLFOLDER]'; Add-AppxProvisionedPackage -Online -PackagePath '[INSTALLFOLDER]Obscura.msix' -SkipLicense&quot;" />
+    <CustomAction Id="RegisterSparsePackageCmd" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)"
+                  DllEntry="WixQuietExec64" Execute="deferred" Impersonate="no" Return="check" />
+
+    <CustomAction Id="UnregisterSparsePackage" Property="UnregisterSparsePackageCmd"
+                  Execute="immediate"
+                  Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command &quot;$prov = Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -eq 'SovereignEngineering.ObscuraVPN' }; foreach ($p in $prov) { Remove-AppxProvisionedPackage -Online -PackageName $p.PackageName }; $pkgs = Get-AppxPackage -AllUsers -Name SovereignEngineering.ObscuraVPN; foreach ($pk in $pkgs) { Remove-AppxPackage -AllUsers -Package $pk.PackageFullName }&quot;" />
+    <CustomAction Id="UnregisterSparsePackageCmd" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)"
+                  DllEntry="WixQuietExec64" Execute="deferred" Impersonate="no" Return="ignore" />
+
+    <!-- Same command as UnregisterSparsePackage, but scheduled on the install path to clear any stale
+         registration before RegisterSparsePackage. A CA can only be scheduled once, so the install
+         and uninstall paths need distinct ids. -->
+    <CustomAction Id="UnregisterStaleSparsePackage" Property="UnregisterStaleSparsePackageCmd"
+                  Execute="immediate"
+                  Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command &quot;$prov = Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -eq 'SovereignEngineering.ObscuraVPN' }; foreach ($p in $prov) { Remove-AppxProvisionedPackage -Online -PackageName $p.PackageName }; $pkgs = Get-AppxPackage -AllUsers -Name SovereignEngineering.ObscuraVPN; foreach ($pk in $pkgs) { Remove-AppxPackage -AllUsers -Package $pk.PackageFullName }&quot;" />
+    <CustomAction Id="UnregisterStaleSparsePackageCmd" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)"
+                  DllEntry="WixQuietExec64" Execute="deferred" Impersonate="no" Return="ignore" />
+
+    <InstallExecuteSequence>
+      <!-- Clear any stale sparse package before registering so reinstall/repair/upgrade starts clean. -->
+      <Custom Action="UnregisterStaleSparsePackage" After="InstallFiles" Condition="NOT Installed" />
+      <Custom Action="UnregisterStaleSparsePackageCmd" After="UnregisterStaleSparsePackage" Condition="NOT Installed" />
+      <!-- Register after the .msix is on disk and after stale registration is removed. -->
+      <Custom Action="RegisterSparsePackage" After="UnregisterStaleSparsePackageCmd" Condition="NOT Installed" />
+      <Custom Action="RegisterSparsePackageCmd" After="RegisterSparsePackage" Condition="NOT Installed" />
+      <!-- Auto-launch the GUI for silent installs (UILevel < 5, e.g. /qn updates). Full-UI installs
+           (UILevel = 5) launch from the ExitDialog Finish button -->
+      <Custom Action="LaunchApplication" After="InstallFinalize" Condition="NOT Installed AND UILevel &lt;&gt; 5 AND LAUNCHAPPLICATION &lt;&gt; 0" />
+      <!-- Uninstall: unregister before files are removed (skip on upgrade). -->
+      <Custom Action="UnregisterSparsePackage" Before="RemoveFiles" Condition='REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE' />
+      <Custom Action="UnregisterSparsePackageCmd" After="UnregisterSparsePackage" Condition='REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE' />
+    </InstallExecuteSequence>
+
+  </Package>
+</Wix>

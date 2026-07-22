@@ -34,6 +34,11 @@ public partial class App : Application
     NotifyIconManager? _notifyIcon;
     DispatcherQueue? _uiDispatcher;
 
+    // %LOCALAPPDATA%\Obscura
+    internal static string ObscuraLocalAppDir => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "Obscura");
+
     /// <summary>
     /// Initializes the singleton application object.  This is the first line of authored code
     /// executed, and as such is the logical equivalent of main() or WinMain().
@@ -78,9 +83,7 @@ public partial class App : Application
         var traceAppender = new TraceAppender { Layout = layout };
         traceAppender.ActivateOptions();
 
-        var logDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Obscura", "logs");
+        var logDir = Path.Combine(ObscuraLocalAppDir, "logs");
         Directory.CreateDirectory(logDir);
 
         var fileAppender = new RollingFileAppender
@@ -109,7 +112,17 @@ public partial class App : Application
 
         AppNotificationManager.Default.NotificationInvoked += (s, a) => HandleNotification(a);
         Log.Info("registering notification manager");
-        AppNotificationManager.Default.Register();
+        try
+        {
+            AppNotificationManager.Default.Register();
+        } catch (Exception ex)
+        {
+            Log.Error("Failed to register notifications", ex);
+            if (PackageIdentity.IsPackagedProcess()) {
+                throw;
+            }
+        }
+        
 
         var args = AppInstance.GetCurrent().GetActivatedEventArgs();
         if (args.Kind == ExtendedActivationKind.AppNotification)

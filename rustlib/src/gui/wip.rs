@@ -7,18 +7,19 @@
 use futures::StreamExt;
 use gtk4::gio::{DBusError, DBusProxy, ResourceLookupFlags};
 use gtk4::glib::translate::ToGlibPtr as _;
-use ksni::TrayMethods;
-use obscuravpn_client::debug_bundle::bundle_info::BundleInfo;
 use obscuravpn_client::exit_selection::ExitSelector;
-use obscuravpn_client::linux::{ClientError, run_command};
+use obscuravpn_client::linux::exit_list_watch::GuiExitListWatch;
+use obscuravpn_client::linux::ipc::{ClientError, run_command};
+use obscuravpn_client::linux::status::OsStatus;
+use obscuravpn_client::linux::status_watch::GuiStatusWatch;
+use obscuravpn_client::linux::tray::{ShowTarget, TrayRequest};
 use obscuravpn_client::manager::{self, TunnelArgs};
 use obscuravpn_client::manager_cmd::{ManagerCmd, ManagerCmdErrorCode, ManagerCmdOk};
 use serde::{Deserialize, Serialize};
 use std::cell::{Cell, RefCell};
-use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use std::str::FromStr;
-use std::sync::{Arc, OnceLock, mpsc};
+use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 use strum::IntoEnumIterator;
 use uuid::Uuid;
@@ -32,130 +33,15 @@ use webkit6::{
 use zbus_polkit::policykit1::{CheckAuthorizationFlags, Subject};
 use zbus_systemd::zbus; // provides the spawn method
 
-#[derive(Debug)]
-struct MyTray {
-    selected_option: usize,
-    checked: bool,
-    os_status: Option<OsStatusFull>,
-    open_sender: futures::channel::mpsc::UnboundedSender<()>,
+fn tokio_rt() -> &'static tokio::runtime::Runtime {
+    static RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
+    RUNTIME.get_or_init(|| tokio::runtime::Runtime::new().expect("Setting up tokio runtime needs to succeed."))
 }
 
-impl ksni::Tray for MyTray {
-    fn id(&self) -> String {
-        env!("CARGO_PKG_NAME").into()
-    }
-
-    fn status(&self) -> ksni::Status {
-        let Some(OsStatusFull { rest: OsStatus { os_vpn_status: ref osvpns, .. }, .. }) = self.os_status else {
-            return ksni::Status::NeedsAttention;
-        };
-
-        // tray icon is hidden if not active
-        match osvpns {
-            NEVPNStatus::Invalid => ksni::Status::NeedsAttention,
-            _ => ksni::Status::Active,
-        }
-    }
-
-    fn icon_name(&self) -> String {
-        let Some(OsStatusFull { rest: OsStatus { os_vpn_status: ref osvpns, .. }, .. }) = self.os_status else {
-            return "network-error".to_owned();
-        };
-
-        match osvpns {
-            NEVPNStatus::Invalid => "network-error".to_owned(),
-            NEVPNStatus::Disconnected => "network-offline".to_owned(),
-            NEVPNStatus::Connecting => "network-offline".to_owned(),
-            NEVPNStatus::Connected => "network-wired".to_owned(),
-            NEVPNStatus::Reasserting => "network-offline".to_owned(),
-            NEVPNStatus::Disconnecting => "network-offline".to_owned(),
-        }
-    }
-
-    fn title(&self) -> String {
-        if self.checked { "CHECKED!" } else { "MyTray" }.into()
-    }
-
-    fn menu(&self) -> Vec<ksni::MenuItem<Self>> {
-        use ksni::menu::*;
-        vec![
-            StandardItem {
-                label: "Connect".to_owned(),
-                activate: Box::new(|_| {
-                    tray_connect();
-                }),
-                ..Default::default()
-            }
-            .into(),
-            StandardItem {
-                label: "Disconnect".to_owned(),
-                activate: Box::new(|_| {
-                    tray_disconnect();
-                }),
-                ..Default::default()
-            }
-            .into(),
-            StandardItem {
-                label: "Open Obscura Manager...".to_owned(),
-                activate: Box::new(|this: &mut Self| {
-                    this.open_sender.unbounded_send(()).unwrap();
-                }),
-                ..Default::default()
-            }
-            .into(),
-            MenuItem::Separator,
-            SubMenu {
-                label: "a".into(),
-                submenu: vec![
-                    SubMenu {
-                        label: "a1".into(),
-                        submenu: vec![
-                            StandardItem { label: "a1.1".into(), ..Default::default() }.into(),
-                            StandardItem { label: "a1.2".into(), ..Default::default() }.into(),
-                        ],
-                        ..Default::default()
-                    }
-                    .into(),
-                    StandardItem { label: "a2".into(), ..Default::default() }.into(),
-                ],
-                ..Default::default()
-            }
-            .into(),
-            MenuItem::Separator,
-            RadioGroup {
-                selected: self.selected_option,
-                select: Box::new(|this: &mut Self, current| {
-                    this.selected_option = current;
-                }),
-                options: vec![
-                    RadioItem { label: "Option 0".into(), ..Default::default() },
-                    RadioItem { label: "Option 1".into(), ..Default::default() },
-                    RadioItem { label: "Option 2".into(), ..Default::default() },
-                ],
-            }
-            .into(),
-            CheckmarkItem {
-                label: "Checkable".into(),
-                checked: self.checked,
-                activate: Box::new(|this: &mut Self| this.checked = !this.checked),
-                ..Default::default()
-            }
-            .into(),
-            StandardItem {
-                label: "Exit".into(),
-                icon_name: "application-exit".into(),
-                activate: Box::new(|_| std::process::exit(0)),
-                ..Default::default()
-            }
-            .into(),
-        ]
-    }
-}
-
-fn navigation_split_view(osskeeper: Arc<OsStatusKeeper>, dev_visible: Rc<Cell<bool>>) -> (gtk::Box, ListBox) {
+fn navigation_split_view(gui_status: Arc<GuiStatusWatch>, dev_visible: Rc<Cell<bool>>) -> (gtk::Box, ListBox) {
     let split_view = gtk::Box::new(Orientation::Horizontal, 0);
 
-    let webview = webview(osskeeper);
+    let webview = webview(gui_status);
     webview.set_hexpand(true);
 
     let sidebar = sidebar(&webview, dev_visible);
@@ -218,7 +104,7 @@ fn uri_handler(request: &URISchemeRequest) {
     request.finish(&stream, -1, Some(&mimetype));
 }
 
-fn webview(osskeeper: Arc<OsStatusKeeper>) -> WebView {
+fn webview(gui_status: Arc<GuiStatusWatch>) -> WebView {
     let user_content_manager = webkit6::UserContentManager::new();
 
     let error_capture_script = UserScript::new(
@@ -239,7 +125,7 @@ fn webview(osskeeper: Arc<OsStatusKeeper>) -> WebView {
     user_content_manager.add_script(&log_capture_script);
 
     user_content_manager.connect_script_message_with_reply_received(Some("commandBridge"), move |ucm, value, reply| {
-        command_bridge(ucm, value, reply, osskeeper.clone())
+        command_bridge(ucm, value, reply, gui_status.clone())
     });
     user_content_manager.register_script_message_handler_with_reply("commandBridge", None);
 
@@ -364,9 +250,6 @@ pub enum Cmd {
         tunnel_args: String,
     },
     StopTunnel {},
-    DebuggingArchive {
-        user_feedback: Option<String>,
-    },
     RevealItemInDir {
         path: String,
     },
@@ -375,248 +258,12 @@ pub enum Cmd {
     },
 }
 
-#[serde_with::serde_as]
-#[derive(derive_more::Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
-#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
-pub enum NEVPNStatus {
-    Invalid,
-    Disconnected,
-    Connecting,
-    Connected,
-    Reasserting,
-    Disconnecting,
-}
-
-impl From<manager::VpnStatus> for NEVPNStatus {
-    fn from(value: manager::VpnStatus) -> Self {
-        match value {
-            manager::VpnStatus::Connecting { .. } => Self::Connecting,
-            manager::VpnStatus::Connected { .. } => Self::Connected,
-            manager::VpnStatus::Disconnected { .. } => Self::Disconnected,
-        }
-    }
-}
-
-#[serde_with::serde_as]
-#[derive(derive_more::Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct OsStatus {
-    internet_available: bool,
-    os_vpn_status: NEVPNStatus,
-    src_version: String,
-    updater_status: UpdaterStatus,
-    debug_bundle_status: DebugBundleStatus,
-    can_send_mail: bool,
-    service_status: ServiceStatus,
-}
-
-#[derive(derive_more::Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
-#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
-pub enum ServiceStatus {
-    Healthy,
-    Degraded(Degradation),
-}
-
-#[derive(derive_more::Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
-#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
-pub enum Degradation {
-    LinuxDegraded(LinuxDegradation),
-    OtherDegraded,
-}
-
-#[derive(derive_more::Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
-#[serde(rename_all = "camelCase")]
-pub enum LinuxDegradation {
-    Stopped,
-    Failed,
-    Disabled,
-    NotInstalled,
-    NoAccess,
-}
-
 #[derive(derive_more::Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum LinuxFixAction {
     Start,
     EnableAndStart,
     AddOperator,
-}
-
-impl OsStatus {
-    fn to_hash(&self) -> Uuid {
-        let mut hasher = std::hash::DefaultHasher::new();
-        self.hash(&mut hasher);
-        let hash = hasher.finish();
-
-        Uuid::from_u64_pair(hash, hash)
-    }
-}
-
-impl From<OsStatus> for OsStatusFull {
-    fn from(value: OsStatus) -> Self {
-        let uuid = value.to_hash();
-
-        OsStatusFull { version: uuid, rest: value }
-    }
-}
-
-#[serde_with::serde_as]
-#[derive(derive_more::Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct OsStatusFull {
-    version: Uuid,
-    #[serde(flatten)]
-    rest: OsStatus,
-}
-
-impl Default for OsStatusFull {
-    fn default() -> Self {
-        OsStatus::default().into()
-    }
-}
-
-#[derive(Default)]
-pub struct OsStatusKeeper {
-    inner: tokio::sync::watch::Sender<OsStatusFull>,
-}
-
-impl OsStatusKeeper {
-    async fn wait_next_status_inner(&self, known_version: Option<Uuid>) -> OsStatusFull {
-        let mut rx = self.inner.subscribe();
-        let new = rx.wait_for(|oss| Some(oss.version) != known_version).await.unwrap();
-        (*new).clone()
-    }
-
-    async fn wait_next_status(&self, known_version: Option<Uuid>) -> OsStatusFull {
-        let mut manager_version: Option<Uuid> = None;
-        loop {
-            tokio::select! {
-                reply = self.wait_next_status_inner(known_version) => {
-                    return reply
-                }
-                maybe_res = run_command::<manager::Status>(ManagerCmd::GetStatus { known_version: manager_version }) => {
-                    let mut backoff = false;
-                    let (service_status, os_vpn_status) = match maybe_res {
-                        Ok(Ok(res)) => {
-                            manager_version = Some(res.version);
-                            (ServiceStatus::Healthy, NEVPNStatus::from(res.vpn_status))
-                        }
-                        Err(ClientError::NoService) => {
-                            backoff = true;
-                            (ServiceStatus::Degraded(Degradation::LinuxDegraded(diagnose_linux_service().await)), NEVPNStatus::Invalid)
-                        }
-                        Err(ClientError::InsufficientPermissions) => {
-                            backoff = true;
-                            (ServiceStatus::Degraded(Degradation::LinuxDegraded(LinuxDegradation::NoAccess)), NEVPNStatus::Invalid)
-                        }
-                        Ok(Err(error)) => {
-                            eprintln!("status command error: {err}", err = ClientError::from(error));
-                            backoff = true;
-                            (ServiceStatus::Degraded(Degradation::OtherDegraded), NEVPNStatus::Invalid)
-                        }
-                        Err(err) => {
-                            eprintln!("failed to get status: {err}");
-                            backoff = true;
-                            (ServiceStatus::Degraded(Degradation::OtherDegraded), NEVPNStatus::Invalid)
-                        }
-                    };
-
-                    self.send_if_modified(|status| -> bool {
-                        let changed = status.service_status != service_status || status.os_vpn_status != os_vpn_status;
-                        status.service_status = service_status;
-                        status.os_vpn_status = os_vpn_status;
-                        changed
-                    });
-
-                    if backoff {
-                        tokio::time::sleep(Duration::from_secs(1)).await;
-                    }
-                }
-            }
-        }
-    }
-
-    pub fn send_if_modified<F>(&self, modify: F) -> bool
-    where
-        F: FnOnce(&mut OsStatus) -> bool,
-    {
-        self.inner.send_if_modified(|status: &mut OsStatusFull| -> bool {
-            let was_modified = modify(&mut status.rest);
-            if was_modified {
-                status.version = status.rest.to_hash();
-            }
-            was_modified
-        })
-    }
-}
-
-impl Default for OsStatus {
-    fn default() -> Self {
-        Self {
-            internet_available: true,
-            os_vpn_status: NEVPNStatus::Invalid,
-            src_version: option_env!("OBSCURA_VERSION").unwrap_or("v0.0.0-dev").to_owned(),
-            updater_status: Default::default(),
-            debug_bundle_status: Default::default(),
-            can_send_mail: true, // FIXME
-            service_status: ServiceStatus::Healthy,
-        }
-    }
-}
-
-#[serde_with::serde_as]
-#[derive(derive_more::Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct AppcastSummary {
-    pub date: String,
-    pub description: String,
-    pub version: String,
-    pub min_system_version_sdk: bool,
-}
-
-#[serde_with::serde_as]
-#[derive(derive_more::Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct UpdaterStatus {
-    pub r#type: UpdaterStatusType,
-    pub appcast: Option<AppcastSummary>,
-    pub error: Option<String>,
-    pub error_code: Option<i32>,
-}
-
-#[serde_with::serde_as]
-#[derive(Default, derive_more::Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
-#[serde(rename_all = "camelCase")]
-pub enum UpdaterStatusType {
-    #[default]
-    Uninitiated,
-    Initiated,
-    Available,
-    NotFound,
-    Error,
-}
-
-#[allow(clippy::derivable_impls)]
-impl Default for UpdaterStatus {
-    fn default() -> Self {
-        Self { r#type: Default::default(), appcast: Default::default(), error: None, error_code: None }
-    }
-}
-
-#[serde_with::serde_as]
-#[derive(derive_more::Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct DebugBundleStatus {
-    pub in_progress: bool,
-    pub latest_path: Option<String>,
-    pub in_progress_counter: i64,
-}
-
-#[allow(clippy::derivable_impls)]
-impl Default for DebugBundleStatus {
-    fn default() -> Self {
-        Self { in_progress: false, latest_path: None, in_progress_counter: 0 }
-    }
 }
 
 #[derive(strum::EnumIter, strum::Display, strum::EnumString, Default, PartialEq)]
@@ -671,7 +318,7 @@ fn command_bridge(
     _ucm: &webkit6::UserContentManager,
     value: &webkit6::javascriptcore::Value,
     reply: &webkit6::ScriptMessageReply,
-    osskeeper: Arc<OsStatusKeeper>,
+    gui_status: Arc<GuiStatusWatch>,
 ) -> bool {
     let command_json_gstring = value.to_str();
     let command_json_str = command_json_gstring.as_str();
@@ -697,7 +344,7 @@ fn command_bridge(
             eprintln!("Got a call for GetOsStatus (non-FFI): '{:?}'", known_version);
 
             tokio_to_glib_local_fut_pipe(
-                async move { osskeeper.wait_next_status(known_version).await },
+                async move { gui_status.changed(known_version).await },
                 glib::clone!(
                     #[strong]
                     reply,
@@ -749,70 +396,6 @@ fn command_bridge(
             let mgr_cmd: ManagerCmd = ManagerCmd::SetTunnelArgs { args: None, active: Some(false) };
 
             glib_async_run_mgr_cmd_and_reply(mgr_cmd, &value_context, reply, None);
-        }
-        Cmd::DebuggingArchive { user_feedback } => {
-            let mgr_cmd: ManagerCmd = ManagerCmd::CreateDebugBundle {
-                user_feedback,
-                bundle_info: BundleInfo { app_version: OsStatus::default().src_version, ..Default::default() },
-            };
-
-            tokio_to_glib_local_fut_pipe::<Result<String, String>, _, _, _>(
-                glib::clone!(
-                    #[strong]
-                    osskeeper,
-                    async move {
-                        osskeeper.send_if_modified(|status| {
-                            status.debug_bundle_status.in_progress = true;
-                            true
-                        });
-
-                        let fut = run_command::<String>(mgr_cmd);
-                        let run_command_res = fut.await;
-
-                        let res = run_command_res
-                            .map_err(|e| ToString::to_string(&e))?
-                            .map_err(|e| format!("manager command error: {e:?}").to_owned())?;
-
-                        Ok(res)
-                    }
-                ),
-                glib::clone!(
-                    #[strong]
-                    reply,
-                    #[strong]
-                    value_context,
-                    #[strong]
-                    osskeeper,
-                    move |res| async move {
-                        let path = match res {
-                            Ok(res) => res,
-                            Err(error) => {
-                                osskeeper.send_if_modified(|status| {
-                                    status.debug_bundle_status.in_progress = false;
-                                    true
-                                });
-                                reply.return_error_message(&error);
-                                return;
-                            }
-                        };
-                        osskeeper.send_if_modified(|status| {
-                            status.debug_bundle_status.in_progress = false;
-                            status.debug_bundle_status.latest_path = Some(path.clone());
-                            true
-                        });
-
-                        let json_string = serde_json::to_string(&path.clone()).unwrap();
-
-                        // Our frontend actually expects a string repr of a json object  rather than an object
-                        let jsc6_val = javascriptcore::Value::new_string(&value_context, Some(&json_string));
-
-                        tracing::debug!(?json_string, "JsonFfiCmd: returning");
-                        eprintln!("JsonFfiCmd: returning: '{:?}'", json_string);
-                        reply.return_value(&jsc6_val.clone());
-                        eprintln!("JsonFfiCmd: returned: '{:?}'", json_string);
-                    }
-                ),
-            );
         }
         Cmd::RevealItemInDir { path } => {
             tokio_to_glib_local_fut_pipe::<_, _, _, _>(
@@ -1064,38 +647,7 @@ fn lbr_to_appview(lbr: &gtk::ListBoxRow, model: &impl IsA<gio::ListModel>) -> Ap
     AppView::from_str(&av_string).unwrap()
 }
 
-fn tokio_rt() -> &'static tokio::runtime::Runtime {
-    static RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
-    RUNTIME.get_or_init(|| tokio::runtime::Runtime::new().expect("Setting up tokio runtime needs to succeed."))
-}
-
-fn tray_connect() {
-    let args = TunnelArgs { exit: ExitSelector::Any {} };
-    let mgr_cmd: ManagerCmd = ManagerCmd::SetTunnelArgs { args: Some(args), active: Some(true) };
-    tokio_rt().spawn(async {
-        let fut = run_command::<serde_json::Value>(mgr_cmd);
-        match fut.await {
-            Ok(Ok(..)) => {}
-            Ok(Err(error)) => eprintln!("Failed to connect: {err}", err = ClientError::from(error)),
-            Err(err) => eprintln!("Failed to connect: {err}"),
-        }
-    });
-}
-
-fn tray_disconnect() {
-    let mgr_cmd: ManagerCmd = ManagerCmd::SetTunnelArgs { args: None, active: Some(false) };
-
-    tokio_rt().spawn(async {
-        let fut = run_command::<serde_json::Value>(mgr_cmd);
-        match fut.await {
-            Ok(Ok(..)) => {}
-            Ok(Err(error)) => eprintln!("Failed to disconnect: {err}", err = ClientError::from(error)),
-            Err(err) => eprintln!("Failed to disconnect: {err}"),
-        }
-    });
-}
-
-fn build_primary_window(osskeeper: Arc<OsStatusKeeper>) -> gtk::ApplicationWindow {
+fn build_primary_window(gui_status: Arc<GuiStatusWatch>) -> (gtk::ApplicationWindow, ListBox) {
     let window = gtk::ApplicationWindow::builder()
         .hide_on_close(true) // So that closing window doesn't quit app
         .default_width(800)
@@ -1108,7 +660,7 @@ fn build_primary_window(osskeeper: Arc<OsStatusKeeper>) -> gtk::ApplicationWindo
 
     let dev_visible = Rc::new(Cell::new(false));
 
-    let (split_view, sidebar) = navigation_split_view(osskeeper, dev_visible.clone());
+    let (split_view, sidebar) = navigation_split_view(gui_status, dev_visible.clone());
     window.set_child(Some(&split_view));
 
     // Ctrl+Shift+D toggles Developer sidebar item
@@ -1119,6 +671,8 @@ fn build_primary_window(osskeeper: Arc<OsStatusKeeper>) -> gtk::ApplicationWindo
         Some(gtk::CallbackAction::new(glib::clone!(
             #[strong]
             dev_visible,
+            #[strong]
+            sidebar,
             move |_widget, _args| {
                 dev_visible.update(std::ops::Not::not);
                 sidebar.invalidate_filter();
@@ -1129,7 +683,21 @@ fn build_primary_window(osskeeper: Arc<OsStatusKeeper>) -> gtk::ApplicationWindo
     controller.add_shortcut(shortcut);
     window.add_controller(controller);
 
-    window
+    (window, sidebar)
+}
+
+fn select_view_row(sidebar: &ListBox, view: &AppView) {
+    let Some(index) = AppView::iter().position(|av| av == *view) else {
+        return;
+    };
+    let Ok(index) = i32::try_from(index) else {
+        return;
+    };
+    let Some(row) = sidebar.row_at_index(index) else {
+        tracing::warn!(message_id = "Cp7gV3ol", view = %view, "no sidebar row for view");
+        return;
+    };
+    sidebar.select_row(Some(&row));
 }
 
 // TODO: handle unable to spawn tray, do we retry? do we tell user to install appindicator gnome
@@ -1150,33 +718,6 @@ fn print_gresources(res: &gio::Resource, path: &str) {
             }
         }
         Err(e) => eprintln!("  error enumerating {}: {}", path, e),
-    }
-}
-
-async fn system_bus() -> zbus::Result<zbus::Connection> {
-    zbus::connection::Builder::system()?.build().await
-}
-
-/// Classify why the obscura service socket is unreachable, by querying systemd (unprivileged reads).
-async fn diagnose_linux_service() -> LinuxDegradation {
-    let Ok(conn) = system_bus().await else {
-        return LinuxDegradation::Stopped;
-    };
-    let Ok(systemd) = zbus_systemd::systemd1::ManagerProxy::new(&conn).await else {
-        return LinuxDegradation::Stopped;
-    };
-    match systemd.get_unit_file_state("obscura.service".to_owned()).await {
-        Err(_) => LinuxDegradation::NotInstalled,
-        Ok(state) if state == "disabled" => LinuxDegradation::Disabled,
-        Ok(_) => {
-            if let Ok(path) = systemd.get_unit("obscura.service".to_owned()).await
-                && let Ok(unit) = zbus_systemd::systemd1::UnitProxy::new(&conn, path).await
-                && matches!(unit.active_state().await.as_deref(), Ok("failed"))
-            {
-                return LinuxDegradation::Failed;
-            }
-            LinuxDegradation::Stopped
-        }
     }
 }
 
@@ -1268,33 +809,24 @@ pub(crate) fn main() -> glib::ExitCode {
     }
 
     if !std::env::args().skip(1).any(|arg| arg == "--no-group-refresh") {
-        tokio_rt().block_on(obscuravpn_client::linux::try_group_refresh_fix());
+        tokio_rt().block_on(obscuravpn_client::linux::ipc::try_group_refresh_fix());
     }
+
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::builder()
+                .with_default_directive(tracing::level_filters::LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
+        .init();
 
     eprintln!("First light");
 
-    let (open_sender, mut open_receiver) = futures::channel::mpsc::unbounded::<()>();
+    let (tray_sender, mut tray_receiver) = futures::channel::mpsc::unbounded::<TrayRequest>();
 
-    let osskeeper = Arc::new(OsStatusKeeper::default());
-    let tray = MyTray { selected_option: 0, checked: false, os_status: None, open_sender };
-
-    tokio_rt().spawn({
-        let osskeeper = osskeeper.clone();
-        async move {
-            let handle = tray.spawn().await.unwrap();
-            tokio::time::sleep(Duration::from_secs(2)).await;
-
-            // We can modify the tray
-            handle.update(|tray: &mut MyTray| tray.checked = true).await;
-
-            let mut known_version: Option<Uuid> = None;
-            loop {
-                let ossfull = osskeeper.wait_next_status(known_version).await;
-                known_version = Some(ossfull.version);
-                handle.update(|tray: &mut MyTray| tray.os_status = Some(ossfull)).await;
-            }
-        }
-    });
+    let gui_status = tokio_rt().block_on(GuiStatusWatch::watch());
+    let exit_list = tokio_rt().block_on(GuiExitListWatch::watch());
+    tokio_rt().block_on(obscuravpn_client::linux::tray::spawn_tray(gui_status.clone(), exit_list, tray_sender));
 
     // So that we can initialize our window without being in connect_activate/startup Fn scope
     // (which is not FnOnce), see: https://gtk-rs.org/gtk4-rs/stable/latest/docs/gtk4/fn.init.html
@@ -1324,14 +856,27 @@ pub(crate) fn main() -> glib::ExitCode {
         .flags(gio::ApplicationFlags::default())
         .build();
 
-    let window = build_primary_window(osskeeper);
+    let (window, sidebar) = build_primary_window(gui_status);
 
     glib::spawn_future_local(glib::clone!(
         #[strong]
+        app,
+        #[strong]
         window,
+        #[strong]
+        sidebar,
         async move {
-            while let Some(()) = open_receiver.next().await {
-                window.present();
+            while let Some(request) = tray_receiver.next().await {
+                match request {
+                    TrayRequest::Show(target) => {
+                        window.present();
+                        match target {
+                            ShowTarget::MainWindow => {}
+                            ShowTarget::LocationView => select_view_row(&sidebar, &AppView::Location),
+                        }
+                    }
+                    TrayRequest::Quit => app.quit(),
+                }
             }
         }
     ));

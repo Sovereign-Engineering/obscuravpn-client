@@ -43,7 +43,7 @@ except ImportError:
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-WINDOWS_SVG_DIR = REPO_ROOT / "windows" / "tray-icons"
+TRAY_SVG_DIR = REPO_ROOT / "rustlib" / "tray-icons"
 WINDOWS_TRAY_ASSETS_DIR = REPO_ROOT / "windows" / "obscura-client" / "Assets" / "Tray"
 
 # Covers 100%/125%/150%/200%/250%/300%/400% DPI scaling for a 16-logical-pixel tray slot.
@@ -94,7 +94,7 @@ def main() -> int:
         "source",
         nargs="?",
         type=Path,
-        default=WINDOWS_SVG_DIR,
+        default=TRAY_SVG_DIR,
         help="directory holding <state>.svg files or MenuBar*.imageset/ subdirs",
     )
     parser.add_argument(

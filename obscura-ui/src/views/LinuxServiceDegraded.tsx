@@ -1,7 +1,7 @@
 import { Button, Stack, Text, Title } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import * as commands from '../bridge/commands';
-import { LinuxDegradation } from '../common/appContext';
+import { LinuxServiceDegradation } from '../common/appContext';
 import { TranslationKey } from '../translations/i18n';
 
 interface FixOption {
@@ -15,7 +15,7 @@ interface Degraded {
   fixes: FixOption[];
 }
 
-function describe(degradation: LinuxDegradation): Degraded {
+function describe(degradation: LinuxServiceDegradation): Degraded {
   switch (degradation) {
     case 'stopped':
     case 'failed':
@@ -45,10 +45,16 @@ function describe(degradation: LinuxDegradation): Degraded {
         messageKey: 'linuxService-notInstalledMessage',
         fixes: [],
       };
+    case 'other':
+      return {
+        titleKey: 'linuxService-otherTitle',
+        messageKey: 'linuxService-otherMessage',
+        fixes: [],
+      };
   }
 }
 
-export default function LinuxServiceDegraded({ degradation }: { degradation: LinuxDegradation }) {
+export default function LinuxServiceDegraded({ degradation }: { degradation: LinuxServiceDegradation }) {
   const { t } = useTranslation();
   const { showLoadingUI, execute } = commands.useCommand({ command: commands.linuxFix, showNotification: true });
   const { titleKey, messageKey, fixes } = describe(degradation);

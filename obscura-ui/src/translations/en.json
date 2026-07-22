@@ -231,6 +231,8 @@
   "linuxService-noAccessTitle": "No access to the Obscura service",
   "linuxService-notInstalledMessage": "Reinstall Obscura to restore the background service.",
   "linuxService-notInstalledTitle": "The Obscura service is not installed",
+  "linuxService-otherMessage": "Obscura could not determine why the background service is unreachable. Make sure it is installed and running.",
+  "linuxService-otherTitle": "The Obscura service is unavailable",
   "linuxService-startButton": "Start service",
   "linuxService-startOnceButton": "Start once",
   "linuxService-stoppedMessage": "The background service that runs the VPN is stopped.",

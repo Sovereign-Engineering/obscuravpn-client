@@ -2,6 +2,8 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using log4net;
 
 namespace Obscura_Client;
@@ -11,14 +13,19 @@ internal static class DevServer
     private static readonly ILog Log = LogManager.GetLogger(typeof(DevServer));
     static Process? _process;
     public static readonly string PORT = "5021";
+    // Get absolute source-paths injected at build time
+    // See AssemblyMetadata in obscura-client.csproj
+    static string BuildPath(string key) =>
+        Assembly.GetExecutingAssembly()
+            .GetCustomAttributes<AssemblyMetadataAttribute>()
+            .FirstOrDefault(a => a.Key == key)?.Value
+        ?? throw new InvalidOperationException($"missing build path metadata: {key}");
 
     public static void Start()
     {
         Log.Debug(Environment.CurrentDirectory);
-        var obscuraUiDir = Path.GetFullPath(
-            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "..", "..", "..", "obscura-ui"));
-        var licensesJson = Path.GetFullPath(
-            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "..", "..", "webui-build", "licenses.json"));
+        var obscuraUiDir = BuildPath("ObscuraUiDir");
+        var licensesJson = BuildPath("LicensesJson");
 
         if (!Directory.Exists(obscuraUiDir))
         {

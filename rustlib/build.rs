@@ -22,6 +22,12 @@ fn main() {
     //
     //       Source: https://doc.rust-lang.org/cargo/reference/build-scripts.html#change-detection
 
+    // Log OBSCURA_VERSION so we can inspect in the build log whether it is set.
+    match env::var("OBSCURA_VERSION") {
+        Ok(v) => println!("cargo::warning=OBSCURA_VERSION is set to '{v}'"),
+        Err(_) => println!("cargo::warning=OBSCURA_VERSION is NOT set"),
+    }
+
     // Get the crate directory where our source code lives
     let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
 

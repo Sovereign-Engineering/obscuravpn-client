@@ -15,6 +15,8 @@ pub struct DebugInfo {
     pub http_google: DebugTask<HttpTask>,
     pub http_nosni: DebugTask<HttpTask>,
     pub http_obscura: DebugTask<HttpTask>,
+    pub http_obscura_apple: DebugTask<HttpTask>,
+    pub http_obscura_google: DebugTask<HttpTask>,
     pub network_interface: Option<NetworkInterface>,
     pub network_interface_mtu: Option<i32>,
 }

@@ -394,7 +394,8 @@ The released packages support:
 
 ### Building and signing packages
 
-Build all the packages (`obscura-cli`, `obscura-gui`, `obscura`) and the signed
+Build all the packages (`obscura-cli`, `obscura-gui`, `obscura`, plus
+`obscura-repository` for deb and rpm, `obscura-keyring` for arch) and the signed
 apt/dnf/pacman repositories:
 
 ```bash
@@ -408,21 +409,30 @@ Pass `--test` to build instead with the committed keys in `linux/signing_keys_te
 
 ### Signing key rotation
 
-`linux/signing_keys/` holds `current.public.asc` (signs releases) and `next.public.asc`
-(the next key, shipped ahead). It also holds `rotate_signing_key.bash`. The directory is
-self-contained: copy it to the isolated machine that holds the secret keys, run the script
-there, and copy `current.public.asc`, `next.public.asc`, and `revocation.asc` back.
+`linux/signing_keys/` holds `current.public.asc` (the public key of the keypair whose
+private key signs releases), `next.public.asc` (the public key of the next keypair,
+shipped ahead), and `revocation.asc` (the public key of every rotated-out keypair, with
+its revocation certificate). It also holds `rotate_signing_key.bash`. The directory is
+self-contained: copy it to the isolated machine that holds the private keys, run the
+script there, and copy `current.public.asc`, `next.public.asc`, and `revocation.asc` back.
 
-Revoked keys ship in the repositories so already-installed clients stop trusting them. Each format handles revocation differently:
+User machines that already trust a rotated-out public key must stop trusting it. The packaging
+scripts and the packages they ship handle this automatically; each format uses a
+different mechanism:
 
-- **deb**: nothing to do beyond dropping the key. `obscura-repository` replaces the keyring
-  file wholesale on upgrade, so the dropped key is gone from every client.
-- **rpm**: the revoked key is dropped from `RPM-GPG-KEY-obscura` (so new installs never
-  trust it) and its fingerprint is listed in `RPM-GPG-KEY-obscura-revoked`.
-  `obscura-package-signing-key-refresh.timer` (in `obscura-repository`) removes listed
-  keys from the rpm keystore within a day, and imports newly shipped keys, because rpm
-  itself never re-reads the key file once a key is imported (not on upgrade, and
-  scriptlets cannot import while the transaction lock is held).
-- **arch**: the fingerprint is added to `obscura-revoked` and the revoked key to `obscura.gpg`;
-  `pacman-key --populate obscura` (run from the keyring package's install hook on every
-  upgrade) disables it.
+- **deb**: the keyring file shipped by the `obscura-repository` package is built from just
+  `current.public.asc` and `next.public.asc`, and upgrades replace it wholesale, so a
+  rotated-out public key disappears from every user machine on its own.
+- **rpm**: the `obscura-repository` package ships `RPM-GPG-KEY-obscura`, built from just
+  `current.public.asc` and `next.public.asc` (so new installs never trust a rotated-out
+  public key), and `RPM-GPG-KEY-obscura-revoked`, listing the fingerprints from `revocation.asc`.
+  Its `obscura-package-signing-key-refresh.timer` runs daily, importing
+  `RPM-GPG-KEY-obscura` and removing the public keys listed in `RPM-GPG-KEY-obscura-revoked`
+  from the rpm database. The timer is needed because upgrading the package only
+  replaces the public key files: rpm never re-reads them on its own, and scriptlets cannot
+  import public keys while the transaction lock is held.
+- **arch**: the `obscura-keyring` package ships `obscura.gpg`, built from
+  `current.public.asc`, `next.public.asc`, and `revocation.asc`, plus `obscura-trusted`
+  and `obscura-revoked`, listing the fingerprints of the trusted and revoked public keys
+  respectively. Its install hook runs `pacman-key --populate obscura` on every install
+  and upgrade, which imports the new public keys and disables the revoked ones.

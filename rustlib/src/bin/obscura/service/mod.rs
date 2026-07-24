@@ -36,11 +36,11 @@ pub async fn run(args: ServiceArgs, log_persistence: Option<LogPersistence>, shu
             WgKeyStore::None
         }
     };
-
+    let src_version = option_env!("OBSCURA_VERSION").unwrap_or("v0.0.0-dev").to_owned();
     let manager = Manager::new(
         args.config_dir.into(),
         wg_key_store,
-        format!("obscura.net/{}/v0.0-alpha", std::env::consts::OS),
+        format!("obscura.net/{}/{src_version}", std::env::consts::OS),
         os_impl.clone(),
         log_persistence,
         false,

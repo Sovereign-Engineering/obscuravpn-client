@@ -1,0 +1,133 @@
+name: Windows Build
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - 'main'
+    tags:
+      - '*'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_name != 'main' }}
+
+jobs:
+  windows_msi:
+    name: Windows MSI
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [x64, ARM64]
+    runs-on: nscloud-windows-2022-amd64-8x16
+    environment: release
+    env:
+      SIGN: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v/') }}
+    steps:
+      - name: git checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          package_json_file: obscura-ui/package.json
+
+      - name: Install Pre-Requisites
+        shell: pwsh
+        run: |
+          choco install just nasm -y --no-progress
+          Add-Content $env:GITHUB_PATH "$env:ProgramFiles\NASM"
+
+      - name: Setup Rust
+        # cargo runs in rustlib/, where rust-toolchain.toml pins the toolchain (the runner's
+        # preinstalled stable is never used). Install the pinned toolchain and the Windows
+        # targets into it explicitly.
+        shell: pwsh
+        working-directory: rustlib
+        run: |
+          rustup toolchain install
+          rustup target add x86_64-pc-windows-msvc aarch64-pc-windows-msvc
+
+      - name: Download wintun
+        shell: pwsh
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP 'wintun-0.14.1.zip'
+          Invoke-WebRequest -Uri 'https://www.wintun.net/builds/wintun-0.14.1.zip' -OutFile $zip
+          $hash = (Get-FileHash -Path $zip -Algorithm SHA256).Hash
+          if ($hash -ne '07c256185d6ee3652e09fa55c0b673e2624b565e02c4b9091c79ca7d2f24ef51') {
+            throw "wintun-0.14.1.zip SHA256 mismatch: got $hash"
+          }
+          Expand-Archive -Path $zip -DestinationPath windows
+          Rename-Item -Path windows/wintun -NewName wintun-0.14.1
+
+      - name: Setup SM_CLIENT_CERT_FILE from base64 secret data
+        if: env.SIGN == 'true'
+        shell: pwsh
+        env:
+          SM_CLIENT_CERT_FILE: D:\Certificate_pkcs12.p12
+        run: |
+          $bytes = [System.Convert]::FromBase64String("${{ secrets.DIGICERT_SM_CLIENT_CERT_FILE_B64 }}")
+          [System.IO.File]::WriteAllBytes($env:SM_CLIENT_CERT_FILE, $bytes)
+
+      - name: Setup DigiCert signing tools
+        if: env.SIGN == 'true'
+        uses: digicert/code-signing-software-trust-action@v1
+
+      - name: Build MSI (Signed)
+        shell: pwsh
+        env:
+          AWS_LC_SYS_USE_SYSTEM: 0
+          # sign.ps1 signs via smctl during the build; smctl reads SM_* to authenticate to KeyLocker.
+          SM_HOST: ${{ vars.DIGICERT_SM_HOST }}
+          SM_API_KEY: ${{ secrets.DIGICERT_SM_API_KEY }}
+          SM_CLIENT_CERT_FILE: D:\Certificate_pkcs12.p12
+          SM_CLIENT_CERT_PASSWORD: ${{ secrets.DIGICERT_SM_CLIENT_CERT_PASSWORD }}
+          KEYPAIR_ALIAS: ${{ vars.DIGICERT_SM_KEYPAIR_ALIAS }}
+        run: |
+          dotnet build windows/wix-msi/wix-msi.wixproj `
+            -c Release `
+            -p:Platform=${{ matrix.platform }} `
+            -p:SignOutput=${{ env.SIGN }} `
+            -p:SignKeypairAlias=${{ env.SIGN == 'true' && vars.DIGICERT_SM_KEYPAIR_ALIAS || '' }}
+
+      - name: Verify signature
+        if: env.SIGN == 'true'
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem windows/wix-msi/bin/${{ matrix.platform }}/Release/en-US/Obscura_*_${{ matrix.platform }}.msi | Select-Object -First 1
+          if (-not $msi) { throw "No MSI found under windows/wix-msi/bin/${{ matrix.platform }}/Release/en-US" }
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter signtool.exe |
+            Where-Object { $_.FullName -match '\\x64\\' } | Sort-Object FullName -Descending | Select-Object -First 1
+          & $signtool.FullName verify /pa /v $msi.FullName
+
+      - name: Upload MSI
+        uses: actions/upload-artifact@v7
+        with:
+          name: Obscura-${{ matrix.platform }}-msi
+          path: windows/wix-msi/bin/${{ matrix.platform }}/Release/en-US/Obscura_*_${{ matrix.platform }}.msi
+          if-no-files-found: error
+          retention-days: 30
+
+  merge_msi:
+    name: Merge MSI artifacts
+    needs: windows_msi
+    runs-on: [nix]
+    steps:
+      - name: Merge MSI artifacts
+        uses: actions/upload-artifact/merge@v7
+        with:
+          name: Obscura-msi
+          pattern: Obscura-*-msi
+          delete-merged: true
+          retention-days: 30

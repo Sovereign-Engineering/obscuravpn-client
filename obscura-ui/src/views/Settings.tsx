@@ -1,6 +1,6 @@
 import { Accordion, ActionIcon, Alert, Button, Card, Checkbox, Divider, Group, Radio, Stack, Switch, Text, Title, useMantineColorScheme } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import React, { ReactNode, useContext, useState } from 'react';
+import React, { ReactNode, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsCircleHalf } from 'react-icons/bs';
 import { IoCheckmark, IoHelpCircleOutline, IoInformationCircleOutline, IoMoon, IoSunnySharp } from 'react-icons/io5';
@@ -11,6 +11,7 @@ import { DNS_OPTIONS_WEBPAGE } from '../common/accountUtils';
 import { AppContext, DNSContentBlock, featureFlagEnabled, FeatureFlagKey, KnownFeatureFlagKey } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { NotificationId } from '../common/notifIds';
+import { useAsync } from '../common/useAsync';
 import { normalizeError } from '../common/utils';
 import { fmtErrorI18n, TranslationKey } from '../translations/i18n';
 import classes from './Settings.module.css';
@@ -93,6 +94,17 @@ function GeneralSettings() {
   const loginItemStatus = osStatus.loginItemStatus;
   const loginItemRegistered = loginItemStatus?.registered;
   const loginItemError = loginItemStatus?.error;
+
+  const { error: refreshLoginItemError } = useAsync({
+    load: commands.refreshLoginItemStatus,
+    returnError: true,
+  });
+
+  useEffect(() => {
+    if (refreshLoginItemError) {
+      console.error("Failed to refresh login item status", refreshLoginItemError);
+    }
+  }, [refreshLoginItemError]);
 
   const registerAtLogin = async () => {
     let success = true;

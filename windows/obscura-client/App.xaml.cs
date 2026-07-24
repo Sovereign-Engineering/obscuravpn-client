@@ -134,6 +134,7 @@ public partial class App : Application
         }
         HandleActivation(args);
         ShowFirstRunNotification();
+        _ = LoginItem.RefreshStatusAsync();
     }
 
     static void ShowFirstRunNotification()

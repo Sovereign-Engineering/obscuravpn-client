@@ -1,9 +1,12 @@
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using log4net;
+using Windows.ApplicationModel;
 using Windows.Networking.Connectivity;
 
 namespace Obscura_Client;
@@ -34,7 +37,102 @@ public class DebugBundleStatus
 public class LoginItemStatus
 {
     public bool Registered { get; set; } = false;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Error { get; set; } = null;
+}
+
+public static class LoginItem
+{
+    private static readonly ILog Log = LogManager.GetLogger(typeof(LoginItem));
+    private const string TaskId = "ObscuraVPNStartup";
+
+    static bool IsRegistered(StartupTaskState startupTask)
+    {
+        return startupTask == StartupTaskState.Enabled || startupTask == StartupTaskState.EnabledByPolicy;
+    }
+
+    public static async Task RefreshStatusAsync()
+    {
+        try
+        {
+            var task = await StartupTask.GetAsync(TaskId);
+            OsStatus.Instance.Update(s => s.LoginItemStatus = new LoginItemStatus { Registered = IsRegistered(task.State) });
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"failed to get login item status: {ex}");
+            OsStatus.Instance.Update(s => s.LoginItemStatus = new LoginItemStatus { Error = ex.Message });
+        }
+    }
+
+    public static async Task RegisterAsync()
+    {
+        try
+        {
+            var task = await StartupTask.GetAsync(TaskId);
+            var newState = await task.RequestEnableAsync();
+            OsStatus.Instance.Update(s => s.LoginItemStatus = new LoginItemStatus { Registered = IsRegistered(newState) });
+            if (task.State == StartupTaskState.DisabledByUser)
+            {
+                // The user disabled startup themselves,
+                // so we take them straight to the Startup settings page to re-enable it.
+                // Delay opening startup settings so the error message can surface first;
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(2));
+                    await OpenStartupSettingsAsync();
+                });
+                throw new Exception("\"Obscura VPN\" Startup was disabled from Windows settings.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"failed to register app at login: {ex}");
+            SetError(ex.Message);
+            throw;
+        }
+    }
+
+    public static async Task UnregisterAsync()
+    {
+        try
+        {
+            var task = await StartupTask.GetAsync(TaskId);
+            task.Disable();
+            OsStatus.Instance.Update(s => s.LoginItemStatus = new LoginItemStatus { Registered = IsRegistered(task.State) });
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"failed to unregister app at login: {ex}");
+            SetError(ex.Message);
+            throw;
+        }
+    }
+
+    private static async Task OpenStartupSettingsAsync()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "ms-settings:startupapps",
+                UseShellExecute = true,
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"failed to open startup settings: {ex}");
+        }
+    }
+
+    private static void SetError(string error)
+    {
+        OsStatus.Instance.Update(s =>
+        {
+            if (s.LoginItemStatus is not null) s.LoginItemStatus.Error = error;
+            else s.LoginItemStatus = new LoginItemStatus { Error = error };
+        });
+    }
 }
 
 public class SparkleUpdaterStatus

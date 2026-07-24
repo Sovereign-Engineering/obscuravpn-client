@@ -10,7 +10,7 @@ use tokio::task::JoinSet;
 
 pub fn race_relay_handshakes(
     network_interface: Option<&NetworkInterface>,
-    relays: Vec<OneRelay>,
+    relays: &[OneRelay],
     sni: String,
     use_tcp_tls: bool,
     quic_frame_padding: bool,

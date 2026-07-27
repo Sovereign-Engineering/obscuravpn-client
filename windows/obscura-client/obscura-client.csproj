@@ -89,6 +89,20 @@
     <ObscuraUiDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\..\obscura-ui'))</ObscuraUiDir>
   </PropertyGroup>
 
+  <!--
+    Debug-only: embed source paths at build time for the DevServer.
+  -->
+  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>ObscuraUiDir</_Parameter1>
+      <_Parameter2>$(ObscuraUiDir)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>LicensesJson</_Parameter1>
+      <_Parameter2>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\webui-build\licenses.json'))</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
   <PropertyGroup Label="Globals">
     <WebView2UseWinRT>False</WebView2UseWinRT>
   </PropertyGroup>

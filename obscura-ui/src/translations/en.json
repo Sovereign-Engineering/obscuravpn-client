@@ -368,7 +368,7 @@
   "vpnError-noInternet": "Not connected to the internet",
   "vpnError-noLongerSupported": "This client is too old, please update to the latest version to connect",
   "vpnError-noNetworkAvailable": "Not connected to a network",
-  "vpnError-noSlotsLeft": "No more than three tunnels may be active",
+  "vpnError-noSlotsLeft": "You cannot have more than three active devices. Disconnect a device or delete a WireGuard config in your user portal",
   "vpnError-other": "An unknown error occurred, please send us a debug bundle which can be created from the status menu, Help tab, or About tab",
   "vpnError-other_iphoneos": "An unknown error occurred, please send us a debug bundle which can be created from the About tab",
   "vpnError-other_macosx": "An unknown error occurred, please send us a debug bundle which can be created from the status menu or the Help tab",

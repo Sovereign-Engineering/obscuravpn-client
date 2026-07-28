@@ -155,5 +155,10 @@ export default function DeveloperViewer() {
                 window.location.pathname = '/';
             }
         }}>Simulate error boundary reset</Button>
+        <Button onClick={() => notifications.show({
+            title: 'Failed to do nothing',
+            color: 'red',
+            message: t('ipcError-other'),
+        })}>Show error notification</Button>
     </Stack>;
 }

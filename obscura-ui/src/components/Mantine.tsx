@@ -59,6 +59,17 @@ export default function Mantine({ children }: PropsWithChildren) {
                 radius: 'md'
               }
             },
+            Notifications: {
+              styles: {
+                root: {
+                  paddingTop: 'var(--safe-area-inset-top, env(safe-area-inset-top))',
+                  paddingBottom: 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom))',
+                  // Notifications are right-aligned on desktop, so the left inset is redundant.
+                  paddingLeft: IS_HANDHELD_DEVICE ? 'var(--safe-area-inset-left, env(safe-area-inset-left))' : undefined,
+                  paddingRight: 'var(--safe-area-inset-right, env(safe-area-inset-right))',
+                }
+              }  
+            },
             Accordion: {
               defaultProps: {
                 radius: 'md'

@@ -1,4 +1,5 @@
 use crate::{
+    int_helper::u16_into_usize,
     quicwg::{QuicWgConnPacketSender, TUNNEL_MTU},
     rate_limited_log,
     tokio::AbortOnDrop,
@@ -25,7 +26,7 @@ impl Tun {
             }
         };
         let read_loop_task = tokio::spawn(async move {
-            let mut buf = Box::new([0; TUNNEL_MTU as _]);
+            let mut buf = Box::new([0; u16_into_usize(TUNNEL_MTU)]);
             loop {
                 match fd_watcher.readable().await {
                     Ok(mut guard) => match unistd::read(&fd_watcher, &mut buf[..]) {
@@ -53,7 +54,7 @@ impl Tun {
     }
 
     pub fn write(&self, packet: &[u8]) {
-        if packet.len() > TUNNEL_MTU as usize {
+        if packet.len() > usize::from(TUNNEL_MTU) {
             rate_limited_log!(
                 TUN_MIN_LOG_SILENCE,
                 tracing::warn!(message_id = "Yc1WxQBY", packet_size = packet.len(), "packet larger than MTU")

@@ -16,7 +16,7 @@ impl<'a> FfiBytes<'a> {
             &[]
         } else {
             // SAFETY: This type must be constructed such that this is safe
-            unsafe { std::slice::from_raw_parts(self.buffer as *const u8, self.len) }
+            unsafe { std::slice::from_raw_parts(self.buffer.cast::<u8>(), self.len) }
         }
     }
 }
@@ -30,7 +30,7 @@ impl FfiBytes<'_> {
 impl<'a, T: AsRef<[u8]>> From<&'a T> for FfiBytes<'a> {
     fn from(b: &'a T) -> Self {
         let b = b.as_ref();
-        FfiBytes { buffer: b.as_ptr() as *const c_void, len: b.len(), phantom: PhantomData }
+        FfiBytes { buffer: b.as_ptr().cast::<c_void>(), len: b.len(), phantom: PhantomData }
     }
 }
 
@@ -64,7 +64,7 @@ impl std::fmt::Display for FfiStr<'_> {
 impl<'a, T: AsRef<str>> From<&'a T> for FfiStr<'a> {
     fn from(s: &'a T) -> Self {
         let s = s.as_ref();
-        FfiStr { bytes: FfiBytes { buffer: s.as_ptr() as *const c_void, len: s.len(), phantom: PhantomData } }
+        FfiStr { bytes: FfiBytes { buffer: s.as_ptr().cast::<c_void>(), len: s.len(), phantom: PhantomData } }
     }
 }
 

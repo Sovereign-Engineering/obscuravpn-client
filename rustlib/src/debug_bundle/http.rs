@@ -78,6 +78,9 @@ struct FixedResolver(Vec<IpAddr>);
 impl Resolve for FixedResolver {
     fn resolve(&self, _: reqwest::dns::Name) -> Resolving {
         let ips = self.0.clone();
-        Box::pin(async move { Ok(Box::new(ips.into_iter().map(|ip| SocketAddr::new(ip, 0))) as _) })
+        Box::pin(async move {
+            let addrs: reqwest::dns::Addrs = Box::new(ips.into_iter().map(|ip| SocketAddr::new(ip, 0)));
+            Ok(addrs)
+        })
     }
 }

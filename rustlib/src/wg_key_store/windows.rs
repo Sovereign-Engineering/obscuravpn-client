@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use static_assertions::const_assert;
+use crate::int_helper::u32_into_usize;
 use windows::Win32::Foundation::NTE_BAD_KEYSET;
 use windows::Win32::Security::Cryptography::{
     BCRYPT_OAEP_PADDING_INFO, BCRYPT_SHA256_ALGORITHM, CERT_KEY_SPEC, MS_PLATFORM_CRYPTO_PROVIDER, NCRYPT_HANDLE, NCRYPT_KEY_HANDLE,
@@ -59,11 +59,6 @@ impl WindowsSealingKey {
         tracing::info!(message_id = "Jw8pRd2M", "unsealed wireguard secret key");
         Ok(PlaintextWgSecretKey::new(secret_key))
     }
-}
-
-fn u32_to_usize(len: u32) -> usize {
-    const_assert!(size_of::<usize>() >= size_of::<u32>());
-    len as usize
 }
 
 fn open_key(provider: NCRYPT_PROV_HANDLE, name: PCWSTR) -> Result<Option<Owned<NCRYPT_KEY_HANDLE>>, ()> {
@@ -163,11 +158,11 @@ fn encrypt(key: NCRYPT_KEY_HANDLE, plaintext: &[u8; 32]) -> Result<Vec<u8>, ()> 
     // SAFETY: the key handle is valid and padding and all buffers outlive the call.
     unsafe { NCryptEncrypt(key, Some(plaintext.as_slice()), padding_ptr, None, &mut len, flags) }
         .map_err(|error| tracing::error!(?error, message_id = "Ws6hBn4J", "NCryptEncrypt failed to report the ciphertext length"))?;
-    let mut ciphertext = vec![0u8; u32_to_usize(len)];
+    let mut ciphertext = vec![0u8; u32_into_usize(len)];
     // SAFETY: the key handle is valid and padding and all buffers outlive the call.
     unsafe { NCryptEncrypt(key, Some(plaintext.as_slice()), padding_ptr, Some(&mut ciphertext), &mut len, flags) }
         .map_err(|error| tracing::error!(?error, message_id = "Ty8jQd2X", "NCryptEncrypt failed"))?;
-    ciphertext.truncate(u32_to_usize(len));
+    ciphertext.truncate(u32_into_usize(len));
     Ok(ciphertext)
 }
 
@@ -178,11 +173,11 @@ fn decrypt(key: NCRYPT_KEY_HANDLE, ciphertext: &[u8]) -> Result<[u8; 32], ()> {
     // SAFETY: the key handle is valid and padding and all buffers outlive the call.
     unsafe { NCryptDecrypt(key, Some(ciphertext), padding_ptr, None, &mut len, flags) }
         .map_err(|error| tracing::error!(?error, message_id = "Gp3lRc7K", "NCryptDecrypt failed to report the plaintext length"))?;
-    let mut plaintext = vec![0u8; u32_to_usize(len)];
+    let mut plaintext = vec![0u8; u32_into_usize(len)];
     // SAFETY: the key handle is valid and padding and all buffers outlive the call.
     unsafe { NCryptDecrypt(key, Some(ciphertext), padding_ptr, Some(&mut plaintext), &mut len, flags) }
         .map_err(|error| tracing::error!(?error, message_id = "Ax9vMt5B", "NCryptDecrypt failed"))?;
-    plaintext.truncate(u32_to_usize(len));
+    plaintext.truncate(u32_into_usize(len));
     <[u8; 32]>::try_from(plaintext.as_slice()).map_err(|_| {
         tracing::error!(
             length = plaintext.len(),

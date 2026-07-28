@@ -1,5 +1,7 @@
+use crate::int_helper::u16_into_usize;
+
 const PACKET_CAPACITY: usize = 100;
-const BUFFER_CAPACITY: usize = 1500 * 100 + u16::MAX as usize;
+const BUFFER_CAPACITY: usize = 1500 * 100 + u16_into_usize(u16::MAX);
 pub struct PacketBuffer {
     buffer: Box<[u8; BUFFER_CAPACITY]>,
     buffer_len: usize,

@@ -208,7 +208,7 @@ fn get_system_directory() -> std::path::PathBuf {
     };
     if let Ok(pwstr) = result {
         let wide = unsafe { pwstr.to_string() };
-        unsafe { windows::Win32::System::Com::CoTaskMemFree(Some(pwstr.0 as *const _)) };
+        unsafe { windows::Win32::System::Com::CoTaskMemFree(Some(pwstr.0.cast_const().cast())) };
         if let Ok(s) = wide {
             return std::path::PathBuf::from(s);
         }
@@ -290,8 +290,8 @@ fn set_interface_dns_settings(interface: windows::core::GUID, dns: &[IpAddr]) ->
 
     let settings = DNS_INTERFACE_SETTINGS {
         Version: DNS_INTERFACE_SETTINGS_VERSION1,
-        Flags: DNS_SETTING_NAMESERVER as _,
-        NameServer: windows::core::PWSTR(dns_wide.as_ptr() as *mut _),
+        Flags: u64::from(DNS_SETTING_NAMESERVER),
+        NameServer: windows::core::PWSTR(dns_wide.as_ptr().cast_mut()),
         ..Default::default()
     };
 

@@ -2,6 +2,7 @@ use crate::service::os::MAX_IPC_MESSAGE_LEN;
 use crate::service::os::linux::service_lock::ServiceLock;
 use crate::service::os::linux::start_error::LinuxServiceStartError;
 use flume::{Receiver, Sender, bounded};
+use obscuravpn_client::int_helper::u32_into_usize;
 use obscuravpn_client::linux::ipc::SOCKET_PATH;
 use std::fs;
 use std::io::ErrorKind;
@@ -73,7 +74,7 @@ impl ServiceIpc {
             tracing::error!(message_id = "k9XmPq2R", len, "message on socket stream too long");
             return Err(());
         }
-        let mut message: Vec<u8> = vec![0; len as usize];
+        let mut message: Vec<u8> = vec![0; u32_into_usize(len)];
         stream.read_exact(&mut message).await.map_err(|error| {
             tracing::error!(message_id = "GFf8wiV3", ?error, "failed to read message from socket stream: {error}");
         })?;

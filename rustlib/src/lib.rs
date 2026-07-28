@@ -7,6 +7,7 @@ pub mod config;
 pub mod errors;
 pub mod exit_selection;
 pub mod ffi_helpers;
+pub mod int_helper;
 pub mod manager;
 pub mod manager_cmd;
 pub mod net;

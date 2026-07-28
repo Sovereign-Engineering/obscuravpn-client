@@ -1,3 +1,4 @@
+use obscuravpn_client::int_helper::u32_into_usize;
 use std::mem::MaybeUninit;
 
 use windows::Win32::{
@@ -13,7 +14,7 @@ pub struct GAABufferInit {
 
 impl GAABufferInit {
     pub fn new() -> Result<Option<Self>, ()> {
-        let family = AF_INET.0 as u32;
+        let family = u32::from(AF_INET.0);
         // See all GAA_FLAG's here
         // https://microsoft.github.io/windows-docs-rs/doc/windows/Win32/NetworkManagement/IpHelper/
         let flags = GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_GATEWAYS;
@@ -25,9 +26,9 @@ impl GAABufferInit {
         let mut buffer: Box<[MaybeUninit<IP_ADAPTER_ADDRESSES_LH>]>;
 
         let first = loop {
-            let capacity = (buf_len as usize / struct_size) + 1;
+            let capacity = (u32_into_usize(buf_len) / struct_size) + 1;
             buffer = Box::new_uninit_slice(capacity);
-            let start_of_buffer = buffer.as_mut_ptr() as *mut IP_ADAPTER_ADDRESSES_LH;
+            let start_of_buffer = buffer.as_mut_ptr().cast::<IP_ADAPTER_ADDRESSES_LH>();
 
             // SAFETY: `buffer` has size `capacity` which in bytes is greater than `buf_len`
             // `GetAdaptersAddresses` will only write within buf_len and otherwise reports `ERROR_BUFFER_OVERFLOW` (and sets `buf_len`)

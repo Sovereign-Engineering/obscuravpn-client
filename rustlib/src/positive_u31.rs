@@ -26,7 +26,7 @@ impl From<PositiveU31> for u32 {
 
 impl From<PositiveU31> for i32 {
     fn from(value: PositiveU31) -> Self {
-        value.value as i32
+        i32::try_from(value.value).unwrap()
     }
 }
 
@@ -38,6 +38,6 @@ impl From<PositiveU31> for NonZeroU32 {
 
 impl From<PositiveU31> for NonZeroI32 {
     fn from(value: PositiveU31) -> Self {
-        Self::new(value.value as i32).unwrap()
+        Self::try_from(NonZeroU32::from(value)).unwrap()
     }
 }

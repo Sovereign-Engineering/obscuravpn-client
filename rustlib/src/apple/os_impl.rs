@@ -21,7 +21,7 @@ pub type SetNetworkConfigCb =
 /// - Must be called exactly once per invocation
 pub extern "C" fn set_network_config_done(context: *mut c_void, success: bool) {
     // SAFETY: context was created via Box::into_raw of a Box<oneshot::Sender<bool>>
-    let sender = unsafe { Box::from_raw(context as *mut oneshot::Sender<bool>) };
+    let sender = unsafe { Box::from_raw(context.cast::<oneshot::Sender<bool>>()) };
     let _ = sender.send(success);
 }
 
@@ -64,7 +64,7 @@ impl Os for AppleOsImpl {
         })?;
 
         let (tx, rx) = oneshot::channel();
-        let context = Box::into_raw(Box::new(tx)) as *mut c_void;
+        let context = Box::into_raw(Box::new(tx)).cast::<c_void>();
         (self.set_network_config_cb)(json.ffi(), context, set_network_config_done);
 
         match rx.await {

@@ -163,7 +163,7 @@ pub fn find_active_physical_adapter() -> Result<Option<PhysicalAdapter>, ()> {
                     // SAFETY: We verified `sa_family == AF_INET`, so the sockaddr can be casted to a `SOCKADDR_IN`.
                     // The pointer is valid for the lifetime of `buffer`.
                     // Read more: https://learn.microsoft.com/windows/win32/api/ws2def/ns-ws2def-socket_address
-                    let sa_in = unsafe { &*(ua.Address.lpSockaddr as *const SOCKADDR_IN) };
+                    let sa_in = unsafe { &*ua.Address.lpSockaddr.cast::<SOCKADDR_IN>() };
                     // SAFETY: Union access — `S_addr` is the raw u32 representation of the IPv4
                     // address, which is always valid to read when the family is `AF_INET`.
                     let ipv4 = Ipv4Addr::from_bits(u32::from_be(unsafe { sa_in.sin_addr.S_un.S_addr }));

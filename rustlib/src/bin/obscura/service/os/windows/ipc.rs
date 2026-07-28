@@ -1,6 +1,7 @@
 use super::start_error::WindowsServiceStartError;
 use crate::service::os::MAX_IPC_MESSAGE_LEN;
 use flume::{Receiver, Sender, bounded};
+use obscuravpn_client::int_helper::{try_usize_into_u32, u32_into_usize};
 use std::ffi::c_void;
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -32,7 +33,7 @@ impl ServiceIpc {
         let server = unsafe {
             ServerOptions::new()
                 .first_pipe_instance(true)
-                .create_with_security_attributes_raw(PIPE_NAME, security_attrs.sa.as_ref() as *const SECURITY_ATTRIBUTES as *mut c_void)
+                .create_with_security_attributes_raw(PIPE_NAME, (&raw const *security_attrs.sa).cast_mut().cast::<c_void>())
         }
         .map_err(|error| {
             tracing::error!(message_id = "v0jjUdAJ", ?error, "failed to create named pipe");
@@ -62,8 +63,7 @@ impl ServiceIpc {
 
             let connected_client = server;
             server = match unsafe {
-                ServerOptions::new()
-                    .create_with_security_attributes_raw(PIPE_NAME, security_attrs.sa.as_ref() as *const SECURITY_ATTRIBUTES as *mut c_void)
+                ServerOptions::new().create_with_security_attributes_raw(PIPE_NAME, (&raw const *security_attrs.sa).cast_mut().cast::<c_void>())
             } {
                 Ok(s) => s,
                 Err(error) => {
@@ -101,7 +101,7 @@ impl ServiceIpc {
             tracing::error!(message_id = "QPw0P7zV", len, "message on named pipe too long");
             return Err(());
         }
-        let mut message: Vec<u8> = vec![0; len as usize];
+        let mut message: Vec<u8> = vec![0; u32_into_usize(len)];
         timeout(READ_TIMEOUT, pipe.read_exact(&mut message))
             .await
             .map_err(|_elapsed| {
@@ -113,7 +113,11 @@ impl ServiceIpc {
 
         let response_fn = move |response: Vec<u8>| {
             tokio::spawn(async move {
-                let len = (response.len() as u32).to_be_bytes();
+                let len = u32::try_from(response.len())
+                    .map_err(|error| {
+                        tracing::error!(message_id = "pV7wKd3B", ?error, "response too long for length prefix");
+                    })?
+                    .to_be_bytes();
                 pipe.write_all(&len).await.map_err(|error| {
                     tracing::error!(message_id = "hECmTcej", ?error, "failed to write response length to named pipe: {error}");
                 })?;
@@ -187,21 +191,23 @@ impl PipeSecurityAttributes {
         const SECURITY_DESCRIPTOR_REVISION1: u32 = 1;
         // GENERIC_READ | GENERIC_WRITE
         const ACCESS_MASK: u32 = 0x8000_0000 | 0x4000_0000;
+        const SA_LENGTH: u32 = try_usize_into_u32(std::mem::size_of::<SECURITY_ATTRIBUTES>()).unwrap();
 
         let mut nt_authority = SECURITY_NT_AUTHORITY;
         let sid = OwnedSid::new(&mut nt_authority, SECURITY_AUTHENTICATED_USER_RID)?;
 
         // SAFETY: `sid` is a live SID returned by `AllocateAndInitializeSid`.
-        let sid_len = unsafe { GetLengthSid(sid.as_psid()) } as usize;
+        let sid_len = u32_into_usize(unsafe { GetLengthSid(sid.as_psid()) });
         // ACL header + ACCESS_ALLOWED_ACE (SidStart placeholder replaced
         // by the full variable-length SID).
         let acl_size = std::mem::size_of::<ACL>() + std::mem::size_of::<ACCESS_ALLOWED_ACE>() - std::mem::size_of::<u32>() + sid_len;
         let mut acl_buf: Box<[u8]> = vec![0u8; acl_size].into_boxed_slice();
-        let p_acl = acl_buf.as_mut_ptr() as *mut ACL;
+        let p_acl = acl_buf.as_mut_ptr().cast::<ACL>();
 
+        let acl_len = u32::try_from(acl_size).map_err(|_| std::io::Error::other(format!("ACL size {acl_size} does not fit u32")))?;
         // SAFETY: `p_acl` points to `acl_size` writable, properly aligned bytes
         // owned by `acl_buf`; `acl_size` is the buffer's true length.
-        unsafe { InitializeAcl(p_acl, acl_size as u32, ACL_REVISION) }?;
+        unsafe { InitializeAcl(p_acl, acl_len, ACL_REVISION) }?;
         // SAFETY: `p_acl` is a freshly initialized ACL with capacity for this
         // ACE; `sid` is live for the duration of the call.
         unsafe { AddAccessAllowedAce(p_acl, ACL_REVISION, ACCESS_MASK, sid.as_psid()) }?;
@@ -214,9 +220,9 @@ impl PipeSecurityAttributes {
         // every field — the Windows API then overwrites them.
         // SAFETY: zero is a valid bit pattern for `SECURITY_DESCRIPTOR`.
         let mut sd: Box<SECURITY_DESCRIPTOR> = Box::new(unsafe { std::mem::zeroed() });
-        // `sd` is heap-allocated, so `sd.as_mut()` gives a stable address
+        // `sd` is heap-allocated, so `&raw mut *sd` gives a stable address
         // that remains valid after the Box is moved into the struct.
-        let p_sd = PSECURITY_DESCRIPTOR(sd.as_mut() as *mut _ as *mut c_void);
+        let p_sd = PSECURITY_DESCRIPTOR((&raw mut *sd).cast::<c_void>());
         // SAFETY: `p_sd` points to writable, properly aligned storage for one
         // `SECURITY_DESCRIPTOR`.
         unsafe { InitializeSecurityDescriptor(p_sd, SECURITY_DESCRIPTOR_REVISION1) }?;
@@ -229,8 +235,8 @@ impl PipeSecurityAttributes {
         // `lpSecurityDescriptor` are overwritten below.
         // SAFETY: zero is a valid bit pattern for `SECURITY_ATTRIBUTES`.
         let mut sa: Box<SECURITY_ATTRIBUTES> = Box::new(unsafe { std::mem::zeroed() });
-        sa.nLength = std::mem::size_of::<SECURITY_ATTRIBUTES>() as u32;
-        sa.lpSecurityDescriptor = sd.as_mut() as *mut _ as *mut c_void;
+        sa.nLength = SA_LENGTH;
+        sa.lpSecurityDescriptor = (&raw mut *sd).cast::<c_void>();
 
         Ok(Self { _sid: sid, _acl_buf: acl_buf, _sd: sd, sa })
     }

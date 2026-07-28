@@ -69,7 +69,7 @@ impl<'a, 'b> Drop for Utf8JavaStr<'a, 'b> {
         // Release the result of `GetStringUTFChars`
         // SAFETY: ptr came from `JavaStr::into_raw` and this is the same obj
         // used to construct that `JavaStr`
-        unsafe { JavaStr::from_raw(&self.env, self.obj, self.s.as_ptr() as *const _) };
+        unsafe { JavaStr::from_raw(&self.env, self.obj, self.s.as_ptr().cast()) };
     }
 }
 

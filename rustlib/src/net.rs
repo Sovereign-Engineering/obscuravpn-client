@@ -42,8 +42,11 @@ pub fn new_udp(network_interface: Option<&NetworkInterface>) -> io::Result<std::
     Ok(socket.into())
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "macos", target_os = "windows")))]
-const SIOCGIFMTU: libc::Ioctl = libc::SIOCGIFMTU as libc::Ioctl;
+#[cfg(not(any(target_os = "android", target_os = "ios", target_os = "macos", target_os = "windows")))]
+const SIOCGIFMTU: libc::Ioctl = libc::SIOCGIFMTU;
+
+#[cfg(target_os = "android")]
+const SIOCGIFMTU: libc::Ioctl = crate::int_helper::try_c_ulong_into_c_int(libc::SIOCGIFMTU).unwrap();
 
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 const SIOCGIFMTU: libc::c_ulong = 3223349555; // From sys/sockio.h.

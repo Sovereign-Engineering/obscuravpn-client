@@ -35,6 +35,7 @@ use tokio_rustls::TlsConnector;
 use tokio_rustls::client::TlsStream;
 use uuid::Uuid;
 
+use crate::int_helper::usize_into_u64;
 use crate::liveness::LivenessChecker;
 use crate::tokio::AbortOnDrop;
 use crate::wake_instant::WakeInstant;
@@ -237,7 +238,7 @@ impl QuicWgConn {
         let wg_state = Mutex::new(WgState {
             wg,
             traffic_stats: QuicWgTrafficStats { connected_at: now, tx_bytes: 0, rx_bytes: 0, latest_latency_ms: 0 },
-            buffer: vec![0u8; u16::MAX as usize],
+            buffer: vec![0u8; usize::from(u16::MAX)],
             next_wg_timers_tick: now + WG_TIMER_TICK,
             next_liveness_poll: WakeInstant::now(),
             liveness_checker: LivenessChecker::new(LIVENESS_MTU, client_ip_v4, ping_target_ip_v4),
@@ -257,7 +258,7 @@ impl QuicWgConn {
     }
 
     fn build_first_wg_handshake_init(wg: &mut Tunn) -> Result<Bytes, QuicWgWireguardHandshakeError> {
-        let mut buf = vec![0u8; u16::MAX as usize];
+        let mut buf = vec![0u8; usize::from(u16::MAX)];
         let data = match wg.format_handshake_initiation(&mut buf, true) {
             TunnResult::WriteToNetwork(data) => Bytes::copy_from_slice(data),
             _ => return Err(QuicWgWireguardHandshakeError::InitMessageConstructError),
@@ -270,7 +271,7 @@ impl QuicWgConn {
         wg_receiver: &mut WgReceiver,
         wg_sender: &WgSender,
     ) -> Result<(), QuicWgWireguardHandshakeError> {
-        let mut buf = vec![0u8; u16::MAX as usize];
+        let mut buf = vec![0u8; usize::from(u16::MAX)];
         timeout(WG_FIRST_HANDSHAKE_TIMEOUT, async {
             while wg.time_since_last_handshake().is_none() {
                 let mut datagram = wg_receiver
@@ -349,7 +350,7 @@ impl QuicWgConn {
             self.send_single_packet(&mut wg_state, &packet);
         }
         for packet in packets {
-            wg_state.traffic_stats.tx_bytes += packet.len() as u64;
+            wg_state.traffic_stats.tx_bytes += usize_into_u64(packet.len());
             wg_state.tick_stats.ip_tx_count += 1;
             wg_state.tick_stats.min_ip_tx_size = Some(wg_state.tick_stats.min_ip_tx_size.unwrap_or(usize::MAX).min(packet.len()));
             wg_state.tick_stats.max_ip_tx_size = Some(wg_state.tick_stats.max_ip_tx_size.unwrap_or(0).max(packet.len()));
@@ -447,7 +448,7 @@ impl QuicWgConn {
                                 tick_stats.ip_rx_count += 1;
                                 tick_stats.min_ip_rx_size = Some(tick_stats.min_ip_rx_size.unwrap_or(usize::MAX).min(packet.len()));
                                 tick_stats.max_ip_rx_size = Some(tick_stats.max_ip_rx_size.unwrap_or(0).max(packet.len()));
-                                traffic_stats.rx_bytes += packet.len() as u64;
+                                traffic_stats.rx_bytes += usize_into_u64(packet.len());
                                 if let Some(latest_latency) = liveness_checker.process_potential_probe_response(&packet) {
                                     traffic_stats.latest_latency_ms = u16::try_from(latest_latency.as_millis()).unwrap_or(u16::MAX);
                                     break
@@ -915,9 +916,14 @@ struct WgTrafficState {
     queued_packets: VecDeque<Vec<u8>>,
 }
 
+#[derive(Debug, Error)]
+#[error("message payload length {0} does not fit u32")]
+struct PayloadTooLong(usize);
+
 async fn send_message<T: AsyncWrite + Unpin>(transport: &mut T, code: MessageCode, context_id: MessageContext, arg: &[u8]) -> Result<(), io::Error> {
     let code = code.to_bytes();
-    let msg_header: [u8; 8] = MessageHeader { context_id, payload_length: 4 + arg.len() as u32 }.into();
+    let payload_length = u32::try_from(4 + arg.len()).map_err(|_| io::Error::other(PayloadTooLong(arg.len())))?;
+    let msg_header: [u8; 8] = MessageHeader { context_id, payload_length }.into();
     transport.write_all(&msg_header).await?;
     transport.write_all(&code).await?;
     transport.write_all(arg).await?;
@@ -940,9 +946,10 @@ async fn recv_message<T: AsyncRead + Unpin>(transport: &mut T) -> Result<(Messag
     loop {
         let header = MessageHeader::from(recv_fixed::<8, _>(transport).await?);
         let len = header.payload_length_usize();
-        if len < 4 || len > u16::MAX as usize + 4 {
+        if len < 4 || len > usize::from(u16::MAX) + 4 {
             tracing::warn!(message_id = "1gPHoHdA", len, "ignoring relay message with payload too small or large");
             recv_skip(transport, len).await?;
+            continue;
         }
         let mut payload = vec![0u8; len];
         transport.read_exact(&mut payload).await?;

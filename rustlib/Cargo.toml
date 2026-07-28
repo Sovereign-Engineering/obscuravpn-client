@@ -26,6 +26,7 @@ panic = "abort"
 panic = "abort"
 
 [lints.clippy]
+as_conversions = "deny"
 large_enum_variant = "allow"
 too_many_arguments = "allow"
 type_complexity = "allow"

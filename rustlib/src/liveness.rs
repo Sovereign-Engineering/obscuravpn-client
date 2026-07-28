@@ -242,11 +242,11 @@ impl LivenessChecker {
         let builder = PacketBuilder::ipv4(self.src_ip.octets(), self.dst_ip.octets(), 255).icmpv4_echo_request(id, seq);
         let overhead = builder.size(0);
         debug_assert_eq!(overhead, 28);
-        let mut payload: Vec<u8> = vec![0; self.mtu as usize - overhead];
+        let mut payload: Vec<u8> = vec![0; usize::from(self.mtu) - overhead];
         payload[0..32].copy_from_slice(PROBE_PREFIX);
         thread_rng().fill_bytes(&mut payload[32..]);
         let total_size = builder.size(payload.len());
-        debug_assert_eq!(total_size, self.mtu as usize);
+        debug_assert_eq!(total_size, usize::from(self.mtu));
         let mut packet = Vec::<u8>::with_capacity(total_size);
         builder.write(&mut packet, &payload).unwrap();
 

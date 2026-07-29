@@ -21,9 +21,9 @@ jobs:
       matrix:
         platform: [x64, ARM64]
     runs-on: nscloud-windows-2022-amd64-8x16
-    environment: release
+    environment: ${{ (startsWith(github.ref, 'refs/tags/v/') || github.event_name == 'workflow_dispatch') && 'release' || '' }}
     env:
-      SIGN: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v/') }}
+      SIGN: ${{ env.DIGICERT_SM_KEYPAIR_ALIAS != '' }}
     steps:
       - name: git checkout
         uses: actions/checkout@v7

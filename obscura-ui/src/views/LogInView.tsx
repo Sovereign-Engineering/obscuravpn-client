@@ -11,7 +11,7 @@ import * as commands from '../bridge/commands';
 import { IS_HANDHELD_DEVICE, PLATFORM } from '../bridge/SystemProvider';
 import * as ObscuraAccount from '../common/accountUtils';
 import { AppContext } from '../common/appContext';
-import { HEADER_TITLE, multiRef, normalizeError } from '../common/utils';
+import { HEADER_TITLE, MIN_LOAD_MS, multiRef, normalizeError } from '../common/utils';
 import { ButtonLink } from '../components/ButtonLink';
 import { ConfirmationDialog } from '../components/ConfirmationDialog';
 import DebugBundle, { DebugBundleVariant } from '../components/DebugBundle';
@@ -46,9 +46,9 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
   }, [apiError]);
 
   const loginErrorTimeout = useRef<number>(undefined);
-  // clear timeout on component dismount
+  const loginAttempt = useRef(0);
   useEffect(() => {
-    return () => clearTimeout(loginErrorTimeout.current);
+    return () => window.clearTimeout(loginErrorTimeout.current);
   }, []);
 
   const handleSubmit = async (e: FormEvent) => {
@@ -56,12 +56,10 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
     e.preventDefault();
 
     if (!loginWaiting && inputRef.current !== null) {
+      const attempt = ++loginAttempt.current;
       setLoginWaiting(true);
-      try {
-        const accountId = ObscuraAccount.parseAccountIdInput(inputRef.current.value);
-        await commands.setInNewAccountFlow(false);
-        await commands.login(accountId, true);
-        loginErrorTimeout.current = window.setTimeout(() => {
+      window.clearTimeout(loginErrorTimeout.current);
+      const timeout = window.setTimeout(() => {
           setLoginWaiting(false);
           notifications.show({
             title: t('Error'),
@@ -69,20 +67,28 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
             color: 'red'
           });
         }, 10_000);
+      loginErrorTimeout.current = timeout;
+      const minLoad = new Promise(resolve => setTimeout(resolve, MIN_LOAD_MS));
+      try {
+        const accountId = ObscuraAccount.parseAccountIdInput(inputRef.current.value);
+        await commands.setInNewAccountFlow(false);
+        await commands.login(accountId, true);
       } catch (e) {
+        window.clearTimeout(timeout);
         const error = normalizeError(e);
         const message = error instanceof commands.CommandError
           ? fmtErrorI18n(t, error)
           : error instanceof ObscuraAccount.ObscuraAccountIdError
             ? fmtErrorI18n(t, error)
             : error.message;
-
+        await minLoad;
+        if (attempt !== loginAttempt.current) return;
         notifications.show({
           title: t('Error Logging In'),
           message,
           color: 'red'
         });
-        setTimeout(() => setLoginWaiting(false), 500);
+        setLoginWaiting(false);
       }
     }
   }

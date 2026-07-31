@@ -28,6 +28,7 @@ public class InvokeCommand
     public RefreshLoginItemStatus? RefreshLoginItemStatus { get; set; }
     public RegisterAsLoginItemCommand? RegisterAsLoginItem { get; set; }
     public UnregisterAsLoginItemCommand? UnregisterAsLoginItem { get; set; }
+    public WindowsFixCommand? WindowsFix { get; set; }
 
     public static IObscuraCommand Parse(string commandJson)
     {
@@ -55,6 +56,7 @@ public class InvokeCommand
         if (invoke.RefreshLoginItemStatus != null) return invoke.RefreshLoginItemStatus;
         if (invoke.RegisterAsLoginItem != null) return invoke.RegisterAsLoginItem;
         if (invoke.UnregisterAsLoginItem != null) return invoke.UnregisterAsLoginItem;
+        if (invoke.WindowsFix != null) return invoke.WindowsFix;
         Log.Warn($"Unknown command: {commandJson}");
         throw new NotSupportedException($"Unknown command: {commandJson}");
     }
@@ -344,6 +346,17 @@ public class UnregisterAsLoginItemCommand : IObscuraCommand
     public async Task<string> RunAsync()
     {
         await LoginItem.UnregisterAsync();
+        return await IObscuraCommand.UnitResponse;
+    }
+}
+
+public class WindowsFixCommand : IObscuraCommand
+{
+    public required WindowsFixAction Action { get; set; }
+
+    public async Task<string> RunAsync()
+    {
+        await ObscuraService.ApplyFixAsync(Action);
         return await IObscuraCommand.UnitResponse;
     }
 }

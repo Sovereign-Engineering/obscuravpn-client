@@ -12,6 +12,10 @@ namespace Obscura_Client;
 public sealed partial class StatusSubscriber
 {
     static readonly ILog Log = LogManager.GetLogger(typeof(StatusSubscriber));
+    public static StatusSubscriber Instance { get; } = new();
+    private StatusSubscriber() { }
+
+    static readonly TimeSpan PollTimeout = TimeSpan.FromSeconds(5);
 
     readonly CancellationTokenSource _cts = new();
     Task? _loop;
@@ -32,9 +36,27 @@ public sealed partial class StatusSubscriber
         {
             try
             {
-                var status = await IPCCommand.GetStatus(knownVersion, ct);
+                NeStatus status;
+                using (var watchdog = CancellationTokenSource.CreateLinkedTokenSource(ct))
+                {
+                    if (knownVersion == null)
+                    {
+                        watchdog.CancelAfter(PollTimeout);
+                    }
+                    try
+                    {
+                        status = await IPCCommand.GetStatus(knownVersion, watchdog.Token);
+                    }
+                    catch (OperationCanceledException) when (knownVersion != null && !ct.IsCancellationRequested)
+                    {
+                        // Retry with knownVersion null to confirm service degradation
+                        knownVersion = null;
+                        continue;
+                    }
+                }
                 knownVersion = status.Version;
                 Current = status;
+                OsStatus.Instance.ReportServiceHealthy(status);
                 try { StatusChanged?.Invoke(status); }
                 catch (Exception ex) { Log.Error($"StatusChanged handler threw: {ex}"); }
             }
@@ -45,6 +67,8 @@ public sealed partial class StatusSubscriber
             catch (Exception ex)
             {
                 Log.Warn($"getStatus long-poll failed, retrying: {ex.Message}");
+                knownVersion = null;
+                OsStatus.Instance.ReportServiceDegraded(ObscuraService.Diagnose());
                 await DelayBeforeRetry(ct);
             }
         }

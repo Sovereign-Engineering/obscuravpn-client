@@ -169,6 +169,11 @@ public class OsStatus
     public LoginItemStatus? LoginItemStatus { get; set; } = null;
     public SparkleUpdaterStatus UpdaterStatus { get; set; } = new();
     public bool CanSendMail { get; } = true;
+    public ServiceStatus ServiceStatus { get; private set; } = ServiceStatus.Initializing;
+
+    private string? _healthyStatusVersion;
+    private WindowsServiceDegradation? _serviceDegradation;
+    private NeStatus? _lastHealthyStatus;
 
     private OsStatus()
     {
@@ -231,14 +236,64 @@ public class OsStatus
     /// </summary>
     public void Update(Action<OsStatus> mutate)
     {
+        UpdateIf(s =>
+        {
+            mutate(s);
+            return true;
+        });
+    }
+
+    public event Action<OsStatus>? Changed;
+
+    /// <summary>
+    /// Update that only bumps the version (and notifies waiters) when <paramref name="mutate"/> returns true.
+    /// </summary>
+    public void UpdateIf(Func<OsStatus, bool> mutate)
+    {
         lock (_lock)
         {
-            mutate(this);
+            if (!mutate(this)) return;
             Version = Guid.NewGuid().ToString();
             var old = _versionChanged;
             _versionChanged = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             old.TrySetResult();
         }
+        try { Changed?.Invoke(this); }
+        catch (Exception ex) { Log.Error($"Changed handler threw: {ex}"); }
+    }
+
+    public void ReportServiceHealthy(NeStatus status)
+    {
+        UpdateIf(s =>
+        {
+            if (s._healthyStatusVersion == status.Version) return false;
+            if (s._serviceDegradation != null) Log.Info($"service recovered from degradation: {s._serviceDegradation}");
+            s._healthyStatusVersion = status.Version;
+            s._serviceDegradation = null;
+            s._lastHealthyStatus = status;
+            s.ServiceStatus = new ServiceStatus { Healthy = status };
+            return true;
+        });
+    }
+
+    public void ReportServiceDegraded(WindowsServiceDegradation degradation)
+    {
+        UpdateIf(s =>
+        {
+            if (s._serviceDegradation == degradation) return false;
+            Log.Warn($"service degraded: {degradation}");
+            s._serviceDegradation = degradation;
+            s._healthyStatusVersion = null;
+            s.ServiceStatus = new ServiceStatus
+            {
+                Degraded = new DegradedServiceInfo
+                {
+                    LastStatus = s._lastHealthyStatus,
+                    WindowsDegradation = degradation,
+                },
+            };
+            return true;
+        });
     }
 
     /// <summary>

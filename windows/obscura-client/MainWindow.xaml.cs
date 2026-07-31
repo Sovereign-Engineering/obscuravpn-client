@@ -75,7 +75,6 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     readonly WindowMessageMonitor _msgMonitor;
     // In case cold launch is from a `/payment-succeeded` URI protocol launch
     readonly TaskCompletionSource _webUIReady = new();
-    readonly StatusSubscriber _statusSubscriber = new();
     ElementTheme _colorScheme = ElementTheme.Default;
 
     const uint WM_CLOSE = 0x0010;
@@ -126,8 +125,8 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         // Select the first navigation item (Connection) by default
         NavView.SelectedItem = NavView.MenuItems[0];
 
-        _statusSubscriber.StatusChanged += OnStatusChanged;
-        _statusSubscriber.Start();
+        OsStatus.Instance.Changed += OnOsStatusChanged;
+        OnOsStatusChanged(OsStatus.Instance);
 
         // Subclass WM_CLOSE *before* WinUI sees it. The standard AppWindow.Closing +
         // args.Cancel pattern destabilizes WebView2: each cancel-close leaves it partially
@@ -141,10 +140,11 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         Closed += OnClosed;
     }
 
-    private void OnStatusChanged(NeStatus status)
+    // The nav pane is only useful with a healthy service and a post-onboarding account
+    private void OnOsStatusChanged(OsStatus status)
     {
-        bool showNav = status.AccountId != null && !status.InNewAccountFlow;
         DispatcherQueue.TryEnqueue(() => {
+            bool showNav = status.ServiceStatus.Healthy is { AccountId: not null, InNewAccountFlow: false };
             NavView.IsPaneVisible = showNav;
             AppTitleBar.IsPaneToggleButtonVisible = showNav;
         });

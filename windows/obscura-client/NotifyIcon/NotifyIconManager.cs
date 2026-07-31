@@ -22,7 +22,6 @@ public sealed partial class NotifyIconManager
     readonly DispatcherQueue _uiQueue;
     readonly NotifyIconAssets _assets;
     readonly TrayIcon _notifyIcon;
-    readonly StatusSubscriber _statusSubscriber = new();
     readonly CityNameCache _cityNames = new();
     readonly TaskbarTheme _taskbarTheme = new();
     NotifyIconAssets.IconSet _icons;
@@ -53,8 +52,8 @@ public sealed partial class NotifyIconManager
         _animTimer.IsRepeating = true;
         _animTimer.Tick += OnAnimTick;
 
-        _statusSubscriber.StatusChanged += OnStatusChanged;
-        _statusSubscriber.Start();
+        StatusSubscriber.Instance.StatusChanged += OnStatusChanged;
+        if (StatusSubscriber.Instance.Current is { } current) OnStatusChanged(current);
         _cityNames.Start();
     }
 
@@ -62,7 +61,7 @@ public sealed partial class NotifyIconManager
     public void Close()
     {
         _taskbarTheme.Changed -= OnTaskbarThemeChanged;
-        _statusSubscriber.StatusChanged -= OnStatusChanged;
+        StatusSubscriber.Instance.StatusChanged -= OnStatusChanged;
         _animTimer.Stop();
         _notifyIcon.Dispose();
     }
@@ -149,7 +148,7 @@ public sealed partial class NotifyIconManager
 
     MenuFlyout BuildMenu()
     {
-        var status = _statusSubscriber.Current;
+        var status = StatusSubscriber.Instance.Current;
         var kind = status?.VpnStatus.Kind ?? VpnStatusKind.Disconnected;
         var menu = new MenuFlyout();
 

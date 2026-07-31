@@ -9,7 +9,7 @@ import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import classes from './App.module.css';
 import * as commands from './bridge/commands';
 import { HAS_NE_VPN_STATUS, IS_HANDHELD_DEVICE, logReactError, PLATFORM, Platform, useSystemChecks } from './bridge/SystemProvider';
-import { AppContext, AppStatus, ConnectionInProgress, connectionIsIdle, getEffectiveOsStatus, linuxDegradation, NavigationView, NEVPNStatus, OsStatus, OsStatusWVpnStatus } from './common/appContext';
+import { AppContext, AppStatus, ConnectionInProgress, connectionIsIdle, getEffectiveOsStatus, linuxDegradation, NavigationView, NEVPNStatus, OsStatus, OsStatusWVpnStatus, windowsDegradation } from './common/appContext';
 import commonClasses from './common/common.module.css';
 import { fmt } from './common/fmt';
 import { NotificationId } from './common/notifIds';
@@ -72,7 +72,7 @@ export default function () {
 
   const isLoggedIn = !!appStatus?.accountId;
   const showAccountCreation = appStatus?.inNewAccountFlow;
-  const loading = appStatus === null || osStatus === null;
+  const fetchingStatuses = appStatus === null || osStatus === null;
 
   const { execute: disconnect } = commands.useCommand({ command: commands.disconnect, showNotification: true, rethrow: true });
 
@@ -328,17 +328,11 @@ export default function () {
     returnError: true,
   });
 
-  if (osStatus !== null) {
-    const degradation = linuxDegradation(osStatus.serviceStatus);
-    if (degradation !== undefined) {
-      const effectiveOsStatus = { ...osStatus, osVpnStatus: getEffectiveOsStatus(osStatus, appStatus) };
-      return <SplashScreen osStatus={effectiveOsStatus} degradation={degradation} />;
-    }
-  }
-
-  if (loading) {
+  const linuxDegraded = linuxDegradation(osStatus?.serviceStatus);
+  const windowsDegraded = windowsDegradation(osStatus?.serviceStatus);
+  if (fetchingStatuses || linuxDegraded || windowsDegraded) {
     const effectiveOsStatus = osStatus === null ? null : { ...osStatus, osVpnStatus: getEffectiveOsStatus(osStatus, appStatus) };
-    return <SplashScreen text={t('appStatusLoading')} osStatus={effectiveOsStatus} />;
+    return <SplashScreen osStatus={effectiveOsStatus} linuxDegradation={linuxDegraded} windowsDegradation={windowsDegraded} />;
   }
 
   const osVpnStatus = getEffectiveOsStatus(osStatus, appStatus);

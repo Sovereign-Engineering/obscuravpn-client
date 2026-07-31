@@ -14,11 +14,17 @@ export enum NEVPNStatus {
 }
 
 export type LinuxServiceDegradation = 'stopped' | 'failed' | 'disabled' | 'notInstalled' | 'noAccess' | 'other';
-export type ServiceStatus = 'initializing' | { healthy: unknown } | { degraded: { lastStatus: unknown, linuxDegradation: LinuxServiceDegradation } };
+export type WindowsServiceDegradation = Exclude<LinuxServiceDegradation, 'noAccess'>;
+export type ServiceStatus = 'initializing' | { healthy: unknown } | { degraded: { lastStatus: unknown, linuxDegradation?: LinuxServiceDegradation, windowsDegradation?: WindowsServiceDegradation } };
 
 export function linuxDegradation(serviceStatus: ServiceStatus | undefined): LinuxServiceDegradation | undefined {
     if (serviceStatus === undefined || serviceStatus === 'initializing' || 'healthy' in serviceStatus) return undefined;
     return serviceStatus.degraded.linuxDegradation;
+}
+
+export function windowsDegradation(serviceStatus: ServiceStatus | undefined): WindowsServiceDegradation | undefined {
+    if (serviceStatus === undefined || serviceStatus === 'initializing' || 'healthy' in serviceStatus) return undefined;
+    return serviceStatus.degraded.windowsDegradation;
 }
 
 export enum UpdaterStatusType {

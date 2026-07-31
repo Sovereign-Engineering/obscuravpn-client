@@ -52,7 +52,7 @@ export class CommandError extends ErrorI18n {
 
 export async function jsonFfiCmd(cmd: string, arg = {}, timeoutMs: number | null = 10_000): Promise<unknown> {
     let jsonCmd = JSON.stringify(({ [cmd]: arg }));
-    console.log("invoked FFI command", cmd);
+    console.log("invoked FFI command", cmd, "with timeout", timeoutMs);
     return await invoke('jsonFfiCmd', {
         cmd: jsonCmd,
         timeoutMs,
@@ -63,6 +63,12 @@ export type LinuxFixAction = 'start' | 'enableAndStart' | 'addOperator';
 
 export async function linuxFix(action: LinuxFixAction): Promise<void> {
     await invoke('linuxFix', { action });
+}
+
+export type WindowsFixAction = 'start' | 'enableAndStart';
+
+export async function windowsFix(action: WindowsFixAction): Promise<void> {
+    await invoke('windowsFix', { action });
 }
 
 export async function status(lastStatusId: string | null = null, timeoutMs: number | null = null): Promise<AppStatus> {

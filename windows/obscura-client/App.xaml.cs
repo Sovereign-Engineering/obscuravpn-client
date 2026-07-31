@@ -106,6 +106,7 @@ public partial class App : Application
     protected override void OnLaunched(LaunchActivatedEventArgs launchArgs)
     {
         _uiDispatcher = DispatcherQueue.GetForCurrentThread();
+        StatusSubscriber.Instance.Start();
         _window = new MainWindow();
         _windowReady.TrySetResult(_window);
         _notifyIcon = new NotifyIconManager(this, _uiDispatcher);
@@ -122,7 +123,6 @@ public partial class App : Application
                 throw;
             }
         }
-        
 
         var args = AppInstance.GetCurrent().GetActivatedEventArgs();
         if (args.Kind == ExtendedActivationKind.AppNotification)

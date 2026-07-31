@@ -96,19 +96,38 @@
 
       Each operation is split into two custom actions (e.g. RegisterSparsePackage immediate +
       RegisterSparsePackageCmd deferred) because:
-        - Provisioning for all users requires the elevated LocalSystem context, which only the
-          deferred execute script has. Immediate CAs run in the client process under the invoking
-          user's token.
-        - But a deferred CA cannot read installer properties like [INSTALLFOLDER]; its only input is
+        - Deferred CAs are required twice over: they run inside the execute script (after
+          InstallFiles has actually copied Obscura.msix - immediate CAs run at script-generation
+          time, before any file exists), and only deferred + Impersonate="no" gets the LocalSystem
+          token that provisioning needs. The user-level CAs below need no elevation but still need
+          the file on disk, hence also deferred.
+        - A deferred CA cannot read installer properties like [INSTALLFOLDER]; its only input is
           CustomActionData, populated from a property named after the deferred CA's id.
       So the immediate CA resolves the properties into a command line and writes it to the
-      like-named property; the *Cmd deferred CA runs it as LocalSystem via WixQuietExec64.
+      like-named property; the *Cmd deferred CA runs it via WixQuietExec64.
     -->
     <CustomAction Id="RegisterSparsePackage" Property="RegisterSparsePackageCmd"
                   Execute="immediate"
                   Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command &quot;Add-AppxPackage -Stage '[INSTALLFOLDER]Obscura.msix' -ExternalLocation '[INSTALLFOLDER]'; Add-AppxProvisionedPackage -Online -PackagePath '[INSTALLFOLDER]Obscura.msix' -SkipLicense&quot;" />
     <CustomAction Id="RegisterSparsePackageCmd" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)"
                   DllEntry="WixQuietExec64" Execute="deferred" Impersonate="no" Return="check" />
+
+    <!-- Register the package for the *installing* user (Impersonate="yes") so their first GUI launch already carries
+         package identity (provisioning alone doesn't register external-location sparse packages for
+         interactive users). Return="ignore" because SYSTEM-initiated installs have no user to register for. -->
+    <CustomAction Id="RegisterSparsePackageUser" Property="RegisterSparsePackageUserCmd"
+                  Execute="immediate"
+                  Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command &quot;Add-AppxPackage -Path '[INSTALLFOLDER]Obscura.msix' -ExternalLocation '[INSTALLFOLDER]'&quot;" />
+    <CustomAction Id="RegisterSparsePackageUserCmd" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)"
+                  DllEntry="WixQuietExec64" Execute="deferred" Impersonate="yes" Return="ignore" />
+
+    <!-- Per-user counterpart of UnregisterSparsePackage: removes the uninstalling user's own
+         registration (created by RegisterSparsePackageUser) before the machine-wide removal. -->
+    <CustomAction Id="UnregisterSparsePackageUser" Property="UnregisterSparsePackageUserCmd"
+                  Execute="immediate"
+                  Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command &quot;Get-AppxPackage SovereignEngineering.ObscuraVPN | Remove-AppxPackage&quot;" />
+    <CustomAction Id="UnregisterSparsePackageUserCmd" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)"
+                  DllEntry="WixQuietExec64" Execute="deferred" Impersonate="yes" Return="ignore" />
 
     <CustomAction Id="UnregisterSparsePackage" Property="UnregisterSparsePackageCmd"
                   Execute="immediate"
@@ -132,10 +151,16 @@
       <!-- Register after the .msix is on disk and after stale registration is removed. -->
       <Custom Action="RegisterSparsePackage" After="UnregisterStaleSparsePackageCmd" Condition="NOT Installed" />
       <Custom Action="RegisterSparsePackageCmd" After="RegisterSparsePackage" Condition="NOT Installed" />
+      <!-- Per-user registration for the installing user; runs before InstallFinalize so the GUI
+           launched below already has a valid identity registration. -->
+      <Custom Action="RegisterSparsePackageUser" After="RegisterSparsePackageCmd" Condition="NOT Installed" />
+      <Custom Action="RegisterSparsePackageUserCmd" After="RegisterSparsePackageUser" Condition="NOT Installed" />
       <!-- Auto-launch the GUI for silent installs (UILevel < 5, e.g. /qn updates). Full-UI installs
            (UILevel = 5) launch from the ExitDialog Finish button -->
       <Custom Action="LaunchApplication" After="InstallFinalize" Condition="NOT Installed AND UILevel &lt;&gt; 5 AND LAUNCHAPPLICATION &lt;&gt; 0" />
       <!-- Uninstall: unregister before files are removed (skip on upgrade). -->
+      <Custom Action="UnregisterSparsePackageUser" Before="UnregisterSparsePackage" Condition='REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE' />
+      <Custom Action="UnregisterSparsePackageUserCmd" After="UnregisterSparsePackageUser" Condition='REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE' />
       <Custom Action="UnregisterSparsePackage" Before="RemoveFiles" Condition='REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE' />
       <Custom Action="UnregisterSparsePackageCmd" After="UnregisterSparsePackage" Condition='REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE' />
     </InstallExecuteSequence>

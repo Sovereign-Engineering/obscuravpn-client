@@ -75,6 +75,12 @@
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE946;"/>
                     </NavigationViewItem.Icon>
+                    <NavigationViewItem.InfoBadge>
+                        <InfoBadge
+                            x:Name="UpdateAvailableBadge"
+                            Visibility="Collapsed"
+                            Style="{StaticResource SuccessDotInfoBadgeStyle}" />
+                    </NavigationViewItem.InfoBadge>
                 </NavigationViewItem>
                 <NavigationViewItem Content="Settings">
                     <NavigationViewItem.Tag>

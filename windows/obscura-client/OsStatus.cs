@@ -135,10 +135,27 @@ public static class LoginItem
     }
 }
 
+public enum UpdaterStatusType
+{
+    Uninitiated,
+    Initiated,
+    Available,
+    NotFound,
+    Error,
+}
+
+public class AppcastSummary
+{
+    public string Date { get; set; } = "";
+    public string Description { get; set; } = "";
+    public required string Version { get; set; }
+    public bool MinSystemVersionOk { get; set; } = true;
+}
+
 public class SparkleUpdaterStatus
 {
-    public string Type { get; set; } = "uninitiated";
-    public object? Appcast { get; set; } = null;
+    public UpdaterStatusType Type { get; set; } = UpdaterStatusType.Uninitiated;
+    public AppcastSummary? Appcast { get; set; } = null;
     public string? Error { get; set; } = null;
     public long? ErrorCode { get; set; } = null;
 }

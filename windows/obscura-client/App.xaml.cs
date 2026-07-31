@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,10 +12,10 @@ using Microsoft.Windows.AppLifecycle;
 using Microsoft.Windows.AppNotifications;
 using Microsoft.Windows.AppNotifications.Builder;
 using Obscura_Client.NotifyIcon;
+using Obscura_Client.Updater;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.System.Com;
-using Windows.Win32.System.DataExchange;
 using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace Obscura_Client;
@@ -31,8 +30,14 @@ public partial class App : Application
     MainWindow? _window;
     // Completed once OnLaunched creates the window; lets activations that arrive earlier wait for it.
     readonly TaskCompletionSource<MainWindow> _windowReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    // Completed once the App instance exists. Redirected activations are subscribed in Main
+    // before Start() constructs the App, so they must not touch Application.Current directly.
+    static readonly TaskCompletionSource<App> _appReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     NotifyIconManager? _notifyIcon;
     DispatcherQueue? _uiDispatcher;
+    public AppUpdater Updater { get; private set; } = null!;
+    DispatcherQueueTimer? _updateCheckTimer;
+    static readonly TimeSpan UpdateCheckInterval = TimeSpan.FromHours(6);
 
     // %LOCALAPPDATA%\Obscura
     internal static string ObscuraLocalAppDir => Path.Combine(
@@ -52,6 +57,7 @@ public partial class App : Application
         UnhandledException += (s, e) => DevServer.Stop();
 #endif
         UnhandledException += OnUnhandledException;
+        _appReady.TrySetResult(this);
     }
 
     void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
@@ -124,17 +130,31 @@ public partial class App : Application
             }
         }
 
+        StartUpdateChecks();
+
         var args = AppInstance.GetCurrent().GetActivatedEventArgs();
-        if (args.Kind == ExtendedActivationKind.AppNotification)
+        if (NotificationActions.IsNotificationKind(args.Kind))
         {
-            var notificationArgs = (AppNotificationActivatedEventArgs)args.Data;
-            HandleNotification(notificationArgs);
+            HandleNotificationAction(NotificationActions.GetAction(args.Data));
         } else if (args.Kind != ExtendedActivationKind.StartupTask) {
             ShowMainWindow();
         }
         HandleActivation(args);
         ShowFirstRunNotification();
         _ = LoginItem.RefreshStatusAsync();
+    }
+
+    void StartUpdateChecks()
+    {
+        Updater = new AppUpdater(_uiDispatcher!);
+        Updater.UpdateAvailabilityChanged += available =>
+            _uiDispatcher!.TryEnqueue(() => _window?.SetUpdateBadgeVisible(available));
+        _updateCheckTimer = _uiDispatcher!.CreateTimer();
+        _updateCheckTimer.Interval = UpdateCheckInterval;
+        _updateCheckTimer.IsRepeating = true;
+        _updateCheckTimer.Tick += (_, _) => _ = Updater.CheckAndNotifyAsync();
+        _updateCheckTimer.Start();
+        _ = Updater.FirstUpdateCheck();
     }
 
     static void ShowFirstRunNotification()
@@ -173,7 +193,41 @@ public partial class App : Application
         }
     }
 
-    private void HandleNotification(AppNotificationActivatedEventArgs _) => ShowMainWindow();
+    private void HandleNotification(AppNotificationActivatedEventArgs args)
+    {
+        HandleNotificationAction(NotificationActions.GetAction(args));
+    }
+
+    internal void HandleNotificationAction(string? action)
+    {
+        switch (action)
+        {
+            case NotificationActions.ShowUpdate:
+                ShowUpdateWindow();
+                break;
+            default:
+                ShowMainWindow();
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Opens the update window in response to the "update available" notification. If the
+    /// updater has not finished a check yet (e.g. the app was cold-started by clicking the
+    /// notification), kick off a check and prompt once an update is confirmed.
+    /// </summary>
+    void ShowUpdateWindow()
+    {
+        ShowMainWindow();
+        if (Updater.AvailableUpdate != null)
+        {
+            Updater.PromptInstall();
+        }
+        else
+        {
+            _ = Updater.CheckAndPromptAsync();
+        }
+    }
 
     internal void SelectNavigationView(NavigationView view)
     {
@@ -232,6 +286,31 @@ public partial class App : Application
             Log.Warn($"disconnect on quit failed: {ex.Message}");
         }
         Exit();
+    }
+
+    /// <summary>
+    /// Called by the updater once the installer script has been started. The script
+    /// waits for this process to exit before running the MSI, so exit promptly. The
+    /// tunnel is left as-is; the service keeps running through the update.
+    /// </summary>
+    internal void ExitForUpdate()
+    {
+        Log.Info("exiting to install update");
+        _ = Task.Delay(TimeSpan.FromSeconds(10)).ContinueWith(_ => Environment.Exit(0));
+        var dispatcher = _uiDispatcher;
+        if (dispatcher == null)
+        {
+            Log.Warn("no UI dispatcher; exiting without cleanup");
+            Environment.Exit(0);
+            return;
+        }
+        dispatcher.TryEnqueue(() =>
+        {
+            _updateCheckTimer?.Stop();
+            _notifyIcon?.Close();
+            _window?.Close();
+            Exit();
+        });
     }
 
     /// <summary>
@@ -308,7 +387,7 @@ public partial class App : Application
                 Log.Error("Failed to activate existing instance; using WM_COPYDATA fallback", ex);
                 try
                 {
-                    FallbackActivatePrimary(activationArgs, keyInstance);
+                    FallbackActivation.ActivatePrimary(activationArgs, keyInstance);
                 }
                 catch (Exception fallbackEx)
                 {
@@ -324,85 +403,26 @@ public partial class App : Application
         PInvoke.CoWaitForMultipleObjects((uint)CWMO_FLAGS.CWMO_DEFAULT, PInvoke.INFINITE, [handle], out _);
     }
 
-    // "OBS"; distinguishes our activation hand-off from other WM_COPYDATA traffic
-    internal const nuint OBS_ACTIVATION_TAG = 0x4F4253;
-
-    /// <summary>
-    /// RedirectActivationToAsync marshals IAppActivationArguments via WinRT metadata resolution,
-    /// which fails (0x80040155) on Windows 10 for self-contained deployments with sparse package
-    /// identity: https://github.com/microsoft/WindowsAppSDK/issues/3439#issuecomment-4970200486.
-    /// Hand the payload to the primary instance via WM_COPYDATA instead;
-    /// MainWindow replies 1 when it accepts.
-    /// </summary>
-    private static void FallbackActivatePrimary(AppActivationArguments activationArgs, AppInstance keyInstance)
-    {
-        var payload = activationArgs.Kind == ExtendedActivationKind.Protocol
-            && activationArgs.Data is Windows.ApplicationModel.Activation.IProtocolActivatedEventArgs protocolArgs
-            ? protocolArgs.Uri.ToString()
-            : "";
-
-        var candidates = new List<HWND>();
-        PInvoke.EnumWindows((hwnd, _) =>
-        {
-            if (GetWindowPid(hwnd) == keyInstance.ProcessId)
-            {
-                candidates.Add(hwnd);
-            }
-            return true;
-        }, 0);
-
-        PInvoke.AllowSetForegroundWindow(keyInstance.ProcessId);
-        foreach (var hwnd in candidates)
-        {
-            if (SendActivationPayload(hwnd, payload))
-            {
-                Log.Info("Activated primary instance via WM_COPYDATA fallback");
-                return;
-            }
-        }
-        Log.Error($"WM_COPYDATA fallback not accepted by any of {candidates.Count} windows of pid {keyInstance.ProcessId}");
-    }
-
-    /// <summary>
-    /// Isolates call to unsafe method GetWindowThreadProcessId
-    /// </summary>
-    private static unsafe uint GetWindowPid(HWND hwnd)
-    {
-        uint pid;
-        // SAFETY: &pid is not null; points to the stack-allocated variable pid
-        var _ = PInvoke.GetWindowThreadProcessId(hwnd, &pid);
-        return pid;
-    }
-
-    /// <summary>
-    /// Isolates WM_COPYDATA marshaling: building a COPYDATASTRUCT requires
-    /// pinning the payload string and passing raw addresses.
-    /// </summary>
-    private static unsafe bool SendActivationPayload(HWND hwnd, string payload)
-    {
-        fixed (char* payloadPtr = payload)
-        {
-            var copyData = new COPYDATASTRUCT
-            {
-                dwData = OBS_ACTIVATION_TAG,
-                cbData = (uint)(payload.Length * sizeof(char)),
-                lpData = payloadPtr,
-            };
-            nuint result = 0;
-            // SAFETY: SendMessageTimeout is synchronous, so the fixed pin and the stack-allocated
-            // copyData/result outlive the call; the OS copies the buffer into the receiving
-            // process, so nothing is referenced after return.
-            PInvoke.SendMessageTimeout(hwnd, PInvoke.WM_COPYDATA, 0, (nint)(&copyData),
-                SEND_MESSAGE_TIMEOUT_FLAGS.SMTO_ABORTIFHUNG, 5000, &result);
-            return result == 1;
-        }
-    }
-
     private static async void OnRedirectActivated(object? sender, AppActivationArguments args)
     {
-        Log.Info($"received redirected activation (kind={args.Kind})");
-        await Current._windowReady.Task;
-        Current.ShowMainWindow();
-        Current.HandleActivation(args);
+        try
+        {
+            Log.Info($"received redirected activation (kind={args.Kind})");
+            // Fires on a background thread and may arrive before Start() has constructed
+            // the App (the handler is subscribed in Main); wait rather than crash.
+            var app = await _appReady.Task;
+            await app._windowReady.Task;
+            if (NotificationActions.IsNotificationKind(args.Kind))
+            {
+                app.HandleNotificationAction(NotificationActions.GetAction(args.Data));
+                return;
+            }
+            app.ShowMainWindow();
+            app.HandleActivation(args);
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"failed to handle redirected activation: {ex}");
+        }
     }
 }

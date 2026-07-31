@@ -47,7 +47,7 @@ futures = "0.3.29"
 ipnetwork = { version = "0.21.1", features = ["serde"] }
 libc = "0.2.178"
 rand = "0.8.5"
-reqwest = { version = "0.13.2", default-features = false }
+reqwest = { git = "https://github.com/Sovereign-Engineering/reqwest", rev = "7ba2e76a02454b0fa414e0ddbf8aa609ed05b944", default-features = false }
 ring = "0.17.14"
 rustls = "0.23.28"
 semver = "1.0.27"
@@ -91,7 +91,7 @@ rev = "ff3b5555b5b1c4f85ae23d8d4aaf00bea2cd2bf0"
 
 [dependencies.obscuravpn-api]
 git = "https://github.com/Sovereign-Engineering/obscuravpn-api.git"
-rev = "89859db4381a8a7be5a95138b3917762e7f4f75e"
+rev = "2ca8fb7ccfba4a644d4b4eec9cc0bac37716c49a"
 
 [dependencies.quinn]
 git = "https://github.com/Sovereign-Engineering/quinn.git"
@@ -106,10 +106,11 @@ tracing-oslog = "0.3.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 ksni = { version = "0.3.4", default-features = false, features = ["async-io"] }
-nix = { version = "0.31.1", features = ["user"] }
+nix = { version = "0.31.1", features = ["fs", "socket", "user"] }
 open = "5.3.3"
 resvg = { version = "0.47", default-features = false }
 rtnetlink = "0.18.1"
+sd-notify = { version = "0.5.0", features = ["fdstore"] }
 shlex = "1.3.0"
 tss-esapi = "7.7.0"
 url = "2.5.8"
@@ -152,3 +153,7 @@ ring = "0.17.14"
 
 [features]
 gui = ["dep:gtk4", "dep:webkit6"]
+
+# Temporary SO_MARK fork. Patches do not propagate, consumers need this entry too.
+[patch.crates-io]
+hyper-util = { git = "https://github.com/Sovereign-Engineering/hyper-util", rev = "f2659bd55b85bf524abac9ab0ce4951bb67077b9" }

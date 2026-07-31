@@ -1,5 +1,4 @@
-use crate::service::os::ROUTES;
-use ipnetwork::{IpNetwork, Ipv6Network};
+use ipnetwork::{IpNetwork, Ipv4Network, Ipv6Network};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use windows::Win32::Foundation::{ERROR_NOT_FOUND, ERROR_OBJECT_ALREADY_EXISTS, NO_ERROR};
 use windows::Win32::NetworkManagement::IpHelper::{CreateIpForwardEntry2, DeleteIpForwardEntry2, InitializeIpForwardEntry, MIB_IPFORWARD_ROW2};
@@ -9,6 +8,17 @@ use windows::Win32::NetworkManagement::IpHelper::{
 use windows::Win32::NetworkManagement::IpHelper::{GetIpInterfaceEntry, MIB_IPINTERFACE_ROW, SetIpInterfaceEntry};
 use windows::Win32::Networking::WinSock::{ADDRESS_FAMILY, AF_INET, AF_INET6, IN_ADDR, IN6_ADDR, IN6_ADDR_0, SOCKADDR_IN, SOCKADDR_IN6};
 use windows::Win32::UI::Shell::SHGetKnownFolderPath;
+
+/// The individual routes cover half of the respective address space, which gives them priority over the default route without replacing it. We don't want to replace the default route, because:
+/// - We use the default route for preferred network interface discovery
+/// - We wouldn't know what the set it to when the tunnel is disabled
+/// - Network management services tend to overwrite it.
+const ROUTES: [IpNetwork; 4] = [
+    IpNetwork::V4(Ipv4Network::new_checked(Ipv4Addr::new(000, 0, 0, 0), 1).unwrap()),
+    IpNetwork::V4(Ipv4Network::new_checked(Ipv4Addr::new(128, 0, 0, 0), 1).unwrap()),
+    IpNetwork::V6(Ipv6Network::new_checked(Ipv6Addr::new(0x0000, 0, 0, 0, 0, 0, 0, 0), 1).unwrap()),
+    IpNetwork::V6(Ipv6Network::new_checked(Ipv6Addr::new(0x8000, 0, 0, 0, 0, 0, 0, 0), 1).unwrap()),
+];
 
 pub fn add_routes(adapter: &wintun::Adapter) -> Result<(), ()> {
     let if_index = adapter

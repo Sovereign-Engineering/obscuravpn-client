@@ -1,15 +1,19 @@
 pub mod dns;
+mod fd_store;
 pub mod ipc;
+mod netfilter;
 mod network_manager;
-mod routes;
+pub mod routes;
 mod service_lock;
 pub mod start_error;
 pub mod tun;
 
-use crate::service::os::ROUTES;
 use crate::service::os::linux::dns::{DnsManager, DnsManagerArg, choose_dns_manager, resolved};
+use crate::service::os::linux::fd_store::FdStore;
 use crate::service::os::linux::ipc::ServiceIpc;
-use crate::service::os::linux::routes::netlink;
+use crate::service::os::linux::netfilter::{KillSwitchPolicy, NftTable};
+use crate::service::os::linux::routes::preferred_interface::watch_preferred_network_interface;
+use crate::service::os::linux::routes::traffic_capture_routes::{enable_src_valid_mark, spawn_route_enforcer};
 use crate::service::os::linux::service_lock::ServiceLock;
 use crate::service::os::linux::tun::Tun;
 use bytes::Bytes;
@@ -19,10 +23,13 @@ use obscuravpn_client::network_config::OsNetworkConfig;
 use obscuravpn_client::os::os_trait::Os;
 use obscuravpn_client::quicwg::QuicWgConnPacketSender;
 pub use start_error::LinuxServiceStartError;
-use tokio::sync::watch::Receiver;
+use tokio::sync::Mutex;
+use tokio::sync::watch::{Receiver, Sender};
 
 pub struct LinuxOsImpl {
     tun: Tun,
+    nft: Mutex<NftTable>,
+    routing: Sender<bool>,
     preferred_network_interface: Receiver<Option<NetworkInterface>>,
     current_network_config: tokio::sync::Mutex<Result<Option<OsNetworkConfig>, ()>>,
     dns_manager_arg: DnsManagerArg,
@@ -32,16 +39,27 @@ pub struct LinuxOsImpl {
 
 impl LinuxOsImpl {
     pub async fn new(dns_manager_arg: DnsManagerArg) -> Result<Self, LinuxServiceStartError> {
-        let lock = ServiceLock::new()?;
+        let lock: ServiceLock = ServiceLock::new()?;
         choose_dns_manager(dns_manager_arg)
             .await
             .map_err(|()| LinuxServiceStartError::NoDnsManager)?;
         let ipc = ServiceIpc::new(&lock).await?;
+
+        let mut fd_store = FdStore::take_from_systemd();
+        let nft = NftTable::create_or_adopt(&mut fd_store).map_err(|()| LinuxServiceStartError::NftablesSetup)?;
+        fd_store.remove_unclaimed();
+        let tun = Tun::create()?;
+        let routing = spawn_route_enforcer(tun.interface()).await;
+        let preferred_network_interface = watch_preferred_network_interface().await;
+        let _ = enable_src_valid_mark();
+        notify_ready();
         Ok(Self {
             _lock: lock,
             ipc,
-            tun: Tun::create().await?,
-            preferred_network_interface: netlink::watch_preferred_network_interface().await,
+            tun,
+            nft: Mutex::new(nft),
+            routing,
+            preferred_network_interface,
             current_network_config: Ok(None).into(),
             dns_manager_arg,
         })
@@ -59,10 +77,12 @@ impl Os for LinuxOsImpl {
 
         // Attempt all config steps regardless of individual failures to minimize leaks until intentionally disconnecting. E.g. DNS queries shouldn't leak because route setup failed.
         let mut result = Ok(());
+        result = result.and(self.routing.send(true).map_err(|error| {
+            tracing::error!(message_id = "bK3wNr8T", ?error, "route enforcer is not running");
+        }));
         match choose_dns_manager(self.dns_manager_arg).await? {
-            DnsManager::NetworkManager => result = result.and(network_manager::set_dns_and_routes(&tun, &network_config, &ROUTES).await),
+            DnsManager::NetworkManager => result = result.and(network_manager::set_dns(&tun, &network_config).await),
             dns_manager => {
-                result = result.and(netlink::add_routes(&tun, &ROUTES).await);
                 if dns_manager.is_resolved() {
                     if network_config.use_system_dns {
                         result = result.and(resolved::reset_dns(&tun).await);
@@ -72,6 +92,16 @@ impl Os for LinuxOsImpl {
                 }
             }
         }
+        result = result.and(
+            self.nft
+                .lock()
+                .await
+                .apply_ruleset(
+                    KillSwitchPolicy::Engage { local_network_access: network_config.local_network_access },
+                    &tun.name,
+                )
+                .await,
+        );
         result = result.and(self.tun.set_config(network_config.mtu, network_config.ipv4, network_config.ipv6));
         *current_network_config = result.map(|_| Some(network_config));
 
@@ -83,15 +113,18 @@ impl Os for LinuxOsImpl {
         let mut current_network_config = self.current_network_config.lock().await;
         let tun = self.tun.interface();
         let mut result = Ok(());
+        result = result.and(self.routing.send(false).map_err(|error| {
+            tracing::error!(message_id = "fZ8pQm2W", ?error, "route enforcer is not running");
+        }));
         match choose_dns_manager(self.dns_manager_arg).await? {
-            DnsManager::NetworkManager => result = result.and(network_manager::reset_dns_and_routes(&tun).await),
+            DnsManager::NetworkManager => result = result.and(network_manager::reset_dns(&tun).await),
             dns_manager => {
-                result = result.and(netlink::del_routes(&tun, &ROUTES).await);
                 if dns_manager.is_resolved() {
                     result = result.and(resolved::reset_dns(&tun).await);
                 }
             }
         }
+        result = result.and(self.nft.lock().await.apply_ruleset(KillSwitchPolicy::Disengage, &tun.name).await);
         *current_network_config = result.map(|_| None);
         result
     }
@@ -120,6 +153,12 @@ impl LinuxOsImpl {
                 Err(error) => response_fn(Err(error)),
             }
         }
+    }
+}
+
+fn notify_ready() {
+    if let Err(error) = sd_notify::notify(&[sd_notify::NotifyState::Ready]) {
+        tracing::error!(message_id = "qL2mVs9X", ?error, "failed to notify systemd");
     }
 }
 

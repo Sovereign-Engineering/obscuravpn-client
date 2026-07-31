@@ -139,12 +139,16 @@ impl ClientState {
             alternative_hosts,
             account_id,
             &self.user_agent,
-            #[cfg(not(any(target_os = "android", target_os = "windows")))]
+            #[cfg(not(any(target_os = "android", target_os = "linux", target_os = "windows")))]
             network_interface.as_ref().map(|i| i.name.as_str()),
+            #[cfg(target_os = "linux")]
+            None,
             #[cfg(target_os = "windows")]
             network_interface.as_ref().map(|i| i.ip),
             #[cfg(target_os = "android")]
             None,
+            #[cfg(target_os = "linux")]
+            Some(crate::net::FWMARK),
             Some(DnsResolver::new(self.this.clone())),
         )
         .map_err(ClientError::from)

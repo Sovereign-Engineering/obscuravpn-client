@@ -19,6 +19,7 @@ import classes from './Settings.module.css';
 const APPLE_PLATFORMS = new Set([Platform.macOS, Platform.iOS]);
 const IS_APPLE = APPLE_PLATFORMS.has(PLATFORM);
 const IS_ANDROID = PLATFORM === Platform.Android;
+const IS_LINUX = PLATFORM === Platform.Linux;
 
 export default function Settings() {
   return (
@@ -187,7 +188,7 @@ function NetworkSettings() {
         <Button onClick={rotateWgKey} bg={wgRotated ? 'teal' : undefined} rightSection={wgRotated ? <IoCheckmark /> : undefined} miw={200}>
           {wgRotated ? t('Rotated') : t('rotateWgKey')}
         </Button>
-        {IS_ANDROID && (
+        {(IS_ANDROID || IS_LINUX) && (
           <>
             <Divider w='100%' />
             <LocalNetworkAccessSwitch />

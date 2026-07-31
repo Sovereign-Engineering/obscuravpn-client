@@ -6,6 +6,8 @@ pub enum LinuxServiceStartError {
     AlreadyRunning,
     #[error("No supported DNS manager detected.")]
     NoDnsManager,
+    #[error("Failed to set up nftables.")]
+    NftablesSetup,
     #[error("Unexpected error. Details: {0}")]
     Unexpected(#[from] anyhow::Error),
 }

@@ -5,7 +5,7 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 const ALL_V4: Ipv4Network = Ipv4Network::new_checked(Ipv4Addr::UNSPECIFIED, 0).unwrap();
 const ALL_V6: Ipv6Network = Ipv6Network::new_checked(Ipv6Addr::UNSPECIFIED, 0).unwrap();
 
-const LAN_V4: [Ipv4Network; 7] = [
+pub const LAN_V4: [Ipv4Network; 7] = [
     Ipv4Network::new_checked(Ipv4Addr::new(10, 0, 0, 0), 8).unwrap(), // private (RFC 1918)
     Ipv4Network::new_checked(Ipv4Addr::new(172, 16, 0, 0), 12).unwrap(), // private (RFC 1918)
     Ipv4Network::new_checked(Ipv4Addr::new(192, 168, 0, 0), 16).unwrap(), // private (RFC 1918)
@@ -15,7 +15,7 @@ const LAN_V4: [Ipv4Network; 7] = [
     Ipv4Network::new_checked(Ipv4Addr::new(239, 0, 0, 0), 8).unwrap(), // administratively scoped multicast (RFC 2365)
 ];
 
-const LAN_V6: [Ipv6Network; 7] = [
+pub const LAN_V6: [Ipv6Network; 7] = [
     Ipv6Network::new_checked(Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0), 10).unwrap(), // link-local (RFC 4291)
     Ipv6Network::new_checked(Ipv6Addr::new(0xfc00, 0, 0, 0, 0, 0, 0, 0), 7).unwrap(),  // unique local / ULA (RFC 4193)
     Ipv6Network::new_checked(Ipv6Addr::new(0xff01, 0, 0, 0, 0, 0, 0, 0), 16).unwrap(), // interface-local multicast

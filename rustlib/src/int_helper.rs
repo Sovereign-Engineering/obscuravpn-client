@@ -3,6 +3,30 @@
 use static_assertions::const_assert;
 use std::ffi::{c_int, c_ulong};
 
+pub const fn try_c_int_into_u8(value: c_int) -> Option<u8> {
+    if value >= 0 && value as u8 as c_int == value {
+        Some(value as u8)
+    } else {
+        None
+    }
+}
+
+pub const fn try_c_int_into_u16(value: c_int) -> Option<u16> {
+    if value >= 0 && value as u16 as c_int == value {
+        Some(value as u16)
+    } else {
+        None
+    }
+}
+
+pub const fn try_c_int_into_u32(value: c_int) -> Option<u32> {
+    if value >= 0 && value as u32 as c_int == value {
+        Some(value as u32)
+    } else {
+        None
+    }
+}
+
 pub const fn try_c_ulong_into_c_int(value: c_ulong) -> Option<c_int> {
     if value as c_int as c_ulong == value {
         Some(value as c_int)

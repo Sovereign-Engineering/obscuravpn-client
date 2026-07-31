@@ -247,14 +247,66 @@ function setup_and_connect() {
 }
 
 function check_if_mullvad() {
+  local distro=''
+  require_args "distro" "$@"
   local mullvad_check_output
   for ip_version in 4 6; do
-    mullvad_check_output="$(ssh_run curl -sS https://ipv${ip_version}.am.i.mullvad.net/json)"
+    mullvad_check_output="$(ssh_run curl -sS https://ipv${ip_version}.am.i.mullvad.net/json 2>&1)" || true
     if [[ "${mullvad_check_output}" == *'"mullvad_exit_ip":true'* ]]; then
       echoerr "Mullvad IPv${ip_version} check passed"
     else
-      die "Mullvad IPv${ip_version} check failed: ${mullvad_check_output}"
+      echoerr "Mullvad IPv${ip_version} check failed: ${mullvad_check_output}"
     fi
+  done
+  dump_diagnostics --distro "${distro}"
+}
+
+function dump_diagnostics() {
+  local distro=''
+  require_args "distro" "$@"
+  local out_dir
+  out_dir="linux/vm/diagnostics/$(date +%Y%m%d-%H%M%S)-${distro}"
+  mkdir -p "${out_dir}"
+  echoerr "### Collecting diagnostics in ${out_dir}"
+  local index=0 cmd slug
+  local cmds=(
+    'ls -l /etc/resolv.conf'
+    'cat /etc/resolv.conf'
+    'getent hosts ipv4.am.i.mullvad.net'
+    'curl -sS --max-time 10 https://1.1.1.1/cdn-cgi/trace'
+    "ping -c 2 -W 2 \$(grep -m1 nameserver /etc/resolv.conf | cut -d' ' -f2)"
+    'ping -c 2 -W 2 1.1.1.1'
+    'sudo grep dport=53 /proc/net/nf_conntrack'
+    'sudo grep 1.1.1.1 /proc/net/nf_conntrack'
+    'ip route show table 1868723043'
+    'ip -6 route show table 1868723043'
+    'ip route get 10.64.0.1'
+    'ip route get 1.1.1.1'
+    'ip route get 1.1.1.1 mark 0x6f627363'
+    'ip -6 route get 2606:4700:4700::1111'
+    'ip -s link show obscuravpn'
+    'nmcli general status'
+    'nmcli device show obscuravpn'
+    'resolvectl status'
+    'ip addr'
+    'ip rule'
+    'ip -6 rule'
+    'ip route show table all'
+    'ip -6 route show table all'
+    'sudo nft list ruleset'
+    'sysctl -a --pattern "rp_filter|src_valid_mark"'
+    'sudo journalctl -u obscura --no-pager -b'
+  )
+  for cmd in "${cmds[@]}"; do
+    index=$((index + 1))
+    slug="$(printf '%s' "${cmd}" | tr -cs 'a-zA-Z0-9' '-')"
+    slug="${slug#-}"
+    slug="$(printf '%02d-%.60s' "${index}" "${slug%-}")"
+    echoerr "--- ${cmd}"
+    {
+      printf '$ %s\n' "${cmd}"
+      ssh_run "${cmd}" 2>&1
+    } > "${out_dir}/${slug}.txt" || true
   done
 }
 
@@ -274,7 +326,7 @@ main() {
   install_obscura --distro "${distro}"
 
   setup_and_connect --account_id "${account_id}"
-  check_if_mullvad
+  check_if_mullvad --distro "${distro}"
 
   echoerr "### ${distro} ready, click around in the QEMU window."
   echoerr "### Press Ctrl-C to shut the VM down."

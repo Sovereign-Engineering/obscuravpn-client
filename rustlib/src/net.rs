@@ -12,6 +12,9 @@ use std::ptr::addr_of_mut;
 #[cfg(not(target_os = "windows"))]
 use std::{mem, ptr};
 
+#[cfg(target_os = "linux")]
+pub const FWMARK: u32 = u32::from_be_bytes(*b"obsc");
+
 #[derive(PartialEq, Eq, Clone, Debug, Deserialize, Serialize)]
 pub struct NetworkInterface {
     pub name: String,
@@ -24,9 +27,14 @@ pub struct NetworkInterface {
 
 pub fn new_udp(network_interface: Option<&NetworkInterface>) -> io::Result<std::net::UdpSocket> {
     let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP))?;
-    #[cfg(not(any(target_os = "android", target_os = "windows")))]
+    #[cfg(not(any(target_os = "android", target_os = "linux", target_os = "windows")))]
     if let Some(network_interface) = network_interface {
         socket.bind_device_by_index_v4(Some(network_interface.index.into()))?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let _ = network_interface;
+        socket.set_mark(FWMARK)?;
     }
     #[allow(unused_mut)]
     let mut bind_addr = SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 0).into();

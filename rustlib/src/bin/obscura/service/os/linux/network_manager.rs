@@ -1,4 +1,3 @@
-use ipnetwork::IpNetwork;
 use obscuravpn_client::net::NetworkInterface;
 use obscuravpn_client::network_config::{DnsContentBlock, OsNetworkConfig};
 use semver::Version;
@@ -8,6 +7,7 @@ use std::net::{IpAddr, Ipv4Addr};
 /// Minimum supported NetworkManager version. Some NetworkManager versions behave in various unexpected ways, especially with respect to IPv6 route maintenance.
 /// Version 1.42.4 on Debian 12 both clears externally set IPv6 routes (despite preserve-external-ip flag) and does not apply provided IPv6 routes.
 /// The first version that is confirmed to correctly interact with externally managed routes (with the preserve-external-ip flag) is 1.54.0-2.fc43 (tested on Fedora 43).
+/// Version 1.56.0 on RHEL 10 removes the externally set IPv4 capture route from our routing table around Reapply (despite preserve-external-ip flag).
 const MIN_VERSION: Version = Version::new(1, 52, 1);
 
 /// See https://networkmanager.dev/docs/api/latest/gdbus-org.freedesktop.NetworkManager.html
@@ -78,31 +78,30 @@ pub async fn detect() -> bool {
     version >= MIN_VERSION
 }
 
-pub async fn set_dns_and_routes(tun: &NetworkInterface, network_config: &OsNetworkConfig, routes: &[IpNetwork]) -> Result<(), ()> {
+pub async fn set_dns(tun: &NetworkInterface, network_config: &OsNetworkConfig) -> Result<(), ()> {
     let (nm_proxy, _nm_version) = NetworkManagerProxy::connect().await?;
     let proxy = nm_proxy.device_proxy(tun).await?;
-    apply_device_settings(tun, &proxy, network_config, routes, true).await
+    apply_device_settings(tun, &proxy, network_config, true).await
 }
 
-pub async fn reset_dns_and_routes(tun: &NetworkInterface) -> Result<(), ()> {
+pub async fn reset_dns(tun: &NetworkInterface) -> Result<(), ()> {
     let (nm_proxy, _nm_version) = NetworkManagerProxy::connect().await?;
     let proxy = nm_proxy.device_proxy(tun).await?;
-    let network_config = OsNetworkConfig::dummy(DnsContentBlock::default(), false);
-    apply_device_settings(tun, &proxy, &network_config, &[], false).await
+    let network_config = OsNetworkConfig::dummy(DnsContentBlock::default(), false, false);
+    apply_device_settings(tun, &proxy, &network_config, false).await
 }
 
 async fn apply_device_settings(
     tun: &NetworkInterface,
     proxy: &DeviceProxy<'static>,
     network_config: &OsNetworkConfig,
-    routes: &[IpNetwork],
     enable_dns: bool,
 ) -> Result<(), ()> {
     /// Setting this flag on Device.Reapply prevents removal of externally added IP addresses and routes. This does not seem to be respected if the ipv4 or ipv6 section of the applied settings are removed entirely or if the method is changed. See https://networkmanager.dev/docs/api/latest/gdbus-org.freedesktop.NetworkManager.Device.html#gdbus-method-org-freedesktop-NetworkManager-Device.Reapply
     /// Some versions of NetworkManager remove all IPs and move the device to unmanaged otherwise (e.g. 1.52.1 on Debian 13).
     const PRESERVE_EXTERNAL_IP: u32 = 0x1;
 
-    let settings = build_device_settings(tun, network_config, routes, enable_dns).map_err(|error| {
+    let settings = build_device_settings(tun, network_config, enable_dns).map_err(|error| {
         tracing::error!(
             message_id = "jj3NwH49",
             ?error,
@@ -124,7 +123,6 @@ async fn apply_device_settings(
 fn build_device_settings(
     tun: &NetworkInterface,
     network_config: &OsNetworkConfig,
-    routes: &[IpNetwork],
     enable_dns: bool,
 ) -> Result<HashMap<String, HashMap<String, zbus::zvariant::OwnedValue>>, zbus::zvariant::Error> {
     // See
@@ -141,12 +139,7 @@ fn build_device_settings(
         ("prefix".into(), Value::from(32u32).try_into()?),
     ])];
 
-    let ipv4_route_data: Vec<HashMap<String, zbus::zvariant::OwnedValue>> = routes
-        .iter()
-        .cloned()
-        .filter(IpNetwork::is_ipv4)
-        .map(route_to_dbus_hashmap)
-        .collect::<Result<Vec<_>, _>>()?;
+    let ipv4_route_data: Vec<HashMap<String, zbus::zvariant::OwnedValue>> = vec![];
 
     let mut ipv4_settings = HashMap::from([
         ("address-data".into(), Value::from(ipv4_address_data).try_into()?),
@@ -161,12 +154,7 @@ fn build_device_settings(
         ("prefix".into(), Value::from(u32::from(network_config.ipv6.prefix())).try_into()?),
     ])];
 
-    let ipv6_route_data: Vec<HashMap<String, zbus::zvariant::OwnedValue>> = routes
-        .iter()
-        .cloned()
-        .filter(IpNetwork::is_ipv6)
-        .map(route_to_dbus_hashmap)
-        .collect::<Result<Vec<_>, _>>()?;
+    let ipv6_route_data: Vec<HashMap<String, zbus::zvariant::OwnedValue>> = vec![];
 
     let mut ipv6_settings = HashMap::from([
         ("address-data".into(), Value::from(ipv6_address_data).try_into()?),
@@ -212,11 +200,4 @@ fn build_device_settings(
 fn ipv4_to_u32(ip: Ipv4Addr) -> u32 {
     // NetworkManager IPs are the octets as u32, in their original byte order.
     u32::from_ne_bytes(ip.octets())
-}
-
-fn route_to_dbus_hashmap(net: IpNetwork) -> Result<HashMap<String, zbus::zvariant::OwnedValue>, zbus::zvariant::Error> {
-    Ok(HashMap::from([
-        ("dest".into(), zbus::zvariant::Value::from(net.ip().to_string()).try_into()?),
-        ("prefix".into(), u32::from(net.prefix()).into()),
-    ]))
 }

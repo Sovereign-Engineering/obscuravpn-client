@@ -229,7 +229,7 @@ impl TunnelState {
                     use_system_dns,
                     local_network_access,
                 } => {
-                    #[cfg(not(target_os = "android"))]
+                    #[cfg(not(any(target_os = "android", target_os = "linux")))]
                     let _ = local_network_access;
                     let cf: ControlFlow<(), Connected> = if let Some(connected) = tunnel_state.borrow().get_connected() {
                         // Already connected, continue with next steps
@@ -241,7 +241,7 @@ impl TunnelState {
                                 OsNetworkConfig::dummy(
                                     *dns_content_block,
                                     *use_system_dns,
-                                    #[cfg(target_os = "android")]
+                                    #[cfg(any(target_os = "android", target_os = "linux"))]
                                     *local_network_access,
                                 ),
                                 QuicWgConnPacketSender::new(None),
@@ -298,7 +298,7 @@ impl TunnelState {
                             &connected.exit.provider_name,
                             *dns_content_block,
                             *use_system_dns,
-                            #[cfg(target_os = "android")]
+                            #[cfg(any(target_os = "android", target_os = "linux"))]
                             *local_network_access,
                         );
                         if let Err(()) = os_impl

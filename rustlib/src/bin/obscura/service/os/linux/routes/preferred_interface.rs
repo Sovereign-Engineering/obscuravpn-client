@@ -1,6 +1,5 @@
 use anyhow::{Context, anyhow, bail};
 use futures::{StreamExt, TryStreamExt};
-use ipnetwork::IpNetwork;
 use obscuravpn_client::net::NetworkInterface;
 use obscuravpn_client::positive_u31::PositiveU31;
 use obscuravpn_client::tokio::AbortOnDrop;
@@ -10,77 +9,13 @@ use rtnetlink::packet_route::link::{LinkAttribute, LinkMessage};
 use rtnetlink::packet_route::route::{RouteAttribute, RouteHeader, RouteMessage};
 use rtnetlink::sys::{AsyncSocket, SocketAddr};
 use std::convert::Infallible;
-use std::net::{IpAddr, Ipv4Addr};
-use std::num::NonZeroI32;
+use std::net::Ipv4Addr;
 use std::time::Duration;
-use tokio;
 use tokio::select;
 use tokio::sync::watch::{Receiver, Sender, channel};
 use tokio::time::sleep;
 
 const PREFERRED_INTERFACE_WATCH_ERROR_BACKOFF: Duration = Duration::from_secs(1);
-
-pub async fn netlink_connect() -> Result<rtnetlink::Handle, ()> {
-    let (connection, handle) = match rtnetlink::new_connection() {
-        Ok((connection, handle, _)) => (connection, handle),
-        Err(error) => {
-            tracing::error!(message_id = "kuk3xhql", ?error, "failed to create netlink connection");
-            return Err(());
-        }
-    };
-    tokio::spawn(connection);
-    Ok(handle)
-}
-
-pub async fn add_routes(tun: &NetworkInterface, routes: &[IpNetwork]) -> Result<(), ()> {
-    let handle = netlink_connect().await?;
-    let route_messages = build_route_messages(tun, routes)?;
-    for route_message in route_messages {
-        handle.route().add(route_message.clone()).replace().execute().await.map_err(|error| {
-            tracing::error!(message_id = "a1Uk0dKX", ?error, ?route_message, "failed to add route");
-        })?
-    }
-    Ok(())
-}
-
-pub async fn del_routes(tun: &NetworkInterface, routes: &[IpNetwork]) -> Result<(), ()> {
-    let handle = netlink_connect().await?;
-    let route_messages = build_route_messages(tun, routes)?;
-    for route_message in route_messages {
-        handle
-            .route()
-            .del(route_message.clone())
-            .execute()
-            .await
-            .or_else(|error| {
-                if let rtnetlink::Error::NetlinkError(error) = &error
-                    && error.code == NonZeroI32::new(-3)
-                {
-                    tracing::info!(message_id = "WGD6Z6xL", "tried to delete non-existent route");
-                    return Ok(());
-                }
-                Err(error)
-            })
-            .map_err(|error| {
-                tracing::error!(message_id = "aDETR9ur", ?error, ?route_message, "failed to delete route");
-            })?
-    }
-    Ok(())
-}
-
-/// Build route messages for tun device.
-fn build_route_messages(tun: &NetworkInterface, routes: &[IpNetwork]) -> Result<Vec<RouteMessage>, ()> {
-    routes
-        .iter()
-        .map(|net| {
-            Ok(RouteMessageBuilder::<IpAddr>::new()
-                .destination_prefix(net.ip(), net.prefix())
-                .map_err(|error| tracing::error!(message_id = "wtAo1gKj", ?error, "failed to build route message"))?
-                .output_interface(tun.index.into())
-                .build())
-        })
-        .collect()
-}
 
 pub async fn watch_preferred_network_interface() -> Receiver<Option<NetworkInterface>> {
     let (sender, receiver) = channel(None);
@@ -109,7 +44,7 @@ async fn watch_preferred_network_interface_one(sender: &Sender<Option<NetworkInt
         .bind(&SocketAddr::new(0, RTMGRP_IPV4_ROUTE))
         .context("netlink socket bind failed")?;
     connection.forward_unsolicited_messages();
-    let abort_handle = AbortOnDrop::from(tokio::spawn(connection).abort_handle());
+    let abort_handle = AbortOnDrop::spawn(connection);
     loop {
         tracing::info!(message_id = "lryydLmq", "routing table changed");
         let new = get_preferred_network_interface(&handle).await?;

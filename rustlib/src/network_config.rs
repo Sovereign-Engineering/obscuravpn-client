@@ -100,6 +100,8 @@ pub struct OsNetworkConfig {
     pub routes: Vec<Route>,
     pub mtu: u16,
     pub use_system_dns: bool,
+    #[cfg(target_os = "linux")]
+    pub local_network_access: bool,
 }
 
 impl OsNetworkConfig {
@@ -108,7 +110,7 @@ impl OsNetworkConfig {
         exit_provider_name: &str,
         dns_content_block: DnsContentBlock,
         use_system_dns: bool,
-        #[cfg(target_os = "android")] allow_local_network_access: bool,
+        #[cfg(any(target_os = "android", target_os = "linux"))] allow_local_network_access: bool,
     ) -> Self {
         let dns = if exit_provider_name == MULLVAD_EXIT_PROVIDER_NAME
             && let Some(dns) = dns_content_block.mullvad_dns_ip()
@@ -126,17 +128,23 @@ impl OsNetworkConfig {
             ipv6: tunnel_network_config.ipv6,
             mtu: tunnel_network_config.mtu,
             use_system_dns,
+            #[cfg(target_os = "linux")]
+            local_network_access: allow_local_network_access,
         }
     }
 
     /// Dummy OS network config. May be used if valid values are needed by an API before the real values are known. The values are picked from ranges we expect for our tunnels.
-    pub fn dummy(dns_content_block: DnsContentBlock, use_system_dns: bool, #[cfg(target_os = "android")] allow_local_network_access: bool) -> Self {
+    pub fn dummy(
+        dns_content_block: DnsContentBlock,
+        use_system_dns: bool,
+        #[cfg(any(target_os = "android", target_os = "linux"))] allow_local_network_access: bool,
+    ) -> Self {
         Self::new(
             &TunnelNetworkConfig::dummy(),
             MULLVAD_EXIT_PROVIDER_NAME,
             dns_content_block,
             use_system_dns,
-            #[cfg(target_os = "android")]
+            #[cfg(any(target_os = "android", target_os = "linux"))]
             allow_local_network_access,
         )
     }

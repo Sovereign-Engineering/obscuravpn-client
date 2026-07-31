@@ -1,12 +1,18 @@
 [Unit]
 Description=Obscura VPN
 After=network.target
+StartLimitIntervalSec=0
 
 [Service]
+Type=notify
 ExecStart=/usr/bin/obscura service
+FileDescriptorStoreMax=8
 Group=obscura
 UMask=0007
-Restart=on-failure
+Restart=always
+RestartSec=1
+RestartSteps=5
+RestartMaxDelaySec=30
 
 [Install]
 WantedBy=multi-user.target

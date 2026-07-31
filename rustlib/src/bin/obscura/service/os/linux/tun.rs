@@ -5,7 +5,7 @@ use obscuravpn_client::network_config::{DnsContentBlock, OsNetworkConfig};
 use obscuravpn_client::os::packet_buffer::PacketBuffer;
 use obscuravpn_client::positive_u31::PositiveU31;
 use obscuravpn_client::rate_limited_log;
-use std::io::ErrorKind::{AlreadyExists, WouldBlock};
+use std::io::ErrorKind::{AddrNotAvailable, AlreadyExists, WouldBlock};
 use std::net::{IpAddr, Ipv4Addr};
 use std::sync::{Arc, Mutex};
 
@@ -23,8 +23,8 @@ pub struct Tun {
 }
 
 impl Tun {
-    pub async fn create() -> anyhow::Result<Self> {
-        let network_config = OsNetworkConfig::dummy(DnsContentBlock::default(), false);
+    pub fn create() -> anyhow::Result<Self> {
+        let network_config = OsNetworkConfig::dummy(DnsContentBlock::default(), false, false);
         let dev = Arc::new(
             tun_rs::DeviceBuilder::new()
                 // NetworkManager classifies new TUN devices without assigned IPs as `NM_DEVICE_STATE_UNMANAGED` instead of just externally connected and refuses all device configuration interactions. As initial state this is harmless in tested versions, but avoiding the state is simpler and may be safer.
@@ -110,7 +110,9 @@ impl Tun {
                     if keep {
                         continue;
                     }
-                    if let Err(error) = self.dev.remove_address(address) {
+                    if let Err(error) = self.dev.remove_address(address)
+                        && error.kind() != AddrNotAvailable
+                    {
                         tracing::error!(message_id = "Th5DBPqt", ?error, ?address, "failed to remove tun address");
                         result = Err(());
                     }

@@ -11,7 +11,64 @@ extract_fingerprint() {
 	awk -F: '/^pub:/{p=1} /^fpr:/&&p{print $10; p=0}'
 }
 
+export_privkey_encrypted() {
+	local fingerprint="$1"
+	local recipient_file="$2"
+
+	local privkey
+	privkey="$(gpg --armor --export-secret-keys "$fingerprint")"
+	if [ -z "$privkey" ]; then
+		echo "no secret key $fingerprint in keyring" >&2
+		return 1
+	fi
+
+	printf '%s\n' "$privkey" | gpg --armor --encrypt --recipient-file "$recipient_file"
+}
+
+usage() {
+	cat >&2 <<EOF
+usage: $0 ENCRYPTED_PRIVKEYS_DIR PRIVKEY_RECIPIENT_FILE
+
+ENCRYPTED_PRIVKEYS_DIR   existing directory that receives the exported secret
+                         keys, one file per key, encrypted to the recipient key
+PRIVKEY_RECIPIENT_FILE   file holding exactly one public key; the exported
+                         secret keys are encrypted to it
+EOF
+	exit 2
+}
+
 main() {
+	if [ "$#" -ne 2 ]; then
+		usage
+	fi
+
+	local encrypted_privkeys_dir
+	encrypted_privkeys_dir="$(realpath -m "$1" 2>/dev/null)" || encrypted_privkeys_dir=""
+	if ! [ -d "$encrypted_privkeys_dir" ] || ! [ -w "$encrypted_privkeys_dir" ]; then
+		echo "ENCRYPTED_PRIVKEYS_DIR '$1' is not a writable directory" >&2
+		exit 1
+	fi
+
+	local privkey_recipient_file
+	privkey_recipient_file="$(realpath -m "$2" 2>/dev/null)" || privkey_recipient_file=""
+	if ! [ -f "$privkey_recipient_file" ]; then
+		echo "PRIVKEY_RECIPIENT_FILE '$2' is not a file" >&2
+		exit 1
+	fi
+
+	local privkey_recipient_fingerprint
+	privkey_recipient_fingerprint="$(gpg --with-colons --show-keys "$privkey_recipient_file" | extract_fingerprint)" || true
+	case "$privkey_recipient_fingerprint" in
+	"")
+		echo "PRIVKEY_RECIPIENT_FILE '$2' contains no public key" >&2
+		exit 1
+		;;
+	*$'\n'*)
+		echo "PRIVKEY_RECIPIENT_FILE '$2' contains more than one public key" >&2
+		exit 1
+		;;
+	esac
+
 	local keys_dir
 	keys_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -33,17 +90,31 @@ main() {
 
 	echo "generating new next key..." >&2
 	local new_next_fingerprint
-	new_next_fingerprint="$(gpg --yes --with-colons --quick-generate-key 'Obscura Repository Signer <packages@obscura.com>' rsa4096 sign 10y | extract_fingerprint)"
+	new_next_fingerprint="$(gpg --yes --status-fd 1 --pinentry-mode loopback --passphrase '' --quick-generate-key 'Obscura Repository Signer <packages@obscura.com>' rsa4096 sign 10y | awk '$1 == "[GNUPG:]" && $2 == "KEY_CREATED" {print $4}')"
+
+	echo "exporting new next public key..." >&2
+	local new_next_public
+	new_next_public="$(gpg --armor --export "$new_next_fingerprint")"
+
+	echo "exporting and encrypting privkeys..." >&2
+	local new_current_privkey_encrypted_data
+	new_current_privkey_encrypted_data="$(export_privkey_encrypted "$new_current_fingerprint" "$privkey_recipient_file")"
+	local new_next_privkey_encrypted_data
+	new_next_privkey_encrypted_data="$(export_privkey_encrypted "$new_next_fingerprint" "$privkey_recipient_file")"
 
 	echo "revoking outgoing current key $outgoing_fingerprint (answer gpg's prompts)..." >&2
 	gpg --armor --gen-revoke "$outgoing_fingerprint" | gpg --import
-	gpg --armor --export "$outgoing_fingerprint" >>"$keys_dir/revocation.asc"
+	local outgoing_public_revoked
+	outgoing_public_revoked="$(gpg --armor --export "$outgoing_fingerprint")"
 
-	echo "promoting next to current..." >&2
+	echo "writing rotated keys..." >&2
+	local new_current_privkey_encrypted="${encrypted_privkeys_dir}/${new_current_fingerprint}-privkey-encrypted-to-${privkey_recipient_fingerprint}.asc.asc"
+	local new_next_privkey_encrypted="${encrypted_privkeys_dir}/${new_next_fingerprint}-privkey-encrypted-to-${privkey_recipient_fingerprint}.asc.asc"
+	printf '%s\n' "$new_current_privkey_encrypted_data" >"$new_current_privkey_encrypted"
+	printf '%s\n' "$new_next_privkey_encrypted_data" >"$new_next_privkey_encrypted"
+	printf '%s\n' "$outgoing_public_revoked" >>"$keys_dir/revocation.asc"
 	mv "$keys_dir/next.public.asc" "$keys_dir/current.public.asc"
-
-	echo "writing new next key..." >&2
-	gpg --armor --export "$new_next_fingerprint" >"$keys_dir/next.public.asc"
+	printf '%s\n' "$new_next_public" >"$keys_dir/next.public.asc"
 
 	cat <<EOF
 
@@ -53,10 +124,7 @@ rotated:
   new next:               $new_next_fingerprint
 
 Send the new current secret key to the signer (it signs releases):
-  gpg --export-secret-keys --armor $new_current_fingerprint
-
-Back up the new next secret key separately (it signs releases after the next rotation):
-  gpg --export-secret-keys --armor $new_next_fingerprint
+  gpg --decrypt '${new_current_privkey_encrypted}' | gpg --armor --encrypt --recipient ...
 
 When copying the directory back to commit and publish, copy only:
   current.public.asc  next.public.asc  revocation.asc

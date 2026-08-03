@@ -57,6 +57,20 @@ export default function Mantine({ children }: PropsWithChildren) {
             Modal: {
               defaultProps: {
                 radius: 'md'
+              },
+              styles: {
+                content: {
+                  // By default, the height isn't constrained by the inner padding or content margin.
+                  maxHeight: 'calc(100% - var(--safe-area-inset-top, env(safe-area-inset-top)) - var(--safe-area-inset-bottom, env(safe-area-inset-bottom)))',
+                  // The margin is still necessary for keeping the top/bottom spacing proportional.
+                  marginTop: 'var(--safe-area-inset-top, env(safe-area-inset-top))',
+                  marginBottom: 'var(--safe-area-inset-bottom, env(safe-area-inset-bottom))',
+                },
+                // This applies to the container used for centering, and *not* the overlay.
+                inner: {
+                  paddingLeft: 'calc(var(--modal-x-offset) + var(--safe-area-inset-left, env(safe-area-inset-left)))',
+                  paddingRight: 'calc(var(--modal-x-offset) + var(--safe-area-inset-right, env(safe-area-inset-right)))',
+                }
               }
             },
             Notifications: {

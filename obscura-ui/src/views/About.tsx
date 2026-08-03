@@ -87,7 +87,7 @@ export default function About() {
       </Stack>
       <Stack pb={10} align='center' ta='center'>
         <Text c='dimmed'>{t('copyright')}</Text>
-        <Modal opened={showLicenses} onClose={() => setShowLicenses(false)} size={IS_HANDHELD_DEVICE ? 'md' : 'lg'} mt={IS_HANDHELD_DEVICE ? 20 : undefined} title={<Title order={3}>{t('openSourceLicenses')}</Title>} centered>
+        <Modal opened={showLicenses} onClose={() => setShowLicenses(false)} size={IS_HANDHELD_DEVICE ? 'md' : 'lg'} title={<Title order={3}>{t('openSourceLicenses')}</Title>} centered>
           <Suspense fallback={<Center><Loader type='bars' size='md' /></Center>}>
             <Stack>
               <Licenses />

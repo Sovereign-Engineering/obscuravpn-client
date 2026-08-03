@@ -14,7 +14,7 @@ export enum NEVPNStatus {
 }
 
 export type LinuxServiceDegradation = 'stopped' | 'failed' | 'disabled' | 'notInstalled' | 'noAccess' | 'other';
-export type WindowsServiceDegradation = Exclude<LinuxServiceDegradation, 'noAccess'>;
+export type WindowsServiceDegradation = 'stopped' | 'failed' | 'disabled' | 'notInstalled' | 'packageIdentityMissing' | 'other';
 export type ServiceStatus = 'initializing' | { healthy: unknown } | { degraded: { lastStatus: unknown, linuxDegradation?: LinuxServiceDegradation, windowsDegradation?: WindowsServiceDegradation } };
 
 export function linuxDegradation(serviceStatus: ServiceStatus | undefined): LinuxServiceDegradation | undefined {

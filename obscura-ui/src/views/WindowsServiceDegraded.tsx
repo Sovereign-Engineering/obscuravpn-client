@@ -37,6 +37,12 @@ function describe(degradation: WindowsServiceDegradation): Degraded {
         messageKey: 'windowsService-notInstalledMessage',
         fixes: [],
       };
+    case 'packageIdentityMissing':
+      return {
+        titleKey: 'windowsService-packageIdentityMissingTitle',
+        messageKey: 'windowsService-packageIdentityMissingMessage',
+        fixes: [],
+      };
     case 'other':
       return {
         titleKey: 'windowsService-otherTitle',

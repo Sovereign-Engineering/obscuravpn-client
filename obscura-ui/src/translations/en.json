@@ -388,6 +388,8 @@
   "windowsService-enableAndStartButton": "Enable and start",
   "windowsService-notInstalledMessage": "Could not communicate with the service. Reinstall Obscura to make the service available.",
   "windowsService-notInstalledTitle": "Obscura VPN Service is not installed",
+  "windowsService-packageIdentityMissingMessage": "The Obscura VPN service cannot be reached without package identity. Reinstall Obscura or contact support.",
+  "windowsService-packageIdentityMissingTitle": "App is missing package identity",
   "windowsService-otherMessage": "Obscura could not determine why the background service is unreachable. Make sure it is installed and running.",
   "windowsService-otherTitle": "Obscura VPN Service is unavailable",
   "windowsService-startButton": "Start service",

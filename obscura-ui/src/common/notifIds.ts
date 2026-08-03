@@ -1,5 +1,6 @@
 export enum NotificationId {
     VPN_DISCONNECT_CONNECT = 'vpnDisconnectConnect',
     VPN_ERROR = 'vpnError',
-    OPEN_AT_LOGIN = 'openAtLogin'
+    OPEN_AT_LOGIN = 'openAtLogin',
+    STATUS_FETCH_ERROR = 'statusFetchError',
 }

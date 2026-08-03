@@ -198,7 +198,8 @@ export default function () {
         } catch (error) {
           const e = normalizeError(error);
           console.error('command status failed', e.message);
-          notifications.show({ title: t('errorFetchingStatus'), message: e.message, color: 'red' });
+          notifications.hide(NotificationId.STATUS_FETCH_ERROR);
+          notifications.show({ title: t('errorFetchingStatus'), message: e.message, color: 'red', id: NotificationId.STATUS_FETCH_ERROR, autoClose: false });
         }
       }
     })();

@@ -15,6 +15,7 @@ public enum WindowsServiceDegradation
     Failed,
     Disabled,
     NotInstalled,
+    PackageIdentityMissing,
     Other,
 }
 
@@ -78,6 +79,10 @@ public static class ObscuraService
 
     public static WindowsServiceDegradation Diagnose()
     {
+        if (!PackageIdentity.IsPackagedProcess())
+        {
+            return WindowsServiceDegradation.PackageIdentityMissing;
+        }
         try
         {
             using var searcher = new ManagementObjectSearcher(

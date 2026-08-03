@@ -18,7 +18,7 @@ export function ScrollableView({ children }: PropsWithChildren) {
 
 function ScrollToTop({ scrollY, viewport }: { scrollY: number, viewport: RefObject<HTMLDivElement | null> }) {
   return (
-    <Affix position={{ bottom: 'calc(20px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom)))', right: 'calc(20px + var(--safe-area-inset-right, env(safe-area-inset-right)))' }}>
+    <Affix position={{ bottom: 'calc(20px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom)))', right: 'calc(20px + var(--safe-area-inset-right, env(safe-area-inset-right)))' }} zIndex={199}>
       <Transition transition='slide-up' mounted={scrollY > 50}>
         {transitionStyles =>
           <ActionIcon style={transitionStyles} size='lg' variant='gradient'

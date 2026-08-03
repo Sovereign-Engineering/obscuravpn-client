@@ -406,6 +406,7 @@ It derives the signing key from `linux/signing_keys/current.public.asc` (exporti
 from your gpg keyring) and prompts for its passphrase. Publish the three repository trees it
 produces, `result-linux/dist-prod/{deb,rpm,arch}`, at `https://linux-pkgs.obscura.com/{deb,rpm,arch}`.
 Pass `--test` to build instead with the committed keys in `linux/signing_keys_test/`.
+Pass `--dirty` to build production packages from an untagged or modified tree.
 
 ### Signing key rotation
 

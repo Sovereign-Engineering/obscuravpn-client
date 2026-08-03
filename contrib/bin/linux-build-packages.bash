@@ -49,10 +49,10 @@ load_signing_key() {
   else
     local signer
     signer="$(key_fingerprints <"$PWD/$keys_dir/current.public.asc" | head -1)"
-    GPG_PRIVATE_KEY="$(gpg --batch --armor --export-secret-keys "$signer" 2>/dev/null || true)"
-    [ -n "$GPG_PRIVATE_KEY" ] || die "no secret key for the current signing key in gpg; import it or use --test"
     read -rsp "Signing key passphrase (empty if none): " GPG_PASSPHRASE || GPG_PASSPHRASE=
     echo
+    GPG_PRIVATE_KEY="$(gpg --batch --pinentry-mode loopback --passphrase-fd 0 --armor --export-secret-keys "$signer" <<<"$GPG_PASSPHRASE" 2>/dev/null || true)"
+    [ -n "$GPG_PRIVATE_KEY" ] || die "exporting the current signing key from gpg failed; is it imported and the passphrase correct? (or use --test)"
   fi
   set -x
 }
@@ -67,9 +67,16 @@ main() {
     dist="dist-test"
     repo_url=http://10.0.2.2:54321
     keys_dir=linux/signing_keys_test
-  elif [[ "$version" == *-* ]]; then
-    die "refusing to build production packages: ${version} is not a clean tagged release; pass --test for test packages"
   else
+    if [[ "$version" == *-* ]]; then
+      if [ "${1:-}" = "--dirty" ]; then
+        local reply
+        read -rp "WARNING: ${version} is not a clean tagged release; build production packages anyway? [y/N] " reply || reply=
+        [[ "$reply" == [yY] ]] || die "aborted"
+      else
+        die "refusing to build production packages: ${version} is not a clean tagged release; pass --test for test packages or --dirty to build anyway"
+      fi
+    fi
     dist="dist-prod"
     repo_url=https://linux-pkgs.obscura.com
     keys_dir=linux/signing_keys

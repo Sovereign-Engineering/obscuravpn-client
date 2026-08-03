@@ -139,12 +139,6 @@ function ssh_run() {
   sxx_run ssh -p 2222 user@localhost "$@"
 }
 
-function scp_run() {
-  local src='' dest=''
-  require_args "src dest" "$@"
-  sxx_run scp -P 2222 "${src}" "user@localhost:${dest}"
-}
-
 function sxx_run() {
   local cmd=$1
   shift
@@ -185,18 +179,19 @@ function add_repo() {
   local distro=''
   require_args "distro" "$@"
 
+  local repo_url="http://${REPO_IP}:${REPO_PORT}"
   if [[ ${distro} == debian* ]] || [[ ${distro} == ubuntu* ]]; then
-    scp_run --src result-linux/dist-test/deb/obscura-repository.deb --dest /home/user/obscura-repository.deb
-    ssh_run sudo apt-get install -y /home/user/obscura-repository.deb
-    ssh_run sudo apt-get update
+    ssh_run curl -fsSLO "${repo_url}/deb/obscura-repository.deb"
+    ssh_run sudo apt install -y ./obscura-repository.deb
+    ssh_run sudo apt update
   elif [[ ${distro} == fedora* ]] || [[ ${distro} == alma* ]]; then
-    scp_run --src result-linux/dist-test/rpm/obscura-repository.rpm --dest /home/user/obscura-repository.rpm
-    ssh_run sudo dnf install -y --nogpgcheck /home/user/obscura-repository.rpm
+    ssh_run sudo rpm --import "${repo_url}/rpm/RPM-GPG-KEY-obscura"
+    ssh_run sudo dnf install -y "${repo_url}/rpm/obscura-repository.rpm"
   elif [[ ${distro} == archlinux* ]]; then
-    scp_run --src result-linux/dist-test/arch/obscura-keyring.pkg.tar.zst --dest /home/user/obscura-keyring.pkg.tar.zst
-    ssh_run sudo pacman -U --noconfirm /home/user/obscura-keyring.pkg.tar.zst
-    ssh_run "printf '[obscura]\nServer = %s/arch/\$arch\n' 'http://${REPO_IP}:${REPO_PORT}' | sudo tee -a /etc/pacman.conf"
-    ssh_run sudo pacman -Sy
+    ssh_run curl -fsSLO "${repo_url}/arch/obs-keys.asc" -O "${repo_url}/arch/obs-fingerprint.txt"
+    ssh_run sudo pacman-key --add obs-keys.asc
+    ssh_run "sudo pacman-key --lsign-key \"\$(< obs-fingerprint.txt)\""
+    ssh_run "printf '[obscura]\nServer = %s/arch/\$arch\n' '${repo_url}' | sudo tee -a /etc/pacman.conf"
   else
     die "no repository setup for ${distro}"
   fi
@@ -207,12 +202,12 @@ function install_obscura() {
   require_args "distro" "$@"
 
   if [[ ${distro} == debian* ]] || [[ ${distro} == ubuntu* ]]; then
-    ssh_run sudo apt-get install -y obscura
+    ssh_run sudo apt install -y obscura
   elif [[ ${distro} == fedora* ]] || [[ ${distro} == alma* ]]; then
     ssh_run sudo dnf install -y obscura
   elif [[ ${distro} == archlinux* ]]; then
-    ssh_run sudo pacman -S --noconfirm obscura
-    ssh_run sudo systemctl enable --now obscura
+    ssh_run sudo pacman -Sy --noconfirm obscura-keyring obscura
+    ssh_run sudo systemctl enable --now obscura.service
   else
     die "no obscura install for ${distro}"
   fi
@@ -250,6 +245,7 @@ function check_if_mullvad() {
   local distro=''
   require_args "distro" "$@"
   local mullvad_check_output
+  sleep 1
   for ip_version in 4 6; do
     mullvad_check_output="$(ssh_run curl -sS https://ipv${ip_version}.am.i.mullvad.net/json 2>&1)" || true
     if [[ "${mullvad_check_output}" == *'"mullvad_exit_ip":true'* ]]; then

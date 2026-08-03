@@ -45,7 +45,8 @@ main() {
   local repo_dir="$HOME/repo"
   mkdir -p "$repo_dir"
   cp ./*.pkg.tar.zst ./*.pkg.tar.zst.sig "$repo_dir/"
-  cat "$keys_dir/current.public.asc" "$keys_dir/next.public.asc" >"$repo_dir/obscura-archive.asc"
+  cat "$keys_dir/current.public.asc" "$keys_dir/next.public.asc" >"$repo_dir/obs-keys.asc"
+  echo "$fingerprint" >"$repo_dir/obs-fingerprint.txt"
   ( cd "$repo_dir"
     repo-add obscura.db.tar.zst ./*.pkg.tar.zst )
   sudo mkdir -p "/out/${target_arch}"

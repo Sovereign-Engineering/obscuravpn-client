@@ -78,6 +78,9 @@ let VIEW_MODES = [
     let DEFAULT_VIEW_MODE = 0
 #endif
 
+let COLUMN_WIDTH: (min: CGFloat, ideal: CGFloat) = (160, 200)
+let DETAIL_WIDTH: (min: CGFloat, ideal: CGFloat) = (545, 545)
+
 class ViewModeManager: ObservableObject {
     @Published private var viewIndex = DEFAULT_VIEW_MODE
     private var eventMonitor: Any?
@@ -153,7 +156,7 @@ struct ContentView: View {
     @State private var accountBadge: String?
     @State private var badgeColor: Color?
     @State private var indicateUpdateAvailable: Bool = false
-    @State private var navigationWidth: CGFloat = 200.0
+    @State private var columnWidth: CGFloat = COLUMN_WIDTH.ideal
 
     #if os(macOS)
         @EnvironmentObject private var appDelegate: AppDelegate
@@ -216,7 +219,7 @@ struct ContentView: View {
         #if os(macOS)
             .onChange(of: self.splitViewVisibility) { viz in
                 if #available(macOS 26.0, *) {
-                    self.webviewsController.safeAreaTx.yield(ObscuraUIWebView.Insets(left: viz == .detailOnly ? 0 : self.navigationWidth))
+                    self.webviewsController.safeAreaTx.yield(ObscuraUIWebView.Insets(left: viz == .detailOnly ? 0 : self.columnWidth))
                 }
             }
         #endif
@@ -290,12 +293,12 @@ struct ContentView: View {
                         if #available(macOS 26.0, *), self.splitViewVisibility != .detailOnly {
                             self.webviewsController.safeAreaTx.yield(ObscuraUIWebView.Insets(left: newValue))
                         }
-                        self.navigationWidth = newValue
+                        self.columnWidth = newValue
                     }
-                    .navigationSplitViewColumnWidth(min: 160, ideal: 200)
+                    .navigationSplitViewColumnWidth(min: COLUMN_WIDTH.min, ideal: COLUMN_WIDTH.ideal)
                 } detail: {
                     let detail = ObscuraUIMacOSWrapper(webView: obscuraWebView)
-                        .navigationSplitViewColumnWidth(min: 525, ideal: 525)
+                        .navigationSplitViewColumnWidth(min: DETAIL_WIDTH.min, ideal: DETAIL_WIDTH.ideal)
                         .navigationTitle(
                             self.loginViewShown
                                 ? "Obscura" : self.webviewsController.tab.rawValue.capitalized

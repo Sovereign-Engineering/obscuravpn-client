@@ -477,7 +477,7 @@ function ExitInfoCollapse({ exitProviderId, exitPubKey, connectedExit, provider,
             <Stack gap={5}>
               <Text c='gray' size='sm'>{t('publicKey')}</Text>
               <Group gap={3}>
-                <Text ff='monospace' size='sm'>{exitPubKey}</Text>
+                <Text ff='monospace' size='sm' style={{ wordBreak: 'break-all' }}>{exitPubKey}</Text>
               </Group>
               <MatchesPublicKey exitProviderId={exitProviderId} exitProviderURL={exitProviderURL} />
             </Stack>

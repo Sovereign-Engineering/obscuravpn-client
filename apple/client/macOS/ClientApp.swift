@@ -338,7 +338,8 @@ struct MainWindowContentView: View {
         Group {
             if let appState = self.startupModel.appState {
                 ContentView(appState: appState)
-                    .frame(minWidth: 700, minHeight: 525)
+                    // Adding 10 prevents the scrollbar from being clipped at the minimum width.
+                    .frame(minWidth: COLUMN_WIDTH.min + DETAIL_WIDTH.min + 10, minHeight: 525)
             } else {
                 StartupView()
                     .frame(minWidth: 800, minHeight: 525)

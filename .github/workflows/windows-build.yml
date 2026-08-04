@@ -23,7 +23,7 @@ jobs:
     runs-on: nscloud-windows-2022-amd64-8x16
     environment: ${{ (startsWith(github.ref, 'refs/tags/v/') || github.event_name == 'workflow_dispatch') && 'release' || '' }}
     env:
-      SIGN: ${{ env.DIGICERT_SM_KEYPAIR_ALIAS != '' }}
+      SIGN: ${{ vars.DIGICERT_SM_KEYPAIR_ALIAS != '' }}
     steps:
       - name: git checkout
         uses: actions/checkout@v7

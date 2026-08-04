@@ -1,4 +1,5 @@
 using log4net;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.Web.WebView2.Core;
@@ -558,6 +559,12 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             {
                 root.RequestedTheme = theme;
             }
+            AppWindow.TitleBar.PreferredTheme = theme switch
+            {
+                ElementTheme.Light => TitleBarTheme.Light,
+                ElementTheme.Dark => TitleBarTheme.Dark,
+                _ => TitleBarTheme.UseDefaultAppMode,
+            };
             ApplyWebViewColorScheme();
         }
         if (DispatcherQueue.HasThreadAccess)

@@ -334,15 +334,18 @@ struct MainWindowContentView: View {
     @ObservedObject var startupModel = StartupModel.shared
     @EnvironmentObject var appDelegate: AppDelegate
 
+    // Adding 10 prevents the scrollbar from being clipped at the minimum width.
+    private let MIN_WIDTH: CGFloat = COLUMN_WIDTH.min + DETAIL_WIDTH.min + 10
+    private let MIN_HEIGHT: CGFloat = 525
+
     var body: some View {
         Group {
             if let appState = self.startupModel.appState {
                 ContentView(appState: appState)
-                    // Adding 10 prevents the scrollbar from being clipped at the minimum width.
-                    .frame(minWidth: COLUMN_WIDTH.min + DETAIL_WIDTH.min + 10, minHeight: 525)
+                    .frame(minWidth: self.MIN_WIDTH, minHeight: self.MIN_HEIGHT)
             } else {
                 StartupView()
-                    .frame(minWidth: 800, minHeight: 525)
+                    .frame(minWidth: self.MIN_WIDTH, minHeight: self.MIN_HEIGHT)
             }
         }
         .preferredColorScheme(self.startupModel.selectedAppearance.colorScheme)

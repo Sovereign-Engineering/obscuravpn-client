@@ -1,7 +1,7 @@
 import { Anchor, Button, Combobox, Divider, Flex, Group, Image, Paper, Progress, ProgressRootProps, ScrollArea, Space, Stack, Text, ThemeIcon, Title, useCombobox, useMantineTheme } from '@mantine/core';
 import { useFocusTrap, useInterval, useToggle } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import { FunctionComponent, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BsChevronDown, BsPinFill } from 'react-icons/bs';
 import { IoIosEyeOff } from 'react-icons/io';
@@ -21,26 +21,26 @@ import { CColorSchemeContext } from '../components/CachedColorScheme';
 import { Flag } from '../components/CountryFlag';
 import ExternalLinkIcon from '../components/ExternalLinkIcon';
 import ObscuraChip from '../components/ObscuraChip';
-import DecoConnected from '../res/deco/deco-connected.svg';
-import DecoConnectingDark1 from '../res/deco/deco-connecting-dark-1.svg';
-import DecoConnectingDark2 from '../res/deco/deco-connecting-dark-2.svg';
-import DecoConnectingDark3 from '../res/deco/deco-connecting-dark-3.svg';
-import DecoConnectingLight1 from '../res/deco/deco-connecting-light-1.svg';
-import DecoConnectingLight2 from '../res/deco/deco-connecting-light-2.svg';
-import DecoConnectingLight3 from '../res/deco/deco-connecting-light-3.svg';
-import DecoDisconnectedDark from '../res/deco/deco-disconnected-dark.svg';
-import DecoDisconnectedLight from '../res/deco/deco-disconnected-light.svg';
-import DecoOfflineDark from '../res/deco/deco-offline-dark.svg';
-import DecoOfflineLight from '../res/deco/deco-offline-light.svg';
-import MascotConnectedFirstTime from '../res/mascots/connected-first-time-mascot.svg';
-import MascotConnected from '../res/mascots/connected-mascot.svg';
-import MascotConnecting1 from '../res/mascots/connecting-1-mascot.svg';
-import MascotConnecting2 from '../res/mascots/connecting-2-mascot.svg';
-import MascotConnecting3 from '../res/mascots/connecting-3-mascot.svg';
-import MascotConnecting4 from '../res/mascots/connecting-4-mascot.svg';
-import MascotDead from '../res/mascots/dead-mascot.svg';
-import MascotNotConnected from '../res/mascots/not-connected-mascot.svg';
-import MascotValidating from '../res/mascots/validating-mascot.svg';
+import DecoConnected from '../res/deco/deco-connected.svg?react';
+import DecoConnectingDark1 from '../res/deco/deco-connecting-dark-1.svg?react';
+import DecoConnectingDark2 from '../res/deco/deco-connecting-dark-2.svg?react';
+import DecoConnectingDark3 from '../res/deco/deco-connecting-dark-3.svg?react';
+import DecoConnectingLight1 from '../res/deco/deco-connecting-light-1.svg?react';
+import DecoConnectingLight2 from '../res/deco/deco-connecting-light-2.svg?react';
+import DecoConnectingLight3 from '../res/deco/deco-connecting-light-3.svg?react';
+import DecoDisconnectedDark from '../res/deco/deco-disconnected-dark.svg?react';
+import DecoDisconnectedLight from '../res/deco/deco-disconnected-light.svg?react';
+import DecoOfflineDark from '../res/deco/deco-offline-dark.svg?react';
+import DecoOfflineLight from '../res/deco/deco-offline-light.svg?react';
+import MascotConnectedFirstTime from '../res/mascots/connected-first-time-mascot.svg?react';
+import MascotConnected from '../res/mascots/connected-mascot.svg?react';
+import MascotConnecting1 from '../res/mascots/connecting-1-mascot.svg?react';
+import MascotConnecting2 from '../res/mascots/connecting-2-mascot.svg?react';
+import MascotConnecting3 from '../res/mascots/connecting-3-mascot.svg?react';
+import MascotConnecting4 from '../res/mascots/connecting-4-mascot.svg?react';
+import MascotDead from '../res/mascots/dead-mascot.svg?react';
+import MascotNotConnected from '../res/mascots/not-connected-mascot.svg?react';
+import MascotValidating from '../res/mascots/validating-mascot.svg?react';
 import ObscuraIconHappy from '../res/obscura-icon-happy.svg';
 import classes from './ConnectionView.module.css';
 
@@ -114,7 +114,7 @@ export default function Connection() {
 
     return (
         <Stack align='center' h='100vh' gap={0} className={classes.container}>
-            <div className={classes.deco} style={{ backgroundImage: `url("${Deco()}")` }} />
+            <Deco />
             <Space h={40} />
             <Mascot />
             <Stack align='center' gap={primaryButtonShown ? 0 : 20} mt={primaryButtonShown ? 0 : 20} justify='space-around'>
@@ -295,7 +295,7 @@ function usePulsingProgress({ activated, bars = 2, w }: PulsingProgressProps) {
     return progressComponents;
 }
 
-const DECO_CONNECTING_ARRAY = {
+const DECO_CONNECTING_ARRAY: { light: [FunctionComponent, FunctionComponent, FunctionComponent], dark: [FunctionComponent, FunctionComponent, FunctionComponent] } = {
     light: [DecoConnectingLight1, DecoConnectingLight2, DecoConnectingLight3],
     dark: [DecoConnectingDark1, DecoConnectingDark2, DecoConnectingDark3]
 };
@@ -304,44 +304,55 @@ const DEC_LAST_IDX = DECO_CONNECTING_ARRAY.light.length - 1;
 function Deco() {
     const {
         vpnConnected,
-        connectionInProgress,
         showOfflineUI,
         osStatus
     } = useContext(AppContext);
     const colorScheme = useContext(CColorSchemeContext);
     const [connectingIndex, toggleConnectingDeco] = useToggle([0, 1, 2, 2]);
+    const isTransitioning = useIsTransitioning()
 
     const { start, stop } = useInterval(() => {
       toggleConnectingDeco();
     }, osStatus.osVpnStatus === NEVPNStatus.Disconnecting ? 750 : 500);
 
     useEffect(() => {
-        if (connectionInProgress !== ConnectionInProgress.UNSET) {
-            start();
+        if (isTransitioning) {
+          start();
         } else {
-            if (connectingIndex !== 0) {
-              toggleConnectingDeco(0);
-            }
-            stop();
+          if (connectingIndex !== 0) {
+            toggleConnectingDeco(0);
+          }
+          stop();
         }
         return () => stop();
-    }, [connectionInProgress, start, stop]);
+    }, [isTransitioning, start, stop]);
 
-    if (showOfflineUI) return colorScheme === 'light' ? DecoOfflineLight : DecoOfflineDark;
+    const getDeco = () => {
+        if (showOfflineUI) return colorScheme === 'light' ? DecoOfflineLight : DecoOfflineDark;
 
-    if (connectionInProgress !== ConnectionInProgress.UNSET) {
-        // reverse the animation when disconnecting
-        const adjustedIdx = osStatus.osVpnStatus === NEVPNStatus.Disconnecting ? DEC_LAST_IDX - connectingIndex : connectingIndex;
-        const connectionDeco = DECO_CONNECTING_ARRAY[colorScheme][adjustedIdx];
-        if (connectionDeco === undefined) {
-            console.error(`adjustedIdx/connectingIndex (${adjustedIdx} or ${connectingIndex}) longer than DECO_CONNECTING_ARRAY`);
-            return DECO_CONNECTING_ARRAY[colorScheme][0];
+        if (isTransitioning) {
+            // reverse the animation when disconnecting
+            const adjustedIdx = osStatus.osVpnStatus === NEVPNStatus.Disconnecting ? DEC_LAST_IDX - connectingIndex : connectingIndex;
+            const connectionDeco = DECO_CONNECTING_ARRAY[colorScheme][adjustedIdx];
+            if (connectionDeco === undefined) {
+                console.error(`adjustedIdx/connectingIndex (${adjustedIdx} or ${connectingIndex}) longer than DECO_CONNECTING_ARRAY`);
+                return DECO_CONNECTING_ARRAY[colorScheme][0];
+            }
+            console.log('showing connection with index', adjustedIdx);
+            return connectionDeco;
         }
-        return connectionDeco;
+
+        if (vpnConnected) {
+          console.log('showing connected');
+          return DecoConnected;
+        }
+        console.log('showing disconnected');
+        return colorScheme === 'light' ? DecoDisconnectedLight : DecoDisconnectedDark;
     };
 
-    if (vpnConnected) return DecoConnected;
-    return colorScheme === 'light' ? DecoDisconnectedLight : DecoDisconnectedDark;
+    const ActiveDeco = getDeco();
+    // xMidYMax reproduces `background-size: contain; background-position: bottom`
+    return <ActiveDeco className={classes.deco} preserveAspectRatio="xMidYMax meet" />;
 }
 
 const MASCOT_CONNECTING = [
@@ -412,7 +423,8 @@ function Mascot() {
         if (accountIsExpired(accountInfo)) return MascotDead;
         return MascotNotConnected;
     };
-    return <Image src={getMascot()} maw={90} />;
+    const ActiveMascot = getMascot();
+    return <ActiveMascot className={classes.mascot} />;
 }
 
 function LocationSelect(): ReactNode {

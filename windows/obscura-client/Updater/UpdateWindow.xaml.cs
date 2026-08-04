@@ -9,6 +9,9 @@ using NetSparkleUpdater.Events;
 using Windows.ApplicationModel.Core;
 using Windows.Foundation;
 using Windows.Graphics;
+using Windows.Win32;
+using Windows.Win32.Foundation;
+using Windows.Win32.UI.WindowsAndMessaging;
 using WinUIEx;
 
 namespace Obscura_Client.Updater;
@@ -67,6 +70,14 @@ public sealed partial class UpdateWindow : Window
         _sparkle.DownloadHadError += OnDownloadHadError;
         _sparkle.InstallUpdateFailed += OnInstallUpdateFailed;
         Closed += OnClosed;
+    }
+
+    internal void BringToFront()
+    {
+        var hwnd = (HWND)WinRT.Interop.WindowNative.GetWindowHandle(this);
+        PInvoke.ShowWindow(hwnd, SHOW_WINDOW_CMD.SW_NORMAL);
+        Activate();
+        PInvoke.SetForegroundWindow(hwnd);
     }
 
     /// <summary>

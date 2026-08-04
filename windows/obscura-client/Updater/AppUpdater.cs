@@ -223,7 +223,7 @@ public sealed class AppUpdater
                 _updateWindow = new UpdateWindow(this, item, AvailableReleaseNotes);
                 _updateWindow.Closed += (_, _) => _updateWindow = null;
             }
-            _updateWindow.Activate();
+            _updateWindow.BringToFront();
         });
     }
 

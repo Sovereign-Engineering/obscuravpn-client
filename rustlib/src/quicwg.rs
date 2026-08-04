@@ -37,6 +37,8 @@ use uuid::Uuid;
 
 use crate::int_helper::usize_into_u64;
 use crate::liveness::LivenessChecker;
+use crate::net::NetworkInterface;
+use crate::net::new_nonblocking_tcp;
 use crate::tokio::AbortOnDrop;
 use crate::wake_instant::WakeInstant;
 
@@ -528,11 +530,13 @@ impl QuicWgConnHandshaking {
 
     pub async fn start_tcp_tls(
         relay_id: String,
+        network_interface: Option<&NetworkInterface>,
         relay_addr: SocketAddr,
         relay_cert: CertificateDer<'static>,
         relay_sni: &str,
     ) -> Result<Self, QuicWgConnectError> {
-        let tcp_stream = TcpStream::connect(relay_addr).await.map_err(QuicWgConnectError::TransportConnect)?;
+        let tcp_socket = new_nonblocking_tcp(network_interface).map_err(QuicWgConnectError::TransportConnect)?;
+        let tcp_stream = tcp_socket.connect(relay_addr).await.map_err(QuicWgConnectError::TransportConnect)?;
         if let Err(error) = tcp_stream.set_nodelay(true) {
             tracing::warn!(message_id = "k9KRCm3G", ?error, "failed to set tcp nodelay");
         }

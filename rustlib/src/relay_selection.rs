@@ -33,10 +33,13 @@ pub fn race_relay_handshakes(
             let relay_cert = relay.tls_cert.clone().into();
             let relay = relay.clone();
             let sni = sni.clone();
+            let network_interface = network_interface.cloned();
             tasks.spawn(async move {
                 let result: Result<(QuicWgConnHandshaking, Duration), QuicWgConnectError> = async {
                     let mut handshaking = match use_tcp_tls {
-                        true => QuicWgConnHandshaking::start_tcp_tls(relay.id.clone(), relay_addr, relay_cert, &sni).await,
+                        true => {
+                            QuicWgConnHandshaking::start_tcp_tls(relay.id.clone(), network_interface.as_ref(), relay_addr, relay_cert, &sni).await
+                        }
                         false => {
                             QuicWgConnHandshaking::start_quic(relay.id.clone(), &quic_endpoint, relay_addr, relay_cert, &sni, quic_frame_padding)
                                 .await

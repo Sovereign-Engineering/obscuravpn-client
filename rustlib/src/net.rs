@@ -25,8 +25,8 @@ pub struct NetworkInterface {
     pub mtu: i32,
 }
 
-pub fn new_udp(network_interface: Option<&NetworkInterface>) -> io::Result<std::net::UdpSocket> {
-    let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP))?;
+fn new_socket(network_interface: Option<&NetworkInterface>, ty: Type, protocol: Option<Protocol>) -> io::Result<Socket> {
+    let socket = Socket::new(Domain::IPV4, ty, protocol)?;
     #[cfg(not(any(target_os = "android", target_os = "linux", target_os = "windows")))]
     if let Some(network_interface) = network_interface {
         socket.bind_device_by_index_v4(Some(network_interface.index.into()))?;
@@ -47,7 +47,17 @@ pub fn new_udp(network_interface: Option<&NetworkInterface>) -> io::Result<std::
         _ = network_interface;
     }
     socket.bind(&bind_addr)?;
-    Ok(socket.into())
+    Ok(socket)
+}
+
+pub fn new_udp(network_interface: Option<&NetworkInterface>) -> io::Result<std::net::UdpSocket> {
+    Ok(new_socket(network_interface, Type::DGRAM, Some(Protocol::UDP))?.into())
+}
+
+pub fn new_nonblocking_tcp(network_interface: Option<&NetworkInterface>) -> io::Result<tokio::net::TcpSocket> {
+    let socket = new_socket(network_interface, Type::STREAM, Some(Protocol::TCP))?;
+    socket.set_nonblocking(true)?;
+    Ok(tokio::net::TcpSocket::from_std_stream(socket.into()))
 }
 
 #[cfg(not(any(target_os = "android", target_os = "ios", target_os = "macos", target_os = "windows")))]

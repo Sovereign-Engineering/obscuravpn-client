@@ -24,11 +24,11 @@ const IS_LINUX = PLATFORM === Platform.Linux;
 export default function Settings() {
   return (
     <Stack mb='xl' gap='lg' align='flex-start' className={classes.container}>
-      <GeneralSettings />
+      {!IS_LINUX && <GeneralSettings />}
       <DnsSettings />
       <ExperimentalSettings />
       <NetworkSettings />
-      <AppearanceSettings />
+      {!IS_LINUX && <AppearanceSettings />}
     </Stack>
   );
 }

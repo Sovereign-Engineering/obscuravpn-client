@@ -20,6 +20,7 @@ const APPLE_PLATFORMS = new Set([Platform.macOS, Platform.iOS]);
 const IS_APPLE = APPLE_PLATFORMS.has(PLATFORM);
 const IS_ANDROID = PLATFORM === Platform.Android;
 const IS_LINUX = PLATFORM === Platform.Linux;
+const IS_WINDOWS = PLATFORM === Platform.Windows;
 
 export default function Settings() {
   return (
@@ -37,6 +38,8 @@ function DnsSettings() {
   const { t } = useTranslation();
   const { appStatus, osStatus } = useContext(AppContext);
   const { dnsContentBlock, useSystemDns } = appStatus;
+  /* no "Use system DNS" on Android (see applyNetworkConfig in ObscuraVpnService.kt) */
+  const SUPPORTS_DNS_SELECTION = !IS_ANDROID && !IS_WINDOWS;
 
   const onBlockChange = (key: keyof DNSContentBlock, e: React.ChangeEvent<HTMLInputElement>) => {
     const checked = e.currentTarget.checked;
@@ -65,17 +68,7 @@ function DnsSettings() {
             <IoHelpCircleOutline size='1.5em' />
           </ActionIcon>
         </Group>
-        {IS_ANDROID ? (
-          /* no "Use system DNS" on Android. See applyNetworkConfig in ObscuraVpnService.kt for the reasons. */
-          <>
-            <Stack gap='xs'>{checkboxes}</Stack>
-            {osStatus.privateDnsActive && (
-              <Alert icon={<MdWarning />} color='orange' variant='light'>
-                {t('androidPrivateDnsAlert')}
-              </Alert>
-            )}
-          </>
-        ) : (
+        {SUPPORTS_DNS_SELECTION ? (
           <Radio.Group value={useSystemDns ? 'system' : 'obscura'} onChange={(val) => commands.setUseSystemDns(val === 'system')}>
             <Stack gap='sm'>
               <Radio value="obscura" label={t('dnsModeObscura')} />
@@ -83,6 +76,13 @@ function DnsSettings() {
               <Radio value="system" label={t('dnsModeSystem')} description={t('dnsModeSystemDescription')} />
             </Stack>
           </Radio.Group>
+        ) : (
+          <Stack gap='xs'>{checkboxes}</Stack>
+        )}
+        {IS_ANDROID && osStatus.privateDnsActive && (
+          <Alert icon={<MdWarning />} color='orange' variant='light'>
+            {t('androidPrivateDnsAlert')}
+          </Alert>
         )}
       </Stack>
     </Card>

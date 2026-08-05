@@ -59,10 +59,16 @@ export async function jsonFfiCmd(cmd: string, arg = {}, timeoutMs: number | null
     })
 }
 
-export type LinuxFixAction = 'start' | 'enableAndStart' | 'addOperator';
+export async function restartService(args: { enable: boolean }): Promise<void> {
+    await invoke('restartService', args);
+}
 
-export async function linuxFix(action: LinuxFixAction): Promise<void> {
-    await invoke('linuxFix', { action });
+export async function linuxAddOperator(): Promise<void> {
+    await invoke('linuxAddOperator');
+}
+
+export async function restartApp(): Promise<void> {
+    await invoke('restartApp');
 }
 
 export type WindowsFixAction = 'start' | 'enableAndStart';

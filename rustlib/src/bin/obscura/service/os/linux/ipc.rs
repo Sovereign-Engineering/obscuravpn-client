@@ -3,7 +3,8 @@ use crate::service::os::linux::service_lock::ServiceLock;
 use crate::service::os::linux::start_error::LinuxServiceStartError;
 use flume::{Receiver, Sender, bounded};
 use obscuravpn_client::int_helper::u32_into_usize;
-use obscuravpn_client::linux::ipc::SOCKET_PATH;
+use obscuravpn_client::linux::ipc::{LinuxIpcHeader, SOCKET_PATH};
+use obscuravpn_client::version::release_version;
 use std::fs;
 use std::io::ErrorKind;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -59,7 +60,12 @@ impl ServiceIpc {
     async fn handle_stream(mut stream: UnixStream, sender: Sender<(Vec<u8>, Box<dyn FnOnce(Vec<u8>) + Send>)>) -> Result<(), ()> {
         tracing::info!(message_id = "M0sAFoC7", "handling new socket stream");
 
-        // TODO: send a build identifier to allow the client to ensure it is the same binary (command protocol has no stability guarantees)
+        LinuxIpcHeader { version: release_version().to_owned() }
+            .write(&mut stream)
+            .await
+            .map_err(|error| {
+                tracing::error!(message_id = "cV2mXk8T", ?error, "failed to write IPC header to socket stream: {error}");
+            })?;
 
         let mut len = [0u8; 4];
         stream.read_exact(&mut len).await.map_err(|error| {

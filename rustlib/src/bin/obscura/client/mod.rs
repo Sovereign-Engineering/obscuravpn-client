@@ -6,9 +6,53 @@ use anyhow::Context;
 use chrono::{MappedLocalTime, TimeZone};
 use obscuravpn_api::types::{AccountId, AccountInfo};
 use obscuravpn_client::exit_selection::ExitSelector;
-use obscuravpn_client::linux::ipc::{ClientError, run_command};
+use obscuravpn_client::linux::ipc::{LinuxIpcError, run_command};
 use obscuravpn_client::manager::{Status, TunnelArgs, VpnStatus};
-use obscuravpn_client::manager_cmd::ManagerCmd;
+use obscuravpn_client::manager_cmd::{ManagerCmd, ManagerCmdErrorCode};
+
+#[derive(thiserror::Error, Debug)]
+pub enum ClientError {
+    #[error("The Obscura API is unreachable.")]
+    ApiUnreachable,
+    #[error("Insufficient permissions to connect to service.")]
+    InsufficientPermissions,
+    #[error("Unexpected error. Details: {0:#}")]
+    Unexpected(#[from] anyhow::Error),
+    #[error("The Obscura VPN service is not running.")]
+    NoService,
+    #[error("Malformed account ID.")]
+    MalformedAccountId,
+    #[error("The running Obscura VPN service does not match this app version ({app_version}).")]
+    VersionMismatch { service_version: String, app_version: String },
+}
+
+impl From<ManagerCmdErrorCode> for ClientError {
+    fn from(error: ManagerCmdErrorCode) -> ClientError {
+        match error {
+            ManagerCmdErrorCode::ApiInvalidAccountId => ClientError::MalformedAccountId,
+            ManagerCmdErrorCode::ApiUnreachable => ClientError::ApiUnreachable,
+            ManagerCmdErrorCode::ApiAssociateAccountConflict
+            | ManagerCmdErrorCode::ApiError
+            | ManagerCmdErrorCode::ApiNoLongerSupported
+            | ManagerCmdErrorCode::ApiRateLimitExceeded
+            | ManagerCmdErrorCode::ApiSaleNotFound
+            | ManagerCmdErrorCode::ApiSignupLimitExceeded
+            | ManagerCmdErrorCode::ConfigSaveError
+            | ManagerCmdErrorCode::Other => anyhow::Error::msg(error.as_static_str()).into(),
+        }
+    }
+}
+
+impl From<LinuxIpcError> for ClientError {
+    fn from(error: LinuxIpcError) -> ClientError {
+        match error {
+            LinuxIpcError::InsufficientPermissions => ClientError::InsufficientPermissions,
+            LinuxIpcError::NoListener => ClientError::NoService,
+            LinuxIpcError::VersionMismatch { service_version, app_version } => ClientError::VersionMismatch { service_version, app_version },
+            LinuxIpcError::Other => ClientError::Unexpected(anyhow::Error::msg("unexpected IPC error")),
+        }
+    }
+}
 
 pub async fn run(global_args: GlobalArgs, cmd: ClientCommand) -> Result<(), ClientError> {
     // Group memberships changes do not automatically propagate into existing sessions. If we detect that launching the process with updated group memberships is necessary to do IPC, we replace the current process with a new one launched in a context with updated group memberships.

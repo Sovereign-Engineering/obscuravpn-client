@@ -17,6 +17,8 @@ pub mod relay_selection;
 mod serde_safe;
 pub mod tokio;
 pub mod tunnel_state;
+#[cfg(any(target_os = "linux", target_os = "windows"))]
+pub mod version;
 pub mod wg_key_store;
 
 #[cfg(test)]

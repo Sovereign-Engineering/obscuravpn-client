@@ -51,7 +51,7 @@ async fn run_poller(tx: watch::Sender<Option<Arc<ExitList>>>) {
                 sleep(Duration::from_secs(1)).await;
             }
             Err(error) => {
-                tracing::debug!(message_id = "Bn4kWy6h", %error, "cannot reach service to get exit list");
+                tracing::debug!(message_id = "Bn4kWy6h", ?error, "cannot reach service to get exit list");
                 sleep(Duration::from_secs(1)).await;
             }
         }
@@ -65,7 +65,7 @@ async fn run_refresher() {
         match run_command::<()>(ManagerCmd::RefreshExitList { freshness: REFRESH_INTERVAL }).await {
             Ok(Ok(())) => {}
             Ok(Err(error)) => tracing::warn!(message_id = "Gz8pLc4t", ?error, "service failed to refresh exit list"),
-            Err(error) => tracing::debug!(message_id = "Dm3rHx9s", %error, "cannot reach service to refresh exit list"),
+            Err(error) => tracing::debug!(message_id = "Dm3rHx9s", ?error, "cannot reach service to refresh exit list"),
         }
         sleep(REFRESH_INTERVAL).await;
     }

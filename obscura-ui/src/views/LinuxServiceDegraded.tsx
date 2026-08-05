@@ -4,70 +4,91 @@ import * as commands from '../bridge/commands';
 import { LinuxServiceDegradation } from '../common/appContext';
 import { TranslationKey } from '../translations/i18n';
 
-interface FixOption {
-  action: commands.LinuxFixAction;
+interface Fix {
+  command: () => Promise<void>;
   labelKey: TranslationKey;
+}
+
+interface Detail {
+  labelKey: TranslationKey;
+  value: string;
 }
 
 interface Degraded {
   titleKey: TranslationKey;
   messageKey: TranslationKey;
-  fixes: FixOption[];
+  details?: Detail[];
+  fix?: Fix;
 }
 
 function describe(degradation: LinuxServiceDegradation): Degraded {
+  if (typeof degradation === 'object') {
+    const { serviceVersion, appVersion, installedAppVersionDiffers } = degradation.versionMismatch;
+    const offerAppRestart = installedAppVersionDiffers !== false;
+    return {
+      titleKey: 'linuxService-versionMismatchTitle',
+      messageKey: offerAppRestart ? 'linuxService-versionMismatchMessage' : 'linuxService-versionMismatchServiceMessage',
+      details: [
+        { labelKey: 'linuxService-appVersion', value: appVersion },
+        { labelKey: 'linuxService-serviceVersion', value: serviceVersion },
+      ],
+      fix: offerAppRestart
+        ? { command: commands.restartApp, labelKey: 'linuxService-restartAppButton' }
+        : { command: () => commands.restartService({ enable: false }), labelKey: 'linuxService-restartServiceButton' },
+    };
+  }
   switch (degradation) {
-    case 'stopped':
-    case 'failed':
+    case 'unitInactive':
       return {
-        titleKey: 'linuxService-stoppedTitle',
-        messageKey: 'linuxService-stoppedMessage',
-        fixes: [{ action: 'start', labelKey: 'linuxService-startButton' }],
+        titleKey: 'linuxService-unitInactiveTitle',
+        messageKey: 'linuxService-unitInactiveMessage',
+        fix: { command: () => commands.restartService({ enable: true }), labelKey: 'linuxService-enableAndStartButton' },
       };
-    case 'disabled':
+    case 'socketPermissionDenied':
       return {
-        titleKey: 'linuxService-disabledTitle',
-        messageKey: 'linuxService-disabledMessage',
-        fixes: [
-          { action: 'enableAndStart', labelKey: 'linuxService-enableAndStartButton' },
-          { action: 'start', labelKey: 'linuxService-startOnceButton' },
-        ],
+        titleKey: 'linuxService-socketPermissionDeniedTitle',
+        messageKey: 'linuxService-socketPermissionDeniedMessage',
+        fix: { command: commands.linuxAddOperator, labelKey: 'linuxService-authorizeButton' },
       };
-    case 'noAccess':
+    case 'unitActivating':
       return {
-        titleKey: 'linuxService-noAccessTitle',
-        messageKey: 'linuxService-noAccessMessage',
-        fixes: [{ action: 'addOperator', labelKey: 'linuxService-authorizeButton' }],
+        titleKey: 'linuxService-unitActivatingTitle',
+        messageKey: 'linuxService-unitActivatingMessage',
       };
-    case 'notInstalled':
+    case 'unitNotInstalled':
       return {
-        titleKey: 'linuxService-notInstalledTitle',
-        messageKey: 'linuxService-notInstalledMessage',
-        fixes: [],
+        titleKey: 'linuxService-unitNotInstalledTitle',
+        messageKey: 'linuxService-unitNotInstalledMessage',
       };
-    case 'other':
+    case 'unknown':
       return {
-        titleKey: 'linuxService-otherTitle',
-        messageKey: 'linuxService-otherMessage',
-        fixes: [],
+        titleKey: 'linuxService-unknownTitle',
+        messageKey: 'linuxService-unknownMessage',
       };
   }
 }
 
 export default function LinuxServiceDegraded({ degradation }: { degradation: LinuxServiceDegradation }) {
   const { t } = useTranslation();
-  const { showLoadingUI, execute } = commands.useCommand({ command: commands.linuxFix, showNotification: true });
-  const { titleKey, messageKey, fixes } = describe(degradation);
+  const { showLoadingUI, execute } = commands.useCommand({ command: (fix: () => Promise<void>) => fix(), showNotification: true });
+  const { titleKey, messageKey, details, fix } = describe(degradation);
 
   return (
     <Stack align='center' gap='md' maw={420}>
       <Title order={3} ta='center'>{t(titleKey)}</Title>
       <Text c='dimmed' ta='center'>{t(messageKey)}</Text>
-      {fixes.map(fix => (
-        <Button key={fix.action} loading={showLoadingUI} onClick={() => execute(fix.action)}>
+      {details !== undefined && (
+        <Stack gap={0}>
+          {details.map(({ labelKey, value }) => (
+            <Text key={labelKey} c='dimmed' size='sm' ta='center'>{t(labelKey)}: {value}</Text>
+          ))}
+        </Stack>
+      )}
+      {fix !== undefined && (
+        <Button loading={showLoadingUI} onClick={() => execute(fix.command)}>
           {t(fix.labelKey)}
         </Button>
-      ))}
+      )}
     </Stack>
   );
 }

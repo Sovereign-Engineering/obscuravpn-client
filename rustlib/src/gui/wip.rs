@@ -4,12 +4,15 @@
 #![allow(unused_imports)]
 #![allow(clippy::enum_variant_names)]
 
+use crate::error::{LinuxErrorCode, LinuxFixErrorCode};
+use crate::fix::{add_operator, restart_service};
+use crate::{GtkAppFinished, MainThreadToken};
 use futures::StreamExt;
+use futures::channel::mpsc::Receiver;
 use gtk4::gio::{DBusError, DBusProxy, ResourceLookupFlags};
 use gtk4::glib::translate::ToGlibPtr as _;
 use obscuravpn_client::exit_selection::ExitSelector;
-use obscuravpn_client::linux::exit_list_watch::GuiExitListWatch;
-use obscuravpn_client::linux::ipc::{ClientError, run_command};
+use obscuravpn_client::linux::ipc::run_command;
 use obscuravpn_client::linux::status::OsStatus;
 use obscuravpn_client::linux::status_watch::GuiStatusWatch;
 use obscuravpn_client::linux::tray::{ShowTarget, TrayRequest};
@@ -17,8 +20,11 @@ use obscuravpn_client::manager::{self, TunnelArgs};
 use obscuravpn_client::manager_cmd::{ManagerCmd, ManagerCmdErrorCode, ManagerCmdOk};
 use serde::{Deserialize, Serialize};
 use std::cell::{Cell, RefCell};
+use std::future::Future;
+use std::process::ExitCode;
 use std::rc::Rc;
 use std::str::FromStr;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 use strum::IntoEnumIterator;
@@ -30,18 +36,16 @@ use webkit6::{
     HardwareAccelerationPolicy, Settings, URISchemeRequest, UserContentInjectedFrames, UserScript, WebContext, WebView, gio, javascriptcore,
     prelude::*,
 };
-use zbus_polkit::policykit1::{CheckAuthorizationFlags, Subject};
 use zbus_systemd::zbus; // provides the spawn method
 
-fn tokio_rt() -> &'static tokio::runtime::Runtime {
-    static RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
-    RUNTIME.get_or_init(|| tokio::runtime::Runtime::new().expect("Setting up tokio runtime needs to succeed."))
-}
-
-fn navigation_split_view(gui_status: Arc<GuiStatusWatch>, dev_visible: Rc<Cell<bool>>) -> (gtk::Box, ListBox) {
+fn navigation_split_view(
+    gui_status: Arc<GuiStatusWatch>,
+    restart: Rc<RefCell<Option<tokio::sync::oneshot::Sender<()>>>>,
+    dev_visible: Rc<Cell<bool>>,
+) -> (gtk::Box, ListBox) {
     let split_view = gtk::Box::new(Orientation::Horizontal, 0);
 
-    let webview = webview(gui_status);
+    let webview = webview(gui_status, restart);
     webview.set_hexpand(true);
 
     let sidebar = sidebar(&webview, dev_visible);
@@ -104,7 +108,7 @@ fn uri_handler(request: &URISchemeRequest) {
     request.finish(&stream, -1, Some(&mimetype));
 }
 
-fn webview(gui_status: Arc<GuiStatusWatch>) -> WebView {
+fn webview(gui_status: Arc<GuiStatusWatch>, restart: Rc<RefCell<Option<tokio::sync::oneshot::Sender<()>>>>) -> WebView {
     let user_content_manager = webkit6::UserContentManager::new();
 
     let error_capture_script = UserScript::new(
@@ -125,7 +129,7 @@ fn webview(gui_status: Arc<GuiStatusWatch>) -> WebView {
     user_content_manager.add_script(&log_capture_script);
 
     user_content_manager.connect_script_message_with_reply_received(Some("commandBridge"), move |ucm, value, reply| {
-        command_bridge(ucm, value, reply, gui_status.clone())
+        command_bridge(ucm, value, reply, gui_status.clone(), restart.clone())
     });
     user_content_manager.register_script_message_handler_with_reply("commandBridge", None);
 
@@ -253,17 +257,11 @@ pub enum Cmd {
     RevealItemInDir {
         path: String,
     },
-    LinuxFix {
-        action: LinuxFixAction,
+    RestartService {
+        enable: bool,
     },
-}
-
-#[derive(derive_more::Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
-pub enum LinuxFixAction {
-    Start,
-    EnableAndStart,
-    AddOperator,
+    LinuxAddOperator {},
+    RestartApp {},
 }
 
 #[derive(strum::EnumIter, strum::Display, strum::EnumString, Default, PartialEq)]
@@ -319,6 +317,7 @@ fn command_bridge(
     value: &webkit6::javascriptcore::Value,
     reply: &webkit6::ScriptMessageReply,
     gui_status: Arc<GuiStatusWatch>,
+    restart: Rc<RefCell<Option<tokio::sync::oneshot::Sender<()>>>>,
 ) -> bool {
     let command_json_gstring = value.to_str();
     let command_json_str = command_json_gstring.as_str();
@@ -364,22 +363,14 @@ fn command_bridge(
                 ),
             );
         }
-        Cmd::LinuxFix { action } => {
-            tokio_to_glib_local_fut_pipe(
-                async move { apply_linux_fix(action).await },
-                glib::clone!(
-                    #[strong]
-                    reply,
-                    #[strong]
-                    value_context,
-                    move |res: Result<(), String>| async move {
-                        match res {
-                            Ok(()) => reply.return_value(&javascriptcore::Value::new_string(&value_context, None)),
-                            Err(error) => reply.return_error_message(&error),
-                        }
-                    }
-                ),
-            );
+        Cmd::RestartService { enable } => {
+            glib_run_linux_fix_and_reply(restart_service(enable), false, &value_context, reply, restart);
+        }
+        Cmd::LinuxAddOperator {} => {
+            glib_run_linux_fix_and_reply(add_operator(), true, &value_context, reply, restart);
+        }
+        Cmd::RestartApp {} => {
+            glib_run_linux_fix_and_reply(async { Ok(()) }, true, &value_context, reply, restart);
         }
         Cmd::JsonFfiCmd { ref cmd, timeout_ms } => {
             let mgr_cmd: ManagerCmd = serde_json::from_str(cmd).unwrap();
@@ -460,10 +451,45 @@ where
         glib_fut(res).await;
     }));
 
-    tokio_rt().spawn(glib::clone!(async move {
+    tokio::spawn(glib::clone!(async move {
         let res: TFO = tokio_fut.await;
         sender.send(res).unwrap();
     }));
+}
+
+fn glib_run_linux_fix_and_reply(
+    fix: impl Future<Output = Result<(), LinuxFixErrorCode>> + Send + 'static,
+    restart_app: bool,
+    value_context: &javascriptcore::Context,
+    reply: &webkit6::ScriptMessageReply,
+    restart: Rc<RefCell<Option<tokio::sync::oneshot::Sender<()>>>>,
+) {
+    tokio_to_glib_local_fut_pipe(
+        async move {
+            fix.await.map_err(LinuxErrorCode::from)?;
+            Ok(restart_app)
+        },
+        glib::clone!(
+            #[strong]
+            reply,
+            #[strong]
+            value_context,
+            move |res: Result<bool, LinuxErrorCode>| async move {
+                match res {
+                    Ok(restart_app) => {
+                        reply.return_value(&javascriptcore::Value::new_string(
+                            &value_context,
+                            Some(&serde_json::json!({}).to_string()),
+                        ));
+                        if restart_app && let Some(quit) = restart.borrow_mut().take() {
+                            let _ = quit.send(());
+                        }
+                    }
+                    Err(error) => reply.return_error_message(error.as_static_str()),
+                }
+            }
+        ),
+    );
 }
 
 fn glib_async_run_mgr_cmd_and_reply(
@@ -474,19 +500,21 @@ fn glib_async_run_mgr_cmd_and_reply(
 ) {
     eprintln!("Got a call for JsonFfiCmd: '{:?}'", mgr_cmd);
 
-    tokio_to_glib_local_fut_pipe::<Result<serde_json::Value, String>, _, _, _>(
+    tokio_to_glib_local_fut_pipe::<Result<serde_json::Value, LinuxErrorCode>, _, _, _>(
         async move {
-            let mut last_error: Option<String> = None;
+            let mut last_error: Option<LinuxErrorCode> = None;
             for _attempt in 0..10 {
                 let fut = run_command::<serde_json::Value>(mgr_cmd.clone());
                 let run_command_res = if let Some(ref timeout_ms) = timeout_ms {
                     let Some(timeout_ms_u64) = timeout_ms.as_u64() else {
-                        return Err(format!("timeout_ms cannot be represented as u64: '{timeout_ms}'").to_owned());
+                        tracing::error!(message_id = "uW2fJn9K", %timeout_ms, "timeout_ms cannot be represented as u64");
+                        return Err(LinuxErrorCode::Other);
                     };
                     match tokio::time::timeout(Duration::from_millis(timeout_ms_u64), fut).await {
                         Ok(res) => res,
-                        Err(err) => {
-                            last_error = Some(err.to_string());
+                        Err(error) => {
+                            tracing::error!(message_id = "oM5xDt3V", %error, timeout_ms = timeout_ms_u64, "manager command timed out");
+                            last_error = Some(LinuxErrorCode::Other);
                             continue;
                         }
                     }
@@ -497,19 +525,18 @@ fn glib_async_run_mgr_cmd_and_reply(
                 match run_command_res {
                     Ok(Ok(res)) => return Ok(res),
                     Ok(Err(error)) => {
-                        let err = ClientError::from(error);
-                        eprintln!("Failed to connect: {err}");
-                        last_error = Some(err.to_string());
+                        tracing::error!(message_id = "gK8cQb4R", ?error, "manager command failed");
+                        last_error = Some(error.into());
                     }
-                    Err(err) => {
-                        eprintln!("Failed to connect: {err}");
-                        last_error = Some(err.to_string());
+                    Err(error) => {
+                        tracing::error!(message_id = "wZ3hSp7L", ?error, "failed to run manager command over IPC");
+                        last_error = Some(LinuxErrorCode::from(&error));
                     }
                 }
 
                 tokio::time::sleep(Duration::from_secs(1)).await;
             }
-            Err(format!("max attempt passed: {last_error}", last_error = last_error.unwrap()))
+            Err(last_error.unwrap())
         },
         glib::clone!(
             #[strong]
@@ -520,7 +547,7 @@ fn glib_async_run_mgr_cmd_and_reply(
                 let res = match res {
                     Ok(res) => res,
                     Err(error) => {
-                        reply.return_error_message(&error);
+                        reply.return_error_message(error.as_static_str());
                         return;
                     }
                 };
@@ -647,7 +674,10 @@ fn lbr_to_appview(lbr: &gtk::ListBoxRow, model: &impl IsA<gio::ListModel>) -> Ap
     AppView::from_str(&av_string).unwrap()
 }
 
-fn build_primary_window(gui_status: Arc<GuiStatusWatch>) -> (gtk::ApplicationWindow, ListBox) {
+fn build_primary_window(
+    gui_status: Arc<GuiStatusWatch>,
+    restart: Rc<RefCell<Option<tokio::sync::oneshot::Sender<()>>>>,
+) -> (gtk::ApplicationWindow, ListBox) {
     let window = gtk::ApplicationWindow::builder()
         .hide_on_close(true) // So that closing window doesn't quit app
         .default_width(800)
@@ -660,7 +690,7 @@ fn build_primary_window(gui_status: Arc<GuiStatusWatch>) -> (gtk::ApplicationWin
 
     let dev_visible = Rc::new(Cell::new(false));
 
-    let (split_view, sidebar) = navigation_split_view(gui_status, dev_visible.clone());
+    let (split_view, sidebar) = navigation_split_view(gui_status, restart, dev_visible.clone());
     window.set_child(Some(&split_view));
 
     // Ctrl+Shift+D toggles Developer sidebar item
@@ -700,11 +730,6 @@ fn select_view_row(sidebar: &ListBox, view: &AppView) {
     sidebar.select_row(Some(&row));
 }
 
-// TODO: handle unable to spawn tray, do we retry? do we tell user to install appindicator gnome
-// extension?
-//
-// TODO: UI for no service
-
 fn print_gresources(res: &gio::Resource, path: &str) {
     match res.enumerate_children(path, gio::ResourceLookupFlags::NONE) {
         Ok(children) => {
@@ -721,118 +746,19 @@ fn print_gresources(res: &gio::Resource, path: &str) {
     }
 }
 
-async fn apply_linux_fix(action: LinuxFixAction) -> Result<(), String> {
-    match action {
-        LinuxFixAction::Start => systemd_start(false).await,
-        LinuxFixAction::EnableAndStart => systemd_start(true).await,
-        LinuxFixAction::AddOperator => add_operator().await,
-    }
-}
-
-async fn systemd_start(enable: bool) -> Result<(), String> {
-    let conn = zbus::connection::Builder::system()
-        .map_err(|e| e.to_string())?
-        .method_timeout(Duration::MAX) // interactive polkit auth can take a while
-        .build()
-        .await
-        .map_err(|e| e.to_string())?;
-    let authority = zbus_polkit::policykit1::AuthorityProxy::new(&conn).await.map_err(|e| e.to_string())?;
-    let subject = polkit_subject(&conn);
-    authorize(&authority, &subject, "org.freedesktop.systemd1.manage-units").await?;
-    let systemd = zbus_systemd::systemd1::ManagerProxy::new(&conn).await.map_err(|e| e.to_string())?;
-    if enable {
-        authorize(&authority, &subject, "org.freedesktop.systemd1.manage-unit-files").await?;
-        systemd
-            .enable_unit_files(vec!["obscura.service".to_owned()], false, true)
-            .await
-            .map_err(|e| e.to_string())?;
-    }
-    let unit = systemd.load_unit("obscura.service".to_owned()).await.map_err(|e| e.to_string())?;
-    let unit_proxy = zbus_systemd::systemd1::UnitProxy::new(&conn, unit).await.map_err(|e| e.to_string())?;
-    unit_proxy.start("replace".to_owned()).await.map_err(|e| e.to_string())?;
-    Ok(())
-}
-
-// system-bus-name subject avoids PID-namespace issues in sandboxes (polkit reads the connection's
-// credentials), falling back to unix-process when no unique name is available.
-fn polkit_subject(conn: &zbus::Connection) -> Subject {
-    if let Some(bus_name) = conn.unique_name() {
-        use zbus::zvariant::{OwnedValue, Str};
-        let mut subject_details = std::collections::HashMap::new();
-        subject_details.insert("name".to_string(), OwnedValue::from(Str::from(bus_name.as_str())));
-        Subject { subject_kind: "system-bus-name".to_string(), subject_details }
-    } else {
-        Subject::new_for_owner(std::process::id(), None, None).unwrap()
-    }
-}
-
-async fn authorize(authority: &zbus_polkit::policykit1::AuthorityProxy<'_>, subject: &Subject, action: &str) -> Result<(), String> {
-    let result = authority
-        .check_authorization(
-            subject,
-            action,
-            &std::collections::HashMap::new(),
-            CheckAuthorizationFlags::AllowUserInteraction.into(),
-            "",
-        )
-        .await
-        .map_err(|e| e.to_string())?;
-    if result.is_authorized {
-        Ok(())
-    } else {
-        Err(format!("not authorized for {action}"))
-    }
-}
-
-async fn add_operator() -> Result<(), String> {
-    let status = tokio::process::Command::new("pkexec")
-        .arg("obscura")
-        .arg("add-operator")
-        .status()
-        .await
-        .map_err(|e| e.to_string())?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(format!("`pkexec obscura add-operator` failed: {status}"))
-    }
-}
-
-// TODO: handle service stop after gui start
-
-pub(crate) fn main() -> glib::ExitCode {
-    if std::env::args().skip(1).any(|arg| arg == "ipc-test") {
-        match tokio_rt().block_on(run_command::<()>(ManagerCmd::Ping {})) {
-            Ok(Ok(())) => std::process::exit(0),
-            _ => std::process::exit(1),
-        }
-    }
-
-    if !std::env::args().skip(1).any(|arg| arg == "--no-group-refresh") {
-        tokio_rt().block_on(obscuravpn_client::linux::ipc::try_group_refresh_fix());
-    }
-
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::builder()
-                .with_default_directive(tracing::level_filters::LevelFilter::INFO.into())
-                .from_env_lossy(),
-        )
-        .init();
-
+/// Must run on the main thread. Blocks until the app quits.
+pub(crate) fn run_gtk_app(
+    _main_thread: MainThreadToken,
+    gui_status: Arc<GuiStatusWatch>,
+    mut tray_receiver: Receiver<TrayRequest>,
+) -> GtkAppFinished {
     eprintln!("First light");
-
-    let (tray_sender, mut tray_receiver) = futures::channel::mpsc::unbounded::<TrayRequest>();
-
-    let gui_status = tokio_rt().block_on(GuiStatusWatch::watch());
-    let exit_list = tokio_rt().block_on(GuiExitListWatch::watch());
-    tokio_rt().block_on(obscuravpn_client::linux::tray::spawn_tray(gui_status.clone(), exit_list, tray_sender));
 
     // So that we can initialize our window without being in connect_activate/startup Fn scope
     // (which is not FnOnce), see: https://gtk-rs.org/gtk4-rs/stable/latest/docs/gtk4/fn.init.html
     let Ok(()) = gtk::init() else {
         eprintln!("Failed to init gtk4");
-        return glib::ExitCode::FAILURE;
+        return GtkAppFinished::Exit(ExitCode::FAILURE);
     };
 
     let resources_bytes: &[u8] = include_bytes!(concat!(env!("OBSCURA_GRESOURCES_DIR"), "/icons.gresource"));
@@ -856,7 +782,10 @@ pub(crate) fn main() -> glib::ExitCode {
         .flags(gio::ApplicationFlags::default())
         .build();
 
-    let (window, sidebar) = build_primary_window(gui_status);
+    let restart_requested = Arc::new(AtomicBool::new(false));
+    let (quit_tx, quit_rx) = tokio::sync::oneshot::channel();
+    let restart = Rc::new(RefCell::new(Some(quit_tx)));
+    let (window, sidebar) = build_primary_window(gui_status, restart.clone());
 
     glib::spawn_future_local(glib::clone!(
         #[strong]
@@ -897,9 +826,17 @@ pub(crate) fn main() -> glib::ExitCode {
         }
     ));
 
+    let restart_requested_setter = restart_requested.clone();
     tokio_to_glib_local_fut_pipe(
         async move {
-            tokio::signal::ctrl_c().await.expect("failed to listen for ctrl-c");
+            tokio::select! {
+                result = tokio::signal::ctrl_c() => result.expect("failed to listen for ctrl-c"),
+                result = quit_rx => {
+                    if result.is_ok() {
+                        restart_requested_setter.store(true, Ordering::Relaxed);
+                    }
+                }
+            }
         },
         glib::clone!(
             #[strong]
@@ -911,5 +848,10 @@ pub(crate) fn main() -> glib::ExitCode {
         ),
     );
 
-    app.run_with_args::<&str>(&[])
+    let gtk_exit_code = app.run_with_args::<&str>(&[]);
+    if restart_requested.load(Ordering::Relaxed) {
+        GtkAppFinished::Restart
+    } else {
+        GtkAppFinished::Exit(u8::try_from(gtk_exit_code.value()).map(ExitCode::from).unwrap_or(ExitCode::FAILURE))
+    }
 }

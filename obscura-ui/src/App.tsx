@@ -9,7 +9,7 @@ import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import classes from './App.module.css';
 import * as commands from './bridge/commands';
 import { HAS_NE_VPN_STATUS, IS_HANDHELD_DEVICE, logReactError, PLATFORM, Platform, useSystemChecks } from './bridge/SystemProvider';
-import { AppContext, AppStatus, ConnectionInProgress, connectionIsIdle, getEffectiveOsStatus, linuxDegradation, NavigationView, NEVPNStatus, OsStatus, OsStatusWVpnStatus, windowsDegradation } from './common/appContext';
+import { AppContext, AppStatus, ConnectionInProgress, connectionIsIdle, getEffectiveOsStatus, latestAppStatus, linuxDegradation, NavigationView, NEVPNStatus, OsStatus, OsStatusWVpnStatus, windowsDegradation } from './common/appContext';
 import commonClasses from './common/common.module.css';
 import { fmt } from './common/fmt';
 import { NotificationId } from './common/notifIds';
@@ -184,9 +184,9 @@ export default function () {
     }
   }
 
-  // this code fetches the status of the VPN continuously
-  // getting the status is blocking and takes an ID such that if non-null, only new statuses will be returned
+  // TODO: Remove in favor of polling merged OsStatus/Status type: https://linear.app/soveng/issue/OBS-3889
   useEffect(() => {
+    if (PLATFORM === Platform.Linux) return;
     let knownStatusId = null;
     let keepAlive = true;
     (async () => {
@@ -206,7 +206,9 @@ export default function () {
     return () => { keepAlive = false; };
   }, []);
 
+  // TODO: Remove in favor of polling merged OsStatus/Status type: https://linear.app/soveng/issue/OBS-3889
   useEffect(() => {
+    if (PLATFORM === Platform.Linux) return;
     let knownOsStatusId = null;
     let keepAlive = true;
     (async () => {
@@ -219,6 +221,24 @@ export default function () {
           const e = normalizeError(error);
           console.error('command osStatus failed', e.message);
           notifications.show({ title: t('errorFetchingOsStatus'), message: e.message, color: 'red' });
+        }
+      }
+    })();
+    return () => { keepAlive = false; };
+  }, []);
+
+  useEffect(() => {
+    if (PLATFORM !== Platform.Linux) return;
+    let knownOsStatusId: string | null = null;
+    let keepAlive = true;
+    (async () => {
+      while (keepAlive) {
+        const newOsStatus = await commands.osStatus(knownOsStatusId);
+        knownOsStatusId = newOsStatus.version;
+        setOsStatus(newOsStatus);
+        const newAppStatus = latestAppStatus(newOsStatus.serviceStatus);
+        if (newAppStatus !== undefined) {
+          setStatus(prev => (prev?.version === newAppStatus.version ? prev : newAppStatus));
         }
       }
     })();

@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use anyhow::Context as _;
 use futures::FutureExt as _;
-use futures::channel::mpsc::UnboundedSender;
+use futures::channel::mpsc::{Receiver, Sender, channel};
 use ksni::menu::{CheckmarkItem, MenuItem, StandardItem, SubMenu};
 use ksni::{Icon, OfflineReason, Status, ToolTip, Tray, TrayMethods};
 use obscuravpn_api::cmd::ExitList;
@@ -76,12 +76,14 @@ fn status_line(os_status: &OsStatus) -> String {
     match &os_status.service_status {
         ServiceStatus::Initializing => "Starting...".to_owned(),
         ServiceStatus::Degraded { last_status: _, linux_degradation } => match linux_degradation {
-            LinuxServiceDegradation::Stopped => "Service not running".to_owned(),
-            LinuxServiceDegradation::Failed => "Service failed".to_owned(),
-            LinuxServiceDegradation::Disabled => "Service disabled".to_owned(),
-            LinuxServiceDegradation::NotInstalled => "Service not installed".to_owned(),
-            LinuxServiceDegradation::NoAccess => "No permission to reach service".to_owned(),
-            LinuxServiceDegradation::Other => "Service unreachable".to_owned(),
+            LinuxServiceDegradation::UnitInactive => "Service not running".to_owned(),
+            LinuxServiceDegradation::UnitActivating => "Service starting...".to_owned(),
+            LinuxServiceDegradation::UnitNotInstalled => "Service not installed".to_owned(),
+            LinuxServiceDegradation::SocketPermissionDenied => "Service access denied".to_owned(),
+            LinuxServiceDegradation::VersionMismatch { service_version: _, app_version: _, installed_app_version_differs: _ } => {
+                "Service version differs from app".to_owned()
+            }
+            LinuxServiceDegradation::Unknown => "Service unreachable".to_owned(),
         },
         ServiceStatus::Healthy(status) => match &status.vpn_status {
             VpnStatus::Disconnected {} => "Disconnected".to_owned(),
@@ -103,15 +105,15 @@ fn selector_is_city(selector: &ExitSelector, country_code: &str, city_code: &str
 struct TrayState {
     os_status: OsStatus,
     connecting_frame: usize,
-    requests: UnboundedSender<TrayRequest>,
+    requests: Sender<TrayRequest>,
     exit_list: Option<Arc<ExitList>>,
     rt: Handle,
 }
 
 impl TrayState {
-    fn request(&self, request: TrayRequest) {
-        if self.requests.unbounded_send(request).is_err() {
-            tracing::error!(message_id = "Ke4jXs6r", "window request channel closed");
+    fn request(&mut self, request: TrayRequest) {
+        if let Err(error) = self.requests.try_send(request) {
+            tracing::error!(message_id = "Ke4jXs6r", %error, "failed to send window request: {error}");
         }
     }
 
@@ -121,23 +123,23 @@ impl TrayState {
             match run_command::<Value>(cmd).await {
                 Ok(Ok(_)) => {}
                 Ok(Err(error)) => tracing::error!(message_id = "Mh6bTn2w", cmd = ?logged_cmd, ?error, "tray manager command failed"),
-                Err(error) => tracing::error!(message_id = "Vd4kRp7c", cmd = ?logged_cmd, %error, "tray manager command failed"),
+                Err(error) => tracing::error!(message_id = "Vd4kRp7c", cmd = ?logged_cmd, ?error, "tray manager command failed"),
             }
         });
     }
 
-    fn quit_and_disconnect(&self) {
-        let requests = self.requests.clone();
+    fn quit_and_disconnect(&mut self) {
+        let mut requests = self.requests.clone();
         self.rt.spawn(async move {
             let cmd = ManagerCmd::SetTunnelArgs { args: None, active: Some(false) };
             match timeout(Duration::from_secs(5), run_command::<Value>(cmd)).await {
                 Ok(Ok(Ok(_))) => {}
                 Ok(Ok(Err(error))) => tracing::error!(message_id = "Vf6cQj2n", ?error, "disconnect on quit failed"),
-                Ok(Err(error)) => tracing::error!(message_id = "Pk8sYw3m", %error, "disconnect on quit failed"),
+                Ok(Err(error)) => tracing::error!(message_id = "Pk8sYw3m", ?error, "disconnect on quit failed"),
                 Err(_) => tracing::error!(message_id = "Rt5dZb7q", "disconnect on quit timed out"),
             }
-            if requests.unbounded_send(TrayRequest::Quit).is_err() {
-                tracing::error!(message_id = "Uw2gNv9x", "window request channel closed, cannot quit");
+            if let Err(error) = requests.try_send(TrayRequest::Quit) {
+                tracing::error!(message_id = "Uw2gNv9x", %error, "failed to send quit request: {error}");
             }
         });
     }
@@ -366,20 +368,28 @@ impl Tray for TrayState {
     }
 }
 
-pub async fn spawn_tray(status: Arc<GuiStatusWatch>, exit_list: Arc<GuiExitListWatch>, requests: UnboundedSender<TrayRequest>) {
+pub async fn spawn_tray(status: Arc<GuiStatusWatch>, exit_list: Arc<GuiExitListWatch>) -> Receiver<TrayRequest> {
     LazyLock::force(&ICONS);
-    let tray = TrayState {
-        os_status: OsStatus::default(),
-        connecting_frame: 0,
-        requests,
-        exit_list: None,
-        rt: Handle::current(),
-    };
-    let handle = match tray.assume_sni_available(true).spawn().await {
-        Ok(handle) => handle,
-        Err(error) => {
-            tracing::error!(message_id = "Ah9tBc5y", %error, "failed to start system tray, running without tray");
-            return;
+    let (requests, receiver) = channel(1);
+    tokio::spawn(run_tray(status, exit_list, requests));
+    receiver
+}
+
+async fn run_tray(status: Arc<GuiStatusWatch>, exit_list: Arc<GuiExitListWatch>, requests: Sender<TrayRequest>) {
+    let handle = loop {
+        let tray = TrayState {
+            os_status: OsStatus::default(),
+            connecting_frame: 0,
+            requests: requests.clone(),
+            exit_list: None,
+            rt: Handle::current(),
+        };
+        match tray.assume_sni_available(true).spawn().await {
+            Ok(handle) => break handle,
+            Err(error) => {
+                tracing::error!(message_id = "Ah9tBc5y", %error, "failed to start system tray, retrying in 30s");
+                sleep(Duration::from_secs(30)).await;
+            }
         }
     };
     let exit_list_handle = handle.clone();

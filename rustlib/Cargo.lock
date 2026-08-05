@@ -2785,7 +2785,6 @@ dependencies = [
  "wintun",
  "x25519-dalek",
  "zbus",
- "zbus_polkit",
  "zbus_systemd",
  "zeroize",
  "zip",
@@ -5746,19 +5745,6 @@ dependencies = [
  "static_assertions",
  "winnow 0.7.14",
  "zvariant",
-]
-
-[[package]]
-name = "zbus_polkit"
-version = "5.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad23d5c4d198c7e2641b33e6e0d1f866f117408ba66fe80bbe52e289eeb77c52"
-dependencies = [
- "enumflags2",
- "serde",
- "serde_repr",
- "static_assertions",
- "zbus",
 ]
 
 [[package]]

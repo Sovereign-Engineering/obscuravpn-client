@@ -115,7 +115,6 @@ shlex = "1.3.0"
 tss-esapi = "7.7.0"
 url = "2.5.8"
 zbus = "5.12.0"
-zbus_polkit = "5.0.0"
 zbus_systemd = { version = "0.25900.0", features = ["resolve1", "systemd1"] }
 
 [target.'cfg(target_os = "android")'.dependencies]

@@ -5,6 +5,7 @@ use crate::ServiceArgs;
 use anyhow::Context;
 use obscuravpn_client::manager::VpnStatus;
 use obscuravpn_client::os::os_trait::Os;
+use obscuravpn_client::version::release_version;
 use obscuravpn_client::wg_key_store::WgKeyStore;
 use obscuravpn_client::{logging::LogPersistence, manager::Manager};
 use std::error::Error;
@@ -36,7 +37,7 @@ pub async fn run(args: ServiceArgs, log_persistence: Option<LogPersistence>, shu
             WgKeyStore::None
         }
     };
-    let src_version = option_env!("OBSCURA_VERSION").unwrap_or("v0.0.0-dev").to_owned();
+    let src_version = release_version().to_owned();
     let manager = Manager::new(
         args.config_dir.into(),
         wg_key_store,

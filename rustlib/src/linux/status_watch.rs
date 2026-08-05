@@ -1,15 +1,18 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use tokio::process::Command;
 use tokio::sync::watch;
 use tokio_util::task::AbortOnDropHandle;
 use uuid::Uuid;
-use zbus_systemd::zbus;
 
-use super::ipc::{ClientError, run_command};
+use super::argv0;
+use super::ipc::{LinuxIpcError, run_command};
 use super::status::{LinuxServiceDegradation, OsStatus, ServiceStatus};
+use super::systemd::SystemdUnitStatus;
 use crate::manager::Status;
 use crate::manager_cmd::ManagerCmd;
+use crate::version::release_version;
 
 pub struct GuiStatusWatch {
     tx: watch::Sender<OsStatus>,
@@ -46,15 +49,19 @@ async fn run_status_poller(tx: watch::Sender<OsStatus>) {
                 });
                 continue;
             }
-            Err(ClientError::NoService) => diagnose_no_service().await,
-            Err(ClientError::InsufficientPermissions) => LinuxServiceDegradation::NoAccess,
+            Err(LinuxIpcError::NoListener) => classify_unreachable(ConnectFailure::NoListener).await,
+            Err(LinuxIpcError::InsufficientPermissions) => classify_unreachable(ConnectFailure::InsufficientPermissions).await,
+            Err(LinuxIpcError::VersionMismatch { service_version, app_version }) => {
+                let installed_app_version_differs = installed_app_version_differs().await.ok();
+                LinuxServiceDegradation::VersionMismatch { service_version, app_version, installed_app_version_differs }
+            }
             Ok(Err(error)) => {
                 tracing::error!(message_id = "Jc2vZq8k", ?error, "service failed to get status");
-                LinuxServiceDegradation::Other
+                LinuxServiceDegradation::Unknown
             }
-            Err(error) => {
-                tracing::error!(message_id = "Xw5nRt3p", %error, "cannot reach service to get status");
-                LinuxServiceDegradation::Other
+            Err(LinuxIpcError::Other) => {
+                tracing::error!(message_id = "Xw5nRt3p", "cannot reach service to get status");
+                LinuxServiceDegradation::Unknown
             }
         };
         known_version = None;
@@ -72,30 +79,46 @@ async fn run_status_poller(tx: watch::Sender<OsStatus>) {
     }
 }
 
-async fn diagnose_no_service() -> LinuxServiceDegradation {
-    let Ok(conn) = zbus::Connection::system().await else {
-        return LinuxServiceDegradation::Other;
+async fn installed_app_version_differs() -> Result<bool, ()> {
+    let Some(invocation_path) = argv0() else {
+        tracing::error!(message_id = "wN3kFb7T", "cannot probe installed app version without argv[0]");
+        return Err(());
     };
-    let Ok(systemd) = zbus_systemd::systemd1::ManagerProxy::new(&conn).await else {
-        return LinuxServiceDegradation::Other;
-    };
-    match systemd.get_unit_file_state("obscura.service".to_owned()).await {
-        Err(zbus::Error::MethodError(ref name, _, _)) if name.as_str() == "org.freedesktop.DBus.Error.FileNotFound" => {
-            LinuxServiceDegradation::NotInstalled
-        }
-        Err(error) => {
-            tracing::debug!(message_id = "Tk6wPd2j", %error, "could not classify service degradation");
-            LinuxServiceDegradation::Other
-        }
-        Ok(state) if state == "disabled" => LinuxServiceDegradation::Disabled,
-        Ok(_) => {
-            if let Ok(path) = systemd.get_unit("obscura.service".to_owned()).await
-                && let Ok(unit) = zbus_systemd::systemd1::UnitProxy::new(&conn, path).await
-                && matches!(unit.active_state().await.as_deref(), Ok("failed"))
-            {
-                return LinuxServiceDegradation::Failed;
-            }
-            LinuxServiceDegradation::Stopped
-        }
+    let output = tokio::time::timeout(Duration::from_secs(2), Command::new(invocation_path).arg("version").output())
+        .await
+        .map_err(|error| tracing::error!(message_id = "cQ8mZj2R", %error, "installed app version probe timed out"))?
+        .map_err(|error| tracing::error!(message_id = "hL5xVd9G", %error, "failed to run installed app version probe"))?;
+    if !output.status.success() {
+        let status = output.status;
+        tracing::error!(message_id = "sB4tKp6W", %status, "installed app version probe failed");
+        return Err(());
+    }
+    let stdout = String::from_utf8(output.stdout)
+        .map_err(|error| tracing::error!(message_id = "vT6qLm3D", %error, "installed app version probe printed invalid utf-8"))?;
+    let installed_version = stdout.trim();
+    let running_version = release_version();
+    tracing::info!(
+        message_id = "dF7wRb4N",
+        installed_version,
+        running_version,
+        "probed installed app version"
+    );
+    Ok(installed_version != running_version)
+}
+
+enum ConnectFailure {
+    NoListener,
+    InsufficientPermissions,
+}
+
+async fn classify_unreachable(failure: ConnectFailure) -> LinuxServiceDegradation {
+    match SystemdUnitStatus::get().await {
+        SystemdUnitStatus::NotInstalled => LinuxServiceDegradation::UnitNotInstalled,
+        SystemdUnitStatus::Unknown | SystemdUnitStatus::Active => match failure {
+            ConnectFailure::InsufficientPermissions => LinuxServiceDegradation::SocketPermissionDenied,
+            ConnectFailure::NoListener => LinuxServiceDegradation::Unknown,
+        },
+        SystemdUnitStatus::Activating | SystemdUnitStatus::Reloading | SystemdUnitStatus::Refreshing => LinuxServiceDegradation::UnitActivating,
+        SystemdUnitStatus::Inactive | SystemdUnitStatus::Failed | SystemdUnitStatus::Deactivating => LinuxServiceDegradation::UnitInactive,
     }
 }

@@ -13,9 +13,20 @@ export enum NEVPNStatus {
     Disconnecting = 'disconnecting',
 }
 
-export type LinuxServiceDegradation = 'stopped' | 'failed' | 'disabled' | 'notInstalled' | 'noAccess' | 'other';
+export interface LinuxVersionMismatch {
+    serviceVersion: string,
+    appVersion: string,
+    installedAppVersionDiffers: boolean | null,
+}
+export type LinuxServiceDegradation = 'unitInactive' | 'unitActivating' | 'unitNotInstalled' | 'socketPermissionDenied' | 'unknown' | { versionMismatch: LinuxVersionMismatch };
 export type WindowsServiceDegradation = 'stopped' | 'failed' | 'disabled' | 'notInstalled' | 'packageIdentityMissing' | 'other';
-export type ServiceStatus = 'initializing' | { healthy: unknown } | { degraded: { lastStatus: unknown, linuxDegradation?: LinuxServiceDegradation, windowsDegradation?: WindowsServiceDegradation } };
+export type ServiceStatus = 'initializing' | { healthy: AppStatus } | { degraded: { lastStatus: AppStatus | null, linuxDegradation?: LinuxServiceDegradation, windowsDegradation?: WindowsServiceDegradation } };
+
+export function latestAppStatus(serviceStatus: ServiceStatus | undefined): AppStatus | undefined {
+    if (serviceStatus === undefined || serviceStatus === 'initializing') return undefined;
+    if ('healthy' in serviceStatus) return serviceStatus.healthy;
+    return serviceStatus.degraded.lastStatus ?? undefined;
+}
 
 export function linuxDegradation(serviceStatus: ServiceStatus | undefined): LinuxServiceDegradation | undefined {
     if (serviceStatus === undefined || serviceStatus === 'initializing' || 'healthy' in serviceStatus) return undefined;

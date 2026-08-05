@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::manager::{Status, VpnStatus};
+use crate::version::release_version;
 use uuid::Uuid;
 
 #[serde_with::serde_as]
@@ -50,15 +51,19 @@ pub enum ServiceStatus {
     },
 }
 
-#[derive(derive_more::Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Copy)]
-#[serde(rename_all = "camelCase")]
+#[derive(derive_more::Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum LinuxServiceDegradation {
-    Stopped,
-    Failed,
-    Disabled,
-    NotInstalled,
-    NoAccess,
-    Other,
+    UnitInactive,
+    UnitActivating,
+    UnitNotInstalled,
+    SocketPermissionDenied,
+    VersionMismatch {
+        service_version: String,
+        app_version: String,
+        installed_app_version_differs: Option<bool>,
+    },
+    Unknown,
 }
 
 impl OsStatus {
@@ -80,7 +85,7 @@ impl Default for OsStatus {
             version: Uuid::new_v4(),
             internet_available: true,
             os_vpn_status: NEVPNStatus::Invalid,
-            src_version: option_env!("OBSCURA_VERSION").unwrap_or("v0.0.0-dev"),
+            src_version: release_version(),
             updater_status: Default::default(),
             debug_bundle_status: Default::default(),
             can_send_mail: true,

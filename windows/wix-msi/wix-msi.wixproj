@@ -15,8 +15,8 @@
     Defaults assume a local Release publish.
   -->
     <TagJsonVersion>$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)..\..\tag.json')), '"version":\s*"([^"]+)"').Groups[1].Value)</TagJsonVersion>
-    <Version Condition="'$(OBSCURA_VERSION)' != ''">$(OBSCURA_VERSION)</Version>
-    <Version Condition="'$(Version)' == ''">$(TagJsonVersion)</Version>
+    <Version Condition="'$(OBSCURA_VERSION)' != ''">$(OBSCURA_VERSION.TrimStart('v'))</Version>
+    <Version Condition="'$(Version)' == ''">$(TagJsonVersion).1</Version>
     <OutputName>Obscura_$(Version)_$(Platform)</OutputName>
     <DefineConstants>Version=$(Version)</DefineConstants>
     <PublishProfile>win-$(PlatformLC)</PublishProfile>

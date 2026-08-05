@@ -84,6 +84,15 @@ jobs:
         if: env.SIGN == 'true'
         uses: digicert/code-signing-software-trust-action@v1
 
+      - name: Set OBSCURA_VERSION from tag
+        if: startsWith(github.ref, 'refs/tags/v/')
+        shell: pwsh
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          $version = $env:TAG_NAME -replace '^v/', 'v'
+          Add-Content $env:GITHUB_ENV "OBSCURA_VERSION=$version"
+
       - name: Build MSI (Signed)
         shell: pwsh
         env:

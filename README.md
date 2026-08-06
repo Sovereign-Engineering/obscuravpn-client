@@ -191,21 +191,21 @@ Cross-compiling ARM64 on a **x64 host** has the following requirements:
 
 #### Tips
 
-To override the version (or any other properties) of a build, you can either set the `OBSCURA_VERSION` environment variable or set `AssemblyVersion` in [local.props](/windows/obscura-client/local.props) and `Version` in [local.props](/windows/wix-msi/local.props).
+To override the version (or any other properties) of a build, you can set the `OBSCURA_VERSION` environment variable in [obscura-client/local.props](/windows/obscura-client/local.props) and [wix-msi/local.props](/windows/wix-msi/local.props).
 
 ```xml
 <!-- windows/wix-msi/local.props -->
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
-    <Version>0.165.2</Version>
+    <OBSCURA_VERSION>v0.165.2</OBSCURA_VERSION>
   </PropertyGroup>
 </Project>
 ```
 
 GUI logs are written to `%LOCALAPPDATA%\Obscura\logs`
 
-When service is running as as system service, teh config file is written to `%SystemRoot%\System32\config\systemprofile\AppData\Local\Obscura`
+When service is running as as system service, the config file is written to `%SystemRoot%\System32\config\systemprofile\AppData\Local\Obscura`
 
 The [WinUI 3 Gallery](https://apps.microsoft.com/detail/9p3jfpwwdzrc) app is very useful at showcasing features currently available with code snippets.
 

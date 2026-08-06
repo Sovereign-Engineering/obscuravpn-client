@@ -47,7 +47,7 @@ function Get-FourPartVersion([string]$v) {
     return ($parts[0..3] -join '.')
 }
 
-if (-not $Version) { $Version = $env:OBSCURA_VERSION }
+if (-not $Version) { $Version = $env:OBSCURA_VERSION -replace '^v?', '' }
 if (-not $Version) {
     $Version = ([regex]'"version":\s*"([^"]+)"').Match((Get-Content -LiteralPath $tagJson -Raw)).Groups[1].Value
 }

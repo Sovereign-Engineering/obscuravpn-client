@@ -124,8 +124,8 @@
     <AssemblyTitle>Obscura VPN</AssemblyTitle>
     <ApplicationIcon>Assets\Icon.ico</ApplicationIcon>
     <TagJsonVersion>$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\..\..\tag.json')), '"version":\s*"([^"]+)"').Groups[1].Value)</TagJsonVersion>
-    <AssemblyVersion Condition="'$(OBSCURA_VERSION)' != ''">$(OBSCURA_VERSION)</AssemblyVersion>
-    <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">$(TagJsonVersion)</AssemblyVersion>
+    <AssemblyVersion Condition="'$(OBSCURA_VERSION)' != ''">$(OBSCURA_VERSION.TrimStart('v'))</AssemblyVersion>
+    <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">$(TagJsonVersion).1</AssemblyVersion>
     <!-- NetSparkle compares the appcast version against InformationalVersion -->
     <InformationalVersion>$(AssemblyVersion)</InformationalVersion>
     <PublishAot>False</PublishAot>

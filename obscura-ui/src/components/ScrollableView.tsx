@@ -9,7 +9,7 @@ export function ScrollableView({ children }: PropsWithChildren) {
   const [scrollY, setScrollY] = useState(0);
 
   return (
-    <ScrollArea h='100vh' type='always' scrollbarSize={IS_HANDHELD_DEVICE ? 2 : 12} classNames={classes} viewportRef={viewport} onScrollPositionChange={({ y }) => setScrollY(y)}>
+    <ScrollArea h='100vh' type={IS_HANDHELD_DEVICE ? 'scroll' : 'auto'} scrollbarSize={IS_HANDHELD_DEVICE ? 2 : 12} classNames={classes} viewportRef={viewport} onScrollPositionChange={({ y }) => setScrollY(y)}>
       {children}
       <ScrollToTop scrollY={scrollY} viewport={viewport} />
     </ScrollArea>

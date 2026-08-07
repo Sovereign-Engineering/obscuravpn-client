@@ -152,6 +152,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
 
     private void OnClosed(object sender, WindowEventArgs args)
     {
+        OsStatus.Instance.Changed -= OnOsStatusChanged;
         // Window.Close() destroys the HWND but does not release the WebView2's CoreWebView2.
         // The CoreWebView2 + DevTools event receivers are COM RCWs that keep the STA apartment
         // alive, which in turn keeps the process alive. Explicitly closing the WebView2 releases
@@ -526,7 +527,14 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
                 break;
             case "/payment-succeeded":
                 await _webUIReady.Task;
-                await WebView.CoreWebView2.ExecuteScriptAsync("window.dispatchEvent(new CustomEvent('paymentSucceeded'))");
+                if (WebView.CoreWebView2 is { } core)
+                {
+                    await core.ExecuteScriptAsync("window.dispatchEvent(new CustomEvent('paymentSucceeded'))");
+                } else
+                {
+                    // FIXME:
+                    Log.Warn("URL handler invoked after webview was closed. Ignoring event.");
+                }
                 break;
             default:
                 Log.Warn($"Unhandled obscuravpn path: {uri.AbsolutePath}");

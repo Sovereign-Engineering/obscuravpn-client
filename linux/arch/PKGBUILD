@@ -18,7 +18,7 @@ package_obscura-cli() {
 
 package_obscura-gui() {
 	pkgdesc='Obscura VPN desktop application'
-	depends=('obscura-cli' 'gtk4' 'webkitgtk-6.0' 'libsoup3' 'glib2' 'gcc-libs' 'glibc' 'hicolor-icon-theme')
+	depends=("obscura-cli=$pkgver-$pkgrel" 'gtk4' 'webkitgtk-6.0' 'libsoup3' 'glib2' 'gcc-libs' 'glibc' 'hicolor-icon-theme')
 	install -Dm755 "$srcdir/obscura-gui" "$pkgdir/usr/bin/obscura-gui"
 	install -Dm644 /repo/linux/common/net.obscura.vpn.gui.desktop "$pkgdir/usr/share/applications/net.obscura.vpn.gui.desktop"
 	install -Dm644 /repo/linux/common/icons/net.obscura.vpn.gui-128.png "$pkgdir/usr/share/icons/hicolor/128x128/apps/net.obscura.vpn.gui.png"
@@ -29,7 +29,7 @@ package_obscura-gui() {
 package_obscura() {
 	pkgdesc='Obscura VPN'
 	arch=('any')
-	depends=('obscura-gui')
+	depends=("obscura-gui=$pkgver-$pkgrel")
 	install -Dm644 /repo/LICENSE.md "$pkgdir/usr/share/licenses/obscura/LICENSE.md"
 }
 

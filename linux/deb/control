@@ -20,7 +20,7 @@ Description: Obscura VPN desktop application
 
 Package: obscura
 Architecture: all
-Depends: obscura-gui
+Depends: obscura-gui (= ${source:Version})
 Description: Obscura VPN (metapackage)
  Privacy that's more than a promise.
 

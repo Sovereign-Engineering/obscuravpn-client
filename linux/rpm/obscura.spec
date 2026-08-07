@@ -21,7 +21,7 @@ Privacy that's more than a promise.
 %package -n obscura
 Summary:        Obscura VPN
 BuildArch:      noarch
-Requires:       obscura-gui
+Requires:       obscura-gui = %{version}-%{release}
 %description -n obscura
 Privacy that's more than a promise.
 

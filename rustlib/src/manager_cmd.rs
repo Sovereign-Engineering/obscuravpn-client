@@ -17,7 +17,11 @@ use crate::{
     cached_value::CachedValue,
     client_state::ClientStateHandle,
     config::PinnedLocation,
-    debug_bundle::{bundle_info::BundleInfo, debug_info::DebugInfo},
+    debug_bundle::{
+        bundle_info::BundleInfo,
+        daemon::{DaemonDebugBundleHandle, DaemonDebugBundleToken},
+        debug_info::DebugInfo,
+    },
     errors::{ApiError, ConfigDirty, ConfigDirtyOrApiError},
     manager::{Manager, ManagerTrafficStats, Status, TunnelArgs},
     network_config::DnsContentBlock,
@@ -131,6 +135,7 @@ pub enum ManagerCmd {
         user_feedback: Option<String>,
         bundle_info: BundleInfo,
     },
+    CreateDaemonDebugBundle {},
     GetDebugInfo {},
     GetExitList {
         #[debug("{:?}", known_version.as_ref().map(|b| BASE64_STANDARD.encode(b)))]
@@ -151,6 +156,9 @@ pub enum ManagerCmd {
     RefreshExitList {
         #[serde_as(as = "serde_with::DurationMilliSeconds")]
         freshness: Duration,
+    },
+    DeleteDaemonDebugBundle {
+        token: DaemonDebugBundleToken,
     },
     RotateWgKey {},
     SetApiHostAlternate {
@@ -202,6 +210,7 @@ pub enum ManagerCmdOk {
     #[from]
     ApiGoogleBillingDetails(GoogleBillingDetailsOutput),
     CreateDebugBundle(String),
+    CreateDaemonDebugBundle(DaemonDebugBundleHandle),
     Empty,
     GetDebugInfo(DebugInfo),
     GetExitList(CachedValue<Arc<ExitList>>),
@@ -267,6 +276,16 @@ impl ManagerCmd {
                     tracing::error!(message_id = "5ZTsw9RY", ?error, "failed to create debug bundle");
                     ManagerCmdErrorCode::Other
                 }),
+            Self::CreateDaemonDebugBundle {} => manager
+                .create_daemon_debug_bundle()
+                .await
+                .map(ManagerCmdOk::CreateDaemonDebugBundle)
+                .map_err(|()| ManagerCmdErrorCode::Other),
+            Self::DeleteDaemonDebugBundle { token } => manager
+                .delete_daemon_debug_bundle(token)
+                .await
+                .map(|()| ManagerCmdOk::Empty)
+                .map_err(|()| ManagerCmdErrorCode::Other),
             Self::GetDebugInfo {} => Ok(ManagerCmdOk::GetDebugInfo(manager.get_debug_info().await)),
             Self::GetExitList { known_version } => manager.get_exit_list(known_version).await.map(ManagerCmdOk::GetExitList),
             Self::GetStatus { known_version } => manager

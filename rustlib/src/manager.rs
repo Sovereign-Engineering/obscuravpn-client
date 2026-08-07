@@ -1,5 +1,11 @@
-use std::{path::PathBuf, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap,
+    path::PathBuf,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
+use camino::Utf8PathBuf;
 use obscuravpn_api::{
     cmd::{
         AppleAssociateAccount, AppleAssociateAccountOutput, Cmd, DeleteAccount, DeleteAccountOutput, ExitList, GetAccountInfo,
@@ -16,8 +22,13 @@ use crate::{
     backoff::Backoff,
     cached_value::CachedValue,
     client_state::{AccountStatus, ClientState, ClientStateHandle},
-    config::{Config, ConfigLoadError, PinnedLocation, feature_flags::FeatureFlags},
-    debug_bundle::{bundle_info::BundleInfo, create_debug_bundle, debug_info::DebugInfo},
+    config::{Config, ConfigDebug, ConfigLoadError, PinnedLocation, feature_flags::FeatureFlags},
+    debug_bundle::{
+        bundle_info::BundleInfo,
+        create_debug_bundle, daemon,
+        daemon::{DaemonDebugBundleHandle, DaemonDebugBundleToken},
+        debug_info::DebugInfo,
+    },
     errors::{ApiError, ConfigDirty, ConfigDirtyOrApiError, ConnectErrorCode},
     exit_selection::ExitSelector,
     logging::LogPersistence,
@@ -35,6 +46,7 @@ pub struct Manager {
     tunnel_state: Receiver<TunnelState>,
     status_watch: Sender<Status>,
     log_persistence: Option<LogPersistence>,
+    daemon_debug_bundles: Mutex<HashMap<DaemonDebugBundleToken, Utf8PathBuf>>,
 }
 
 // Keep synchronized with ../../apple/shared/NetworkExtensionIpc.swift
@@ -166,7 +178,13 @@ impl Manager {
         let client_state = ClientState::new(config_dir, wg_key_store, user_agent, force_init_inactive)?;
         let tunnel_state = TunnelState::new(client_state.clone(), os_impl.clone());
         let initial_status = Status::new(Uuid::new_v4(), VpnStatus::Disconnected {}, &client_state.borrow());
-        let this = Arc::new(Self { tunnel_state, client_state, status_watch: channel(initial_status).0, log_persistence });
+        let this = Arc::new(Self {
+            tunnel_state,
+            client_state,
+            status_watch: channel(initial_status).0,
+            log_persistence,
+            daemon_debug_bundles: Mutex::new(HashMap::new()),
+        });
         tokio::spawn(Self::wireguard_key_registraction_task(this.clone(), ()));
         tokio::spawn(Self::propagate_updates_to_status_task(this.clone(), ()));
         tokio::spawn(Self::preferred_network_interface_task(this.clone(), os_impl.network_interface()));
@@ -317,6 +335,29 @@ impl Manager {
             create_debug_bundle(user_feedback.as_deref(), bundle_info, debug_info, log_dir.as_deref()).map(Into::into)
         })
         .await?
+    }
+
+    pub async fn create_daemon_debug_bundle(&self) -> Result<DaemonDebugBundleHandle, ()> {
+        let config = ConfigDebug::from(self.client_state.borrow().config().clone());
+        let log_dir = self.log_persistence.as_ref().map(LogPersistence::log_dir).map(ToOwned::to_owned);
+        let bundle = daemon::create_daemon_debug_bundle(&config, log_dir.as_deref()).await?;
+        self.daemon_debug_bundles
+            .lock()
+            .unwrap()
+            .insert(bundle.token.clone(), bundle.path.clone());
+        Ok(bundle)
+    }
+
+    pub async fn delete_daemon_debug_bundle(&self, token: DaemonDebugBundleToken) -> Result<(), ()> {
+        let Some(path) = self.daemon_debug_bundles.lock().unwrap().remove(&token) else {
+            tracing::error!(message_id = "fP3jVt6N", "unknown daemon debug bundle token");
+            return Err(());
+        };
+        tokio::fs::remove_dir_all(&path)
+            .await
+            .map_err(|error| tracing::error!(message_id = "mR7kZc2V", ?error, "failed to remove daemon debug bundle dir"))?;
+        tracing::info!(message_id = "bQ7wJf4S", %path, "deleted daemon debug bundle dir");
+        Ok(())
     }
 
     pub async fn get_debug_info(&self) -> DebugInfo {

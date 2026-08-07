@@ -1,4 +1,6 @@
+pub mod debug_bundle;
 pub mod exit_list_watch;
+pub mod file_manager;
 pub mod ipc;
 pub mod status;
 pub mod status_watch;

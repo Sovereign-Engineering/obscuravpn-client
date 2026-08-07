@@ -35,9 +35,9 @@ type_complexity = "allow"
 anyhow = { version = "1.0.98", features = ["backtrace"] }
 base64 = "0.21.7"
 bytes = "1"
-camino = "1.2.2"
+camino = { version = "1.2.2", features = ["serde1"] }
 chrono = "0.4.44"
-clap = { version = "4.5.53", features = ["derive"] }
+clap = { version = "4.5.53", features = ["derive", "env"] }
 const_format = "0.2.35"
 derive_more = { version = "2.0.1", features = ["full"] }
 diva = "0.1.0"

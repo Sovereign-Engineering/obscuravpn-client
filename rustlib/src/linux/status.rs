@@ -67,6 +67,13 @@ pub enum LinuxServiceDegradation {
 }
 
 impl OsStatus {
+    pub fn set_debug_bundle_status(&mut self, status: DebugBundleStatus) {
+        if self.debug_bundle_status != status {
+            self.debug_bundle_status = status;
+            self.version = Uuid::new_v4();
+        }
+    }
+
     pub fn set_service_status(&mut self, service_status: ServiceStatus) {
         if self.service_status != service_status {
             self.os_vpn_status = match &service_status {
@@ -102,17 +109,10 @@ pub enum UpdaterStatus {
 }
 
 #[serde_with::serde_as]
-#[derive(derive_more::Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Default, derive_more::Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct DebugBundleStatus {
     pub in_progress: bool,
     pub latest_path: Option<String>,
     pub in_progress_counter: i64,
-}
-
-#[allow(clippy::derivable_impls)]
-impl Default for DebugBundleStatus {
-    fn default() -> Self {
-        Self { in_progress: false, latest_path: None, in_progress_counter: 0 }
-    }
 }

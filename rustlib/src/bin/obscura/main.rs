@@ -12,11 +12,6 @@ mod client;
 #[cfg(any(target_os = "windows", target_os = "linux"))]
 mod service;
 
-#[cfg(not(target_os = "windows"))]
-fn get_data_dir() -> String {
-    "/var/lib/obscura".to_string()
-}
-
 #[cfg(target_os = "windows")]
 fn get_data_dir() -> String {
     use standard_paths::{LocationType, StandardPaths};
@@ -30,8 +25,14 @@ fn get_data_dir() -> String {
 
 #[derive(Args, Debug)]
 pub struct ServiceArgs {
-    #[clap(long, default_value_t = get_data_dir())]
+    #[cfg(any(target_os = "windows", target_os = "linux"))]
+    #[cfg_attr(target_os = "linux", clap(env = "STATE_DIRECTORY"))]
+    #[cfg_attr(target_os = "windows", clap(default_value_t = get_data_dir()))]
+    #[clap(long)]
     pub config_dir: String,
+    #[cfg(target_os = "linux")]
+    #[clap(long, env = "LOGS_DIRECTORY")]
+    pub log_dir: String,
     #[cfg(target_os = "linux")]
     #[arg(long, value_enum, default_value_t = service::os::linux::dns::DnsManagerArg::Auto)]
     pub dns: service::os::linux::dns::DnsManagerArg,
@@ -95,17 +96,23 @@ pub enum Command {
 
 impl Command {
     fn log_persistence_dir(&self) -> Option<Utf8PathBuf> {
-        match self {
+        let dir = match self {
+            #[cfg(target_os = "linux")]
+            Self::Service(ServiceArgs { log_dir, .. }) => Some(Utf8PathBuf::from(log_dir)),
             #[cfg(target_os = "windows")]
             Self::Service(ServiceArgs { config_dir, .. }) | Self::WindowsService(ServiceArgs { config_dir, .. }) => {
-                let dir = Utf8PathBuf::from_iter([config_dir.as_str(), "logs"]);
-                if let Err(error) = std::fs::create_dir_all(&dir) {
-                    eprintln!("failed to create log dir {dir}: {error}");
-                }
-                Some(dir)
+                Some(Utf8PathBuf::from_iter([config_dir.as_str(), "logs"]))
             }
-            _ => None,
+            #[cfg(not(any(target_os = "windows", target_os = "linux")))]
+            Self::Service(ServiceArgs { .. }) => None,
+            #[cfg(target_os = "linux")]
+            Self::AddOperator { users: _ } => None,
+            Self::Login(_) | Self::Start(_) | Self::Stop(_) | Self::Status(_) | Self::IpcTest(_) => None,
+        }?;
+        if let Err(error) = std::fs::create_dir_all(&dir) {
+            eprintln!("failed to create log dir {dir}: {error}");
         }
+        Some(dir)
     }
 }
 

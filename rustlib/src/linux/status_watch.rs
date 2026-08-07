@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use super::argv0;
 use super::ipc::{LinuxIpcError, run_command};
-use super::status::{LinuxServiceDegradation, OsStatus, ServiceStatus};
+use super::status::{DebugBundleStatus, LinuxServiceDegradation, OsStatus, ServiceStatus};
 use super::systemd::SystemdUnitStatus;
 use crate::manager::Status;
 use crate::manager_cmd::ManagerCmd;
@@ -16,14 +16,15 @@ use crate::version::release_version;
 
 pub struct GuiStatusWatch {
     tx: watch::Sender<OsStatus>,
-    _tasks: AbortOnDropHandle<()>,
+    _tasks: [AbortOnDropHandle<()>; 2],
 }
 
 impl GuiStatusWatch {
-    pub async fn watch() -> Arc<Self> {
+    pub async fn watch(debug_bundle_status: watch::Receiver<DebugBundleStatus>) -> Arc<Self> {
         let (tx, _) = watch::channel(OsStatus::default());
-        let task = tokio::spawn(run_status_poller(tx.clone()));
-        Arc::new(Self { tx, _tasks: AbortOnDropHandle::new(task) })
+        let poller = tokio::spawn(run_status_poller(tx.clone()));
+        let forwarder = tokio::spawn(forward_debug_bundle_status(tx.clone(), debug_bundle_status));
+        Arc::new(Self { tx, _tasks: [AbortOnDropHandle::new(poller), AbortOnDropHandle::new(forwarder)] })
     }
 
     pub async fn changed(&self, known_version: Option<Uuid>) -> OsStatus {
@@ -33,6 +34,21 @@ impl GuiStatusWatch {
             .await
             .expect("sender held by self")
             .clone()
+    }
+}
+
+async fn forward_debug_bundle_status(tx: watch::Sender<OsStatus>, mut rx: watch::Receiver<DebugBundleStatus>) {
+    loop {
+        let status = rx.borrow_and_update().clone();
+        tx.send_if_modified(|os_status| {
+            let version = os_status.version;
+            os_status.set_debug_bundle_status(status);
+            os_status.version != version
+        });
+        if rx.changed().await.is_err() {
+            tracing::info!(message_id = "bT5wNc8K", "debug bundle status channel closed");
+            return;
+        }
     }
 }
 

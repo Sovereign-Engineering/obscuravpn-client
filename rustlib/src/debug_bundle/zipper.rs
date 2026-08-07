@@ -98,4 +98,10 @@ impl Zipper {
         tracing::debug!(message_id = "1HFVjluv", dst =? self.dst, "finished archive");
         Ok(self.dst)
     }
+
+    pub fn zip_dir(src: &Utf8Path, dst_parent: &Utf8Path, name: String) -> anyhow::Result<Utf8PathBuf> {
+        let mut zipper = Zipper::new(dst_parent, name)?;
+        zipper.copy_from_fs(src, Utf8Path::new(""))?;
+        zipper.finish()
+    }
 }

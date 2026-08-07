@@ -12,6 +12,8 @@ use futures::channel::mpsc::Receiver;
 use gtk4::gio::{DBusError, DBusProxy, ResourceLookupFlags};
 use gtk4::glib::translate::ToGlibPtr as _;
 use obscuravpn_client::exit_selection::ExitSelector;
+use obscuravpn_client::linux::debug_bundle::GuiDebugBundler;
+use obscuravpn_client::linux::file_manager::reveal_item_in_dir;
 use obscuravpn_client::linux::ipc::run_command;
 use obscuravpn_client::linux::status::OsStatus;
 use obscuravpn_client::linux::status_watch::GuiStatusWatch;
@@ -42,10 +44,11 @@ fn navigation_split_view(
     gui_status: Arc<GuiStatusWatch>,
     restart: Rc<RefCell<Option<tokio::sync::oneshot::Sender<()>>>>,
     dev_visible: Rc<Cell<bool>>,
+    debug_bundler: Arc<GuiDebugBundler>,
 ) -> (gtk::Box, ListBox) {
     let split_view = gtk::Box::new(Orientation::Horizontal, 0);
 
-    let webview = webview(gui_status, restart);
+    let webview = webview(gui_status, restart, debug_bundler);
     webview.set_hexpand(true);
 
     let sidebar = sidebar(&webview, dev_visible);
@@ -108,7 +111,11 @@ fn uri_handler(request: &URISchemeRequest) {
     request.finish(&stream, -1, Some(&mimetype));
 }
 
-fn webview(gui_status: Arc<GuiStatusWatch>, restart: Rc<RefCell<Option<tokio::sync::oneshot::Sender<()>>>>) -> WebView {
+fn webview(
+    gui_status: Arc<GuiStatusWatch>,
+    restart: Rc<RefCell<Option<tokio::sync::oneshot::Sender<()>>>>,
+    debug_bundler: Arc<GuiDebugBundler>,
+) -> WebView {
     let user_content_manager = webkit6::UserContentManager::new();
 
     let error_capture_script = UserScript::new(
@@ -129,7 +136,7 @@ fn webview(gui_status: Arc<GuiStatusWatch>, restart: Rc<RefCell<Option<tokio::sy
     user_content_manager.add_script(&log_capture_script);
 
     user_content_manager.connect_script_message_with_reply_received(Some("commandBridge"), move |ucm, value, reply| {
-        command_bridge(ucm, value, reply, gui_status.clone(), restart.clone())
+        command_bridge(ucm, value, reply, gui_status.clone(), restart.clone(), debug_bundler.clone())
     });
     user_content_manager.register_script_message_handler_with_reply("commandBridge", None);
 
@@ -243,6 +250,9 @@ fn decide_policy(_webview: &WebView, decision: &webkit6::PolicyDecision, decisio
 #[derive(derive_more::Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum Cmd {
+    DebugBundle {
+        user_feedback: String,
+    },
     GetOsStatus {
         known_version: Option<Uuid>,
     },
@@ -318,6 +328,7 @@ fn command_bridge(
     reply: &webkit6::ScriptMessageReply,
     gui_status: Arc<GuiStatusWatch>,
     restart: Rc<RefCell<Option<tokio::sync::oneshot::Sender<()>>>>,
+    debug_bundler: Arc<GuiDebugBundler>,
 ) -> bool {
     let command_json_gstring = value.to_str();
     let command_json_str = command_json_gstring.as_str();
@@ -339,6 +350,32 @@ fn command_bridge(
     eprintln!("deser: '{:?}'", cmd);
 
     match cmd {
+        Cmd::DebugBundle { user_feedback } => {
+            tokio_to_glib_local_fut_pipe(
+                async move {
+                    let result = debug_bundler.create(user_feedback).await.map_err(|()| LinuxErrorCode::Other);
+                    if let Ok(path) = &result {
+                        let _ = reveal_item_in_dir(path.as_str()).await;
+                    }
+                    result
+                },
+                glib::clone!(
+                    #[strong]
+                    reply,
+                    #[strong]
+                    value_context,
+                    move |res: Result<camino::Utf8PathBuf, LinuxErrorCode>| async move {
+                        match res {
+                            Ok(path) => {
+                                let json_string = serde_json::to_string(&path).unwrap();
+                                reply.return_value(&javascriptcore::Value::new_string(&value_context, Some(&json_string)));
+                            }
+                            Err(error) => reply.return_error_message(error.as_static_str()),
+                        }
+                    }
+                ),
+            );
+        }
         Cmd::GetOsStatus { known_version } => {
             eprintln!("Got a call for GetOsStatus (non-FFI): '{:?}'", known_version);
 
@@ -391,7 +428,7 @@ fn command_bridge(
         Cmd::RevealItemInDir { path } => {
             tokio_to_glib_local_fut_pipe::<_, _, _, _>(
                 glib::clone!(async move {
-                    show_file2(&path).await;
+                    let _ = reveal_item_in_dir(&path).await;
                 }),
                 glib::clone!(
                     #[strong]
@@ -415,24 +452,6 @@ fn command_bridge(
     };
 
     true // https://webkitgtk.org/reference/webkit2gtk/stable/signal.UserContentManager.script-message-with-reply-received.html
-}
-
-async fn show_file2(path: &str) {
-    let url = url::Url::from_file_path(path).unwrap();
-
-    //https://www.freedesktop.org/wiki/Specifications/file-manager-interface/?__goaway_challenge=meta-refresh&__goaway_id=898e1d2637d83c80b5de59a2eb5555f3&__goaway_referer=https%3A%2F%2Fdocs.rs%2F
-    #[zbus::proxy(
-        interface = "org.freedesktop.FileManager1",
-        default_service = "org.freedesktop.FileManager1",
-        default_path = "/org/freedesktop/FileManager1"
-    )]
-    trait FileManager1 {
-        async fn show_items(&self, uris: Vec<&str>, startup_id: &str) -> zbus::Result<()>;
-    }
-
-    let conn = zbus::Connection::session().await.unwrap();
-    let proxy = FileManager1Proxy::new(&conn).await.unwrap();
-    proxy.show_items(vec![url.as_ref()], "").await.unwrap();
 }
 
 // Pipe the output of a tokio future to a glib local future
@@ -677,6 +696,7 @@ fn lbr_to_appview(lbr: &gtk::ListBoxRow, model: &impl IsA<gio::ListModel>) -> Ap
 fn build_primary_window(
     gui_status: Arc<GuiStatusWatch>,
     restart: Rc<RefCell<Option<tokio::sync::oneshot::Sender<()>>>>,
+    debug_bundler: Arc<GuiDebugBundler>,
 ) -> (gtk::ApplicationWindow, ListBox) {
     let window = gtk::ApplicationWindow::builder()
         .hide_on_close(true) // So that closing window doesn't quit app
@@ -690,7 +710,7 @@ fn build_primary_window(
 
     let dev_visible = Rc::new(Cell::new(false));
 
-    let (split_view, sidebar) = navigation_split_view(gui_status, restart, dev_visible.clone());
+    let (split_view, sidebar) = navigation_split_view(gui_status, restart, dev_visible.clone(), debug_bundler);
     window.set_child(Some(&split_view));
 
     // Ctrl+Shift+D toggles Developer sidebar item
@@ -751,6 +771,7 @@ pub(crate) fn run_gtk_app(
     _main_thread: MainThreadToken,
     gui_status: Arc<GuiStatusWatch>,
     mut tray_receiver: Receiver<TrayRequest>,
+    debug_bundler: Arc<GuiDebugBundler>,
 ) -> GtkAppFinished {
     eprintln!("First light");
 
@@ -785,7 +806,7 @@ pub(crate) fn run_gtk_app(
     let restart_requested = Arc::new(AtomicBool::new(false));
     let (quit_tx, quit_rx) = tokio::sync::oneshot::channel();
     let restart = Rc::new(RefCell::new(Some(quit_tx)));
-    let (window, sidebar) = build_primary_window(gui_status, restart.clone());
+    let (window, sidebar) = build_primary_window(gui_status, restart.clone(), debug_bundler);
 
     glib::spawn_future_local(glib::clone!(
         #[strong]

@@ -38,8 +38,10 @@ install -Dm644 /repo/linux/common/obscura-sysusers.conf %{buildroot}%{_sysusersd
 install -Dm644 /repo/linux/common/obscura-preset.conf %{buildroot}%{_presetdir}/80-obscura.preset
 install -Dm755 %{_sourcedir}/obscura-gui %{buildroot}%{_bindir}/obscura-gui
 install -Dm644 /repo/linux/common/net.obscura.vpn.gui.desktop %{buildroot}%{_datadir}/applications/net.obscura.vpn.gui.desktop
-install -Dm644 /repo/linux/common/icons/net.obscura.vpn.gui-128.png %{buildroot}%{_datadir}/icons/hicolor/128x128/apps/net.obscura.vpn.gui.png
-install -Dm644 /repo/linux/common/icons/net.obscura.vpn.gui-256.png %{buildroot}%{_datadir}/icons/hicolor/256x256/apps/net.obscura.vpn.gui.png
+install -Dm644 /repo/linux/common/net.obscura.vpn.gui.metainfo.xml %{buildroot}%{_datadir}/metainfo/net.obscura.vpn.gui.metainfo.xml
+install -Dm644 /repo/linux/common/icons/64x64/net.obscura.vpn.gui.png %{buildroot}%{_datadir}/icons/hicolor/64x64/apps/net.obscura.vpn.gui.png
+install -Dm644 /repo/linux/common/icons/128x128/net.obscura.vpn.gui.png %{buildroot}%{_datadir}/icons/hicolor/128x128/apps/net.obscura.vpn.gui.png
+install -Dm644 /repo/linux/common/icons/256x256/net.obscura.vpn.gui.png %{buildroot}%{_datadir}/icons/hicolor/256x256/apps/net.obscura.vpn.gui.png
 install -Dm644 %{_sourcedir}/RPM-GPG-KEY-obscura %{buildroot}%{_sysconfdir}/pki/rpm-gpg/RPM-GPG-KEY-obscura
 install -Dm644 %{_sourcedir}/RPM-GPG-KEY-obscura-revoked %{buildroot}%{_sysconfdir}/pki/rpm-gpg/RPM-GPG-KEY-obscura-revoked
 install -Dm644 %{_sourcedir}/obscura.repo %{buildroot}%{_sysconfdir}/yum.repos.d/obscura.repo
@@ -63,6 +65,8 @@ install -Dm644 /repo/linux/rpm/obscura-repository-preset.conf %{buildroot}%{_pre
 %license %{_defaultlicensedir}/obscura-gui/LICENSE.md
 %{_bindir}/obscura-gui
 %{_datadir}/applications/net.obscura.vpn.gui.desktop
+%{_datadir}/metainfo/net.obscura.vpn.gui.metainfo.xml
+%{_datadir}/icons/hicolor/64x64/apps/net.obscura.vpn.gui.png
 %{_datadir}/icons/hicolor/128x128/apps/net.obscura.vpn.gui.png
 %{_datadir}/icons/hicolor/256x256/apps/net.obscura.vpn.gui.png
 

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>net.obscura.vpn.gui</id>
+  <pkgname>obscura-gui</pkgname>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>PolyForm-Noncommercial-1.0.0</project_license>
+  <name>Obscura VPN</name>
+  <summary>Privacy that's more than a promise</summary>
+  <description>
+    <p>Obscura is the first VPN that can't log your activity.</p>
+  </description>
+  <launchable type="desktop-id">net.obscura.vpn.gui.desktop</launchable>
+  <url type="homepage">https://obscura.com</url>
+  <developer id="net.obscura">
+    <name>Obscura</name>
+  </developer>
+  <content_rating type="oars-1.1"/>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://linux-pkgs.obscura.com/screenshot.png</image>
+    </screenshot>
+  </screenshots>
+  <categories>
+    <category>Network</category>
+    <category>Security</category>
+  </categories>
+</component>

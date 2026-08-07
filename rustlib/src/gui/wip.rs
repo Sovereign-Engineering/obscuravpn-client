@@ -699,6 +699,7 @@ fn build_primary_window(
     debug_bundler: Arc<GuiDebugBundler>,
 ) -> (gtk::ApplicationWindow, ListBox) {
     let window = gtk::ApplicationWindow::builder()
+        .title("Obscura VPN")
         .hide_on_close(true) // So that closing window doesn't quit app
         .default_width(800)
         .default_height(600)

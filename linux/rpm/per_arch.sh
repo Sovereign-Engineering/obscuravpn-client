@@ -50,6 +50,15 @@ EOF
   find "$HOME/rpmbuild/RPMS" -name '*.rpm' -exec cp {} "$out_dir/" \;
   cat "$keys_dir/current.public.asc" "$keys_dir/next.public.asc" >/out/RPM-GPG-KEY-obscura
   createrepo_c "$out_dir"
+
+  local appstream_dir
+  appstream_dir="$(mktemp -d)"
+  appstreamcli validate --no-net /repo/linux/common/net.obscura.vpn.gui.metainfo.xml /repo/linux/common/appstream-catalog.xml
+  tar --owner=0 --group=0 -cf "$appstream_dir/appstream-icons.tar" -C /repo/linux/common/icons 64x64 128x128
+  tar --owner=0 --group=0 -cf "$appstream_dir/appstream-icons-64x64.tar" -C /repo/linux/common/icons/64x64 .
+  modifyrepo_c --no-compress --mdtype=appstream /repo/linux/common/appstream-catalog.xml "$out_dir/repodata"
+  modifyrepo_c --no-compress --mdtype=appstream-icons "$appstream_dir/appstream-icons.tar" "$out_dir/repodata"
+  modifyrepo_c --no-compress --mdtype=appstream-icons-64x64 "$appstream_dir/appstream-icons-64x64.tar" "$out_dir/repodata"
 }
 
 main "$@"

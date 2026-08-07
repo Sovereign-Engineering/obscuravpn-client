@@ -21,8 +21,10 @@ package_obscura-gui() {
 	depends=("obscura-cli=$pkgver-$pkgrel" 'gtk4' 'webkitgtk-6.0' 'libsoup3' 'glib2' 'gcc-libs' 'glibc' 'hicolor-icon-theme')
 	install -Dm755 "$srcdir/obscura-gui" "$pkgdir/usr/bin/obscura-gui"
 	install -Dm644 /repo/linux/common/net.obscura.vpn.gui.desktop "$pkgdir/usr/share/applications/net.obscura.vpn.gui.desktop"
-	install -Dm644 /repo/linux/common/icons/net.obscura.vpn.gui-128.png "$pkgdir/usr/share/icons/hicolor/128x128/apps/net.obscura.vpn.gui.png"
-	install -Dm644 /repo/linux/common/icons/net.obscura.vpn.gui-256.png "$pkgdir/usr/share/icons/hicolor/256x256/apps/net.obscura.vpn.gui.png"
+	install -Dm644 /repo/linux/common/net.obscura.vpn.gui.metainfo.xml "$pkgdir/usr/share/metainfo/net.obscura.vpn.gui.metainfo.xml"
+	install -Dm644 /repo/linux/common/icons/64x64/net.obscura.vpn.gui.png "$pkgdir/usr/share/icons/hicolor/64x64/apps/net.obscura.vpn.gui.png"
+	install -Dm644 /repo/linux/common/icons/128x128/net.obscura.vpn.gui.png "$pkgdir/usr/share/icons/hicolor/128x128/apps/net.obscura.vpn.gui.png"
+	install -Dm644 /repo/linux/common/icons/256x256/net.obscura.vpn.gui.png "$pkgdir/usr/share/icons/hicolor/256x256/apps/net.obscura.vpn.gui.png"
 	install -Dm644 /repo/LICENSE.md "$pkgdir/usr/share/licenses/obscura-gui/LICENSE.md"
 }
 

@@ -26,10 +26,22 @@ main() {
     esac
     dpkg_arches+=("$arch")
     bindir="dists/stable/main/binary-${arch}"
-    rm -rf "$bindir"
     mkdir -p "$bindir"
     dpkg-scanpackages --arch "$arch" pool >"$bindir/Packages"
     gzip -9c "$bindir/Packages" >"$bindir/Packages.gz"
+  done
+
+  local dep11_dir size components_yml
+  appstreamcli validate --no-net /repo/linux/common/net.obscura.vpn.gui.metainfo.xml /repo/linux/common/appstream-catalog.xml
+  components_yml="$(mktemp -d)/Components.yml"
+  appstreamcli convert --format=yaml /repo/linux/common/appstream-catalog.xml "$components_yml"
+  dep11_dir=dists/stable/main/dep11
+  mkdir -p "$dep11_dir"
+  for arch in "${dpkg_arches[@]}"; do
+    gzip -9n -c "$components_yml" >"$dep11_dir/Components-${arch}.yml.gz"
+  done
+  for size in 64x64 128x128; do
+    tar --owner=0 --group=0 -czf "$dep11_dir/icons-$size.tar.gz" -C "/repo/linux/common/icons/$size" .
   done
 
   apt-ftparchive \

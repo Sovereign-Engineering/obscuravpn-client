@@ -19,8 +19,8 @@ use crate::{
     config::PinnedLocation,
     debug_bundle::{
         bundle_info::BundleInfo,
-        daemon::{DaemonDebugBundleHandle, DaemonDebugBundleToken},
         debug_info::DebugInfo,
+        service::{ServiceDebugBundleHandle, ServiceDebugBundleToken},
     },
     errors::{ApiError, ConfigDirty, ConfigDirtyOrApiError},
     manager::{Manager, ManagerTrafficStats, Status, TunnelArgs},
@@ -135,7 +135,7 @@ pub enum ManagerCmd {
         user_feedback: Option<String>,
         bundle_info: BundleInfo,
     },
-    CreateDaemonDebugBundle {},
+    CreateServiceDebugBundle {},
     GetDebugInfo {},
     GetExitList {
         #[debug("{:?}", known_version.as_ref().map(|b| BASE64_STANDARD.encode(b)))]
@@ -157,8 +157,8 @@ pub enum ManagerCmd {
         #[serde_as(as = "serde_with::DurationMilliSeconds")]
         freshness: Duration,
     },
-    DeleteDaemonDebugBundle {
-        token: DaemonDebugBundleToken,
+    DeleteServiceDebugBundle {
+        token: ServiceDebugBundleToken,
     },
     RotateWgKey {},
     SetApiHostAlternate {
@@ -210,7 +210,7 @@ pub enum ManagerCmdOk {
     #[from]
     ApiGoogleBillingDetails(GoogleBillingDetailsOutput),
     CreateDebugBundle(String),
-    CreateDaemonDebugBundle(DaemonDebugBundleHandle),
+    CreateServiceDebugBundle(ServiceDebugBundleHandle),
     Empty,
     GetDebugInfo(DebugInfo),
     GetExitList(CachedValue<Arc<ExitList>>),
@@ -276,13 +276,13 @@ impl ManagerCmd {
                     tracing::error!(message_id = "5ZTsw9RY", ?error, "failed to create debug bundle");
                     ManagerCmdErrorCode::Other
                 }),
-            Self::CreateDaemonDebugBundle {} => manager
-                .create_daemon_debug_bundle()
+            Self::CreateServiceDebugBundle {} => manager
+                .create_service_debug_bundle()
                 .await
-                .map(ManagerCmdOk::CreateDaemonDebugBundle)
+                .map(ManagerCmdOk::CreateServiceDebugBundle)
                 .map_err(|()| ManagerCmdErrorCode::Other),
-            Self::DeleteDaemonDebugBundle { token } => manager
-                .delete_daemon_debug_bundle(token)
+            Self::DeleteServiceDebugBundle { token } => manager
+                .delete_service_debug_bundle(token)
                 .await
                 .map(|()| ManagerCmdOk::Empty)
                 .map_err(|()| ManagerCmdErrorCode::Other),

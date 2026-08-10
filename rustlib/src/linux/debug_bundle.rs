@@ -1,6 +1,6 @@
 use super::status::DebugBundleStatus;
 use crate::debug_bundle::client::{populate_client_debug_bundle, zip_and_remove_dir};
-use crate::debug_bundle::daemon::DaemonDebugBundleHandle;
+use crate::debug_bundle::service::ServiceDebugBundleHandle;
 use crate::debug_bundle::{DIR_PREFIX, make_private_temp_dir, try_copy_dir_contents_recursive};
 use crate::linux::ipc::run_command;
 use crate::manager_cmd::ManagerCmd;
@@ -55,18 +55,18 @@ async fn create_combined_debug_bundle(user_feedback: String, client_log_dir: Opt
         .await
         .map_err(|error| tracing::error!(message_id = "sK8dQv3B", ?error, %staging, "failed to create debug bundle staging dir"))?;
 
-    match run_command::<DaemonDebugBundleHandle>(ManagerCmd::CreateDaemonDebugBundle {}).await {
-        Ok(Ok(DaemonDebugBundleHandle { path, token })) => {
+    match run_command::<ServiceDebugBundleHandle>(ManagerCmd::CreateServiceDebugBundle {}).await {
+        Ok(Ok(ServiceDebugBundleHandle { path, token })) => {
             try_copy_dir_contents_recursive(&path, &staging).await;
-            tracing::info!(message_id = "tS9bWk5H", %path, "copied daemon debug bundle into staging");
-            match run_command::<()>(ManagerCmd::DeleteDaemonDebugBundle { token }).await {
-                Ok(Ok(())) => tracing::info!(message_id = "gN4xQd8V", "daemon deleted its debug bundle dir"),
-                Ok(Err(error)) => tracing::error!(message_id = "uD9gYm4R", ?error, "daemon failed to delete daemon debug bundle"),
-                Err(error) => tracing::error!(message_id = "aK6pWv3T", ?error, "failed to send delete daemon debug bundle command"),
+            tracing::info!(message_id = "tS9bWk5H", %path, "copied service debug bundle into staging");
+            match run_command::<()>(ManagerCmd::DeleteServiceDebugBundle { token }).await {
+                Ok(Ok(())) => tracing::info!(message_id = "gN4xQd8V", "service deleted its debug bundle dir"),
+                Ok(Err(error)) => tracing::error!(message_id = "uD9gYm4R", ?error, "service failed to delete service debug bundle"),
+                Err(error) => tracing::error!(message_id = "aK6pWv3T", ?error, "failed to send delete service debug bundle command"),
             }
         }
-        Ok(Err(error)) => tracing::error!(message_id = "eW5jTq8B", ?error, "daemon failed to create daemon debug bundle"),
-        Err(error) => tracing::error!(message_id = "hN2sXf7L", ?error, "failed to send create daemon debug bundle command"),
+        Ok(Err(error)) => tracing::error!(message_id = "eW5jTq8B", ?error, "service failed to create service debug bundle"),
+        Err(error) => tracing::error!(message_id = "hN2sXf7L", ?error, "failed to send create service debug bundle command"),
     }
 
     let user_feedback = (!user_feedback.is_empty()).then_some(user_feedback.as_str());

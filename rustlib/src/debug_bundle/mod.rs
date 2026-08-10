@@ -2,10 +2,10 @@ mod builder;
 pub mod bundle_info;
 #[cfg(target_os = "linux")]
 pub mod client;
-pub mod daemon;
 pub mod debug_info;
 pub mod dns;
 pub mod http;
+pub mod service;
 pub mod task;
 pub mod zipper;
 
@@ -86,7 +86,7 @@ pub(crate) async fn try_copy_dir_contents_recursive(src: &Utf8Path, dst: &Utf8Pa
 }
 
 // TODO: https://linear.app/soveng/issue/OBS-3095/cross-platform-debug-archive-story
-// TODO: Deprecated, switch to create_daemon_debug_bundle: https://linear.app/soveng/issue/OBS-3918/debug-bundle-v3
+// TODO: Deprecated, switch to create_service_debug_bundle: https://linear.app/soveng/issue/OBS-3918/debug-bundle-v3
 pub fn create_debug_bundle(
     user_feedback: Option<&str>,
     bundle_info: BundleInfo,

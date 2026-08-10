@@ -22,12 +22,13 @@ use crate::{
     backoff::Backoff,
     cached_value::CachedValue,
     client_state::{AccountStatus, ClientState, ClientStateHandle},
-    config::{Config, ConfigDebug, ConfigLoadError, PinnedLocation, feature_flags::FeatureFlags},
+    config::{Config, ConfigLoadError, PinnedLocation, feature_flags::FeatureFlags},
     debug_bundle::{
         bundle_info::BundleInfo,
-        create_debug_bundle, daemon,
-        daemon::{DaemonDebugBundleHandle, DaemonDebugBundleToken},
+        create_debug_bundle,
         debug_info::DebugInfo,
+        service,
+        service::{ServiceDebugBundleHandle, ServiceDebugBundleToken},
     },
     errors::{ApiError, ConfigDirty, ConfigDirtyOrApiError, ConnectErrorCode},
     exit_selection::ExitSelector,
@@ -46,7 +47,7 @@ pub struct Manager {
     tunnel_state: Receiver<TunnelState>,
     status_watch: Sender<Status>,
     log_persistence: Option<LogPersistence>,
-    daemon_debug_bundles: Mutex<HashMap<DaemonDebugBundleToken, Utf8PathBuf>>,
+    service_debug_bundles: Mutex<HashMap<ServiceDebugBundleToken, Utf8PathBuf>>,
 }
 
 // Keep synchronized with ../../apple/shared/NetworkExtensionIpc.swift
@@ -183,7 +184,7 @@ impl Manager {
             client_state,
             status_watch: channel(initial_status).0,
             log_persistence,
-            daemon_debug_bundles: Mutex::new(HashMap::new()),
+            service_debug_bundles: Mutex::new(HashMap::new()),
         });
         tokio::spawn(Self::wireguard_key_registraction_task(this.clone(), ()));
         tokio::spawn(Self::propagate_updates_to_status_task(this.clone(), ()));
@@ -337,26 +338,26 @@ impl Manager {
         .await?
     }
 
-    pub async fn create_daemon_debug_bundle(&self) -> Result<DaemonDebugBundleHandle, ()> {
-        let config = ConfigDebug::from(self.client_state.borrow().config().clone());
+    pub async fn create_service_debug_bundle(&self) -> Result<ServiceDebugBundleHandle, ()> {
+        let debug_info = self.get_debug_info().await;
         let log_dir = self.log_persistence.as_ref().map(LogPersistence::log_dir).map(ToOwned::to_owned);
-        let bundle = daemon::create_daemon_debug_bundle(&config, log_dir.as_deref()).await?;
-        self.daemon_debug_bundles
+        let bundle = service::create_service_debug_bundle(&debug_info, log_dir.as_deref()).await?;
+        self.service_debug_bundles
             .lock()
             .unwrap()
             .insert(bundle.token.clone(), bundle.path.clone());
         Ok(bundle)
     }
 
-    pub async fn delete_daemon_debug_bundle(&self, token: DaemonDebugBundleToken) -> Result<(), ()> {
-        let Some(path) = self.daemon_debug_bundles.lock().unwrap().remove(&token) else {
-            tracing::error!(message_id = "fP3jVt6N", "unknown daemon debug bundle token");
+    pub async fn delete_service_debug_bundle(&self, token: ServiceDebugBundleToken) -> Result<(), ()> {
+        let Some(path) = self.service_debug_bundles.lock().unwrap().remove(&token) else {
+            tracing::error!(message_id = "fP3jVt6N", "unknown service debug bundle token");
             return Err(());
         };
         tokio::fs::remove_dir_all(&path)
             .await
-            .map_err(|error| tracing::error!(message_id = "mR7kZc2V", ?error, "failed to remove daemon debug bundle dir"))?;
-        tracing::info!(message_id = "bQ7wJf4S", %path, "deleted daemon debug bundle dir");
+            .map_err(|error| tracing::error!(message_id = "mR7kZc2V", ?error, "failed to remove service debug bundle dir"))?;
+        tracing::info!(message_id = "bQ7wJf4S", %path, "deleted service debug bundle dir");
         Ok(())
     }
 

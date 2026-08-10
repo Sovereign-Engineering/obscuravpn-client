@@ -1,9 +1,10 @@
 use camino::Utf8PathBuf;
-use clap::{Args, Parser, Subcommand};
-use derive_more::From;
+use clap::{ArgAction, Args, Parser, Subcommand};
 use obscuravpn_client::logging::{self, LogPersistence};
 use std::process::exit;
-use strum::EnumIs;
+use tracing_subscriber::filter::{EnvFilter, LevelFilter};
+use tracing_subscriber::layer::SubscriberExt as _;
+use tracing_subscriber::{Layer, Registry, fmt};
 
 #[cfg(target_os = "linux")]
 mod add_operator;
@@ -40,18 +41,18 @@ pub struct ServiceArgs {
 
 #[derive(Args, Debug)]
 pub struct ClientLoginArgs {
-    /// Account number (20 decimal digits without dashes or spaces).
-    pub account: String,
+    /// Account number. You will be prompted for it if omitted.
+    pub account: Option<String>,
     #[clap(long)]
     /// Don't validate the account number, which would require internet access.
     pub offline: bool,
 }
 
 #[derive(Args, Debug)]
-pub struct ClientStartArgs {}
+pub struct ClientConnectArgs {}
 
 #[derive(Args, Debug)]
-pub struct ClientStopArgs {}
+pub struct ClientDisconnectArgs {}
 
 #[derive(Args, Debug)]
 pub struct ClientStatusArgs {
@@ -66,35 +67,62 @@ pub struct ClientStatusArgs {
 #[derive(Args, Debug)]
 pub struct ClientIpcTestArgs {}
 
-#[derive(From, EnumIs)]
-pub enum ClientCommand {
-    Login(ClientLoginArgs),
-    Start(ClientStartArgs),
-    Stop(ClientStopArgs),
-    Status(ClientStatusArgs),
-    IpcTest(ClientIpcTestArgs),
-}
-
 #[derive(Subcommand, Debug)]
-pub enum Command {
+pub enum ClientCommand {
     #[cfg(target_os = "linux")]
     /// Grant operator privileges by adding the specified users to the 'obscura' group. Defaults to the current user.
-    AddOperator {
-        users: Vec<String>,
-    },
-    Service(ServiceArgs),
+    AddOperator { users: Vec<String> },
+    /// Log in with your account number.
     Login(ClientLoginArgs),
-    Start(ClientStartArgs),
-    Stop(ClientStopArgs),
+    /// Connect to the VPN.
+    Connect(ClientConnectArgs),
+    /// Disconnect from the VPN.
+    Disconnect(ClientDisconnectArgs),
+    /// Show account and VPN status.
     Status(ClientStatusArgs),
     #[command(hide = true)]
     IpcTest(ClientIpcTestArgs),
+}
+
+impl ClientCommand {
+    fn init_logging(&self, verbosity: u8) {
+        let level = match verbosity {
+            0 => LevelFilter::OFF,
+            1 => LevelFilter::ERROR,
+            2 => LevelFilter::INFO,
+            _ => LevelFilter::TRACE,
+        };
+        let mut stderr_filter = EnvFilter::builder().with_default_directive(level.into()).from_env_lossy();
+        let env_level = <EnvFilter as Layer<Registry>>::max_level_hint(&stderr_filter);
+        if env_level.is_none_or(|env_level| env_level < level) {
+            stderr_filter = stderr_filter.add_directive(level.into());
+        }
+        let stderr_layer = fmt::Layer::default().with_writer(std::io::stderr).with_filter(stderr_filter);
+        let registry = tracing_subscriber::registry().with(stderr_layer);
+        #[cfg(target_os = "linux")]
+        let registry = registry.with(tracing_journald::Layer::new().map(|layer| layer.with_filter(LevelFilter::INFO)).ok());
+        tracing::subscriber::set_global_default(registry).expect("failed to set global subscriber");
+    }
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ServiceCommand {
+    #[command(hide = true)]
+    Service(ServiceArgs),
     #[cfg(target_os = "windows")]
     #[command(hide = true)]
     WindowsService(ServiceArgs),
 }
 
-impl Command {
+#[derive(Subcommand, Debug)]
+pub enum Command {
+    #[command(flatten)]
+    Service(ServiceCommand),
+    #[command(flatten)]
+    Client(ClientCommand),
+}
+
+impl ServiceCommand {
     fn log_persistence_dir(&self) -> Option<Utf8PathBuf> {
         let dir = match self {
             #[cfg(target_os = "linux")]
@@ -105,14 +133,23 @@ impl Command {
             }
             #[cfg(not(any(target_os = "windows", target_os = "linux")))]
             Self::Service(ServiceArgs { .. }) => None,
-            #[cfg(target_os = "linux")]
-            Self::AddOperator { users: _ } => None,
-            Self::Login(_) | Self::Start(_) | Self::Stop(_) | Self::Status(_) | Self::IpcTest(_) => None,
         }?;
         if let Err(error) = std::fs::create_dir_all(&dir) {
             eprintln!("failed to create log dir {dir}: {error}");
         }
         Some(dir)
+    }
+
+    fn init_logging(&self) -> Option<LogPersistence> {
+        let persistence_dir = self.log_persistence_dir();
+        #[cfg(target_os = "linux")]
+        let base_layer: Box<dyn Layer<Registry> + Send + Sync> = match std::env::var_os("JOURNAL_STREAM").map(|_| tracing_journald::Layer::new()) {
+            Some(Ok(layer)) => Box::new(layer),
+            Some(Err(_)) | None => Box::new(fmt::Layer::default()),
+        };
+        #[cfg(not(target_os = "linux"))]
+        let base_layer: Box<dyn Layer<Registry> + Send + Sync> = Box::new(fmt::Layer::default());
+        logging::init(base_layer, persistence_dir.as_deref())
     }
 }
 
@@ -120,14 +157,11 @@ impl Command {
 pub struct Cli {
     #[command(subcommand)]
     command: Command,
-    #[command(flatten)]
-    pub global_args: GlobalArgs,
-}
-
-#[derive(Args, Debug)]
-pub struct GlobalArgs {
-    #[clap(long, hide = true)]
+    #[clap(long, hide = true, global = true)]
     no_group_refresh: bool,
+    /// Extra logs (-v: errors, -vv: info, -vvv: everything).
+    #[clap(short, long, action = ArgAction::Count, global = true)]
+    verbose: u8,
 }
 
 #[tokio::main]
@@ -137,26 +171,25 @@ async fn main() {
         .expect("Failed to install aws-lc crypto provider");
 
     let cli = Cli::parse();
-    let log_persistence = logging::init(tracing_subscriber::fmt::Layer::default(), cli.command.log_persistence_dir().as_deref());
-    let client_command: ClientCommand = match cli.command {
-        #[cfg(target_os = "linux")]
-        Command::AddOperator { users } => add_operator::run_add_operator(users).await,
-        Command::Service(args) => run_service(args, log_persistence).await,
-        Command::Start(args) => args.into(),
-        Command::Stop(args) => args.into(),
-        Command::Status(args) => args.into(),
-        Command::Login(args) => args.into(),
-        Command::IpcTest(args) => args.into(),
-        #[cfg(target_os = "windows")]
-        Command::WindowsService(args) => {
-            if let Err(error) = service::os::windows::scm::run(args.config_dir.clone(), log_persistence) {
-                eprintln!("failed to run as windows service: {}", error);
-                exit(1);
-            }
-            return;
+    match cli.command {
+        Command::Client(command) => {
+            command.init_logging(cli.verbose);
+            run_client(cli.no_group_refresh, command).await
         }
-    };
-    run_client(cli.global_args, client_command).await
+        Command::Service(command) => {
+            let log_persistence = command.init_logging();
+            match command {
+                ServiceCommand::Service(args) => run_service(args, log_persistence).await,
+                #[cfg(target_os = "windows")]
+                ServiceCommand::WindowsService(args) => {
+                    if let Err(error) = service::os::windows::scm::run(args.config_dir.clone(), log_persistence) {
+                        eprintln!("failed to run as windows service: {}", error);
+                        exit(1);
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[cfg(any(target_os = "windows", target_os = "linux"))]
@@ -178,15 +211,15 @@ async fn run_service(_args: ServiceArgs, _log_persistence: Option<LogPersistence
 }
 
 #[cfg(target_os = "linux")]
-async fn run_client(global_args: GlobalArgs, args: ClientCommand) {
-    if let Err(error) = client::run(global_args, args).await {
+async fn run_client(no_group_refresh: bool, args: ClientCommand) {
+    if let Err(error) = client::run(no_group_refresh, args).await {
         eprintln!("{}", error);
         exit(1)
     }
 }
 
 #[cfg(not(target_os = "linux"))]
-async fn run_client(_global_args: GlobalArgs, _args: ClientCommand) {
+async fn run_client(_no_group_refresh: bool, _args: ClientCommand) {
     eprintln!("unsupported OS");
     exit(1)
 }

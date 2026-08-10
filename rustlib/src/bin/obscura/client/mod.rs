@@ -1,7 +1,7 @@
 mod ipc;
 
 use crate::client::ipc::ipc_test;
-use crate::{ClientCommand, ClientLoginArgs, ClientStatusArgs, GlobalArgs};
+use crate::{ClientCommand, ClientLoginArgs, ClientStatusArgs};
 use anyhow::Context;
 use chrono::{MappedLocalTime, TimeZone};
 use obscuravpn_api::types::{AccountId, AccountInfo};
@@ -54,17 +54,18 @@ impl From<LinuxIpcError> for ClientError {
     }
 }
 
-pub async fn run(global_args: GlobalArgs, cmd: ClientCommand) -> Result<(), ClientError> {
+pub async fn run(no_group_refresh: bool, cmd: ClientCommand) -> Result<(), ClientError> {
     // Group memberships changes do not automatically propagate into existing sessions. If we detect that launching the process with updated group memberships is necessary to do IPC, we replace the current process with a new one launched in a context with updated group memberships.
-    if global_args.no_group_refresh {
+    if no_group_refresh {
         tracing::debug!(message_id = "jpjl9cI9", "skipping group refresh fix due to CLI flag");
-    } else {
+    } else if !matches!(cmd, ClientCommand::AddOperator { users: _ }) {
         obscuravpn_client::linux::ipc::try_group_refresh_fix().await;
     }
     match cmd {
+        ClientCommand::AddOperator { users } => crate::add_operator::run_add_operator(users).await,
         ClientCommand::Login(args) => login(args).await,
-        ClientCommand::Start(_args) => go_to_target_state(Some(TunnelArgs { exit: ExitSelector::Any {} })).await,
-        ClientCommand::Stop(_args) => go_to_target_state(None).await,
+        ClientCommand::Connect(_args) => go_to_target_state(Some(TunnelArgs { exit: ExitSelector::Any {} })).await,
+        ClientCommand::Disconnect(_args) => go_to_target_state(None).await,
         ClientCommand::Status(args) => status(args).await,
         ClientCommand::IpcTest(args) => ipc_test(args).await,
     }
@@ -99,7 +100,23 @@ async fn status(args: ClientStatusArgs) -> Result<(), ClientError> {
 }
 
 async fn login(args: ClientLoginArgs) -> Result<(), ClientError> {
-    let _: () = run_command(ManagerCmd::Login { account_id: AccountId::from_string_unchecked(args.account), validate: !args.offline }).await??;
+    let account = match args.account {
+        Some(account) => account,
+        None => {
+            if std::io::IsTerminal::is_terminal(&std::io::stdin()) {
+                eprint!("Account number: ");
+            }
+            let mut line = String::new();
+            std::io::stdin()
+                .read_line(&mut line)
+                .map_err(|error| anyhow::Error::new(error).context("failed to read account number from stdin"))?;
+            line.trim_end_matches(['\r', '\n']).to_string()
+        }
+    };
+    if account.is_empty() {
+        return Err(ClientError::MalformedAccountId);
+    }
+    let _: () = run_command(ManagerCmd::Login { account_id: AccountId::from_string_unchecked(account), validate: !args.offline }).await??;
     if !args.offline {
         eprintln!("successfully logged in");
     } else {

@@ -238,7 +238,7 @@ function setup_and_connect() {
   ssh_run obscura add-operator user
   ssh_run RUST_LOG=debug obscura ipc-test
   ssh_run obscura login "${account_id}"
-  ssh_run obscura start
+  ssh_run obscura connect
 }
 
 function check_if_mullvad() {

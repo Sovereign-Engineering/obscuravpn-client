@@ -196,7 +196,7 @@ pub async fn try_group_refresh_fix() {
         // adding this sentinel flag to all invocations make sure this logic never triggers recursively
         const NO_PERMISSION_FIX_ARG: &str = "--no-group-refresh";
 
-        let Ok(mut command) = build_sg_exec_cmd(&group.name, invocation_path, [NO_PERMISSION_FIX_ARG, "ipc-test"]).inspect_err(|error| {
+        let Ok(mut command) = build_sg_exec_cmd(&group.name, invocation_path, ["ipc-test", NO_PERMISSION_FIX_ARG]).inspect_err(|error| {
             tracing::error!(
                 message_id = "TSjQoNIW",
                 ?error,
@@ -222,7 +222,7 @@ pub async fn try_group_refresh_fix() {
 
         tracing::info!(message_id = "6I3WIrPh", "group refresh required, restarting process in a new shell");
         let current_args: Vec<String> = args().skip(1).collect();
-        let new_args_iter = once(NO_PERMISSION_FIX_ARG).chain(current_args.iter().map(String::as_str));
+        let new_args_iter = current_args.iter().map(String::as_str).chain(once(NO_PERMISSION_FIX_ARG));
         let Ok(mut command) = build_sg_exec_cmd(&group.name, invocation_path, new_args_iter).inspect_err(|error| {
             tracing::error!(
                 message_id = "DD0zPnz8",

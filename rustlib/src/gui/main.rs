@@ -22,7 +22,7 @@ use std::sync::Arc;
 
 #[derive(Parser)]
 struct GuiArgs {
-    #[arg(long, hide = true)]
+    #[arg(long, hide = true, global = true)]
     no_group_refresh: bool,
     #[arg(long, help = "Print version")]
     version: bool,

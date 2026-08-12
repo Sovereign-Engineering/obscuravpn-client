@@ -6,6 +6,7 @@ using System.Globalization;
 using System.Linq;
 using System.Management;
 using System.Runtime.InteropServices;
+using System.Text.Json.Serialization;
 
 namespace Obscura_Client;
 
@@ -33,7 +34,7 @@ class ComputerSystem
         };
     }
 
-    public double GetMemoryTotalGib()
+    public double GetRAMPhysicalGiB()
     {
         return TotalPhysicalMemory / 1024.0 / 1024.0 / 1024.0;
     }
@@ -59,7 +60,7 @@ class OperatingSystem
         return LastBootUpTime.ToString("yyyy-MM-dd'T'HH:mm:ssZ", CultureInfo.InvariantCulture);
     }
 
-    public double GetMemoryAvailGib()
+    public double GetRAMAvailableGiB()
     {
         return FreePhysicalMemory / 1024.0 / 1024.0;
     }
@@ -67,7 +68,7 @@ class OperatingSystem
     // `Caption` = marketing name (i.e. Microsoft Windows 11 Pro)
     // `Version` = kernel version (this is still 10.x.y even on Windows 11)
     // `RuntimeInformation.OSDescription` = Microsoft Windows + kernel version
-    public string GetOsVersion()
+    public string GetOSVersionString()
     {
         return $"{Caption} ({Version})";
     }
@@ -85,23 +86,40 @@ class Processor
     }
 }
 
+// TODO: Switch to `JsonNamingPolicyAttribute` when we update to .NET 11
+// https://linear.app/soveng/issue/OBS-3949/use-jsonnamingpolicyattribute-when-were-on-net-11
 public class BundleInfo
 {
     private static readonly ILog Log = LogManager.GetLogger(typeof(BundleInfo));
+    [JsonPropertyName("AppVersion")]
     public required string AppVersion { get; set; }
+    [JsonPropertyName("BootTimestamp")]
     public string? BootTimestamp { get; set; }
-    public string? DotnetFramework { get; set; }
-    public double? MemoryAvailGib { get; set; }
-    public double? MemoryTotalGib { get; set; }
-    public string? OsArchitecture { get; set; }
-    public string? OsVersion { get; set; }
+    [JsonPropertyName("DotNETFramework")]
+    public string? DotNETFramework { get; set; }
+    [JsonPropertyName("OSArchitecture")]
+    public string? OSArchitecture { get; set; }
+    [JsonPropertyName("OSVersionString")]
+    public string? OSVersionString { get; set; }
+    [JsonPropertyName("PID")]
+    public int? PID { get; set; }
+    [JsonPropertyName("ProcessArchitecture")]
     public string? ProcessArchitecture { get; set; }
-    public int? ProcessId { get; set; }
+    [JsonPropertyName("ProcessPath")]
     public string? ProcessPath { get; set; }
+    [JsonPropertyName("ProcessorCountActive")]
     public int? ProcessorCountActive { get; set; }
+    [JsonPropertyName("ProcessorCountPhysical")]
     public int? ProcessorCountPhysical { get; set; }
+    [JsonPropertyName("ProcessorName")]
     public string? ProcessorName { get; set; }
+    [JsonPropertyName("RAMAvailableGiB")]
+    public double? RAMAvailableGiB { get; set; }
+    [JsonPropertyName("RAMPhysicalGiB")]
+    public double? RAMPhysicalGiB { get; set; }
+    [JsonPropertyName("ThermalState")]
     public string? ThermalState { get; set; }
+    [JsonPropertyName("UptimeHours")]
     public double? UptimeHours { get; set; }
 
     static T? Query<T>(string query, Func<IEnumerable<ManagementBaseObject>, T?> f)
@@ -137,19 +155,19 @@ public class BundleInfo
         );
         AppVersion = OsStatus.GetSrcVersion();
         BootTimestamp = operatingSystem?.GetBootTimestamp();
-        DotnetFramework = RuntimeInformation.FrameworkDescription;
-        MemoryAvailGib = operatingSystem?.GetMemoryAvailGib();
-        MemoryTotalGib = computerSystem?.GetMemoryTotalGib();
+        DotNETFramework = RuntimeInformation.FrameworkDescription;
         // OS architecture may differ from process architecture:
         // https://learn.microsoft.com/en-us/dotnet/api/system.runtime.interopservices.runtimeinformation.osarchitecture?view=net-10.0#remarks
-        OsArchitecture = RuntimeInformation.OSArchitecture.ToString();
-        OsVersion = operatingSystem?.GetOsVersion() ?? RuntimeInformation.OSDescription;
+        OSArchitecture = RuntimeInformation.OSArchitecture.ToString();
+        OSVersionString = operatingSystem?.GetOSVersionString() ?? RuntimeInformation.OSDescription;
+        PID = Environment.ProcessId;
         ProcessArchitecture = RuntimeInformation.ProcessArchitecture.ToString();
-        ProcessId = Environment.ProcessId;
         ProcessPath = Environment.ProcessPath;
         ProcessorCountActive = Environment.ProcessorCount;
         ProcessorCountPhysical = processors?.Sum(processor => Convert.ToInt32(processor.NumberOfCores));
         ProcessorName = processors?.FirstOrDefault()?.Name;
+        RAMAvailableGiB = operatingSystem?.GetRAMAvailableGiB();
+        RAMPhysicalGiB = computerSystem?.GetRAMPhysicalGiB();
         ThermalState = computerSystem?.GetThermalState();
         UptimeHours = TimeSpan.FromMilliseconds(Environment.TickCount64).TotalHours;
     }

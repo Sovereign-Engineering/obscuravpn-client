@@ -1,6 +1,7 @@
 package net.obscura.vpnclientapp.client
 
 import kotlinx.serialization.KeepGeneratedSerializer
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import net.obscura.lib.util.ExternallyTaggedEnumVariantSerializer
@@ -42,21 +43,21 @@ sealed interface ManagerCmd {
 
         @Serializable
         data class BundleInfo(
-            val androidSdk: Int?,
-            val appVersion: String,
-            val bootTimestamp: String?,
-            val brand: String?,
-            val lowPowerMode: Boolean?,
-            val memoryAvailGib: Double?,
-            val memoryTotalGib: Double?,
-            val model: String?,
-            val osVersion: String?,
-            val processId: Int?,
-            val processName: String?,
-            val processorCountActive: Int?,
-            val processorName: String?,
-            val thermalState: String?,
-            val uptimeHours: Double?,
+            @SerialName("AndroidSDK") val androidSdk: Int?,
+            @SerialName("AppVersion") val appVersion: String,
+            @SerialName("BootTimestamp") val bootTimestamp: String?,
+            @SerialName("Brand") val brand: String?,
+            @SerialName("LowPowerMode") val lowPowerMode: Boolean?,
+            @SerialName("Model") val model: String?,
+            @SerialName("OSVersionString") val osVersionString: String?,
+            @SerialName("PID") val pid: Int?,
+            @SerialName("ProcessName") val processName: String?,
+            @SerialName("ProcessorCountActive") val processorCountActive: Int?,
+            @SerialName("ProcessorName") val processorName: String?,
+            @SerialName("RAMAvailableGiB") val ramAvailableGiB: Double?,
+            @SerialName("RAMLogicalGiB") val ramLogicalGiB: Double?,
+            @SerialName("ThermalState") val thermalState: String?,
+            @SerialName("UptimeHours") val uptimeHours: Double?,
         )
     }
 

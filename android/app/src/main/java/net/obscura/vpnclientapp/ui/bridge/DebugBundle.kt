@@ -35,14 +35,14 @@ fun bundleInfo(context: Context): ManagerCmd.CreateDebugBundle.BundleInfo {
             bootTimestamp = Instant.fromEpochMilliseconds(System.currentTimeMillis() - uptimeMs).toString(),
             brand = Build.BRAND,
             lowPowerMode = powerManager?.isPowerSaveMode,
-            memoryAvailGib = memoryInfo?.let { it.availMem.toDouble() / 1024.0 / 1024.0 / 1024.0 },
-            memoryTotalGib = memoryInfo?.let { it.totalMem.toDouble() / 1024.0 / 1024.0 / 1024.0 },
             model = Build.MODEL,
-            osVersion = Build.VERSION.RELEASE_OR_CODENAME,
-            processId = Process.myPid(),
+            osVersionString = Build.VERSION.RELEASE_OR_CODENAME,
+            pid = Process.myPid(),
             processName = Application.getProcessName(),
             processorCountActive = Runtime.getRuntime().availableProcessors(),
             processorName = Build.SOC_MODEL,
+            ramAvailableGiB = memoryInfo?.let { it.availMem.toDouble() / 1024.0 / 1024.0 / 1024.0 },
+            ramLogicalGiB = memoryInfo?.let { it.totalMem.toDouble() / 1024.0 / 1024.0 / 1024.0 },
             thermalState =
                 powerManager?.currentThermalStatus?.let {
                     when (it) {

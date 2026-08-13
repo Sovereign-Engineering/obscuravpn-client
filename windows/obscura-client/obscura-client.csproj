@@ -83,7 +83,7 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.3.1" />
     <PackageReference Include="NetSparkleUpdater.SparkleUpdater" Version="3.1.0" />
     <PackageReference Include="System.Management" Version="10.0.10" />
-    <PackageReference Include="WinUIEx" Version="2.9.2" />
+    <PackageReference Include="WinUIEx" Version="2.9.3" />
   </ItemGroup>
   <!--
     Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution

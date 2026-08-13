@@ -280,6 +280,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             {
                 Log.Warn($"malformed fallback activation payload: {ex.Message}");
             }
+            App.Current.EnsureNotifyIcon();
             if (activation != null && NotificationActions.IsNotificationKind(activation.Kind))
             {
                 string? action = null;

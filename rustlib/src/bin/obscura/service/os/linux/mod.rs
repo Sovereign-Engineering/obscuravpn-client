@@ -64,13 +64,13 @@ impl LinuxOsImpl {
             dns_manager_arg,
         })
     }
+
+    pub fn network_interface(&self) -> Receiver<Option<NetworkInterface>> {
+        self.preferred_network_interface.clone()
+    }
 }
 
 impl Os for LinuxOsImpl {
-    fn network_interface(&self) -> Receiver<Option<NetworkInterface>> {
-        self.preferred_network_interface.clone()
-    }
-
     async fn set_os_network_config(&self, network_config: OsNetworkConfig, tunnel: QuicWgConnPacketSender) -> Result<(), ()> {
         let mut current_network_config = self.current_network_config.lock().await;
         let tun = self.tun.interface();

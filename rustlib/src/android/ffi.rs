@@ -62,6 +62,7 @@ fn initialize(env: &mut JNIEnv, j_config_dir: &JString, j_user_agent: &JString, 
         WgKeyStore::Plaintext,
         user_agent.as_str().into(),
         os_impl.clone(),
+        os_impl.network_interface(),
         log_persistence,
         true,
     )?;

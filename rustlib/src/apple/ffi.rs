@@ -83,6 +83,7 @@ pub unsafe extern "C" fn initialize(
             wg_key_store,
             user_agent,
             os_impl.clone(),
+            os_impl.network_interface(),
             log_persistence,
             true, // persistent tunnel activation must be handled by the on-demand OS feature on Apple platforms
         ) {

@@ -25,13 +25,13 @@ impl AndroidOsImpl {
     pub fn jvm(&self) -> Arc<JavaVM> {
         self.jvm.clone()
     }
+
+    pub fn network_interface(&self) -> watch::Receiver<Option<NetworkInterface>> {
+        self.network_interface.subscribe()
+    }
 }
 
 impl Os for AndroidOsImpl {
-    fn network_interface(&self) -> watch::Receiver<Option<NetworkInterface>> {
-        self.network_interface.subscribe()
-    }
-
     async fn set_os_network_config(&self, network_config: OsNetworkConfig, tunnel: QuicWgConnPacketSender) -> Result<(), ()> {
         let json = serde_json::to_string(&network_config).map_err(|error| {
             tracing::error!(message_id = "dK2xNm3q", ?error, "failed to serialize OsNetworkConfig: {error}");

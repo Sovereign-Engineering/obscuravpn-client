@@ -49,13 +49,13 @@ impl AppleOsImpl {
     pub fn send_packet(&self, packet: &[u8]) {
         self.tunnel.lock().unwrap().send(std::iter::once(packet));
     }
+
+    pub fn network_interface(&self) -> watch::Receiver<Option<NetworkInterface>> {
+        self.network_interface.subscribe()
+    }
 }
 
 impl Os for AppleOsImpl {
-    fn network_interface(&self) -> watch::Receiver<Option<NetworkInterface>> {
-        self.network_interface.subscribe()
-    }
-
     async fn set_os_network_config(&self, network_config: OsNetworkConfig, tunnel: QuicWgConnPacketSender) -> Result<(), ()> {
         *self.tunnel.lock().unwrap() = tunnel;
 

@@ -52,6 +52,10 @@ impl WindowsOsImpl {
             }
         }
     }
+
+    pub fn network_interface(&self) -> Receiver<Option<NetworkInterface>> {
+        self.active_adapter_watcher.clone()
+    }
 }
 
 const JSON_OTHER_ERROR: &str = r#"{"Err":"other"}"#;
@@ -65,10 +69,6 @@ fn test_other_error_json() {
 }
 
 impl Os for WindowsOsImpl {
-    fn network_interface(&self) -> Receiver<Option<NetworkInterface>> {
-        self.active_adapter_watcher.clone()
-    }
-
     async fn set_os_network_config(&self, network_config: OsNetworkConfig, tunnel: QuicWgConnPacketSender) -> Result<(), ()> {
         tracing::info!(message_id = "HSSPAPbp", "manager called set_tunnel_network_config: {:?}", network_config);
         let result = self

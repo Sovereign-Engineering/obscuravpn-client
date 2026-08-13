@@ -3,8 +3,7 @@ pub mod os;
 use crate::ServiceArgs;
 
 use anyhow::Context;
-use obscuravpn_client::manager::VpnStatus;
-use obscuravpn_client::os::os_trait::Os;
+use obscuravpn_client::os::os_trait::{Os, RevocableOs};
 use obscuravpn_client::version::release_version;
 use obscuravpn_client::wg_key_store::WgKeyStore;
 use obscuravpn_client::{logging::LogPersistence, manager::Manager};
@@ -23,6 +22,7 @@ pub async fn run(args: ServiceArgs, log_persistence: Option<LogPersistence>, shu
     let os_impl = os::windows::WindowsOsImpl::new().await?;
 
     let os_impl = Arc::new(os_impl);
+    let manager_os_impl = Arc::new(RevocableOs::new(os_impl.clone()));
 
     let wg_key_store = match WgKeyStore::sealed().await {
         Ok(wg_key_store) => wg_key_store,
@@ -42,7 +42,8 @@ pub async fn run(args: ServiceArgs, log_persistence: Option<LogPersistence>, shu
         args.config_dir.into(),
         wg_key_store,
         format!("obscura.net/{}/{src_version}", std::env::consts::OS),
-        os_impl.clone(),
+        manager_os_impl.clone(),
+        os_impl.network_interface(),
         log_persistence,
         true,
     )
@@ -70,25 +71,11 @@ pub async fn run(args: ServiceArgs, log_persistence: Option<LogPersistence>, shu
 
     tracing::info!(
         message_id = "rT8yQ2dC",
-        "service shutdown requested; disconnecting and reverting OS network configuration"
+        "service shutdown requested; revoking OS network integration and reverting OS network configuration"
     );
 
-    _ = manager.run_on_client_state(|client_state| client_state.set_tunnel_target_state(None, Some(false)));
-    let mut status = manager.subscribe();
-    let wait_till_disconnected = async {
-        while !matches!(status.borrow_and_update().vpn_status, VpnStatus::Disconnected {}) {
-            if let Err(error) = status.changed().await {
-                tracing::error!(
-                    message_id = "jFaRdAvk",
-                    ?error,
-                    "error while waiting for disconnected status for shutdown"
-                );
-                break;
-            }
-        }
-    };
-    if let Err(error) = tokio::time::timeout(Duration::from_secs(20), wait_till_disconnected).await {
-        tracing::warn!(message_id = "cJ4tPz9V", ?error, "timed out waiting for manager to disconnect on shutdown");
+    if tokio::time::timeout(Duration::from_secs(20), manager_os_impl.revoke()).await.is_err() {
+        tracing::warn!(message_id = "cJ4tPz9V", "timed out revoking manager access to OS network integration");
     }
     if let Err(error) = os_impl.unset_os_network_config().await {
         tracing::warn!(message_id = "kN5bX1wz", ?error, "failed to revert OS network configuration on shutdown");

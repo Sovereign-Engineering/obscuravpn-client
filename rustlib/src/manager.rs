@@ -168,11 +168,13 @@ impl VpnStatus {
 
 impl Manager {
     /// The constructed `Arc<Manager>` can not be dropped due to spawned tasks, which hold references.
+    /// The `network_interface` watcher must keep receiving updates until dropped.
     pub fn new(
         config_dir: PathBuf,
         wg_key_store: WgKeyStore,
         user_agent: String,
         os_impl: Arc<impl Os>,
+        network_interface: Receiver<Option<NetworkInterface>>,
         log_persistence: Option<LogPersistence>,
         force_init_inactive: bool,
     ) -> Result<Arc<Self>, ConfigLoadError> {
@@ -188,7 +190,7 @@ impl Manager {
         });
         tokio::spawn(Self::wireguard_key_registraction_task(this.clone(), ()));
         tokio::spawn(Self::propagate_updates_to_status_task(this.clone(), ()));
-        tokio::spawn(Self::preferred_network_interface_task(this.clone(), os_impl.network_interface()));
+        tokio::spawn(Self::preferred_network_interface_task(this.clone(), network_interface));
         Ok(this)
     }
 

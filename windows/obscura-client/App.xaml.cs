@@ -114,6 +114,10 @@ public partial class App : Application
         _uiDispatcher = DispatcherQueue.GetForCurrentThread();
         StatusSubscriber.Instance.Start();
         _window = new MainWindow();
+        // Call before creating the notification icon, notification handlers,
+        // and processing redirection activations (e.g. ShowUpdate notification action)
+        InitUpdater();
+        // This allows the redirection handler to continue processing pending activations
         _windowReady.TrySetResult(_window);
         _notifyIcon = new NotifyIconManager(this, _uiDispatcher);
 
@@ -144,11 +148,16 @@ public partial class App : Application
         _ = LoginItem.RefreshStatusAsync();
     }
 
-    void StartUpdateChecks()
+    void InitUpdater()
     {
         Updater = new AppUpdater(_uiDispatcher!);
         Updater.UpdateAvailabilityChanged += available =>
             _uiDispatcher!.TryEnqueue(() => _window?.SetUpdateBadgeVisible(available));
+    }
+
+    // Requires notifications to be registered
+    void StartUpdateChecks()
+    {
         _updateCheckTimer = _uiDispatcher!.CreateTimer();
         _updateCheckTimer.Interval = UpdateCheckInterval;
         _updateCheckTimer.IsRepeating = true;

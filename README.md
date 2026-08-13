@@ -414,8 +414,9 @@ Pass `--dirty` to build production packages from an untagged or modified tree.
 private key signs releases), `next.public.asc` (the public key of the next keypair,
 shipped ahead), and `revocation.asc` (the public key of every rotated-out keypair, with
 its revocation certificate). It also holds `rotate_signing_key.bash`. The directory is
-self-contained: copy it to the isolated machine that holds the private keys, run the
-script there, and copy `current.public.asc`, `next.public.asc`, and `revocation.asc` back.
+self-contained: copy it to an ephemeral machine along with the directory of encrypted
+private keys, run the script there, and copy `current.public.asc`, `next.public.asc`,
+and `revocation.asc` back.
 
 User machines that already trust a rotated-out public key must stop trusting it. The packaging
 scripts and the packages they ship handle this automatically; each format uses a

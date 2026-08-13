@@ -44,7 +44,7 @@ pub async fn run(args: ServiceArgs, log_persistence: Option<LogPersistence>, shu
         format!("obscura.net/{}/{src_version}", std::env::consts::OS),
         os_impl.clone(),
         log_persistence,
-        false,
+        true,
     )
     .context("failed to create manager")?;
 

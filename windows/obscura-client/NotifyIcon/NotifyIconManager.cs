@@ -17,6 +17,9 @@ public sealed partial class NotifyIconManager
 
     static readonly TimeSpan ConnectingFrameInterval = TimeSpan.FromMilliseconds(500);
 
+    const string CreateDebugBundleText = "Create Debug Bundle";
+    const string CreatingDebugBundleText = "Creating Debug Bundle (takes a few minutes)";
+
     readonly App _app;
     // UI updates must be executed on the thread that created the UI
     readonly DispatcherQueue _uiQueue;
@@ -184,6 +187,24 @@ public sealed partial class NotifyIconManager
         menu.Items.Add(checkForUpdates);
 
         menu.Items.Add(new MenuFlyoutSeparator());
+        var debugBundleStatus = OsStatus.Instance.DebugBundleStatus;
+        var inProgress = debugBundleStatus.InProgress;
+        var createDebugBundle = new MenuFlyoutItem
+        {
+            Text = inProgress ? CreatingDebugBundleText : CreateDebugBundleText,
+            IsEnabled = !inProgress,
+        };
+        createDebugBundle.Click += (_, _) => CreateDebugBundle();
+        menu.Items.Add(createDebugBundle);
+
+        if (!inProgress && debugBundleStatus.LatestPath is { } latestPath)
+        {
+            var viewLatest = new MenuFlyoutItem { Text = "View Latest Debug Bundle" };
+            viewLatest.Click += (_, _) => _ = new RevealItemInDirCommand { Path = latestPath }.RunAsync();
+            menu.Items.Add(viewLatest);
+        }
+
+        menu.Items.Add(new MenuFlyoutSeparator());
         var version = new MenuFlyoutItem { Text = OsStatus.Instance.SrcVersion, IsEnabled = false };
         menu.Items.Add(version);
 
@@ -297,5 +318,27 @@ public sealed partial class NotifyIconManager
     {
         try { await new StopTunnelCommand { TimeoutMs = 5000 }.RunAsync(); }
         catch (Exception ex) { Log.Error($"StopTunnel failed: {ex}"); }
+    }
+
+    static async void CreateDebugBundle()
+    {
+        try
+        {
+            await new DebugBundleCommand().RunAsync();
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                await new SendNotificationCommand
+                {
+                    Texts = ["Error Creating Debug Bundle", ex.Message],
+                }.RunAsync();
+            }
+            catch (Exception notifyEx)
+            {
+                Log.Error($"Failed to notify of debug bundle failure: {notifyEx}");
+            }
+        }
     }
 }

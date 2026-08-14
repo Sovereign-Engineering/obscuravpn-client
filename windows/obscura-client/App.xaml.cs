@@ -202,6 +202,9 @@ public partial class App : Application
         }
     }
 
+    // Windows 10 relaunches arrive via WM_COPYDATA instead of HandleActivation.
+    internal void EnsureNotifyIcon() => _notifyIcon?.EnsureVisible();
+
     private void HandleNotification(AppNotificationActivatedEventArgs args)
     {
         HandleNotificationAction(NotificationActions.GetAction(args));
@@ -421,6 +424,7 @@ public partial class App : Application
             // the App (the handler is subscribed in Main); wait rather than crash.
             var app = await _appReady.Task;
             await app._windowReady.Task;
+            app.EnsureNotifyIcon();
             if (NotificationActions.IsNotificationKind(args.Kind))
             {
                 app.HandleNotificationAction(NotificationActions.GetAction(args.Data));

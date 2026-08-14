@@ -29,7 +29,6 @@ fn random_config() -> Config {
         api_url: Some(Uuid::new_v4().to_string()),
         account_id: Some(AccountId::from_string_unchecked(Uuid::new_v4().to_string())),
         old_account_ids: vec![AccountId::from_string_unchecked(Uuid::new_v4().to_string())],
-        local_tunnels_ids: vec![Uuid::new_v4().to_string()],
         ..Default::default()
     }
 }
@@ -128,7 +127,7 @@ fn test_ignore_invalid_fields() {
         api_url: Some("myapi".into()),
         account_id: Some(AccountId::from_string_unchecked("myaccount".into())),
         old_account_ids: vec![AccountId::from_string_unchecked("oldaccount".into())],
-        local_tunnels_ids: vec!["oldtunnel".into()],
+        local_tunnels_ids: (),
         exit: (),
         in_new_account_flow: true,
         cached_auth_token: Some("myauth".into()),

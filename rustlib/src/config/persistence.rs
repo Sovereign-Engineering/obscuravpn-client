@@ -241,8 +241,8 @@ pub struct Config {
     pub dns_cache: DnsCache,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub old_account_ids: Vec<AccountId>,
-    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
-    pub local_tunnels_ids: Vec<String>,
+    #[serde(skip)]
+    pub local_tunnels_ids: (), // Removed
     #[serde(skip)]
     pub exit: (), // Removed
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
@@ -312,7 +312,6 @@ pub struct ConfigDebug {
     pub cached_relays: Option<ConfigCached<Arc<Vec<OneRelay>>>>,
     pub dns_cache: DnsCache,
     pub dns_content_block: DnsContentBlock,
-    pub local_tunnels_ids: Vec<String>,
     pub feature_flags: FeatureFlags,
     pub in_new_account_flow: bool,
     pub pinned_locations: Vec<PinnedLocation>,
@@ -338,7 +337,7 @@ impl From<Config> for ConfigDebug {
             dns_content_block,
             dns_cache,
             old_account_ids: _,
-            local_tunnels_ids,
+            local_tunnels_ids: (),
             exit: (),
             feature_flags,
             in_new_account_flow,
@@ -366,7 +365,6 @@ impl From<Config> for ConfigDebug {
             cached_relays,
             dns_content_block,
             dns_cache,
-            local_tunnels_ids,
             feature_flags,
             in_new_account_flow,
             pinned_locations,

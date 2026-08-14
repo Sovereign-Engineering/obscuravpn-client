@@ -206,6 +206,7 @@
   "ipcError-apiSaleNotFound": "Invalid promo code.",
   "ipcError-apiSignupLimitExceeded": "Sign up limit exceeded. Please try again in a few hours.",
   "ipcError-apiUnreachable": "Unable to connect to the Obscura API. You may be offline or something is interfering with your connection.",
+  "ipcError-debugBundleInProgress": "A debug bundle is already being created. Please wait for it to finish.",
   "ipcError-errorUnsupportedOnOS": "Unexpectedly tried to do something unsupported on the current OS. Please consider sending us a Debug Bundle.",
   "ipcError-failedToAssociateAccount": "Failed to associate Apple account with Obscura account",
   "ipcError-linuxFix-addOperatorFailed": "Authorizing this user failed.",

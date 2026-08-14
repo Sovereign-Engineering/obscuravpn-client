@@ -7,6 +7,8 @@ pub mod dns;
 pub mod http;
 pub mod service;
 pub mod task;
+#[cfg(target_os = "windows")]
+mod windows_acl;
 pub mod zipper;
 
 use self::{builder::DebugBundleBuilder, bundle_info::BundleInfo, debug_info::DebugInfo};
@@ -17,18 +19,31 @@ use rand::distributions::Alphanumeric;
 
 pub const DIR_PREFIX: &str = "obscura-debug-bundle-";
 
-pub(crate) async fn make_private_temp_dir() -> Result<Utf8PathBuf, ()> {
+fn temp_bundle_dir_path() -> Result<Utf8PathBuf, ()> {
     let temp_dir =
         Utf8PathBuf::from_path_buf(std::env::temp_dir()).map_err(|path| tracing::error!(message_id = "hV4tNq2X", ?path, "temp dir is not utf-8"))?;
     let dir_name: String = rand::thread_rng().sample_iter(&Alphanumeric).take(24).map(char::from).collect();
-    let path = temp_dir.join(format!("{DIR_PREFIX}{dir_name}"));
+    Ok(temp_dir.join(format!("{DIR_PREFIX}{dir_name}")))
+}
+
+/// 0700, so nobody else can observe or modify the dir until the caller widens the modes.
+#[cfg(unix)]
+pub(crate) async fn make_private_temp_dir() -> Result<Utf8PathBuf, ()> {
+    let path = temp_bundle_dir_path()?;
     let mut builder = tokio::fs::DirBuilder::new();
-    #[cfg(unix)]
     builder.mode(0o700);
     builder
         .create(&path)
         .await
         .map_err(|error| tracing::error!(message_id = "gT5cWn9M", ?error, %path, "failed to create private temp dir"))?;
+    Ok(path)
+}
+
+#[cfg(target_os = "windows")]
+pub(crate) async fn make_users_readable_temp_dir() -> Result<Utf8PathBuf, ()> {
+    let path = temp_bundle_dir_path()?;
+    windows_acl::create_users_readable_dir(&path)
+        .map_err(|error| tracing::error!(message_id = "sQ7fNd3B", ?error, %path, "failed to create users readable temp dir"))?;
     Ok(path)
 }
 

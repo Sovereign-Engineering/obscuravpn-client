@@ -10,4 +10,12 @@ public static class JsonConfig
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
+
+    // Property names exactly as declared
+    public static readonly JsonSerializerOptions BundleInfoOptions = new()
+    {
+        PropertyNamingPolicy = null,
+        Converters = { new JsonStringEnumConverter() },
+        WriteIndented = true,
+    };
 }

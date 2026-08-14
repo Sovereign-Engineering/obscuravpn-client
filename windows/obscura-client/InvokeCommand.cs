@@ -287,21 +287,14 @@ public class DebugBundleCommand : IObscuraCommand
     public string? UserFeedback { get; set; }
     public async Task<string> RunAsync()
     {
+        // Reserved before the status update so a rejected request cannot disturb the run in flight.
+        using var reservation = DebugBundle.Reserve();
         OsStatus.Instance.Update(s => s.DebugBundleStatus.Start());
         string? path = null;
         try
         {
-            var bundleInfo = new BundleInfo();
-            var resultJson = await IPCCommand.RunWithArgAsync(new CreateDebugBundleArgs
-            {
-                UserFeedback = UserFeedback,
-                BundleInfo = bundleInfo,
-            });
-            path = JsonSerializer.Deserialize<string>(resultJson, JsonConfig.Options);
-            if (path is not null)
-            {
-                await new RevealItemInDirCommand { Path = path }.RunAsync();
-            }
+            path = await DebugBundle.CreateAsync(UserFeedback);
+            await new RevealItemInDirCommand { Path = path }.RunAsync();
         }
         catch (Exception ex)
         {

@@ -1,4 +1,8 @@
-use super::{make_private_temp_dir, try_copy_dir_contents_recursive};
+#[cfg(unix)]
+use super::make_private_temp_dir;
+#[cfg(target_os = "windows")]
+use super::make_users_readable_temp_dir;
+use super::try_copy_dir_contents_recursive;
 use crate::debug_bundle::debug_info::DebugInfo;
 use camino::{Utf8Path, Utf8PathBuf};
 use serde::{Deserialize, Serialize};
@@ -15,12 +19,17 @@ pub struct ServiceDebugBundleHandle {
 }
 
 impl ServiceDebugBundleHandle {
-    // The dir starts private (0700), so the group cannot observe or modify the bundle while it is populated; make_group_readable exposes it once it is complete.
+    // On unix the dir starts private and make_group_readable widens it once the bundle is complete.
+    // On Windows entries inherit the dir's DACL as they are created, so the dir gets its final one up front.
     async fn mkdir() -> Result<Self, ()> {
-        Ok(Self { path: make_private_temp_dir().await?, token: ServiceDebugBundleToken(Uuid::new_v4()) })
+        #[cfg(unix)]
+        let path = make_private_temp_dir().await?;
+        #[cfg(target_os = "windows")]
+        let path = make_users_readable_temp_dir().await?;
+        Ok(Self { path, token: ServiceDebugBundleToken(Uuid::new_v4()) })
     }
 
-    // Contents get exact read-only modes first (0640 files, 0750 dirs), the top dir is flipped last, so the group can only see the finished bundle with normalized modes.
+    // Contents get their modes first (0640 files, 0750 dirs) and the top dir last, so the group can only ever see a finished bundle.
     #[cfg(unix)]
     async fn make_group_readable(&self) -> Result<(), ()> {
         use std::os::unix::fs::PermissionsExt as _;

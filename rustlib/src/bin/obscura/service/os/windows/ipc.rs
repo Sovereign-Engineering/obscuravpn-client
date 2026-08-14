@@ -1,7 +1,7 @@
 use super::start_error::WindowsServiceStartError;
 use crate::service::os::MAX_IPC_MESSAGE_LEN;
 use flume::{Receiver, Sender, bounded};
-use obscuravpn_client::int_helper::{try_usize_into_u32, u32_into_usize};
+use obscuravpn_client::int_helper::u32_into_usize;
 use std::ffi::c_void;
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -10,7 +10,7 @@ use tokio::time::timeout;
 use windows::Win32::Security::SECURITY_ATTRIBUTES;
 
 use super::PACKAGE_FAMILY_NAME;
-use super::sddl::{FileRights, PipeDACL, SecurityDescriptor, Trustee};
+use obscuravpn_client::os::windows::sddl::{DACL, FileRights, Inherit, SA_LENGTH, SecurityDescriptor, Trustee};
 
 pub const PIPE_NAME: &str = r"\\.\pipe\obscuravpn";
 /// Drop a connected client that doesn't send a full message within this window.
@@ -150,13 +150,11 @@ struct PipeSecurityAttributes {
 unsafe impl Send for PipeSecurityAttributes {}
 unsafe impl Sync for PipeSecurityAttributes {}
 
-const SA_LENGTH: u32 = try_usize_into_u32(std::mem::size_of::<SECURITY_ATTRIBUTES>()).expect("SECURITY_ATTRIBUTES size fits into u32");
-
 impl PipeSecurityAttributes {
     fn new() -> std::io::Result<Self> {
-        let dacl = PipeDACL::new()
-            .allow(FileRights::FullAccess, Trustee::local_system())
-            .allow(FileRights::FullAccess, Trustee::builtin_administrators())
+        let dacl = DACL::new()
+            .allow(FileRights::FullAccess, Trustee::local_system(), Inherit::None)
+            .allow(FileRights::FullAccess, Trustee::builtin_administrators(), Inherit::None)
             // Restricted: pin read/write to our packaged GUI via a conditional WIN://SYSAPPID ACE.
             .allow_packaged(FileRights::ReadWrite, PACKAGE_FAMILY_NAME);
 

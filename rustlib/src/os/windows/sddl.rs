@@ -1,19 +1,25 @@
-//! Builds Windows security descriptors for the service's named pipe.
+//! Builds Windows security descriptors and attaches them to objects.
 //!
-//! This module provides a type-safe builder for constructing access control rules. The pipe
-//! allows LocalSystem and Administrators full access, and uses a package-identity check to
-//! permit only our GUI (deployed as a Sparse Package MSIX) read/write access. The builder
-//! generates SDDL (Security Descriptor Definition Language) strings that the Windows kernel
-//! parses into security descriptors.
+//! This module provides a type-safe builder for constructing access control rules, rendered as SDDL
+//! (Security Descriptor Definition Language) strings that the Windows kernel parses into security
+//! descriptors.
+//!
+//! Every raw pointer this crate hands to the Win32 security APIs lives here, so callers stay safe.
 
+use camino::Utf8Path;
 use std::ffi::c_void;
 use std::fmt;
 use windows::Win32::Foundation::{HLOCAL, LocalFree};
 use windows::Win32::Security::Authorization::ConvertStringSecurityDescriptorToSecurityDescriptorW;
-use windows::Win32::Security::PSECURITY_DESCRIPTOR;
+use windows::Win32::Security::{PSECURITY_DESCRIPTOR, SECURITY_ATTRIBUTES};
+use windows::Win32::Storage::FileSystem::CreateDirectoryW;
 use windows::core::PCWSTR;
 
+use crate::int_helper::try_usize_into_u32;
+
 const SDDL_REVISION_1: u32 = 1;
+/// Value for `SECURITY_ATTRIBUTES.nLength`.
+pub const SA_LENGTH: u32 = try_usize_into_u32(std::mem::size_of::<SECURITY_ATTRIBUTES>()).expect("SECURITY_ATTRIBUTES size fits into u32");
 
 #[derive(Clone, Copy)]
 pub enum FileRights {
@@ -21,6 +27,10 @@ pub enum FileRights {
     FullAccess,
     /// `FRFW` -- file generic read + file generic write.
     ReadWrite,
+    /// `FR` -- file generic read.
+    Read,
+    /// `FRFX` -- file generic read + execute, which on a dir means listing it and traversing into it.
+    ReadTraverse,
 }
 
 impl FileRights {
@@ -28,6 +38,8 @@ impl FileRights {
         match self {
             FileRights::FullAccess => "FA",
             FileRights::ReadWrite => "FRFW",
+            FileRights::Read => "FR",
+            FileRights::ReadTraverse => "FRFX",
         }
     }
 }
@@ -47,31 +59,70 @@ impl Trustee {
         Self("BA")
     }
 
+    /// `BU` -- the `BUILTIN\Users` group, i.e. every local user, including the one running the GUI.
+    pub const fn builtin_users() -> Self {
+        Self("BU")
+    }
+
+    /// `OW` -- OWNER RIGHTS, which resolves to whoever owns the object, so the creator keeps access
+    /// without naming a specific account.
+    pub const fn owner_rights() -> Self {
+        Self("OW")
+    }
+
     fn as_sddl(self) -> &'static str {
         self.0
     }
 }
 
+#[derive(Clone, Copy)]
+pub enum Inherit {
+    /// No inherit flags: the ACE applies to this object alone.
+    None,
+    /// `CI` -- child dirs, at any depth.
+    Dirs,
+    /// `OI` -- child files, at any depth.
+    Files,
+    /// `OICI` -- both.
+    DirsAndFiles,
+}
+
+impl Inherit {
+    fn as_sddl(self) -> &'static str {
+        match self {
+            Inherit::None => "",
+            Inherit::Dirs => "CI",
+            Inherit::Files => "OI",
+            Inherit::DirsAndFiles => "OICI",
+        }
+    }
+}
+
 enum Ace {
-    /// Plain `(A;;<rights>;;;<trustee>)`.
-    Allow { rights: FileRights, trustee: Trustee },
+    /// Plain `(A;<flags>;<rights>;;;<trustee>)`.
+    Allow {
+        rights: FileRights,
+        trustee: Trustee,
+        inherit: Inherit,
+    },
     /// Conditional `(XA;;<rights>;;;WD;(WIN://SYSAPPID Contains "<pfn>"))`.
     PackagedAllow { rights: FileRights, pfn: &'static str },
 }
 
+/// Discretionary Access Control List Builder
 #[derive(Default)]
-pub struct PipeDACL {
+pub struct DACL {
     aces: Vec<Ace>,
 }
 
-impl PipeDACL {
+impl DACL {
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Plain `(A;;<rights>;;;<trustee>)` ACE.
-    pub fn allow(mut self, rights: FileRights, trustee: Trustee) -> Self {
-        self.aces.push(Ace::Allow { rights, trustee });
+    /// Plain `(A;<inherit>;<rights>;;;<trustee>)` ACE.
+    pub fn allow(mut self, rights: FileRights, trustee: Trustee, inherit: Inherit) -> Self {
+        self.aces.push(Ace::Allow { rights, trustee, inherit });
         self
     }
 
@@ -92,13 +143,14 @@ impl PipeDACL {
 }
 
 // https://github.com/microsoft/WindowsAppSDK/discussions/3348#discussioncomment-8781167
-// https://learn.microsoft.com/en-us/windows/win32/secauthz/ace-strings?source=recommendations
-impl fmt::Display for PipeDACL {
+// https://learn.microsoft.com/en-us/windows/win32/secauthz/ace-strings
+impl fmt::Display for DACL {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // `D:P` drops whatever the object would inherit from its parent.
         f.write_str("D:P")?;
         for ace in &self.aces {
             match ace {
-                Ace::Allow { rights, trustee } => write!(f, "(A;;{};;;{})", rights.as_sddl(), trustee.as_sddl())?,
+                Ace::Allow { rights, trustee, inherit } => write!(f, "(A;{};{};;;{})", inherit.as_sddl(), rights.as_sddl(), trustee.as_sddl())?,
                 Ace::PackagedAllow { rights, pfn } => write!(f, "(XA;;{};;;WD;(WIN://SYSAPPID Contains \"{pfn}\"))", rights.as_sddl())?,
             }
         }
@@ -114,7 +166,7 @@ pub struct SecurityDescriptor {
 
 impl SecurityDescriptor {
     fn from_sddl(sddl: &str) -> std::io::Result<Self> {
-        let wide: Vec<u16> = sddl.encode_utf16().chain(std::iter::once(0)).collect();
+        let wide = wide_nul(sddl);
         let mut psd = PSECURITY_DESCRIPTOR::default();
         // SAFETY: `wide` is a NUL-terminated UTF-16 string valid for the call. On success Windows
         // allocates a descriptor we release with `LocalFree` in `Drop`.
@@ -128,6 +180,16 @@ impl SecurityDescriptor {
     pub fn as_ptr(&self) -> *mut c_void {
         self.psd.0
     }
+
+    /// Creates `path` as a new dir carrying this descriptor, so it never exists with the permissions
+    /// it would have inherited from its parent.
+    pub fn create_dir(&self, path: &Utf8Path) -> std::io::Result<()> {
+        let path_wide = wide_nul(path.as_str());
+        let attributes = SECURITY_ATTRIBUTES { nLength: SA_LENGTH, lpSecurityDescriptor: self.psd.0, bInheritHandle: false.into() };
+        // SAFETY: `path_wide` is NUL-terminated and outlives the call, and `attributes` borrows a
+        // descriptor owned by `self` for the same span.
+        unsafe { CreateDirectoryW(PCWSTR(path_wide.as_ptr()), Some(&attributes)) }.map_err(std::io::Error::other)
+    }
 }
 
 impl Drop for SecurityDescriptor {
@@ -140,6 +202,10 @@ impl Drop for SecurityDescriptor {
     }
 }
 
+fn wide_nul(s: &str) -> Vec<u16> {
+    s.encode_utf16().chain(std::iter::once(0)).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -150,9 +216,9 @@ mod tests {
     /// pinning read/write to our packaged GUI.
     #[test]
     fn pipe_sddl_renders() {
-        let s = PipeDACL::new()
-            .allow(FileRights::FullAccess, Trustee::local_system())
-            .allow(FileRights::FullAccess, Trustee::builtin_administrators())
+        let s = DACL::new()
+            .allow(FileRights::FullAccess, Trustee::local_system(), Inherit::None)
+            .allow(FileRights::FullAccess, Trustee::builtin_administrators(), Inherit::None)
             .allow_packaged(FileRights::ReadWrite, PFN)
             .to_string();
         assert_eq!(
@@ -165,11 +231,23 @@ mod tests {
     /// conditional `WIN://SYSAPPID` ACE.
     #[test]
     fn pipe_sddl_round_trips_through_kernel() {
-        PipeDACL::new()
-            .allow(FileRights::FullAccess, Trustee::local_system())
-            .allow(FileRights::FullAccess, Trustee::builtin_administrators())
+        DACL::new()
+            .allow(FileRights::FullAccess, Trustee::local_system(), Inherit::None)
+            .allow(FileRights::FullAccess, Trustee::builtin_administrators(), Inherit::None)
             .allow_packaged(FileRights::ReadWrite, PFN)
             .build()
             .expect("kernel should accept the conditional SYSAPPID SDDL");
+    }
+
+    /// Inheritance is per-ACE, which is what lets one call on a dir give its child dirs and child
+    /// files different rights.
+    #[test]
+    fn inherit_flags_render_per_ace() {
+        DACL::new()
+            .allow(FileRights::FullAccess, Trustee::owner_rights(), Inherit::DirsAndFiles)
+            .allow(FileRights::ReadTraverse, Trustee::builtin_users(), Inherit::Dirs)
+            .allow(FileRights::Read, Trustee::builtin_users(), Inherit::Files)
+            .build()
+            .expect("kernel should accept inheritable aces");
     }
 }

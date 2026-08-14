@@ -10,16 +10,14 @@ pub fn throw_runtime_exception(env: &mut JNIEnv, msg: impl Display) {
     }
 }
 
-/// RAII handle that provides a UTF-8 view into a `java.lang.String`.
-pub struct Utf8JavaStr<'a, 'b> {
-    s: Cow<'a, str>,
+struct JavaStrHandle<'a, 'b> {
+    c_str: &'a CStr,
     obj: &'a JString<'a>,
     env: JNIEnv<'b>,
 }
 
-impl<'a, 'b> Utf8JavaStr<'a, 'b> {
-    /// `name` is only used for error messages.
-    pub fn new(env: &mut JNIEnv<'b>, obj: &'a JString<'a>, name: &str, message_id: &'static str) -> anyhow::Result<Self> {
+impl<'a, 'b> JavaStrHandle<'a, 'b> {
+    fn new(env: &mut JNIEnv<'b>, obj: &'a JString<'a>, name: &str, message_id: &'static str) -> anyhow::Result<Self> {
         // We unfortunately can't safely use `get_string_unchecked`, since the
         // Java/Kotlin build will still succeed even if we're passed an argument
         // of the wrong type for our function signatures.
@@ -38,17 +36,42 @@ impl<'a, 'b> Utf8JavaStr<'a, 'b> {
         // (This uses the same lifetime as obj, since the obj is needed to
         // release the underlying memory later)
         let c_str = unsafe { CStr::from_ptr(ptr) };
+        // SAFETY: Only used to release refs
+        let env = unsafe { env.unsafe_clone() };
+        Ok(Self { c_str, obj, env })
+    }
+}
+
+impl<'a, 'b> Drop for JavaStrHandle<'a, 'b> {
+    fn drop(&mut self) {
+        // Release the result of `GetStringUTFChars`
+        // SAFETY: ptr came from `JavaStr::into_raw` and this is the same obj
+        // used to construct that `JavaStr`
+        unsafe { JavaStr::from_raw(&self.env, self.obj, self.c_str.as_ptr().cast()) };
+    }
+}
+
+/// RAII handle that provides a UTF-8 view into a `java.lang.String`.
+pub struct Utf8JavaStr<'a, 'b> {
+    s: Cow<'a, str>,
+    _backing: Option<JavaStrHandle<'a, 'b>>,
+}
+
+impl<'a, 'b> Utf8JavaStr<'a, 'b> {
+    /// `name` is only used for error messages.
+    pub fn new(env: &mut JNIEnv<'b>, obj: &'a JString<'a>, name: &str, message_id: &'static str) -> anyhow::Result<Self> {
+        let backing = JavaStrHandle::new(env, obj, name, message_id)?;
         // The Modified UTF-8 returned by `GetStringUTFChars` will be valid
         // UTF-8 for anything in the Basic Multilingual Plane, so this will
         // almost never need to allocate:
         // https://en.wikipedia.org/wiki/CESU-8
-        let s = cesu8::from_java_cesu8(c_str.to_bytes()).with_context(|| {
+        let s = cesu8::from_java_cesu8(backing.c_str.to_bytes()).with_context(|| {
             tracing::error!(message_id, ?name, "Java string could not be converted to UTF-8");
             format!("{message_id}: {name:?} could not be converted to UTF-8")
         })?;
-        // SAFETY: Only used to release refs
-        let env = unsafe { env.unsafe_clone() };
-        Ok(Self { s, obj, env })
+        // Only retain backing object if `s` borrows it
+        let backing = matches!(s, Cow::Borrowed(_)).then_some(backing);
+        Ok(Self { s, _backing: backing })
     }
 
     pub fn from_nullable(env: &mut JNIEnv<'b>, obj: &'a JString<'a>, name: &str, message_id: &'static str) -> anyhow::Result<Option<Self>> {
@@ -61,15 +84,6 @@ impl<'a, 'b> Utf8JavaStr<'a, 'b> {
 
     pub fn as_path(&self) -> &Utf8Path {
         Utf8Path::new(self.as_str())
-    }
-}
-
-impl<'a, 'b> Drop for Utf8JavaStr<'a, 'b> {
-    fn drop(&mut self) {
-        // Release the result of `GetStringUTFChars`
-        // SAFETY: ptr came from `JavaStr::into_raw` and this is the same obj
-        // used to construct that `JavaStr`
-        unsafe { JavaStr::from_raw(&self.env, self.obj, self.s.as_ptr().cast()) };
     }
 }
 

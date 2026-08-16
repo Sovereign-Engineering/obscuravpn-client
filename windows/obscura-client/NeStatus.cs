@@ -12,6 +12,7 @@ public sealed class NeStatus
     public required PinnedLocation[] PinnedLocations { get; set; }
     public required ExitSelector LastExit { get; set; }
     public required JsonElement Account { get; set; }
+    public required bool AutoConnect { get; set; }
 }
 
 public sealed class VpnStatusEnvelope

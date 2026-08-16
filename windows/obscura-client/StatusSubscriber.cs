@@ -32,6 +32,7 @@ public sealed partial class StatusSubscriber
     async Task RunLoop(CancellationToken ct)
     {
         string? knownVersion = null;
+        var autoConnectEligible = true;
         while (!ct.IsCancellationRequested)
         {
             try
@@ -57,6 +58,11 @@ public sealed partial class StatusSubscriber
                 knownVersion = status.Version;
                 Current = status;
                 OsStatus.Instance.ReportServiceHealthy(status);
+                if (autoConnectEligible)
+                {
+                    autoConnectEligible = false;
+                    _ = AutoConnect(status);
+                }
                 try { StatusChanged?.Invoke(status); }
                 catch (Exception ex) { Log.Error($"StatusChanged handler threw: {ex}"); }
             }
@@ -72,6 +78,20 @@ public sealed partial class StatusSubscriber
                 await DelayBeforeRetry(ct);
             }
         }
+    }
+
+    static async Task AutoConnect(NeStatus status)
+    {
+        if (!status.AutoConnect) return;
+        if (status.VpnStatus.Kind != VpnStatusKind.Disconnected)
+        {
+            Log.Info($"auto-connect skipped, tunnel is already {status.VpnStatus.Kind}");
+            return;
+        }
+        Log.Info("auto-connecting");
+        var args = new SetTunnelArgs { Args = new TunnelArgs { Exit = status.LastExit }, Active = true };
+        try { await IPCCommand.RunWithArgAsync(args); }
+        catch (Exception ex) { Log.Error($"auto-connect failed: {ex}"); }
     }
 
     static async Task DelayBeforeRetry(CancellationToken ct)

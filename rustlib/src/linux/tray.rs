@@ -3,8 +3,8 @@ use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 
 use anyhow::Context as _;
-use futures::FutureExt as _;
 use futures::channel::mpsc::{Receiver, Sender, channel};
+use futures::{FutureExt as _, StreamExt as _};
 use ksni::menu::{CheckmarkItem, MenuItem, StandardItem, SubMenu};
 use ksni::{Icon, OfflineReason, Status, ToolTip, Tray, TrayMethods};
 use obscuravpn_api::cmd::ExitList;
@@ -14,6 +14,8 @@ use resvg::usvg;
 use serde_json::Value;
 use tokio::runtime::Handle;
 use tokio::time::{sleep, timeout};
+use zbus::names::BusName;
+use zbus::proxy::CacheProperties;
 
 use super::exit_list_watch::GuiExitListWatch;
 use super::ipc::run_command;
@@ -368,6 +370,53 @@ impl Tray for TrayState {
     }
 }
 
+#[zbus::proxy(
+    interface = "org.kde.StatusNotifierWatcher",
+    default_service = "org.kde.StatusNotifierWatcher",
+    default_path = "/StatusNotifierWatcher"
+)]
+trait StatusNotifierWatcher {
+    #[zbus(property)]
+    fn registered_status_notifier_items(&self) -> zbus::Result<Vec<String>>;
+
+    #[zbus(signal)]
+    fn status_notifier_item_unregistered(&self, service: &str) -> zbus::Result<()>;
+}
+
+async fn any_abandoned_tray(watcher: &StatusNotifierWatcherProxy<'_>, dbus: &zbus::fdo::DBusProxy<'_>) -> anyhow::Result<bool> {
+    for item in watcher.registered_status_notifier_items().await? {
+        let Ok(bus_name) = BusName::try_from(item.split(['/', '@']).next().unwrap_or_default()) else {
+            continue;
+        };
+        if !dbus.name_has_owner(bus_name).await? {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+async fn wait_until_abandoned_trays_dropped(max_wait: Duration) {
+    let wait = async {
+        let connection = zbus::Connection::session().await?;
+        let watcher = StatusNotifierWatcherProxy::builder(&connection)
+            .cache_properties(CacheProperties::No)
+            .build()
+            .await?;
+        let dbus = zbus::fdo::DBusProxy::new(&connection).await?;
+        let mut unregistered = watcher.receive_status_notifier_item_unregistered().await?;
+        while any_abandoned_tray(&watcher, &dbus).await? {
+            tracing::info!(message_id = "Bq7wVn3k", "waiting for abandoned tray registration to be dropped");
+            unregistered.next().await;
+        }
+        anyhow::Ok(())
+    };
+    match timeout(max_wait, wait).await {
+        Ok(Ok(())) => {}
+        Ok(Err(error)) => tracing::debug!(message_id = "Zr4pLd8t", ?error, "could not check for abandoned tray registrations"),
+        Err(_) => tracing::warn!(message_id = "Mx2cHf6s", "timed out waiting for abandoned tray registration to be dropped"),
+    }
+}
+
 pub async fn spawn_tray(status: Arc<GuiStatusWatch>, exit_list: Arc<GuiExitListWatch>) -> Receiver<TrayRequest> {
     LazyLock::force(&ICONS);
     let (requests, receiver) = channel(1);
@@ -376,6 +425,8 @@ pub async fn spawn_tray(status: Arc<GuiStatusWatch>, exit_list: Arc<GuiExitListW
 }
 
 async fn run_tray(status: Arc<GuiStatusWatch>, exit_list: Arc<GuiExitListWatch>, requests: Sender<TrayRequest>) {
+    // Avoid briefly showing two icons after restart via exec, because GNOME appindicator keeps abandoned trays registered briefly.
+    wait_until_abandoned_trays_dropped(Duration::from_secs(1)).await;
     let handle = loop {
         let tray = TrayState {
             os_status: OsStatus::default(),
@@ -384,7 +435,11 @@ async fn run_tray(status: Arc<GuiStatusWatch>, exit_list: Arc<GuiExitListWatch>,
             exit_list: None,
             rt: Handle::current(),
         };
-        match tray.assume_sni_available(true).spawn().await {
+        let tray = tray
+            .assume_sni_available(true)
+            // The default PID-based name repeats after restart via exec and may collide, because GNOME appindicator keeps abandoned trays registered briefly.
+            .disable_dbus_name(true);
+        match tray.spawn().await {
             Ok(handle) => break handle,
             Err(error) => {
                 tracing::error!(message_id = "Ah9tBc5y", %error, "failed to start system tray, retrying in 30s");

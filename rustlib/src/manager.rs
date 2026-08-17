@@ -330,14 +330,16 @@ impl Manager {
         }
     }
 
-    pub async fn create_debug_bundle(&self, user_feedback: Option<&str>, bundle_info: BundleInfo) -> anyhow::Result<String> {
-        let user_feedback = user_feedback.map(ToOwned::to_owned);
+    pub async fn create_debug_bundle(
+        &self,
+        user_feedback: Option<String>,
+        bundle_info: BundleInfo,
+        android_cache_dir: Option<Utf8PathBuf>,
+    ) -> anyhow::Result<String> {
         let log_dir = self.log_persistence.as_ref().map(LogPersistence::log_dir).map(ToOwned::to_owned);
         let debug_info = self.get_debug_info().await;
-        tokio::task::spawn_blocking(move || {
-            create_debug_bundle(user_feedback.as_deref(), bundle_info, debug_info, log_dir.as_deref()).map(Into::into)
-        })
-        .await?
+        tokio::task::spawn_blocking(move || create_debug_bundle(user_feedback, bundle_info, debug_info, log_dir, android_cache_dir).map(Into::into))
+            .await?
     }
 
     pub async fn create_service_debug_bundle(&self) -> Result<ServiceDebugBundleHandle, ()> {

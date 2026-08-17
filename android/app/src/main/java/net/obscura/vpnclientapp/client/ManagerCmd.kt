@@ -37,6 +37,7 @@ sealed interface ManagerCmd {
     data class CreateDebugBundle(
         val userFeedback: String?,
         val bundleInfo: BundleInfo,
+        val androidCacheDir: String?,
     ) : ManagerCmd {
         internal object Serializer :
             ExternallyTaggedEnumVariantSerializer<CreateDebugBundle>("createDebugBundle", generatedSerializer())

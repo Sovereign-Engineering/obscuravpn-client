@@ -3,6 +3,7 @@
 use std::{sync::Arc, time::Duration};
 
 use base64::prelude::*;
+use camino::Utf8PathBuf;
 use obscuravpn_api::{
     ClientError,
     cmd::{ApiErrorKind, AppleAssociateAccountOutput, DeleteAccountOutput, ExitList, GoogleBillingDetailsOutput},
@@ -134,6 +135,7 @@ pub enum ManagerCmd {
     CreateDebugBundle {
         user_feedback: Option<String>,
         bundle_info: BundleInfo,
+        android_cache_dir: Option<Utf8PathBuf>,
     },
     CreateServiceDebugBundle {},
     GetDebugInfo {},
@@ -268,8 +270,8 @@ impl ManagerCmd {
             }
             Self::ApiGoogleBillingDetails { promo_code } => map_result(manager.google_billing_details(promo_code).await),
             Self::SetFeatureFlag { flag, active } => manager.run_on_client_state(|c| c.set_feature_flag(&flag, active)),
-            Self::CreateDebugBundle { user_feedback, bundle_info } => manager
-                .create_debug_bundle(user_feedback.as_deref(), bundle_info)
+            Self::CreateDebugBundle { user_feedback, bundle_info, android_cache_dir } => manager
+                .create_debug_bundle(user_feedback, bundle_info, android_cache_dir)
                 .await
                 .map(ManagerCmdOk::CreateDebugBundle)
                 .map_err(|error| {

@@ -70,7 +70,13 @@ internal sealed interface WebCmd {
                 val path = runCatching {
                     JsonFfiCmd(
                             jsonConfig.encodeToString(
-                                ManagerCmd.CreateDebugBundle(userFeedback, bundleInfo(args.context))
+                                ManagerCmd.CreateDebugBundle(
+                                    userFeedback,
+                                    bundleInfo(args.context),
+                                    // TODO: Remove once `minSdk` is at least 33.
+                                    // https://linear.app/soveng/issue/OBS-3939/remove-android-cache-dir-field-once-minsdk-is-at-least-33
+                                    args.context.cacheDir.toString(),
+                                )
                             )
                         )
                         .run(args)

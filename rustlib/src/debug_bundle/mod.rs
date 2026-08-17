@@ -12,7 +12,7 @@ mod windows_acl;
 pub mod zipper;
 
 use self::{builder::DebugBundleBuilder, bundle_info::BundleInfo, debug_info::DebugInfo};
-use camino::{Utf8Path, Utf8PathBuf};
+use camino::Utf8PathBuf;
 use chrono::{SecondsFormat, Utc};
 use rand::Rng;
 use rand::distributions::Alphanumeric;
@@ -103,23 +103,31 @@ pub(crate) async fn try_copy_dir_contents_recursive(src: &Utf8Path, dst: &Utf8Pa
 // TODO: https://linear.app/soveng/issue/OBS-3095/cross-platform-debug-archive-story
 // TODO: Deprecated, switch to create_service_debug_bundle: https://linear.app/soveng/issue/OBS-3918/debug-bundle-v3
 pub fn create_debug_bundle(
-    user_feedback: Option<&str>,
+    user_feedback: Option<String>,
     bundle_info: BundleInfo,
     debug_info: DebugInfo,
-    rust_log_dir: Option<&Utf8Path>,
+    rust_log_dir: Option<Utf8PathBuf>,
+    android_cache_dir: Option<Utf8PathBuf>,
 ) -> anyhow::Result<Utf8PathBuf> {
+    let bundle_dir = if cfg!(target_os = "android") {
+        // `std::env::temp_dir` only returns the app cache dir on Android 13+ (SDK 33), but we support Android 12 (SDK 31/32).
+        android_cache_dir
+    } else {
+        // Explicitly ignore this field outside of Android to prevent potential privilege escalation vulnerabilities.
+        None
+    };
     let bundle_timestamp = Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true);
-    let mut archive = DebugBundleBuilder::new(&bundle_timestamp)?;
+    let mut archive = DebugBundleBuilder::new(bundle_dir, &bundle_timestamp)?;
     archive.add_json(
         "info",
         &BundleInfo { bundle_timestamp: Some(bundle_timestamp.to_string()), ..bundle_info },
     );
     archive.add_json("ne-debug-info", &debug_info);
     if let Some(user_feedback) = user_feedback {
-        archive.add_txt("user-feedback", user_feedback);
+        archive.add_txt("user-feedback", &user_feedback);
     }
     if let Some(rust_log_dir) = rust_log_dir {
-        archive.add_path("rust-log", None, rust_log_dir);
+        archive.add_path("rust-log", None, &rust_log_dir);
     }
     if cfg!(target_os = "android") {
         // This isn't guaranteed to work, but Android unfortunately doesn't

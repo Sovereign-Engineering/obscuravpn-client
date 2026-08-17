@@ -10,9 +10,10 @@ pub struct DebugBundleBuilder {
 }
 
 impl DebugBundleBuilder {
-    pub fn new(bundle_timestamp: &str) -> anyhow::Result<Self> {
-        let dst_parent = Utf8PathBuf::try_from(std::env::temp_dir())
-            .context("temp dir path wasn't valid UTF-8")?
+    pub fn new(bundle_dir: Option<Utf8PathBuf>, bundle_timestamp: &str) -> anyhow::Result<Self> {
+        let dst_parent = bundle_dir
+            .map(Ok)
+            .unwrap_or_else(|| Utf8PathBuf::try_from(std::env::temp_dir()).context("temp dir path wasn't valid UTF-8"))?
             .join("debug-archives");
         std::fs::create_dir_all(&dst_parent).with_context(|| format!("failed to create dirs for {dst_parent:?}"))?;
         let zipper = Zipper::new(

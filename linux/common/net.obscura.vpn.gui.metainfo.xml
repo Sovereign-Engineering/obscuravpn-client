@@ -5,14 +5,28 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>PolyForm-Noncommercial-1.0.0</project_license>
   <name>Obscura VPN</name>
-  <summary>Privacy that's more than a promise</summary>
+  <summary>Privacy that’s more than a promise</summary>
   <description>
-    <p>Obscura is the first VPN that can't log your activity.</p>
+    <p>Can’t log. Won’t lag. Works anywhere.</p>
+    <p>Obscura is the first VPN that can’t log your activity and keeps you connected wherever you go.</p>
+    <ul>
+      <li>Our Two-Party VPN design makes logging impossible even if we tried.</li>
+      <li>Our QUIC-powered protocol keeps you connected even on challenging networks.</li>
+    </ul>
+    <p>Why Obscura</p>
+    <ul>
+      <li>Reliable connectivity: Obscura adapts to changing network conditions for uninterrupted access.</li>
+      <li>Two-party relay: by using a fully independent exit hop, Obscura is the first VPN that puts a firewall between who you are and what you do online.</li>
+      <li>Personal details not necessary: log in with a random account number; pay by card, Bitcoin Lightning, or Monero: your choice.</li>
+      <li>Lag-free speed: WireGuard® + QUIC tunnelling plus smart routing deliver smooth streaming, gaming, and calls.</li>
+      <li>Provably private: public source code (on GitHub) and matching WireGuard® keys ensure provable privacy.</li>
+    </ul>
+    <p>Join the fight for an open, private internet - download Obscura and browse freely with privacy you can prove and performance you can feel.</p>
   </description>
   <launchable type="desktop-id">net.obscura.vpn.gui.desktop</launchable>
   <url type="homepage">https://obscura.com</url>
   <developer id="net.obscura">
-    <name>Obscura</name>
+    <name>Sovereign Engineering Inc.</name>
   </developer>
   <content_rating type="oars-1.1"/>
   <screenshots>

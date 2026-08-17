@@ -64,7 +64,7 @@
             android:exported="false"
             android:foregroundServiceType="systemExempted"
             android:process=":vpnservice"
-            tools:ignore="VpnServicePolicy">
+            tools:ignore="ForegroundServicePermission,VpnServicePolicy">
 
             <intent-filter>
                 <action android:name="android.net.VpnService" />

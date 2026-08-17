@@ -12,7 +12,7 @@ mod windows_acl;
 pub mod zipper;
 
 use self::{builder::DebugBundleBuilder, bundle_info::BundleInfo, debug_info::DebugInfo};
-use camino::Utf8PathBuf;
+use camino::{Utf8Path, Utf8PathBuf};
 use chrono::{SecondsFormat, Utc};
 use rand::Rng;
 use rand::distributions::Alphanumeric;

@@ -23,12 +23,11 @@ use crate::{
 };
 use crate::{quicwg::TUNNEL_MTU, relay_selection::race_relay_handshakes};
 use boringtun::x25519::{PublicKey, StaticSecret};
-use chrono::Utc;
 use obscuravpn_api::cmd::{CacheWgKey, ETagCmd, ExitList, ListExits2};
 use obscuravpn_api::types::{AccountId, AccountInfo, AuthToken, OneExit};
 use obscuravpn_api::{
     Client, ClientError,
-    cmd::{ApiErrorKind, Cmd, CreateTunnel, DeleteTunnel, ListRelays, ListTunnels},
+    cmd::{ApiErrorKind, Cmd, CreateTunnel, ListRelays},
     types::{ObfuscatedTunnelConfig, OneRelay, TunnelConfig},
 };
 use serde::{Deserialize, Serialize};
@@ -213,8 +212,6 @@ impl ClientStateHandle {
                         cached_auth_token: auth_token.map(Into::into),
                         old_account_ids,
                         in_new_account_flow: config.in_new_account_flow,
-                        // see https://linear.app/soveng/issue/OBS-1171
-                        local_tunnels_ids: config.local_tunnels_ids.clone(),
                         ..Default::default()
                     }
                 } else {
@@ -440,98 +437,55 @@ impl ClientStateHandle {
             "Selected exit"
         );
 
-        let (tunnel_info, sk, tunnel_id) = loop {
-            if let Err(err) = self.remove_local_tunnels().await {
-                tracing::warn!(message_id = "MCGZaU8f", "error removing unused local tunnels: {}", err);
-            }
+        let tunnel_id = Uuid::new_v4();
+        let (wg_private_key, wg_public_key) =
+            self.change(|inner| inner.config.change(|config| config.wireguard_key_cache.use_key_pair(&inner.wg_key_store)));
+        tracing::info!(
+            message_id = "Ahv4Eequ",
+            client.pubkey =% wg_public_key,
+            exit.id = exit,
+            relay.id = closest_relay.id,
+            relay.ip_v4 =% closest_relay.ip_v4,
+            tunnel.id =% tunnel_id,
+            "creating tunnel",
+        );
 
-            let tunnel_id = Uuid::new_v4();
-            let (sk, pk) = self.change(|inner| {
-                inner.config.change(|config| {
-                    config.local_tunnels_ids.push(tunnel_id.to_string());
-                    config.wireguard_key_cache.use_key_pair(&inner.wg_key_store)
-                })
-            });
-            tracing::info!(
-                message_id = "Ahv4Eequ",
-                client.pubkey =% pk,
-                exit.id = exit,
-                relay.id = closest_relay.id,
-                relay.ip_v4 =% closest_relay.ip_v4,
-                tunnel.id =% tunnel_id,
-                "creating tunnel",
-            );
+        let cmd = CreateTunnel::Obfuscated {
+            id: Some(tunnel_id),
+            label: None,
+            wg_pubkey: wg_public_key,
+            relay: Some(closest_relay.id.clone()),
+            exit: Some(exit.clone()),
+        };
+        let tunnel = match self.api_request(cmd).await {
+            Ok(t) => t,
+            Err(error) => match error.api_error_kind() {
+                Some(ApiErrorKind::WgKeyRotationRequired {}) => {
+                    tracing::warn!(
+                        message_id = "1Dittpzj",
+                        ?error,
+                        "server indicated that key rotation is required immediately"
+                    );
+                    self.change(|inner| {
+                        inner
+                            .config
+                            .change(|config| config.wireguard_key_cache.rotate_now(RotationReason::ApiRequested, &inner.wg_key_store))
+                    });
 
-            let cmd = CreateTunnel::Obfuscated {
-                id: Some(tunnel_id),
-                label: None,
-                wg_pubkey: pk,
-                relay: Some(closest_relay.id.clone()),
-                exit: Some(exit.clone()),
-            };
-            let error = match self.api_request(cmd.clone()).await {
-                Ok(t) => break (t, sk, tunnel_id),
-                Err(error) => match error.api_error_kind() {
-                    Some(ApiErrorKind::TunnelLimitExceeded {}) => error,
-                    Some(ApiErrorKind::WgKeyRotationRequired {}) => {
-                        tracing::warn!(
-                            message_id = "1Dittpzj",
-                            ?error,
-                            "server indicated that key rotation is required immediately"
-                        );
-                        self.change(|inner| {
-                            inner
-                                .config
-                                .change(|config| config.wireguard_key_cache.rotate_now(RotationReason::ApiRequested, &inner.wg_key_store))
-                        });
-                        continue;
-                    }
-                    _ => return Err(error.into()),
-                },
-            };
-            tracing::warn!(message_id = "dxiAM3dh", ?error, "no tunnel slots left, trying to delete an unused one");
-            let last_used_threshold = Utc::now().timestamp() - 300;
-            let mut tunnels: Vec<(String, i64)> = self
-                .api_request(ListTunnels {})
-                .await?
-                .into_iter()
-                .filter_map(|t| match &t.config {
-                    TunnelConfig::Obfuscated(_) => {
-                        use obscuravpn_api::types::TunnelStatus::*;
-                        let (Created { when } | Connected { when } | Disconnected { when }) = t.status;
-                        (when < last_used_threshold).then_some((t.id, when))
-                    }
-                    _ => None,
-                })
-                .collect();
-            tunnels.sort_by_key(|t| t.1);
-            let Some(id) = tunnels.into_iter().next().map(|t| t.0) else {
-                tracing::warn!(message_id = "DC1YjUq2", "no unused obfuscated tunnel found");
-                return Err(error.into());
-            };
-            tracing::warn!(message_id = "fZPQU7OS", "deleting unused tunnel {}", &id);
-            self.api_request(DeleteTunnel { id }).await?;
+                    // Let the main maintenance loop handle retries.
+                    return Err(error.into());
+                }
+                _ => return Err(error.into()),
+            },
         };
 
-        if tunnel_info.relay.id != closest_relay.id {
+        if tunnel.relay.id != closest_relay.id {
             return Err(TunnelConnectError::UnexpectedRelay);
         }
-        let TunnelConfig::Obfuscated(config) = tunnel_info.config else {
+        let TunnelConfig::Obfuscated(config) = tunnel.config else {
             return Err(TunnelConnectError::UnexpectedTunnelKind);
         };
-        Ok((tunnel_id, config, sk, tunnel_info.exit, tunnel_info.relay, handshaking))
-    }
-
-    pub async fn remove_local_tunnels(&self) -> Result<(), ApiError> {
-        loop {
-            let Some(local_tunnel_id) = self.borrow().config.local_tunnels_ids.first().cloned() else {
-                return Ok(());
-            };
-            tracing::info!(message_id = "XcexL4hs", "removing previously used tunnel {}", &local_tunnel_id);
-            self.api_request(DeleteTunnel { id: local_tunnel_id.clone() }).await?;
-            self.0
-                .send_modify(|inner| inner.config.change(|config| config.local_tunnels_ids.retain(|x| x != &local_tunnel_id)))
-        }
+        Ok((tunnel_id, config, wg_private_key, tunnel.exit, tunnel.relay, handshaking))
     }
 
     pub async fn select_relay(&self, network_interface: Option<&NetworkInterface>) -> Result<(OneRelay, QuicWgConnHandshaking), TunnelConnectError> {

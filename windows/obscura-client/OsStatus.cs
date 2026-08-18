@@ -1,13 +1,11 @@
 using System;
 using System.Diagnostics;
-using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using log4net;
 using Windows.ApplicationModel;
-using Windows.Networking.Connectivity;
 
 namespace Obscura_Client;
 
@@ -170,7 +168,8 @@ public class OsStatus
 
     public string Version { get; private set; } = Guid.NewGuid().ToString();
     public NavigationView NavigationView { get; private set; } = NavigationView.Connection;
-    public bool InternetAvailable { get; private set; } = false;
+    // Windows reports internet connectivity unreliably
+    public bool InternetAvailable => true;
     public string SrcVersion { get; } = GetSrcVersion();
 
     public static string GetSrcVersion()
@@ -192,61 +191,7 @@ public class OsStatus
     private WindowsServiceDegradation? _serviceDegradation;
     private NeStatus? _lastHealthyStatus;
 
-    private OsStatus()
-    {
-        // On first run, getting internet profiles on the default thread can cause issues on Windows 10
-        NetworkInformation.NetworkStatusChanged += OnNetworkStatusChanged;
-        Task.Run(() =>
-        {
-            try
-            {
-                var available = GetInternetAvailable();
-                Log.Info($"initial internet availability: {available}");
-                Update(s => s.InternetAvailable = available);
-            }
-            catch (Exception ex)
-            {
-                Log.Error($"failed to initialize internet availability: {ex}");
-            }
-        });
-    }
-
-    // Fires on an MTA worker thread, outside any XAML handler: an exception escaping here
-    // takes down the process.
-    static void OnNetworkStatusChanged(object? sender)
-    {
-        try
-        {
-            var available = GetInternetAvailable();
-            Log.Info($"internet availability changed: {available}");
-            Instance.Update(s => s.InternetAvailable = available);
-        }
-        catch (Exception ex)
-        {
-            Log.Warn($"network status update failed: {ex.Message}");
-        }
-    }
-
-    private static bool GetInternetAvailable()
-    {
-        var profile = NetworkInformation.GetInternetConnectionProfile();
-        if (profile != null)
-        {
-            var level = profile.GetNetworkConnectivityLevel();
-            Log.Info($"internet connectivity level: {level}");
-            return level == NetworkConnectivityLevel.InternetAccess;
-        }
-        Log.Info($"GetInternetConnectionProfile() returned null");
-        var profiles = NetworkInformation.GetConnectionProfiles()
-            .Select(p => (p.ProfileName, AdapterId: p.NetworkAdapter?.NetworkAdapterId, Level: p.GetNetworkConnectivityLevel()))
-            .Where(p => p.Level != NetworkConnectivityLevel.None)
-            .ToList();
-        foreach (var (name, adapterId, level) in profiles)
-        {
-            Log.Info($"profile '{name}' adapter={adapterId} level={level}");
-        }
-        return profiles.Any(p => p.Level == NetworkConnectivityLevel.InternetAccess);
-    }
+    private OsStatus() { }
 
     /// <summary>
     /// Update a field and bump the version, notifying any waiters.

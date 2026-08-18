@@ -28,7 +28,7 @@ use crate::{
         create_debug_bundle,
         debug_info::DebugInfo,
         service,
-        service::{ServiceDebugBundleHandle, ServiceDebugBundleToken},
+        service::{NetworkInfo, ServiceDebugBundleHandle, ServiceDebugBundleToken},
     },
     errors::{ApiError, ConfigDirty, ConfigDirtyOrApiError, ConnectErrorCode},
     exit_selection::ExitSelector,
@@ -343,9 +343,11 @@ impl Manager {
     }
 
     pub async fn create_service_debug_bundle(&self) -> Result<ServiceDebugBundleHandle, ()> {
+        let config = self.client_state.borrow().config().clone().into();
+        let network_info = NetworkInfo::new(&self.client_state);
         let debug_info = self.get_debug_info().await;
         let log_dir = self.log_persistence.as_ref().map(LogPersistence::log_dir).map(ToOwned::to_owned);
-        let bundle = service::create_service_debug_bundle(&debug_info, log_dir.as_deref()).await?;
+        let bundle = service::create_service_debug_bundle(&config, &network_info, &debug_info, log_dir.as_deref()).await?;
         self.service_debug_bundles
             .lock()
             .unwrap()

@@ -3,14 +3,26 @@ use super::make_private_temp_dir;
 #[cfg(target_os = "windows")]
 use super::make_users_readable_temp_dir;
 use super::try_copy_dir_contents_recursive;
+use crate::config::ConfigDebug;
+use crate::constants::DEFAULT_API_DOMAIN;
 use crate::debug_bundle::debug_info::DebugInfo;
+use crate::debug_bundle::populate_tasks::populate_debug_tasks;
+use crate::debug_bundle::{DebugBundleSide, try_write_json_file};
+use crate::net::NetworkInterface;
 use camino::{Utf8Path, Utf8PathBuf};
 use serde::{Deserialize, Serialize};
+use std::net::SocketAddr;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(transparent)]
 pub struct ServiceDebugBundleToken(Uuid);
+
+#[derive(Debug, Serialize)]
+pub struct NetworkInfo {
+    pub network_interface: Option<NetworkInterface>,
+    pub network_interface_mtu: Option<i32>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceDebugBundleHandle {
@@ -84,24 +96,33 @@ impl ServiceDebugBundleHandle {
     }
 }
 
-pub async fn create_service_debug_bundle(debug_info: &DebugInfo, log_dir: Option<&Utf8Path>) -> Result<ServiceDebugBundleHandle, ()> {
+pub async fn create_service_debug_bundle(
+    config: &ConfigDebug,
+    network_info: &NetworkInfo,
+    debug_info: &DebugInfo,
+    log_dir: Option<&Utf8Path>,
+) -> Result<ServiceDebugBundleHandle, ()> {
     let bundle = ServiceDebugBundleHandle::mkdir().await?;
     tracing::info!(message_id = "kZ6pVw2N", path =% bundle.path, "created service debug bundle dir");
-    populate_service_debug_bundle(&bundle.path, debug_info, log_dir).await;
+    populate_service_debug_bundle(&bundle.path, config, network_info, debug_info, log_dir).await;
     #[cfg(unix)]
     bundle.make_group_readable().await?;
     tracing::info!(message_id = "mV5tXn9C", path =% bundle.path, "service debug bundle ready");
     Ok(bundle)
 }
 
-async fn populate_service_debug_bundle(dir: &Utf8Path, debug_info: &DebugInfo, log_dir: Option<&Utf8Path>) {
-    let debug_info_write_result = match serde_json::to_vec_pretty(debug_info) {
-        Ok(bytes) => tokio::fs::write(dir.join("ne-debug-info.json"), bytes).await,
-        Err(error) => Err(error.into()),
-    };
-    let _ = debug_info_write_result
-        .map(|()| tracing::info!(message_id = "eT4mHb7X", "wrote debug info into service debug bundle"))
-        .map_err(|error| tracing::error!(message_id = "vB2kRt6H", ?error, "failed to write debug info into service debug bundle"));
+async fn populate_service_debug_bundle(
+    dir: &Utf8Path,
+    config: &ConfigDebug,
+    network_info: &NetworkInfo,
+    debug_info: &DebugInfo,
+    log_dir: Option<&Utf8Path>,
+) {
+    try_write_json_file(dir.join("ne-debug-info.json"), debug_info).await;
+    try_write_json_file(dir.join("config-service.json"), config).await;
+    try_write_json_file(dir.join("network-service.json"), network_info).await;
+    let backend_addrs = config.dns_cache.get(DEFAULT_API_DOMAIN).iter().map(SocketAddr::ip).collect();
+    populate_debug_tasks(dir, DebugBundleSide::Service, backend_addrs).await;
     if let Some(log_dir) = log_dir {
         try_copy_dir_contents_recursive(log_dir, &dir.join("logs-service")).await;
         tracing::info!(message_id = "wA8dKp3F", %log_dir, "copied service logs into service debug bundle");

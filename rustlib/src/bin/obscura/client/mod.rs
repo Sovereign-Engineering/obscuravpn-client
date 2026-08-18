@@ -1,11 +1,13 @@
 mod ipc;
 
 use crate::client::ipc::ipc_test;
-use crate::{ClientCommand, ClientLoginArgs, ClientStatusArgs};
+use crate::{ClientCommand, ClientDebugBundleArgs, ClientLoginArgs, ClientStatusArgs};
 use anyhow::Context;
 use chrono::{MappedLocalTime, TimeZone};
 use obscuravpn_api::types::{AccountId, AccountInfo};
 use obscuravpn_client::exit_selection::ExitSelector;
+use obscuravpn_client::linux::client_log_dir;
+use obscuravpn_client::linux::debug_bundle::create_combined_debug_bundle;
 use obscuravpn_client::linux::ipc::{LinuxIpcError, run_command};
 use obscuravpn_client::manager::{Status, TunnelArgs, VpnStatus};
 use obscuravpn_client::manager_cmd::{ManagerCmd, ManagerCmdErrorCode};
@@ -67,8 +69,18 @@ pub async fn run(no_group_refresh: bool, cmd: ClientCommand) -> Result<(), Clien
         ClientCommand::Connect(_args) => go_to_target_state(Some(TunnelArgs { exit: ExitSelector::Any {} })).await,
         ClientCommand::Disconnect(_args) => go_to_target_state(None).await,
         ClientCommand::Status(args) => status(args).await,
+        ClientCommand::DebugBundle(args) => debug_bundle(args).await,
         ClientCommand::IpcTest(args) => ipc_test(args).await,
     }
+}
+
+async fn debug_bundle(args: ClientDebugBundleArgs) -> Result<(), ClientError> {
+    let log_dir = client_log_dir().filter(|dir| dir.is_dir());
+    let path = create_combined_debug_bundle(args.feedback, log_dir.as_deref())
+        .await
+        .map_err(|()| ClientError::Unexpected(anyhow::Error::msg("failed to create debug bundle")))?;
+    println!("{path}");
+    Ok(())
 }
 
 async fn status(args: ClientStatusArgs) -> Result<(), ClientError> {

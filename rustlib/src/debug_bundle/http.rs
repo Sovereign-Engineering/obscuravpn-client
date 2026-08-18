@@ -1,46 +1,62 @@
-use std::net::IpAddr;
-use std::net::SocketAddr;
+use futures::TryStreamExt as _;
+use reqwest::dns::{Resolve, Resolving};
+use serde::{Deserialize, Serialize};
+use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::io::AsyncReadExt as _;
+use tokio_util::io::StreamReader;
 
-use crate::debug_bundle::dns::DnsTask;
-use crate::debug_bundle::task::DebugTask;
-use crate::debug_bundle::task::run_debug_task;
-use reqwest::dns::Resolve;
-use reqwest::dns::Resolving;
-use serde::Deserialize;
-use serde::Serialize;
+const BODY_LIMIT: usize = 16 * 1024;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct HttpTask {
+pub struct DebugTaskHttp {
+    addrs: Option<Vec<IpAddr>>,
     body: Option<String>,
+    body_truncated: bool,
     error: Option<String>,
+    fwmark: Option<u32>,
     header_content_type: Option<String>,
     header_date: Option<String>,
     http_version: Option<String>,
+    sni: bool,
     status_code: Option<u16>,
+    url: String,
 }
 
-pub async fn debug_http(url: &'static str, dns: Option<DnsTask>, sni: bool) -> DebugTask<HttpTask> {
-    run_debug_task(async {
-        let mut result = HttpTask {
+impl DebugTaskHttp {
+    pub async fn run(url: &'static str, addrs: Option<Vec<IpAddr>>, sni: bool, fwmark: Option<u32>) -> Result<Self, Box<dyn std::error::Error>> {
+        if let Some(addrs) = &addrs
+            && addrs.is_empty()
+        {
+            return Err("no known addresses".into());
+        }
+        let mut result = Self {
+            addrs: addrs.clone(),
             body: None,
+            body_truncated: false,
             error: None,
+            fwmark,
             header_content_type: None,
             header_date: None,
             http_version: None,
+            sni,
             status_code: None,
+            url: url.to_owned(),
         };
 
-        let dns = dns.ok_or("No DNS available.")?;
-
-        let client = reqwest::Client::builder()
+        let builder = reqwest::Client::builder()
             .danger_accept_invalid_certs(true)
-            .dns_resolver(Arc::new(FixedResolver(dns.addrs)))
             .min_tls_version(reqwest::tls::Version::TLS_1_0)
             .timeout(Duration::from_secs(55))
-            .tls_sni(sni)
-            .build()?;
+            .tls_sni(sni);
+        let builder = match addrs {
+            Some(addrs) => builder.dns_resolver(Arc::new(FixedResolver(addrs))),
+            None => builder,
+        };
+        #[cfg(target_os = "linux")]
+        let builder = builder.so_mark(fwmark);
+        let client = builder.build()?;
 
         let res = match client.get(url).send().await {
             Ok(r) => r,
@@ -60,17 +76,17 @@ pub async fn debug_http(url: &'static str, dns: Option<DnsTask>, sni: bool) -> D
         result.header_content_type = header_str(reqwest::header::CONTENT_TYPE);
         result.header_date = header_str(reqwest::header::DATE);
 
-        result.body = Some(match res.text().await {
-            Ok(t) => t,
-            Err(err) => {
-                result.error = Some(err.to_string());
-                return Ok(result);
-            }
-        });
+        let mut reader = StreamReader::new(res.bytes_stream().map_err(std::io::Error::other));
+        let mut body = Vec::new();
+        if let Err(error) = (&mut reader).take(u64::try_from(BODY_LIMIT + 1)?).read_to_end(&mut body).await {
+            result.error = Some(error.to_string());
+        }
+        result.body_truncated = body.len() > BODY_LIMIT;
+        body.truncate(BODY_LIMIT);
+        result.body = Some(String::from_utf8_lossy(&body).into_owned());
 
         Ok(result)
-    })
-    .await
+    }
 }
 
 struct FixedResolver(Vec<IpAddr>);

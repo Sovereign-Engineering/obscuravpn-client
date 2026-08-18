@@ -1,15 +1,17 @@
-use super::try_copy_dir_contents_recursive;
+use super::bundle_info::BundleInfo;
+use super::populate_tasks::populate_debug_tasks;
 use super::zipper::Zipper;
+use super::{DebugBundleSide, try_write_json_file};
+use crate::constants::DEFAULT_API_IP_SEED;
 use camino::{Utf8Path, Utf8PathBuf};
 
-pub async fn populate_client_debug_bundle(dir: &Utf8Path, user_feedback: Option<&str>, client_log_dir: Option<&Utf8Path>) {
+pub async fn populate_client_debug_bundle(dir: &Utf8Path, user_feedback: Option<&str>, bundle_timestamp: &str) {
+    populate_debug_tasks(dir, DebugBundleSide::Client, vec![DEFAULT_API_IP_SEED]).await;
+    try_write_json_file(dir.join("info.json"), &BundleInfo::collect(bundle_timestamp.to_owned())).await;
     if let Some(user_feedback) = user_feedback {
         let _ = tokio::fs::write(dir.join("user-feedback.txt"), user_feedback)
             .await
             .map_err(|error| tracing::error!(message_id = "cJ3nZk8V", ?error, "failed to write user feedback into debug bundle"));
-    }
-    if let Some(client_log_dir) = client_log_dir {
-        try_copy_dir_contents_recursive(client_log_dir, &dir.join("logs-client")).await;
     }
     tracing::info!(message_id = "rW6kTm3B", %dir, "populated client debug bundle contents");
 }

@@ -47,7 +47,9 @@ futures = "0.3.29"
 ipnetwork = { version = "0.21.1", features = ["serde"] }
 libc = "0.2.178"
 rand = "0.8.5"
-reqwest = { git = "https://github.com/Sovereign-Engineering/reqwest", rev = "7ba2e76a02454b0fa414e0ddbf8aa609ed05b944", default-features = false }
+reqwest = { git = "https://github.com/Sovereign-Engineering/reqwest", rev = "7ba2e76a02454b0fa414e0ddbf8aa609ed05b944", default-features = false, features = [
+    "stream",
+] }
 ring = "0.17.14"
 rustls = "0.23.28"
 semver = "1.0.27"
@@ -61,7 +63,7 @@ tempfile = "3.10.1"
 thiserror = "1.0.56"
 tokio = { version = "1.44", features = ["full"] }
 tokio-rustls = "0.26.2"
-tokio-util = { version = "0.7.13", features = ["rt"] }
+tokio-util = { version = "0.7.13", features = ["io", "rt"] }
 tracing = "0.1.40"
 tracing-appender = "0.2.3"
 tracing-subscriber = { version = "0.3.18", features = [

@@ -1,15 +1,16 @@
-use crate::debug_bundle::task::DebugTask;
-use crate::debug_bundle::task::run_debug_task;
-use serde::Deserialize;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
 use tokio::net::lookup_host;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct DnsTask {
+pub struct DebugTaskDns {
+    pub host: String,
     pub addrs: Vec<IpAddr>,
 }
 
-pub async fn debug_dns(host_port: &'static str) -> DebugTask<DnsTask> {
-    run_debug_task(async { Ok(DnsTask { addrs: lookup_host(host_port).await?.map(|socket_addr| socket_addr.ip()).collect() }) }).await
+impl DebugTaskDns {
+    pub async fn run(host: &'static str) -> Result<Self, Box<dyn std::error::Error>> {
+        let addrs = lookup_host((host, 443)).await?.map(|socket_addr| socket_addr.ip()).collect();
+        Ok(Self { host: host.to_owned(), addrs })
+    }
 }

@@ -38,6 +38,7 @@ impl LinuxFixErrorCode {
 #[derive(Debug, Clone, Copy)]
 pub enum LinuxErrorCode {
     Other,
+    DebugBundleInProgress,
     ManagerCmd(ManagerCmdErrorCode),
     Ipc(LinuxIpcErrorCode),
     Fix(LinuxFixErrorCode),
@@ -47,6 +48,7 @@ impl LinuxErrorCode {
     pub fn as_static_str(&self) -> &'static str {
         match self {
             Self::Other => "other",
+            Self::DebugBundleInProgress => "debugBundleInProgress",
             Self::ManagerCmd(code) => code.as_static_str(),
             Self::Ipc(code) => code.as_static_str(),
             Self::Fix(code) => code.as_static_str(),

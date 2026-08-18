@@ -70,6 +70,12 @@ pub struct ClientStatusArgs {
 #[derive(Args, Debug)]
 pub struct ClientIpcTestArgs {}
 
+#[derive(Args, Debug)]
+pub struct ClientDebugBundleArgs {
+    /// Message for the Obscura team, included in the debug bundle.
+    pub feedback: String,
+}
+
 #[derive(Subcommand, Debug)]
 pub enum ClientCommand {
     #[cfg(target_os = "linux")]
@@ -83,6 +89,9 @@ pub enum ClientCommand {
     Disconnect(ClientDisconnectArgs),
     /// Show account and VPN status.
     Status(ClientStatusArgs),
+    #[cfg(target_os = "linux")]
+    /// Create a debug bundle and print its path.
+    DebugBundle(ClientDebugBundleArgs),
     #[command(hide = true)]
     IpcTest(ClientIpcTestArgs),
 }

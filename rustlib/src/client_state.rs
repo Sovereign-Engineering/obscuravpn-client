@@ -2,7 +2,9 @@ use super::{
     errors::{ApiError, TunnelConnectError},
     network_config::TunnelNetworkConfig,
 };
-use crate::debug_bundle::{debug_info::DebugInfo, dns::debug_dns, task::debug_panic_error};
+use crate::constants::{DEFAULT_API_BACKUP_DOMAIN, DEFAULT_API_URL, DEFAULT_RELAY_SNI};
+use crate::debug_bundle::service::NetworkInfo;
+use crate::debug_bundle::{debug_info::DebugInfo, dns::DebugTaskDns, http::DebugTaskHttp, task::debug_panic_error, task::run_debug_task};
 use crate::dns::DnsResolver;
 use crate::errors::ConfigDirty;
 use crate::manager::TunnelArgs;
@@ -16,10 +18,6 @@ use crate::{
     config::{self, Config, ConfigLoadError, LocalNetworkAccess},
     errors::RelaySelectionError,
     quicwg::QuicWgConn,
-};
-use crate::{
-    constants::{DEFAULT_API_BACKUP_DOMAIN, DEFAULT_API_URL, DEFAULT_RELAY_SNI},
-    debug_bundle::http::debug_http,
 };
 use crate::{quicwg::TUNNEL_MTU, relay_selection::race_relay_handshakes};
 use boringtun::x25519::{PublicKey, StaticSecret};
@@ -42,6 +40,16 @@ use std::{
 use tokio::sync::watch::{Receiver, Sender};
 use tokio::{spawn, time::timeout_at};
 use uuid::Uuid;
+
+impl NetworkInfo {
+    pub fn new(client_state: &ClientStateHandle) -> Self {
+        let state = client_state.borrow();
+        Self {
+            network_interface: state.network_interface.clone(),
+            network_interface_mtu: state.network_interface.as_ref().and_then(|interface| interface_mtu(interface).ok()),
+        }
+    }
+}
 
 // A convenience wrapper to act as message receiver (reevaluate when https://rust-lang.github.io/rfcs//3519-arbitrary-self-types-v2.html is stable)
 #[derive(Clone)]
@@ -822,30 +830,52 @@ impl ClientStateHandle {
             network_interface_mtu = this.network_interface.as_ref().and_then(|interface| interface_mtu(interface).ok());
         }
 
-        let dns_apple = tokio::spawn(debug_dns("www.apple.com:443"));
-        let dns_google = tokio::spawn(debug_dns("google.com:443"));
-        let dns_obscura = tokio::spawn(debug_dns("v1.api.prod.obscura.net:443"));
+        let dns_apple = tokio::spawn(run_debug_task(DebugTaskDns::run("www.apple.com")));
+        let dns_google = tokio::spawn(run_debug_task(DebugTaskDns::run("google.com")));
+        let dns_obscura = tokio::spawn(run_debug_task(DebugTaskDns::run("v1.api.prod.obscura.net")));
 
         let dns_apple = dns_apple.await.unwrap_or_else(debug_panic_error);
         let dns_google = dns_google.await.unwrap_or_else(debug_panic_error);
         let dns_obscura = dns_obscura.await.unwrap_or_else(debug_panic_error);
 
-        let http_apple = tokio::spawn(debug_http("https://www.apple.com/robots.txt", dns_apple.result.get().cloned(), true));
-        let http_google = tokio::spawn(debug_http("https://google.com/robots.txt", dns_google.result.get().cloned(), true));
-
-        let http_nosni = tokio::spawn(debug_http(
-            "https://v1.api.prod.obscura.net/api/ping",
-            dns_obscura.result.get().cloned(),
-            false,
-        ));
-
-        let http_obscura = tokio::spawn(debug_http(
-            "https://v1.api.prod.obscura.net/api/ping",
-            dns_obscura.result.get().cloned(),
+        let http_apple = tokio::spawn(run_debug_task(DebugTaskHttp::run(
+            "https://www.apple.com/robots.txt",
+            Some(dns_apple.result.get().map(|dns| dns.addrs.clone()).unwrap_or_default()),
             true,
-        ));
-        let http_obscura_apple = tokio::spawn(debug_http("https://apple.com/api/ping", dns_obscura.result.get().cloned(), true));
-        let http_obscura_google = tokio::spawn(debug_http("https://google.com/api/ping", dns_obscura.result.get().cloned(), true));
+            None,
+        )));
+        let http_google = tokio::spawn(run_debug_task(DebugTaskHttp::run(
+            "https://google.com/robots.txt",
+            Some(dns_google.result.get().map(|dns| dns.addrs.clone()).unwrap_or_default()),
+            true,
+            None,
+        )));
+
+        let http_nosni = tokio::spawn(run_debug_task(DebugTaskHttp::run(
+            "https://v1.api.prod.obscura.net/api/ping",
+            Some(dns_obscura.result.get().map(|dns| dns.addrs.clone()).unwrap_or_default()),
+            false,
+            None,
+        )));
+
+        let http_obscura = tokio::spawn(run_debug_task(DebugTaskHttp::run(
+            "https://v1.api.prod.obscura.net/api/ping",
+            Some(dns_obscura.result.get().map(|dns| dns.addrs.clone()).unwrap_or_default()),
+            true,
+            None,
+        )));
+        let http_obscura_apple = tokio::spawn(run_debug_task(DebugTaskHttp::run(
+            "https://apple.com/api/ping",
+            Some(dns_obscura.result.get().map(|dns| dns.addrs.clone()).unwrap_or_default()),
+            true,
+            None,
+        )));
+        let http_obscura_google = tokio::spawn(run_debug_task(DebugTaskHttp::run(
+            "https://google.com/api/ping",
+            Some(dns_obscura.result.get().map(|dns| dns.addrs.clone()).unwrap_or_default()),
+            true,
+            None,
+        )));
 
         DebugInfo {
             config,

@@ -8,6 +8,12 @@ use camino::{Utf8Path, Utf8PathBuf};
 use chrono::{SecondsFormat, Utc};
 use tokio::sync::watch;
 
+#[derive(Debug, Clone, Copy)]
+pub enum DebugBundleError {
+    InProgress,
+    Failed,
+}
+
 pub struct GuiDebugBundler {
     client_log_dir: Option<Utf8PathBuf>,
     status: watch::Sender<DebugBundleStatus>,
@@ -22,7 +28,7 @@ impl GuiDebugBundler {
         self.status.subscribe()
     }
 
-    pub async fn create(&self, user_feedback: String) -> Result<Utf8PathBuf, ()> {
+    pub async fn create(&self, user_feedback: String) -> Result<Utf8PathBuf, DebugBundleError> {
         let claimed = self.status.send_if_modified(|status| {
             if status.in_progress {
                 return false;
@@ -32,7 +38,7 @@ impl GuiDebugBundler {
         });
         if !claimed {
             tracing::info!(message_id = "wQ7bJs4H", "debug bundle already in progress, rejecting request");
-            return Err(());
+            return Err(DebugBundleError::InProgress);
         }
 
         let result = create_combined_debug_bundle(user_feedback, self.client_log_dir.as_deref()).await;
@@ -44,34 +50,40 @@ impl GuiDebugBundler {
                 in_progress_counter: 0,
             };
         });
-        result
+        result.map_err(|()| DebugBundleError::Failed)
     }
 }
 
-async fn create_combined_debug_bundle(user_feedback: String, client_log_dir: Option<&Utf8Path>) -> Result<Utf8PathBuf, ()> {
+pub async fn create_combined_debug_bundle(user_feedback: String, client_log_dir: Option<&Utf8Path>) -> Result<Utf8PathBuf, ()> {
     let work_dir = make_private_temp_dir().await?;
     let staging = work_dir.join("staging");
     tokio::fs::create_dir(&staging)
         .await
         .map_err(|error| tracing::error!(message_id = "sK8dQv3B", ?error, %staging, "failed to create debug bundle staging dir"))?;
 
-    match run_command::<ServiceDebugBundleHandle>(ManagerCmd::CreateServiceDebugBundle {}).await {
-        Ok(Ok(ServiceDebugBundleHandle { path, token })) => {
-            try_copy_dir_contents_recursive(&path, &staging).await;
-            tracing::info!(message_id = "tS9bWk5H", %path, "copied service debug bundle into staging");
-            match run_command::<()>(ManagerCmd::DeleteServiceDebugBundle { token }).await {
-                Ok(Ok(())) => tracing::info!(message_id = "gN4xQd8V", "service deleted its debug bundle dir"),
-                Ok(Err(error)) => tracing::error!(message_id = "uD9gYm4R", ?error, "service failed to delete service debug bundle"),
-                Err(error) => tracing::error!(message_id = "aK6pWv3T", ?error, "failed to send delete service debug bundle command"),
+    let collect_service_bundle = async {
+        match run_command::<ServiceDebugBundleHandle>(ManagerCmd::CreateServiceDebugBundle {}).await {
+            Ok(Ok(ServiceDebugBundleHandle { path, token })) => {
+                try_copy_dir_contents_recursive(&path, &staging).await;
+                tracing::info!(message_id = "tS9bWk5H", %path, "copied service debug bundle into staging");
+                match run_command::<()>(ManagerCmd::DeleteServiceDebugBundle { token }).await {
+                    Ok(Ok(())) => tracing::info!(message_id = "gN4xQd8V", "service deleted its debug bundle dir"),
+                    Ok(Err(error)) => tracing::error!(message_id = "uD9gYm4R", ?error, "service failed to delete service debug bundle"),
+                    Err(error) => tracing::error!(message_id = "aK6pWv3T", ?error, "failed to send delete service debug bundle command"),
+                }
             }
+            Ok(Err(error)) => tracing::error!(message_id = "eW5jTq8B", ?error, "service failed to create service debug bundle"),
+            Err(error) => tracing::error!(message_id = "hN2sXf7L", ?error, "failed to send create service debug bundle command"),
         }
-        Ok(Err(error)) => tracing::error!(message_id = "eW5jTq8B", ?error, "service failed to create service debug bundle"),
-        Err(error) => tracing::error!(message_id = "hN2sXf7L", ?error, "failed to send create service debug bundle command"),
-    }
+    };
 
     let user_feedback = (!user_feedback.is_empty()).then_some(user_feedback.as_str());
-    populate_client_debug_bundle(&staging, user_feedback, client_log_dir).await;
+    let timestamp = Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true);
+    tokio::join!(collect_service_bundle, populate_client_debug_bundle(&staging, user_feedback, &timestamp));
+    if let Some(client_log_dir) = client_log_dir {
+        try_copy_dir_contents_recursive(client_log_dir, &staging.join("logs-client")).await;
+    }
 
-    let timestamp = Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true).replace(':', "-");
+    let timestamp = timestamp.replace(':', "-");
     zip_and_remove_dir(&staging, &work_dir, format!("{DIR_PREFIX}{timestamp}")).await
 }

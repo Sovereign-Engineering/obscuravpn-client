@@ -254,56 +254,21 @@ function check_if_mullvad() {
       echoerr "Mullvad IPv${ip_version} check failed: ${mullvad_check_output}"
     fi
   done
-  dump_diagnostics --distro "${distro}"
+  collect_debug_bundle --distro "${distro}"
 }
 
-function dump_diagnostics() {
+function collect_debug_bundle() {
   local distro=''
   require_args "distro" "$@"
-  local out_dir
-  out_dir="linux/vm/diagnostics/$(date +%Y%m%d-%H%M%S)-${distro}"
-  mkdir -p "${out_dir}"
-  echoerr "### Collecting diagnostics in ${out_dir}"
-  local index=0 cmd slug
-  local cmds=(
-    'ls -l /etc/resolv.conf'
-    'cat /etc/resolv.conf'
-    'getent hosts ipv4.am.i.mullvad.net'
-    'curl -sS --max-time 10 https://1.1.1.1/cdn-cgi/trace'
-    "ping -c 2 -W 2 \$(grep -m1 nameserver /etc/resolv.conf | cut -d' ' -f2)"
-    'ping -c 2 -W 2 1.1.1.1'
-    'sudo grep dport=53 /proc/net/nf_conntrack'
-    'sudo grep 1.1.1.1 /proc/net/nf_conntrack'
-    'ip route show table 1868723043'
-    'ip -6 route show table 1868723043'
-    'ip route get 10.64.0.1'
-    'ip route get 1.1.1.1'
-    'ip route get 1.1.1.1 mark 0x6f627363'
-    'ip -6 route get 2606:4700:4700::1111'
-    'ip -s link show obscuravpn'
-    'nmcli general status'
-    'nmcli device show obscuravpn'
-    'resolvectl status'
-    'ip addr'
-    'ip rule'
-    'ip -6 rule'
-    'ip route show table all'
-    'ip -6 route show table all'
-    'sudo nft list ruleset'
-    'sysctl -a --pattern "rp_filter|src_valid_mark"'
-    'sudo journalctl -u obscura --no-pager -b'
-  )
-  for cmd in "${cmds[@]}"; do
-    index=$((index + 1))
-    slug="$(printf '%s' "${cmd}" | tr -cs 'a-zA-Z0-9' '-')"
-    slug="${slug#-}"
-    slug="$(printf '%02d-%.60s' "${index}" "${slug%-}")"
-    echoerr "--- ${cmd}"
-    {
-      printf '$ %s\n' "${cmd}"
-      ssh_run "${cmd}" 2>&1
-    } > "${out_dir}/${slug}.txt" || true
-  done
+  local bundle_path out_path
+  out_path="linux/vm/diagnostics/$(date +%Y%m%d-%H%M%S)-${distro}.zip"
+  mkdir -p linux/vm/diagnostics
+  echoerr "### Creating debug bundle"
+  if bundle_path="$(ssh_run obscura debug-bundle linux-test)" && sxx_run scp -P 2222 "user@localhost:${bundle_path}" "${out_path}"; then
+    echoerr "### Debug bundle saved to ${out_path}"
+  else
+    echoerr "### Failed to collect debug bundle"
+  fi
 }
 
 main() {

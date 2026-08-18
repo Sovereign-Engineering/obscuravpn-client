@@ -6,6 +6,7 @@ use camino::Utf8PathBuf;
 use clap::{Parser, Subcommand};
 use nix::fcntl::{Flock, FlockArg};
 use obscuravpn_client::linux::argv0;
+use obscuravpn_client::linux::client_log_dir;
 use obscuravpn_client::linux::debug_bundle::GuiDebugBundler;
 use obscuravpn_client::linux::exit_list_watch::GuiExitListWatch;
 use obscuravpn_client::linux::ipc::{run_command, try_group_refresh_fix};
@@ -90,21 +91,11 @@ impl GuiCommand {
             GuiCommand::IpcTest | GuiCommand::Version => false,
         };
         let mut log_dir = None;
-        if persistence {
-            let xdg_state_home = std::env::var("XDG_STATE_HOME").ok().filter(|dir| !dir.is_empty());
-            let home = std::env::var("HOME").ok().filter(|dir| !dir.is_empty());
-            let state_home = match (xdg_state_home, home) {
-                (Some(xdg_state_home), _) => Some(Utf8PathBuf::from(xdg_state_home)),
-                (None, Some(home)) => Some(Utf8PathBuf::from_iter([home.as_str(), ".local", "state"])),
-                (None, None) => None,
-            };
-            if let Some(state_home) = state_home {
-                let dir = state_home.join("obscura").join("logs");
-                if let Err(error) = std::fs::create_dir_all(&dir) {
-                    eprintln!("failed to create log dir {dir}: {error}");
-                }
-                log_dir = Some(dir);
+        if persistence && let Some(dir) = client_log_dir() {
+            if let Err(error) = std::fs::create_dir_all(&dir) {
+                eprintln!("failed to create log dir {dir}: {error}");
             }
+            log_dir = Some(dir);
         }
 
         let mut log_lock = None;

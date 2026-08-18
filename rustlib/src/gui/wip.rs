@@ -12,7 +12,7 @@ use futures::channel::mpsc::Receiver;
 use gtk4::gio::{DBusError, DBusProxy, ResourceLookupFlags};
 use gtk4::glib::translate::ToGlibPtr as _;
 use obscuravpn_client::exit_selection::ExitSelector;
-use obscuravpn_client::linux::debug_bundle::GuiDebugBundler;
+use obscuravpn_client::linux::debug_bundle::{DebugBundleError, GuiDebugBundler};
 use obscuravpn_client::linux::file_manager::reveal_item_in_dir;
 use obscuravpn_client::linux::ipc::run_command;
 use obscuravpn_client::linux::status::OsStatus;
@@ -353,7 +353,10 @@ fn command_bridge(
         Cmd::DebugBundle { user_feedback } => {
             tokio_to_glib_local_fut_pipe(
                 async move {
-                    let result = debug_bundler.create(user_feedback).await.map_err(|()| LinuxErrorCode::Other);
+                    let result = debug_bundler.create(user_feedback).await.map_err(|error| match error {
+                        DebugBundleError::InProgress => LinuxErrorCode::DebugBundleInProgress,
+                        DebugBundleError::Failed => LinuxErrorCode::Other,
+                    });
                     if let Ok(path) = &result {
                         let _ = reveal_item_in_dir(path.as_str()).await;
                     }

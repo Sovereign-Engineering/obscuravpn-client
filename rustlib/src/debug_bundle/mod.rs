@@ -2,9 +2,11 @@ mod builder;
 pub mod bundle_info;
 #[cfg(target_os = "linux")]
 pub mod client;
+pub mod command;
 pub mod debug_info;
 pub mod dns;
 pub mod http;
+pub mod populate_tasks;
 pub mod service;
 pub mod task;
 #[cfg(target_os = "windows")]
@@ -16,8 +18,37 @@ use camino::{Utf8Path, Utf8PathBuf};
 use chrono::{SecondsFormat, Utc};
 use rand::Rng;
 use rand::distributions::Alphanumeric;
+use serde::Serialize;
 
 pub const DIR_PREFIX: &str = "obscura-debug-bundle-";
+
+#[derive(Debug, Clone, Copy)]
+pub enum DebugBundleSide {
+    Client,
+    Service,
+}
+
+impl DebugBundleSide {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Client => "client",
+            Self::Service => "service",
+        }
+    }
+}
+
+pub async fn try_write_json_file<T: Serialize + ?Sized>(path: Utf8PathBuf, value: &T) {
+    let bytes = match serde_json::to_vec_pretty(value) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            tracing::error!(message_id = "cV7wRk2N", ?error, %path, "failed to serialize debug bundle json");
+            return;
+        }
+    };
+    let _ = tokio::fs::write(&path, bytes)
+        .await
+        .map_err(|error| tracing::error!(message_id = "yM3tGb8S", ?error, %path, "failed to write debug bundle json"));
+}
 
 fn temp_bundle_dir_path() -> Result<Utf8PathBuf, ()> {
     let temp_dir =

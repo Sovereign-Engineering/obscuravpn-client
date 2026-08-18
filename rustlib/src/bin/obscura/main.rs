@@ -34,6 +34,9 @@ pub struct ServiceArgs {
     #[cfg(target_os = "linux")]
     #[clap(long, env = "LOGS_DIRECTORY")]
     pub log_dir: String,
+    #[cfg_attr(target_os = "linux", clap(env = "RUNTIME_DIRECTORY"))]
+    #[clap(long)]
+    pub runtime_dir: Option<String>,
     #[cfg(target_os = "linux")]
     #[arg(long, value_enum, default_value_t = service::os::linux::dns::DnsManagerArg::Auto)]
     pub dns: service::os::linux::dns::DnsManagerArg,

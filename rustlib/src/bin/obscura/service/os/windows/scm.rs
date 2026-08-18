@@ -101,7 +101,7 @@ async fn run_service(config_dir: &str, log_persistence: Option<LogPersistence>) 
         Duration::default(),
     ))?;
 
-    let args = ServiceArgs { config_dir: config_dir.to_owned() };
+    let args = ServiceArgs { config_dir: config_dir.to_owned(), runtime_dir: None };
     let mut exit_code = ServiceExitCode::Win32(0);
     if let Err(error) = crate::service::run(args, log_persistence, Some(shutdown_rx)).await {
         tracing::error!(message_id = "Yb2mK9rL", %error, "service exited with error");

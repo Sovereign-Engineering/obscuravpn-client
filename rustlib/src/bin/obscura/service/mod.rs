@@ -8,6 +8,8 @@ use obscuravpn_client::version::release_version;
 use obscuravpn_client::wg_key_store::WgKeyStore;
 use obscuravpn_client::{logging::LogPersistence, manager::Manager};
 use std::error::Error;
+use std::fs::File;
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::watch;
@@ -15,6 +17,8 @@ use tokio::sync::watch;
 /// Runs the service with support to shut down from an external source
 pub async fn run(args: ServiceArgs, log_persistence: Option<LogPersistence>, shutdown: Option<watch::Receiver<bool>>) -> Result<(), Box<dyn Error>> {
     tracing::info!(message_id = "MNqPkSTH", "starting service");
+
+    let is_restart = detect_restart(args.runtime_dir.as_deref());
 
     #[cfg(target_os = "linux")]
     let os_impl = os::linux::LinuxOsImpl::new(args.dns).await?;
@@ -45,7 +49,7 @@ pub async fn run(args: ServiceArgs, log_persistence: Option<LogPersistence>, shu
         manager_os_impl.clone(),
         os_impl.network_interface(),
         log_persistence,
-        true,
+        !is_restart,
     )
     .context("failed to create manager")?;
 
@@ -82,4 +86,18 @@ pub async fn run(args: ServiceArgs, log_persistence: Option<LogPersistence>, shu
     }
 
     Ok(())
+}
+
+fn detect_restart(runtime_dir: Option<&str>) -> bool {
+    let Some(runtime_dir) = runtime_dir else {
+        tracing::info!(message_id = "gV2sYh6M", "no runtime directory, assuming fresh service start");
+        return false;
+    };
+    let marker = Path::new(runtime_dir).join("restart-marker");
+    let is_restart = marker.exists();
+    tracing::info!(message_id = "jW3qVb8N", is_restart, "checked service restart marker");
+    if let Err(error) = File::create(&marker) {
+        tracing::error!(message_id = "tK6dRp4X", ?error, "failed to create service restart marker");
+    }
+    is_restart
 }

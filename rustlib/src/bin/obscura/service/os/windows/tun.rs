@@ -43,7 +43,10 @@ impl Tun {
         // verify that the file matches the pre-calculated SHA-256 hash from build time before loading.
         let wintun = verify_and_load_wintun()?;
         let adapter = match wintun::Adapter::open(&wintun, TUN_NAME) {
-            Ok(a) => a,
+            Ok(adapter) => {
+                tracing::info!(message_id = "qlw6WNv9", "opened an existing wintun adapter");
+                adapter
+            }
             Err(error) => {
                 tracing::warn!(message_id = "5ImYKHdv", ?error, "could not load wintun adapter, will try to create one");
                 // If loading fails (e.g. doesn't exist), create one

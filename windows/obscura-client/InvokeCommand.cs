@@ -285,6 +285,7 @@ public class DebugBundleCommand : IObscuraCommand
 {
     private static readonly ILog Log = LogManager.GetLogger(typeof(DebugBundleCommand));
     public string? UserFeedback { get; set; }
+    public List<string>? NativeUiErrors { get; set; }
     public async Task<string> RunAsync()
     {
         // Reserved before the status update so a rejected request cannot disturb the run in flight.
@@ -293,7 +294,7 @@ public class DebugBundleCommand : IObscuraCommand
         string? path = null;
         try
         {
-            path = await DebugBundle.CreateAsync(UserFeedback);
+            path = await DebugBundle.CreateAsync(UserFeedback, NativeUiErrors);
             await new RevealItemInDirCommand { Path = path }.RunAsync();
         }
         catch (Exception ex)

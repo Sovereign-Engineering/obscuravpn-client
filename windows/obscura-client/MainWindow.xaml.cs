@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.Web.WebView2.Core;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -12,6 +13,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Windows.System;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.WindowsAndMessaging;
@@ -50,6 +52,90 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         else
         {
             DispatcherQueue.TryEnqueue(() => NativeUiErrors.Add(item));
+        }
+    }
+
+    bool _contentDialogOpen;
+
+    async void OnCreateDebugBundleClick(object sender, RoutedEventArgs e)
+    {
+        if (_contentDialogOpen || OsStatus.Instance.DebugBundleStatus.InProgress)
+        {
+            Log.Warn("Tried to open debugging bundle while dialog is open or bundle is being created");
+            Log.Info($"dialog open: {_contentDialogOpen}, debug bundle in progress: {OsStatus.Instance.DebugBundleStatus.InProgress}");
+            return;
+        }
+        _contentDialogOpen = true;
+        var feedbackBox = new TextBox
+        {
+            AcceptsReturn = true,
+            TextWrapping = TextWrapping.Wrap,
+            Height = 120,
+            PlaceholderText = "Describe what went wrong (optional)",
+        };
+        var dialog = new ContentDialog
+        {
+            Title = DebugBundle.CreateActionText,
+            Content = feedbackBox,
+            PrimaryButtonText = "Create",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = Content.XamlRoot,
+        };
+        var submitted = false;
+        dialog.PreviewKeyDown += (_, args) =>
+        {
+            if (args.Key == VirtualKey.Enter
+                && Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
+                    .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down))
+            {
+                args.Handled = true;
+                submitted = true;
+                dialog.Hide();
+            }
+        };
+        void OnBundleStatusChanged(OsStatus status)
+        {
+            if (status.DebugBundleStatus.InProgress)
+            {
+                DispatcherQueue.TryEnqueue(() => dialog.Hide());
+            }
+        }
+        OsStatus.Instance.Changed += OnBundleStatusChanged;
+        ContentDialogResult result;
+        try
+        {
+            result = await dialog.ShowAsync();
+        }
+        finally
+        {
+            OsStatus.Instance.Changed -= OnBundleStatusChanged;
+            _contentDialogOpen = false;
+        }
+        if (result != ContentDialogResult.Primary && !submitted)
+        {
+            return;
+        }
+        var feedback = feedbackBox.Text.Trim();
+        try
+        {
+            await new DebugBundleCommand
+            {
+                UserFeedback = feedback.Length > 0 ? feedback : null,
+                NativeUiErrors = NativeUiErrors.Count > 0 ? NativeUiErrors.Select(err => err.Message).ToList() : null,
+            }.RunAsync();
+        }
+        catch (Exception ex)
+        {
+            AddNativeUiError($"Failed to create debug bundle: {ex.Message}", fatal: false);
+        }
+    }
+
+    void OnRevealDebugBundleClick(object sender, RoutedEventArgs e)
+    {
+        if (OsStatus.Instance.DebugBundleStatus.LatestPath is { } path)
+        {
+            _ = new RevealItemInDirCommand { Path = path }.RunAsync();
         }
     }
 
@@ -143,10 +229,17 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     // The nav pane is only useful with a healthy service and a post-onboarding account
     private void OnOsStatusChanged(OsStatus status)
     {
+        bool bundleInProgress = status.DebugBundleStatus.InProgress;
+        string? bundlePath = status.DebugBundleStatus.LatestPath;
         DispatcherQueue.TryEnqueue(() => {
             bool showNav = status.ServiceStatus.Healthy is { AccountId: not null, InNewAccountFlow: false };
             NavView.IsPaneVisible = showNav;
             AppTitleBar.IsPaneToggleButtonVisible = showNav;
+            CreateDebugBundleButton.Content = bundleInProgress ? DebugBundle.CreatingActionText : DebugBundle.CreateActionText;
+            CreateDebugBundleButton.IsEnabled = !bundleInProgress;
+            DebugBundleProgressRing.IsActive = bundleInProgress;
+            DebugBundleProgressRing.Visibility = bundleInProgress ? Visibility.Visible : Visibility.Collapsed;
+            RevealDebugBundleButton.Visibility = !bundleInProgress && bundlePath != null ? Visibility.Visible : Visibility.Collapsed;
         });
     }
 

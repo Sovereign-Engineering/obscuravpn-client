@@ -98,6 +98,7 @@ public class BundleInfo
     public string? BundleTimestamp { get; set; }
     public string? DotNETFramework { get; set; }
     public bool HasIdentity { get; set; }
+    public List<string>? NativeUiErrors { get; set; }
     public string? OSArchitecture { get; set; }
     public string? OSVersionString { get; set; }
     public int? PID { get; set; }
@@ -184,6 +185,9 @@ public class DebugBundleInProgressException() : Exception("debugBundleInProgress
 
 public static partial class DebugBundle
 {
+    public const string CreateActionText = "Create Debug Bundle";
+    public const string CreatingActionText = "Creating Debug Bundle (takes a few minutes)";
+
     private static readonly ILog Log = LogManager.GetLogger(typeof(DebugBundle));
     const string DirPrefix = "obscura-debug-bundle-";
     static readonly SemaphoreSlim Gate = new(1, 1);
@@ -203,7 +207,7 @@ public static partial class DebugBundle
         public void Dispose() => Gate.Release();
     }
 
-    public static async Task<string> CreateAsync(string? userFeedback)
+    public static async Task<string> CreateAsync(string? userFeedback, List<string>? nativeUiErrors)
     {
         var timestampUtc = DateTime.UtcNow;
         var bundleName = DirPrefix + timestampUtc.ToString("yyyy-MM-dd'T'HH-mm-ss'Z'", CultureInfo.InvariantCulture);
@@ -217,7 +221,7 @@ public static partial class DebugBundle
             await CollectServiceBundleAsync(stagingDir);
             await Task.Run(() =>
             {
-                PopulateClientBundle(stagingDir, userFeedback, timestampUtc);
+                PopulateClientBundle(stagingDir, userFeedback, nativeUiErrors, timestampUtc);
                 ZipFile.CreateFromDirectory(stagingDir, zipPath);
             });
         }
@@ -262,13 +266,14 @@ public static partial class DebugBundle
         }
     }
 
-    static void PopulateClientBundle(string dir, string? userFeedback, DateTime timestampUtc)
+    static void PopulateClientBundle(string dir, string? userFeedback, List<string>? nativeUiErrors, DateTime timestampUtc)
     {
         try
         {
             var info = new BundleInfo
             {
                 BundleTimestamp = timestampUtc.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
+                NativeUiErrors = nativeUiErrors,
             };
             File.WriteAllText(Path.Combine(dir, "info.json"), JsonSerializer.Serialize(info, JsonConfig.BundleInfoOptions));
         }

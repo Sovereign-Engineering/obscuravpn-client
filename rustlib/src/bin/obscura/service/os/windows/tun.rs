@@ -14,6 +14,7 @@ use crate::service::os::windows::WindowsServiceStartError;
 use crate::service::os::windows::iphelper;
 use crate::service::os::windows::iphelper::flush_dns_cache;
 use crate::service::os::windows::nrpt;
+use std::collections::BTreeSet;
 use std::net::IpAddr;
 use std::net::Ipv4Addr;
 use std::sync::{Arc, Mutex};
@@ -31,6 +32,7 @@ pub struct Tun {
     adapter: Arc<wintun::Adapter>,
     session: Arc<wintun::Session>,
     read_task: Mutex<Option<AbortOnDrop>>,
+    dns_routes: Mutex<BTreeSet<IpAddr>>,
 }
 
 impl Tun {
@@ -58,7 +60,12 @@ impl Tun {
         let session = adapter
             .start_session(wintun::MAX_RING_CAPACITY)
             .map_err(WindowsServiceStartError::StartWintunSession)?;
-        Ok(Tun { adapter, session: session.into(), read_task: Mutex::new(None) })
+        Ok(Tun {
+            adapter,
+            session: session.into(),
+            read_task: Mutex::new(None),
+            dns_routes: Mutex::new(BTreeSet::new()),
+        })
     }
 
     pub fn send(&self, packet: Bytes) {
@@ -164,7 +171,13 @@ impl Tun {
         }
     }
 
-    pub async fn set_config(&self, mtu: u16, ipv4: Ipv4Addr, ipv6: Ipv6Network, dns: Option<Vec<IpAddr>>) -> Result<(), ()> {
+    pub async fn set_config(&self, mtu: u16, ipv4: Ipv4Addr, ipv6: Ipv6Network, dns: &[IpAddr]) -> Result<(), ()> {
+        let stale_dns_ips: Vec<IpAddr> = {
+            let mut dns_routes = self.dns_routes.lock().unwrap();
+            dns_routes.extend(dns);
+            dns_routes.iter().copied().filter(|ip| !dns.contains(ip)).collect()
+        };
+
         // Attempt all config steps regardless of individual failures to minimize leaks until intentionally disconnecting.
         // E.g. DNS queries shouldn't leak because route setup failed.
         let mut result = Ok(());
@@ -172,18 +185,19 @@ impl Tun {
             .and(iphelper::set_mtu(&self.adapter, mtu).await)
             .and(iphelper::set_ipv4_address(&self.adapter, ipv4).await)
             .and(iphelper::set_ipv6_address(&self.adapter, ipv6).await)
-            .and(iphelper::set_dns_servers(&self.adapter, dns.as_deref().unwrap_or_default()).await)
+            .and(iphelper::set_dns_servers(&self.adapter, dns).await)
             .and(iphelper::set_low_metric(&self.adapter))
-            .and(iphelper::add_routes(&self.adapter));
+            .and(iphelper::set_routes(&self.adapter, dns, &stale_dns_ips))
+            // Avoid DNS outage by redirecting after adding routes
+            .and(nrpt::create_rule(dns).or_else(|_| nrpt::delete_rules().map(drop)))
+            .and(flush_dns_cache().await);
 
-        // Avoid DNS outage by redirecting after adding routes
-        if let Some(dns) = dns {
-            result = result.and(nrpt::create_rule(&dns).or_else(|_| nrpt::delete_rules().map(drop)));
-        } else {
-            result = result.and(nrpt::delete_rules().map(drop));
+        if result.is_ok() {
+            let mut dns_routes = self.dns_routes.lock().unwrap();
+            for ip in stale_dns_ips {
+                dns_routes.remove(&ip);
+            }
         }
-        result = result.and(flush_dns_cache().await);
-
         result
     }
 
@@ -204,7 +218,11 @@ impl Tun {
         result = result.and(nrpt::delete_rules().map(drop));
         result = result.and(flush_dns_cache().await);
         result = result.and(iphelper::reset_interface_metric(&self.adapter));
-        result = result.and(iphelper::remove_routes(&self.adapter));
+        let stale_dns_ips: Vec<IpAddr> = self.dns_routes.lock().unwrap().iter().copied().collect();
+        result = result.and(iphelper::remove_routes(&self.adapter, &stale_dns_ips));
+        if result.is_ok() {
+            self.dns_routes.lock().unwrap().clear();
+        }
         result
     }
 }

@@ -72,7 +72,7 @@ impl Os for WindowsOsImpl {
         tracing::info!(message_id = "HSSPAPbp", "manager called set_tunnel_network_config: {:?}", network_config);
         let result = self
             .tun
-            .set_config(network_config.mtu, network_config.ipv4, network_config.ipv6, Some(network_config.dns))
+            .set_config(network_config.mtu, network_config.ipv4, network_config.ipv6, &network_config.dns)
             .await;
         self.tun.spawn_read_task(tunnel);
         result

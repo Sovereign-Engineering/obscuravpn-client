@@ -51,6 +51,7 @@ function download() {
   # Ubuntu doesn't have small desktop or netinstall images, so we need to download the iso
   declare -A map=(
     ["ubuntu26.04-desktop"]="https://releases.ubuntu.com/26.04/ubuntu-26.04-desktop-amd64.iso"
+    ["ubuntu24.04-desktop"]="https://releases.ubuntu.com/24.04/ubuntu-24.04.4-desktop-amd64.iso"
   )
   if [[ -v map[${distro}-${flavor}] ]]; then
     local iso="./linux/vm/${distro}-${flavor}.iso"
@@ -66,6 +67,7 @@ function prepare() {
   # Ubuntu on desktop doesn't support auto install via initrd injected files
   declare -A map=(
     ["ubuntu26.04-desktop"]="x"
+    ["ubuntu24.04-desktop"]="x"
     ["archlinux-desktop"]="x"
   )
   if [[ -v map[${distro}-${flavor}] ]]; then
@@ -80,6 +82,7 @@ function autoinstall() {
     declare -A map=(
       ["debian13-desktop"]="debian13"
       ["ubuntu26.04-desktop"]="ubuntu24.04"
+      ["ubuntu24.04-desktop"]="ubuntu24.04"
       ["fedora44-desktop"]="fedora41"
       ["almalinux10-desktop"]="almalinux10"
       ["archlinux-desktop"]="archlinux"
@@ -93,6 +96,7 @@ function autoinstall() {
     declare -A map=(
       ["debian13-desktop"]="https://deb.debian.org/debian/dists/trixie/main/installer-amd64/"
       ["ubuntu26.04-desktop"]="./linux/vm/ubuntu26.04-desktop.iso,kernel=casper/vmlinuz,initrd=casper/initrd"
+      ["ubuntu24.04-desktop"]="./linux/vm/ubuntu24.04-desktop.iso,kernel=casper/vmlinuz,initrd=casper/initrd"
       ["fedora44-desktop"]="https://dl.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/"
       ["almalinux10-desktop"]="https://repo.almalinux.org/almalinux/10/BaseOS/x86_64/os/"
       ["archlinux-desktop"]="https://mirrors.edge.kernel.org/archlinux/iso/latest/,kernel=arch/boot/x86_64/vmlinuz-linux,initrd=arch/boot/x86_64/initramfs-linux.img"
@@ -104,6 +108,7 @@ function autoinstall() {
 
     declare -A map=(
       ["ubuntu26.04-desktop"]="x"
+      ["ubuntu24.04-desktop"]="x"
       ["archlinux-desktop"]="x"
     )
     if [[ -v map[${distro}-${flavor}] ]]; then
@@ -115,6 +120,7 @@ function autoinstall() {
     declare -A map=(
       ["debian13-desktop"]="auto=true priority=critical file=/debian-desktop.preseed.cfg console=ttyS0"
       ["ubuntu26.04-desktop"]="autoinstall console=ttyS0"
+      ["ubuntu24.04-desktop"]="autoinstall console=ttyS0"
       ["fedora44-desktop"]="inst.ks=file:/fedora44-desktop.ks console=tty0 console=ttyS0"
       ["almalinux10-desktop"]="inst.ks=file:/almalinux10-desktop.ks console=tty0 console=ttyS0"
       ["archlinux-desktop"]="ip=:::::eth0:dhcp net.ifnames=0 archisobasedir=arch archiso_http_srv=https://mirrors.edge.kernel.org/archlinux/iso/latest/ console=ttyS0"

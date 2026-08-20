@@ -182,25 +182,52 @@ function serve_repo() {
 }
 
 function add_repo() {
-  local distro=''
-  require_args "distro" "$@"
+  local distro='' no_install='' account_id=''
+  require_args "distro no_install account_id" "$@"
 
   local repo_url="http://${REPO_IP}:${REPO_PORT}"
+  local steps=()
   if [[ ${distro} == debian* ]] || [[ ${distro} == ubuntu* ]]; then
     ssh_run curl -fsSLO "${repo_url}/deb/obscura-repository.deb"
-    ssh_run sudo apt install -y ./obscura-repository.deb
-    ssh_run sudo apt update
+    steps+=(
+      "sudo apt install -y ./obscura-repository.deb"
+      "sudo apt update"
+    )
   elif [[ ${distro} == fedora* ]] || [[ ${distro} == alma* ]]; then
-    ssh_run sudo rpm --import "${repo_url}/rpm/RPM-GPG-KEY-obscura"
-    ssh_run sudo dnf install -y "${repo_url}/rpm/obscura-repository.rpm"
+    ssh_run curl -fsSLO "${repo_url}/rpm/RPM-GPG-KEY-obscura" -O "${repo_url}/rpm/obscura-repository.rpm"
+    steps+=(
+      "sudo rpm --import RPM-GPG-KEY-obscura"
+      "sudo dnf install -y ./obscura-repository.rpm"
+    )
   elif [[ ${distro} == archlinux* ]]; then
     ssh_run curl -fsSLO "${repo_url}/arch/obs-keys.asc" -O "${repo_url}/arch/obs-fingerprint.txt"
-    ssh_run sudo pacman-key --add obs-keys.asc
-    ssh_run "sudo pacman-key --lsign-key \"\$(< obs-fingerprint.txt)\""
-    ssh_run "printf '[obscura]\nServer = %s/arch/\$arch\n' '${repo_url}' | sudo tee -a /etc/pacman.conf"
+    steps+=(
+      "sudo pacman-key --add obs-keys.asc"
+      "sudo pacman-key --lsign-key \"\$(< obs-fingerprint.txt)\""
+      "printf '[obscura]\nServer = %s/arch/\$arch\n' '${repo_url}' | sudo tee -a /etc/pacman.conf"
+    )
   else
     die "no repository setup for ${distro}"
   fi
+
+  if [ -n "${no_install}" ]; then
+    local instructions
+    instructions="$(mktemp)"
+    {
+      echo "https://linux-pkgs.obscura.com/instructions.html"
+      echo "account id: ${account_id}"
+      echo
+      printf '%s\n' "${steps[@]}"
+    } > "${instructions}"
+    sxx_run scp -P 2222 "${instructions}" user@localhost:obscura-repo-setup.txt
+    rm -f "${instructions}"
+    echoerr "### Repository files and obscura-repo-setup.txt copied to the VM, nothing installed"
+    return
+  fi
+  local step
+  for step in "${steps[@]}"; do
+    ssh_run "${step}"
+  done
 }
 
 function install_obscura() {
@@ -278,8 +305,15 @@ function collect_debug_bundle() {
 }
 
 main() {
+  local no_install='' arg args=()
+  for arg in "$@"; do
+    case "${arg}" in
+      --no-install) no_install=1 ;;
+      *) args+=("${arg}") ;;
+    esac
+  done
   local account_id='' distro=''
-  require_args "account_id distro" "$@"
+  require_args "account_id distro" "${args[@]}"
   local flavor="desktop"
 
   if [ ! -f "$(disk_image_path --distro "${distro}" --flavor "${flavor}")" ]; then
@@ -289,11 +323,12 @@ main() {
   serve_repo
   start_vm --distro "${distro}" --flavor "${flavor}"
 
-  add_repo --distro "${distro}"
-  install_obscura --distro "${distro}"
-
-  setup_and_connect --account_id "${account_id}"
-  check_if_mullvad --distro "${distro}"
+  add_repo --distro "${distro}" --no_install "${no_install}" --account_id "${account_id}"
+  if [ -z "${no_install}" ]; then
+    install_obscura --distro "${distro}"
+    setup_and_connect --account_id "${account_id}"
+    check_if_mullvad --distro "${distro}"
+  fi
 
   echoerr "### ${distro} ready, click around in the QEMU window."
   echoerr "### Press Ctrl-C to shut the VM down."

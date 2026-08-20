@@ -58,9 +58,7 @@ impl Tun {
                 wintun::Adapter::create(&wintun, TUN_NAME, "Obscura QUICWG", None).map_err(WindowsServiceStartError::CreateWintunAdapter)?
             }
         };
-        let session = adapter
-            .start_session(wintun::MAX_RING_CAPACITY)
-            .map_err(WindowsServiceStartError::StartWintunSession)?;
+        let session = adapter.start_session(0x800000).map_err(WindowsServiceStartError::StartWintunSession)?;
         Ok(Tun {
             adapter,
             session: session.into(),

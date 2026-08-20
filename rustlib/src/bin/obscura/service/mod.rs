@@ -90,6 +90,9 @@ pub async fn run(
         tracing::warn!(message_id = "kN5bX1wz", ?error, "failed to revert OS network configuration on shutdown");
     }
 
+    #[cfg(target_os = "windows")]
+    let _ = os_impl.shutdown_wintun_session();
+
     Ok(())
 }
 

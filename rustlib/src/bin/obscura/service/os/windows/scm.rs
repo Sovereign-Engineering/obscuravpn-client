@@ -116,6 +116,7 @@ async fn run_service(config_dir: &str, log_persistence: Option<LogPersistence>) 
         tracing::error!(message_id = "Yb2mK9rL", %error, "service exited with error");
         exit_code = ServiceExitCode::ServiceSpecific(1);
     }
+    tracing::info!(message_id = "iPqn0S7F", "scm service run finished; exiting");
     obscuravpn_client::logging::flush_and_stop_persisted_log();
     status_handle.set_service_status(status(
         ServiceState::Stopped,

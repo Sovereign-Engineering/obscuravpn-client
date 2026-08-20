@@ -114,7 +114,7 @@
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Access to Obscura VPN on up to 3 devices.",
+              "description" : "Access to Obscura VPN on up to 5 devices.",
               "displayName" : "Obscura VPN - Monthly",
               "locale" : "en_US"
             }

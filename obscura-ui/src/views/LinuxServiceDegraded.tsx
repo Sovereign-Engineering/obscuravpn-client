@@ -1,8 +1,11 @@
-import { Button, Stack, Text, Title } from '@mantine/core';
+import { ActionIcon, Button, Code, CopyButton, Group, Stack, Text, Title } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
+import { IoCopy } from 'react-icons/io5';
 import * as commands from '../bridge/commands';
 import { LinuxServiceDegradation } from '../common/appContext';
 import { TranslationKey } from '../translations/i18n';
+
+const UNIT_NAME = 'obscura.service';
 
 interface Fix {
   command: () => Promise<void>;
@@ -19,10 +22,22 @@ interface Degraded {
   messageKey: TranslationKey;
   details?: Detail[];
   fix?: Fix;
+  terminalCommand?: string;
+  restartAppAfterwards?: boolean;
 }
 
 function describe(degradation: LinuxServiceDegradation): Degraded {
   if (typeof degradation === 'object') {
+    if ('socketPermissionDenied' in degradation) {
+      const { user } = degradation.socketPermissionDenied;
+      return {
+        titleKey: 'linuxService-socketPermissionDeniedTitle',
+        messageKey: 'linuxService-socketPermissionDeniedMessage',
+        fix: { command: commands.linuxAddOperator, labelKey: 'linuxService-authorizeButton' },
+        terminalCommand: user === null ? 'sudo obscura add-operator' : `sudo obscura add-operator ${user}`,
+        restartAppAfterwards: true,
+      };
+    }
     const { serviceVersion, appVersion, installedAppVersionDiffers } = degradation.versionMismatch;
     const offerAppRestart = installedAppVersionDiffers !== false;
     return {
@@ -35,6 +50,7 @@ function describe(degradation: LinuxServiceDegradation): Degraded {
       fix: offerAppRestart
         ? { command: commands.restartApp, labelKey: 'linuxService-restartAppButton' }
         : { command: () => commands.restartService({ enable: false }), labelKey: 'linuxService-restartServiceButton' },
+      terminalCommand: offerAppRestart ? undefined : `sudo systemctl restart ${UNIT_NAME}`,
     };
   }
   switch (degradation) {
@@ -43,12 +59,7 @@ function describe(degradation: LinuxServiceDegradation): Degraded {
         titleKey: 'linuxService-unitInactiveTitle',
         messageKey: 'linuxService-unitInactiveMessage',
         fix: { command: () => commands.restartService({ enable: true }), labelKey: 'linuxService-enableAndStartButton' },
-      };
-    case 'socketPermissionDenied':
-      return {
-        titleKey: 'linuxService-socketPermissionDeniedTitle',
-        messageKey: 'linuxService-socketPermissionDeniedMessage',
-        fix: { command: commands.linuxAddOperator, labelKey: 'linuxService-authorizeButton' },
+        terminalCommand: `sudo systemctl enable --now ${UNIT_NAME}`,
       };
     case 'unitActivating':
       return {
@@ -70,8 +81,9 @@ function describe(degradation: LinuxServiceDegradation): Degraded {
 
 export default function LinuxServiceDegraded({ degradation }: { degradation: LinuxServiceDegradation }) {
   const { t } = useTranslation();
-  const { showLoadingUI, execute } = commands.useCommand({ command: (fix: () => Promise<void>) => fix(), showNotification: true });
-  const { titleKey, messageKey, details, fix } = describe(degradation);
+  const fixCommand = commands.useCommand({ command: (fix: () => Promise<void>) => fix(), showNotification: true });
+  const restartAppCommand = commands.useCommand({ command: commands.restartApp, showNotification: true });
+  const { titleKey, messageKey, details, fix, terminalCommand, restartAppAfterwards } = describe(degradation);
 
   return (
     <Stack align='center' gap='md' maw={420}>
@@ -85,9 +97,32 @@ export default function LinuxServiceDegraded({ degradation }: { degradation: Lin
         </Stack>
       )}
       {fix !== undefined && (
-        <Button loading={showLoadingUI} onClick={() => execute(fix.command)}>
+        <Button loading={fixCommand.showLoadingUI} onClick={() => fixCommand.execute(fix.command)}>
           {t(fix.labelKey)}
         </Button>
+      )}
+      {terminalCommand !== undefined && (
+        <Stack align='center' gap='xs'>
+          <Text c='dimmed' size='sm' ta='center'>{t('linuxService-terminalHint')}</Text>
+          <Group gap='xs' wrap='nowrap'>
+            <Code style={{ whiteSpace: 'pre-wrap', userSelect: 'text', WebkitUserSelect: 'text' }}>{terminalCommand}</Code>
+            <CopyButton value={terminalCommand}>
+              {({ copied, copy }) => (
+                <ActionIcon c={copied ? 'green' : undefined} variant='subtle' title={t('linuxService-copyCommand')} onClick={copy}>
+                  <IoCopy size='1em' />
+                </ActionIcon>
+              )}
+            </CopyButton>
+          </Group>
+        </Stack>
+      )}
+      {restartAppAfterwards === true && (
+        <Stack align='center' gap='xs'>
+          <Text c='dimmed' size='sm' ta='center'>{t('linuxService-restartAppAfterwardsHint')}</Text>
+          <Button variant='light' loading={restartAppCommand.showLoadingUI} onClick={() => restartAppCommand.execute()}>
+            {t('linuxService-restartAppButton')}
+          </Button>
+        </Stack>
       )}
     </Stack>
   );

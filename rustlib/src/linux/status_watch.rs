@@ -6,10 +6,10 @@ use tokio::sync::watch;
 use tokio_util::task::AbortOnDropHandle;
 use uuid::Uuid;
 
-use super::argv0;
 use super::ipc::{LinuxIpcError, run_command};
 use super::status::{DebugBundleStatus, LinuxServiceDegradation, OsStatus, ServiceStatus};
 use super::systemd::SystemdUnitStatus;
+use super::{argv0, current_user_name};
 use crate::manager::Status;
 use crate::manager_cmd::ManagerCmd;
 use crate::version::release_version;
@@ -131,7 +131,7 @@ async fn classify_unreachable(failure: ConnectFailure) -> LinuxServiceDegradatio
     match SystemdUnitStatus::get().await {
         SystemdUnitStatus::NotInstalled => LinuxServiceDegradation::UnitNotInstalled,
         SystemdUnitStatus::Unknown | SystemdUnitStatus::Active => match failure {
-            ConnectFailure::InsufficientPermissions => LinuxServiceDegradation::SocketPermissionDenied,
+            ConnectFailure::InsufficientPermissions => LinuxServiceDegradation::SocketPermissionDenied { user: current_user_name().await },
             ConnectFailure::NoListener => LinuxServiceDegradation::Unknown,
         },
         SystemdUnitStatus::Activating | SystemdUnitStatus::Reloading | SystemdUnitStatus::Refreshing => LinuxServiceDegradation::UnitActivating,

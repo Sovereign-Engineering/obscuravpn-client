@@ -1,29 +1,17 @@
 use std::time::Duration;
 
-use nix::unistd::{User, getuid};
+use obscuravpn_client::linux::current_user_name;
 use obscuravpn_client::linux::systemd::{SystemdUnitStatus, UNIT_NAME};
 use tokio::process::Command;
-use tokio::task::spawn_blocking;
 use tokio::time::Instant;
 
 use crate::error::LinuxFixErrorCode;
 
 pub async fn add_operator() -> Result<(), LinuxFixErrorCode> {
-    let user = spawn_blocking(|| User::from_uid(getuid()))
-        .await
-        .map_err(|error| {
-            tracing::error!(message_id = "bW5nTk8D", %error, "task resolving current user failed");
-            LinuxFixErrorCode::UsernameUnknown
-        })?
-        .map_err(|error| {
-            tracing::error!(message_id = "rV2mXs7J", %error, "failed to resolve current user");
-            LinuxFixErrorCode::UsernameUnknown
-        })?;
-    let Some(user) = user else {
-        tracing::error!(message_id = "kD9pQf4Y", "current user does not exist");
+    let Some(user) = current_user_name().await else {
         return Err(LinuxFixErrorCode::UsernameUnknown);
     };
-    run_pkexec(&["obscura", "add-operator", &user.name], LinuxFixErrorCode::AddOperatorFailed).await
+    run_pkexec(&["obscura", "add-operator", &user], LinuxFixErrorCode::AddOperatorFailed).await
 }
 
 pub async fn restart_service(enable: bool) -> Result<(), LinuxFixErrorCode> {

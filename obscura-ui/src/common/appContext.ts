@@ -18,7 +18,10 @@ export interface LinuxVersionMismatch {
     appVersion: string,
     installedAppVersionDiffers: boolean | null,
 }
-export type LinuxServiceDegradation = 'unitInactive' | 'unitActivating' | 'unitNotInstalled' | 'socketPermissionDenied' | 'unknown' | { versionMismatch: LinuxVersionMismatch };
+export interface LinuxSocketPermissionDenied {
+    user: string | null,
+}
+export type LinuxServiceDegradation = 'unitInactive' | 'unitActivating' | 'unitNotInstalled' | 'unknown' | { socketPermissionDenied: LinuxSocketPermissionDenied } | { versionMismatch: LinuxVersionMismatch };
 export type WindowsServiceDegradation = 'stopped' | 'failed' | 'disabled' | 'notInstalled' | 'packageIdentityMissing' | 'other';
 export type ServiceStatus = 'initializing' | { healthy: AppStatus } | { degraded: { lastStatus: AppStatus | null, linuxDegradation?: LinuxServiceDegradation, windowsDegradation?: WindowsServiceDegradation } };
 

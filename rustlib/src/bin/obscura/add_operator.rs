@@ -7,9 +7,13 @@ pub async fn run_add_operator(users: Vec<String>) -> ! {
 
 fn add_operator_impl(mut users: Vec<String>) -> ! {
     if users.is_empty() {
-        let Ok(user) =
-            var("USER").inspect_err(|error| tracing::error!(message_id = "vo2NOhH3", ?error, "failed to read $USER environment variable: {error}"))
-        else {
+        let Ok(user) = var("SUDO_USER").or_else(|_| var("USER")).inspect_err(|error| {
+            tracing::error!(
+                message_id = "vo2NOhH3",
+                ?error,
+                "failed to read $SUDO_USER and $USER environment variables: {error}"
+            )
+        }) else {
             eprintln!("Could not determine the current user. Please specify a user explicitly:");
             eprintln!("obscura add-operator <user>");
             exit(1);

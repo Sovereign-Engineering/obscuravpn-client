@@ -15,10 +15,15 @@ use std::time::Duration;
 use tokio::sync::watch;
 
 /// Runs the service with support to shut down from an external source
-pub async fn run(args: ServiceArgs, log_persistence: Option<LogPersistence>, shutdown: Option<watch::Receiver<bool>>) -> Result<(), Box<dyn Error>> {
+pub async fn run(
+    args: ServiceArgs,
+    log_persistence: Option<LogPersistence>,
+    shutdown: Option<watch::Receiver<bool>>,
+    scm_start_reason: Option<ScmStartReason>,
+) -> Result<(), Box<dyn Error>> {
     tracing::info!(message_id = "MNqPkSTH", "starting service");
 
-    let is_restart = detect_restart(args.runtime_dir.as_deref());
+    let is_restart = detect_restart(args.runtime_dir.as_deref(), scm_start_reason);
 
     #[cfg(target_os = "linux")]
     let os_impl = os::linux::LinuxOsImpl::new(args.dns).await?;
@@ -88,7 +93,26 @@ pub async fn run(args: ServiceArgs, log_persistence: Option<LogPersistence>, shu
     Ok(())
 }
 
-fn detect_restart(runtime_dir: Option<&str>) -> bool {
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+#[derive(Clone, Copy, Debug)]
+pub enum ScmStartReason {
+    Auto,
+    DelayedAuto,
+    Demand,
+    FailureRecovery,
+    Trigger,
+    Unknown,
+}
+
+fn detect_restart(runtime_dir: Option<&str>, scm_start_reason: Option<ScmStartReason>) -> bool {
+    match scm_start_reason {
+        Some(ScmStartReason::Demand | ScmStartReason::FailureRecovery) => {
+            // Demand is used for explicit starts and restarts, including an installer triggered restart during update and FailureRecovery a restart after crash.
+            tracing::info!(message_id = "wN4gXt7B", "potential windows service restart due to update or crash");
+            return true;
+        }
+        Some(ScmStartReason::Auto | ScmStartReason::DelayedAuto | ScmStartReason::Trigger | ScmStartReason::Unknown) | None => {}
+    }
     let Some(runtime_dir) = runtime_dir else {
         tracing::info!(message_id = "gV2sYh6M", "no runtime directory, assuming fresh service start");
         return false;

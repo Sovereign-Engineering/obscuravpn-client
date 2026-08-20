@@ -1,6 +1,8 @@
 //! Windows Service Control Manager (SCM) integration for `obscura.exe`.
 
-use std::ffi::OsString;
+use std::ffi::{OsString, c_void};
+use std::os::windows::io::AsRawHandle;
+use std::ptr::null_mut;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::OnceLock;
@@ -9,11 +11,17 @@ use std::time::Duration;
 use obscuravpn_client::logging::LogPersistence;
 use tokio::runtime::Handle;
 use tokio::sync::watch;
+use windows::Win32::Foundation::{HLOCAL, LocalFree};
+use windows::Win32::System::Services::{
+    QueryServiceDynamicInformation, SERVICE_DYNAMIC_INFORMATION_LEVEL_START_REASON, SERVICE_START_REASON_AUTO, SERVICE_START_REASON_DELAYEDAUTO,
+    SERVICE_START_REASON_DEMAND, SERVICE_START_REASON_RESTART_ON_FAILURE, SERVICE_START_REASON_TRIGGER, SERVICE_STATUS_HANDLE,
+};
 use windows_service::service::{ServiceControl, ServiceControlAccept, ServiceExitCode, ServiceState, ServiceStatus, ServiceType};
 use windows_service::service_control_handler::{self, ServiceControlHandlerResult, ServiceStatusHandle};
 use windows_service::{define_windows_service, service_dispatcher};
 
 use crate::ServiceArgs;
+use crate::service::ScmStartReason;
 
 pub const SERVICE_NAME: &str = "Obscura VPN Service";
 const SERVICE_TYPE: ServiceType = ServiceType::OWN_PROCESS;
@@ -101,9 +109,10 @@ async fn run_service(config_dir: &str, log_persistence: Option<LogPersistence>) 
         Duration::default(),
     ))?;
 
+    let scm_start_reason = ScmStartReason::query(status_handle);
     let args = ServiceArgs { config_dir: config_dir.to_owned(), runtime_dir: None };
     let mut exit_code = ServiceExitCode::Win32(0);
-    if let Err(error) = crate::service::run(args, log_persistence, Some(shutdown_rx)).await {
+    if let Err(error) = crate::service::run(args, log_persistence, Some(shutdown_rx), Some(scm_start_reason)).await {
         tracing::error!(message_id = "Yb2mK9rL", %error, "service exited with error");
         exit_code = ServiceExitCode::ServiceSpecific(1);
     }
@@ -115,4 +124,39 @@ async fn run_service(config_dir: &str, log_persistence: Option<LogPersistence>) 
         Duration::default(),
     ))?;
     Ok(())
+}
+
+impl ScmStartReason {
+    pub fn query(status_handle: ServiceStatusHandle) -> Self {
+        let mut info: *mut c_void = null_mut();
+        // SAFETY: `status_handle` was registered for this service and stays valid for the lifetime of the process.
+        if let Err(error) = unsafe {
+            QueryServiceDynamicInformation(
+                SERVICE_STATUS_HANDLE(status_handle.as_raw_handle()),
+                SERVICE_DYNAMIC_INFORMATION_LEVEL_START_REASON,
+                &mut info,
+            )
+        } {
+            tracing::error!(message_id = "pQ4vNs8K", ?error, "failed to query service start reason");
+            return Self::Unknown;
+        }
+        if info.is_null() {
+            tracing::error!(message_id = "mB7cWd2J", "service start reason query returned no data");
+            return Self::Unknown;
+        }
+        // SAFETY: for SERVICE_DYNAMIC_INFORMATION_LEVEL_START_REASON the buffer holds a u32 of SERVICE_START_REASON_* flags, owned by us until freed with LocalFree.
+        let raw_start_reason = unsafe { *info.cast::<u32>() };
+        // SAFETY: `info` was allocated by `QueryServiceDynamicInformation` and is not used after this.
+        let _ = unsafe { LocalFree(Some(HLOCAL(info))) };
+        let start_reason = match raw_start_reason {
+            SERVICE_START_REASON_AUTO => Self::Auto,
+            SERVICE_START_REASON_DELAYEDAUTO => Self::DelayedAuto,
+            SERVICE_START_REASON_DEMAND => Self::Demand,
+            SERVICE_START_REASON_RESTART_ON_FAILURE => Self::FailureRecovery,
+            SERVICE_START_REASON_TRIGGER => Self::Trigger,
+            _ => Self::Unknown,
+        };
+        tracing::info!(message_id = "rF3xKt9L", raw_start_reason, ?start_reason, "queried service start reason");
+        start_reason
+    }
 }

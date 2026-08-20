@@ -206,8 +206,8 @@ async fn main() {
 
 #[cfg(any(target_os = "windows", target_os = "linux"))]
 async fn run_service(args: ServiceArgs, log_persistence: Option<LogPersistence>) -> ! {
-    // Foreground `service` runs until the process is terminated; the Windows service path supplies a real stop signal.
-    match service::run(args, log_persistence, None).await {
+    // Foreground `service` runs until the process is terminated; the Windows service path supplies a real stop signal and an SCM start reason.
+    match service::run(args, log_persistence, None, None).await {
         Ok(()) => exit(0),
         Err(error) => {
             eprintln!("failed to start service: {}", error);

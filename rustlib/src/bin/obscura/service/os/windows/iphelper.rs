@@ -20,19 +20,25 @@ const ROUTES: [IpNetwork; 4] = [
     IpNetwork::V6(Ipv6Network::new_checked(Ipv6Addr::new(0x8000, 0, 0, 0, 0, 0, 0, 0), 1).unwrap()),
 ];
 
-pub fn add_routes(adapter: &wintun::Adapter) -> Result<(), ()> {
+pub fn set_routes(adapter: &wintun::Adapter, dns: &[IpAddr], stale_dns: &[IpAddr]) -> Result<(), ()> {
     let if_index = adapter
         .get_adapter_index()
-        .map_err(|error| tracing::error!(message_id = "Xt7kR2mN", ?error, "failed to get adapter index for adding routes"))?;
+        .map_err(|error| tracing::error!(message_id = "Xt7kR2mN", ?error, "failed to get adapter index for setting routes"))?;
 
     let mut result = Ok(());
     for route in &ROUTES {
         result = result.and(add_route(if_index, route));
     }
+    for ip in dns {
+        result = result.and(add_route(if_index, &IpNetwork::from(*ip)));
+    }
+    for ip in stale_dns {
+        result = result.and(remove_route(if_index, &IpNetwork::from(*ip)));
+    }
     result
 }
 
-pub fn remove_routes(adapter: &wintun::Adapter) -> Result<(), ()> {
+pub fn remove_routes(adapter: &wintun::Adapter, dns: &[IpAddr]) -> Result<(), ()> {
     let if_index = adapter
         .get_adapter_index()
         .map_err(|error| tracing::error!(message_id = "Yt8lS3nP", ?error, "failed to get adapter index for removing routes"))?;
@@ -40,6 +46,9 @@ pub fn remove_routes(adapter: &wintun::Adapter) -> Result<(), ()> {
     let mut result = Ok(());
     for route in &ROUTES {
         result = result.and(remove_route(if_index, route));
+    }
+    for ip in dns {
+        result = result.and(remove_route(if_index, &IpNetwork::from(*ip)));
     }
     result
 }

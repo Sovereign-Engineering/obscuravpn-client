@@ -32,6 +32,8 @@
 //!         meta mark 0x6f627363 accept
 //!         # All traffic entering the tun device is accepted.
 //!         oifname "obscuravpn" accept
+//!         # Tunnel resolver traffic may only leave via the tun device.
+//!         ip daddr 10.64.0.1 drop
 //!         # Link scope DHCPv4 traffic.
 //!         ip daddr 255.255.255.255 udp sport 68 udp dport 67 accept
 //!         # Link scope DHCPv6 traffic.
@@ -59,6 +61,7 @@
 //! }
 //! ```
 
+use crate::service::os::linux::TrafficPolicy;
 use crate::service::os::linux::fd_store::FdStore;
 use nix::errno::Errno;
 use nix::fcntl::{FcntlArg, OFlag, fcntl};
@@ -67,7 +70,7 @@ use obscuravpn_client::int_helper::{try_c_int_into_u8, try_c_int_into_u16, try_c
 use obscuravpn_client::local_network::{LAN_V4, LAN_V6};
 use obscuravpn_client::net::FWMARK;
 use std::io;
-use std::net::{Ipv4Addr, Ipv6Addr};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::os::fd::{AsFd, AsRawFd, OwnedFd};
 use tokio::io::Interest;
 use tokio::io::unix::AsyncFd;
@@ -178,12 +181,6 @@ const CHAIN_MARK_SAVE: &str = "mark-save";
 const CHAIN_MARK_RESTORE: &str = "mark-restore";
 const CHAIN_KILL_SWITCH: &str = "kill-switch";
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum KillSwitchPolicy {
-    Engage { local_network_access: bool },
-    Disengage,
-}
-
 pub struct NftTable {
     socket: AsyncFd<OwnedFd>,
     last_unchecked_seq: Option<u32>,
@@ -235,7 +232,7 @@ impl NftTable {
         Ok(Self { socket, last_unchecked_seq: None })
     }
 
-    pub async fn apply_ruleset(&mut self, policy: KillSwitchPolicy, tun_name: &str) -> Result<(), ()> {
+    pub async fn apply_ruleset(&mut self, policy: TrafficPolicy, tun_name: &str) -> Result<(), ()> {
         self.discard_stale_replies();
         let mut batch = Vec::new();
 
@@ -251,7 +248,7 @@ impl NftTable {
         table.attr_u32_be(NFTA_TABLE_FLAGS, NFT_TABLE_F_OWNER);
         batch.extend(table.finish());
 
-        for Chain { name, hook, priority, policy: chain_policy, rules } in chains(policy, tun_name) {
+        for Chain { name, hook, priority, policy: chain_policy, rules } in chains(&policy, tun_name) {
             let mut chain = self.change_msg(NFT_MSG_NEWCHAIN, NLM_F_CREATE);
             chain.attr_str(NFTA_CHAIN_TABLE, TABLE_NAME);
             chain.attr_str(NFTA_CHAIN_NAME, name);
@@ -390,7 +387,7 @@ struct Chain {
     rules: Vec<Vec<Expr>>,
 }
 
-fn chains(policy: KillSwitchPolicy, tun_name: &str) -> Vec<Chain> {
+fn chains(policy: &TrafficPolicy, tun_name: &str) -> Vec<Chain> {
     use Expr::*;
     let mark = FWMARK.to_ne_bytes().to_vec();
     let mut chains = vec![
@@ -410,18 +407,26 @@ fn chains(policy: KillSwitchPolicy, tun_name: &str) -> Vec<Chain> {
         },
     ];
     match policy {
-        KillSwitchPolicy::Engage { local_network_access } => chains.push(kill_switch_chain(local_network_access, tun_name)),
-        KillSwitchPolicy::Disengage => {}
+        TrafficPolicy::Engage { local_network_access, dns } => chains.push(kill_switch_chain(*local_network_access, dns, tun_name)),
+        TrafficPolicy::Disengage => {}
     }
     chains
 }
 
-fn kill_switch_chain(local_network_access: bool, tun_name: &str) -> Chain {
+fn kill_switch_chain(local_network_access: bool, dns: &[IpAddr], tun_name: &str) -> Chain {
     use Expr::*;
     let mut rules = vec![
         vec![MetaLoad(NFT_META_OIFNAME), CmpEq(b"lo\0".to_vec()), Accept],
         vec![MetaLoad(NFT_META_MARK), CmpEq(FWMARK.to_ne_bytes().to_vec()), Accept],
         vec![MetaLoad(NFT_META_OIFNAME), CmpEq(nul_terminated(tun_name)), Accept],
+    ];
+    for ip in dns {
+        rules.push(match ip {
+            IpAddr::V4(ip) => daddr_rule(AF_INET, IPV4_DADDR_OFFSET, ip.octets().to_vec(), None, Drop),
+            IpAddr::V6(ip) => daddr_rule(AF_INET6, IPV6_DADDR_OFFSET, ip.octets().to_vec(), None, Drop),
+        });
+    }
+    rules.extend([
         dhcp_rule(AF_INET, IPV4_DADDR_OFFSET, Ipv4Addr::BROADCAST.octets().to_vec(), 68, 67),
         dhcp_rule(
             AF_INET6,
@@ -430,7 +435,7 @@ fn kill_switch_chain(local_network_access: bool, tun_name: &str) -> Chain {
             546,
             547,
         ),
-    ];
+    ]);
     for nd_type in [ND_ROUTER_SOLICIT, ND_NEIGHBOR_SOLICIT, ND_NEIGHBOR_ADVERT] {
         rules.push(vec![
             MetaLoad(NFT_META_NFPROTO),
@@ -449,6 +454,7 @@ fn kill_switch_chain(local_network_access: bool, tun_name: &str) -> Chain {
                 IPV4_DADDR_OFFSET,
                 net.network().octets().to_vec(),
                 (net.prefix() < 32).then(|| net.mask().octets().to_vec()),
+                Accept,
             ));
         }
         for net in LAN_V6 {
@@ -457,6 +463,7 @@ fn kill_switch_chain(local_network_access: bool, tun_name: &str) -> Chain {
                 IPV6_DADDR_OFFSET,
                 net.network().octets().to_vec(),
                 (net.prefix() < 128).then(|| net.mask().octets().to_vec()),
+                Accept,
             ));
         }
     }
@@ -487,7 +494,7 @@ fn dhcp_rule(nfproto: u8, daddr_offset: u32, daddr: Vec<u8>, sport: u16, dport: 
     ]
 }
 
-fn daddr_rule(nfproto: u8, offset: u32, network: Vec<u8>, mask: Option<Vec<u8>>) -> Vec<Expr> {
+fn daddr_rule(nfproto: u8, offset: u32, network: Vec<u8>, mask: Option<Vec<u8>>, verdict: Expr) -> Vec<Expr> {
     use Expr::*;
     let len = u32::try_from(network.len()).unwrap();
     let mut exprs = vec![
@@ -498,7 +505,7 @@ fn daddr_rule(nfproto: u8, offset: u32, network: Vec<u8>, mask: Option<Vec<u8>>)
     if let Some(mask) = mask {
         exprs.push(BitwiseMask(mask));
     }
-    exprs.extend([CmpEq(network), Accept]);
+    exprs.extend([CmpEq(network), verdict]);
     exprs
 }
 
@@ -516,6 +523,7 @@ enum Expr {
     CtLoadMark,
     CtSetMark,
     Accept,
+    Drop,
     Payload { base: u32, offset: u32, len: u32 },
     BitwiseMask(Vec<u8>),
 }
@@ -548,6 +556,12 @@ impl Expr {
                 data.attr_u32_be(NFTA_IMMEDIATE_DREG, NFT_REG_VERDICT);
                 data.nested(NFTA_IMMEDIATE_DATA, |data| {
                     data.nested(NFTA_DATA_VERDICT, |data| data.attr_u32_be(NFTA_VERDICT_CODE, NF_ACCEPT));
+                });
+            }),
+            Expr::Drop => expr(msg, "immediate", |data| {
+                data.attr_u32_be(NFTA_IMMEDIATE_DREG, NFT_REG_VERDICT);
+                data.nested(NFTA_IMMEDIATE_DATA, |data| {
+                    data.nested(NFTA_DATA_VERDICT, |data| data.attr_u32_be(NFTA_VERDICT_CODE, NF_DROP));
                 });
             }),
             Expr::Payload { base, offset, len } => expr(msg, "payload", |data| {

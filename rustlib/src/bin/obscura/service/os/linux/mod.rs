@@ -11,7 +11,7 @@ pub mod tun;
 use crate::service::os::linux::dns::{DnsManager, DnsManagerArg, choose_dns_manager, resolved};
 use crate::service::os::linux::fd_store::FdStore;
 use crate::service::os::linux::ipc::ServiceIpc;
-use crate::service::os::linux::netfilter::{KillSwitchPolicy, NftTable};
+use crate::service::os::linux::netfilter::NftTable;
 use crate::service::os::linux::routes::preferred_interface::watch_preferred_network_interface;
 use crate::service::os::linux::routes::traffic_capture_routes::{enable_src_valid_mark, spawn_route_enforcer};
 use crate::service::os::linux::service_lock::ServiceLock;
@@ -23,13 +23,20 @@ use obscuravpn_client::network_config::OsNetworkConfig;
 use obscuravpn_client::os::os_trait::Os;
 use obscuravpn_client::quicwg::QuicWgConnPacketSender;
 pub use start_error::LinuxServiceStartError;
+use std::net::IpAddr;
 use tokio::sync::Mutex;
 use tokio::sync::watch::{Receiver, Sender};
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum TrafficPolicy {
+    Engage { local_network_access: bool, dns: Vec<IpAddr> },
+    Disengage,
+}
 
 pub struct LinuxOsImpl {
     tun: Tun,
     nft: Mutex<NftTable>,
-    routing: Sender<bool>,
+    routing: Sender<TrafficPolicy>,
     preferred_network_interface: Receiver<Option<NetworkInterface>>,
     current_network_config: tokio::sync::Mutex<Result<Option<OsNetworkConfig>, ()>>,
     dns_manager_arg: DnsManagerArg,
@@ -77,7 +84,15 @@ impl Os for LinuxOsImpl {
 
         // Attempt all config steps regardless of individual failures to minimize leaks until intentionally disconnecting. E.g. DNS queries shouldn't leak because route setup failed.
         let mut result = Ok(());
-        result = result.and(self.routing.send(true).map_err(|error| {
+        let policy = TrafficPolicy::Engage {
+            local_network_access: network_config.local_network_access,
+            dns: if network_config.use_system_dns {
+                vec![]
+            } else {
+                network_config.dns.clone()
+            },
+        };
+        result = result.and(self.routing.send(policy.clone()).map_err(|error| {
             tracing::error!(message_id = "bK3wNr8T", ?error, "route enforcer is not running");
         }));
         match choose_dns_manager(self.dns_manager_arg).await? {
@@ -92,16 +107,7 @@ impl Os for LinuxOsImpl {
                 }
             }
         }
-        result = result.and(
-            self.nft
-                .lock()
-                .await
-                .apply_ruleset(
-                    KillSwitchPolicy::Engage { local_network_access: network_config.local_network_access },
-                    &tun.name,
-                )
-                .await,
-        );
+        result = result.and(self.nft.lock().await.apply_ruleset(policy, &tun.name).await);
         result = result.and(self.tun.set_config(network_config.mtu, network_config.ipv4, network_config.ipv6));
         *current_network_config = result.map(|_| Some(network_config));
 
@@ -113,7 +119,7 @@ impl Os for LinuxOsImpl {
         let mut current_network_config = self.current_network_config.lock().await;
         let tun = self.tun.interface();
         let mut result = Ok(());
-        result = result.and(self.routing.send(false).map_err(|error| {
+        result = result.and(self.routing.send(TrafficPolicy::Disengage).map_err(|error| {
             tracing::error!(message_id = "fZ8pQm2W", ?error, "route enforcer is not running");
         }));
         match choose_dns_manager(self.dns_manager_arg).await? {
@@ -124,7 +130,7 @@ impl Os for LinuxOsImpl {
                 }
             }
         }
-        result = result.and(self.nft.lock().await.apply_ruleset(KillSwitchPolicy::Disengage, &tun.name).await);
+        result = result.and(self.nft.lock().await.apply_ruleset(TrafficPolicy::Disengage, &tun.name).await);
         *current_network_config = result.map(|_| None);
         result
     }

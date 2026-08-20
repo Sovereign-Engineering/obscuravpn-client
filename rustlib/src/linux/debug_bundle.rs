@@ -1,11 +1,15 @@
 use super::status::DebugBundleStatus;
 use crate::debug_bundle::client::{populate_client_debug_bundle, zip_and_remove_dir};
+use crate::debug_bundle::command::DebugTaskCommand;
+use crate::debug_bundle::populate_tasks::add_task;
 use crate::debug_bundle::service::ServiceDebugBundleHandle;
-use crate::debug_bundle::{DIR_PREFIX, make_private_temp_dir, try_copy_dir_contents_recursive};
+use crate::debug_bundle::{DIR_PREFIX, DebugBundleSide, make_private_temp_dir, try_copy_dir_contents_recursive};
 use crate::linux::ipc::run_command;
+use crate::linux::systemd::UNIT_NAME;
 use crate::manager_cmd::ManagerCmd;
 use camino::{Utf8Path, Utf8PathBuf};
 use chrono::{SecondsFormat, Utc};
+use futures::future::join_all;
 use tokio::sync::watch;
 
 #[derive(Debug, Clone, Copy)]
@@ -79,11 +83,37 @@ pub async fn create_combined_debug_bundle(user_feedback: String, client_log_dir:
 
     let user_feedback = (!user_feedback.is_empty()).then_some(user_feedback.as_str());
     let timestamp = Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true);
-    tokio::join!(collect_service_bundle, populate_client_debug_bundle(&staging, user_feedback, &timestamp));
+    tokio::join!(
+        collect_service_bundle,
+        populate_client_debug_bundle(&staging, user_feedback, &timestamp),
+        populate_linux_client_debug_tasks(&staging)
+    );
     if let Some(client_log_dir) = client_log_dir {
         try_copy_dir_contents_recursive(client_log_dir, &staging.join("logs-client")).await;
     }
 
     let timestamp = timestamp.replace(':', "-");
     zip_and_remove_dir(&staging, &work_dir, format!("{DIR_PREFIX}{timestamp}")).await
+}
+
+async fn populate_linux_client_debug_tasks(dir: &Utf8Path) {
+    let mut tasks = Vec::new();
+    for (name, program, args) in [
+        (
+            "journalctl-obscura",
+            "journalctl",
+            &["-u", UNIT_NAME, "-r", "-n", "200", "-o", "short-iso-precise", "--utc"][..],
+        ),
+        ("systemctl-status-obscura", "systemctl", &["status", UNIT_NAME][..]),
+    ] {
+        let args = args.iter().map(|arg| (*arg).to_owned()).collect();
+        add_task(
+            &mut tasks,
+            dir,
+            DebugBundleSide::Client,
+            name,
+            DebugTaskCommand::run(program.to_owned(), args),
+        );
+    }
+    join_all(tasks).await;
 }

@@ -79,7 +79,7 @@ fn ping_command(target: &str, fwmark: Option<u32>) -> (String, Vec<String>) {
     (program.to_owned(), args)
 }
 
-fn add_task<T>(
+pub(crate) fn add_task<T>(
     tasks: &mut Vec<BoxFuture<'_, ()>>,
     dir: &Utf8Path,
     side: DebugBundleSide,

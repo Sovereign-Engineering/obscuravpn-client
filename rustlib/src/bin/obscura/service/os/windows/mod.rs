@@ -55,6 +55,11 @@ impl WindowsOsImpl {
     pub fn network_interface(&self) -> Receiver<Option<NetworkInterface>> {
         self.active_adapter_watcher.clone()
     }
+
+    /// Call only when exiting
+    pub fn shutdown_wintun_session(&self) -> Result<(), ()> {
+        self.tun.shutdown_wintun_session()
+    }
 }
 
 const JSON_OTHER_ERROR: &str = r#"{"Err":"other"}"#;

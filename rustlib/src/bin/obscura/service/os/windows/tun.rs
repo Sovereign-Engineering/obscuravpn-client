@@ -6,6 +6,7 @@ use obscuravpn_client::rate_limited_log;
 use obscuravpn_client::tokio::AbortOnDrop;
 use ring::digest;
 use std::io::Read;
+use std::ops::ControlFlow;
 use std::time::Duration;
 use tokio::task::spawn_blocking;
 use wintun::Wintun;
@@ -120,12 +121,14 @@ impl Tun {
         Err(())
     }
 
-    async fn receive(session: &Arc<wintun::Session>, packet_buffer: &mut PacketBuffer) {
+    /// Returns `Break` once the session has been shut down and the reader should stop.
+    async fn receive(session: &Arc<wintun::Session>, packet_buffer: &mut PacketBuffer) -> ControlFlow<()> {
         if let Some(buffer) = packet_buffer.buffer() {
             let packet = loop {
                 let session = session.clone();
                 match spawn_blocking(move || session.receive_blocking()).await {
                     Ok(Ok(packet)) => break packet,
+                    Ok(Err(wintun::Error::ShuttingDown)) => return ControlFlow::Break(()),
                     Ok(Err(error)) => {
                         rate_limited_log!(
                             TUN_MIN_LOG_SILENCE,
@@ -148,7 +151,7 @@ impl Tun {
         while let Some(buffer) = packet_buffer.buffer() {
             let result = session.try_receive();
             match result {
-                Ok(None) => return,
+                Ok(None) => return ControlFlow::Continue(()),
                 Ok(Some(packet)) => {
                     if let Ok(n) = Self::put_packet_in_buffer(packet, buffer) {
                         packet_buffer.commit(n);
@@ -162,6 +165,7 @@ impl Tun {
                 }
             }
         }
+        ControlFlow::Continue(())
     }
 
     pub async fn set_config(&self, mtu: u16, ipv4: Ipv4Addr, ipv6: Ipv6Network, dns: Option<Vec<IpAddr>>) -> Result<(), ()> {
@@ -193,7 +197,10 @@ impl Tun {
         *read_task = Some(AbortOnDrop::spawn(async move {
             let mut packet_buffer = PacketBuffer::default();
             loop {
-                Self::receive(&session, &mut packet_buffer).await;
+                if Self::receive(&session, &mut packet_buffer).await.is_break() {
+                    tracing::info!(message_id = "275pjSXw", "wintun reader stopped, releasing the tunnel");
+                    break;
+                }
                 tunnel.send(packet_buffer.take_iter());
             }
         }));
@@ -206,6 +213,15 @@ impl Tun {
         result = result.and(iphelper::reset_interface_metric(&self.adapter));
         result = result.and(iphelper::remove_routes(&self.adapter));
         result
+    }
+
+    // Cancel existing session receive blocking threads. The session can never be read again.
+    pub fn shutdown_wintun_session(&self) -> Result<(), ()> {
+        self.session
+            .shutdown()
+            .map_err(|error| tracing::warn!(message_id = "7mJlmVvi", ?error, "failed to shut down wintun session"))?;
+        tracing::info!(message_id = "bpPW0EtR", "shutdown wintun session");
+        Ok(())
     }
 }
 

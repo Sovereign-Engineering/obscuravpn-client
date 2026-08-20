@@ -85,6 +85,9 @@ pub async fn run(args: ServiceArgs, log_persistence: Option<LogPersistence>, shu
         tracing::warn!(message_id = "kN5bX1wz", ?error, "failed to revert OS network configuration on shutdown");
     }
 
+    #[cfg(target_os = "windows")]
+    let _ = os_impl.shutdown_wintun_session();
+
     Ok(())
 }
 

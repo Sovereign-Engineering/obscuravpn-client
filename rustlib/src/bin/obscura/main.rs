@@ -2,6 +2,7 @@ use camino::Utf8PathBuf;
 use clap::{ArgAction, Args, Parser, Subcommand};
 use obscuravpn_client::logging::{self, LogPersistence};
 use std::process::exit;
+use std::time::Duration;
 use tracing_subscriber::filter::{EnvFilter, LevelFilter};
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::{Layer, Registry, fmt};
@@ -176,8 +177,15 @@ pub struct Cli {
     verbose: u8,
 }
 
-#[tokio::main]
-async fn main() {
+const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(1);
+
+fn main() {
+    let runtime = tokio::runtime::Runtime::new().expect("failed to create tokio runtime");
+    runtime.block_on(async_main());
+    runtime.shutdown_timeout(SHUTDOWN_TIMEOUT);
+}
+
+async fn async_main() {
     rustls::crypto::aws_lc_rs::default_provider()
         .install_default()
         .expect("Failed to install aws-lc crypto provider");

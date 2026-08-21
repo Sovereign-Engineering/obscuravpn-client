@@ -1,3 +1,4 @@
+mod auto_connect;
 mod error;
 mod fix;
 mod wip;

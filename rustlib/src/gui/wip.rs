@@ -6,7 +6,7 @@
 
 use crate::error::{LinuxErrorCode, LinuxFixErrorCode};
 use crate::fix::{add_operator, restart_service};
-use crate::{GtkAppFinished, MainThreadToken};
+use crate::{GtkAppFinished, MainThreadToken, auto_connect};
 use futures::StreamExt;
 use futures::channel::mpsc::Receiver;
 use gtk4::gio::{DBusError, DBusProxy, ResourceLookupFlags};
@@ -853,7 +853,7 @@ pub(crate) fn run_gtk_app(
     let restart_requested = Arc::new(AtomicBool::new(false));
     let (quit_tx, quit_rx) = tokio::sync::oneshot::channel();
     let restart = Rc::new(RefCell::new(Some(quit_tx)));
-    let (window, sidebar) = build_primary_window(gui_status, restart.clone(), debug_bundler);
+    let (window, sidebar) = build_primary_window(gui_status.clone(), restart.clone(), debug_bundler);
 
     glib::spawn_future_local(glib::clone!(
         #[strong]
@@ -881,8 +881,11 @@ pub(crate) fn run_gtk_app(
     app.connect_startup(glib::clone!(
         #[strong]
         window,
+        #[strong]
+        gui_status,
         move |app| {
             app.add_window(&window);
+            tokio::spawn(auto_connect::auto_connect_if_enabled(gui_status.clone()));
         }
     ));
 

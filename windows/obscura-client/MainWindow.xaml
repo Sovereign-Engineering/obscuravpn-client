@@ -173,11 +173,31 @@
                                 </ItemsControl>
                             </ScrollViewer>
                         </Border>
-                        <Button
-                            Content="Dismiss"
+                        <StackPanel
+                            Orientation="Horizontal"
                             HorizontalAlignment="Center"
-                            Visibility="{x:Bind NativeUiErrorDismissVisibility, Mode=OneWay}"
-                            Click="OnDismissErrorsClick" />
+                            Spacing="8">
+                            <ProgressRing
+                                x:Name="DebugBundleProgressRing"
+                                IsActive="False"
+                                Visibility="Collapsed"
+                                Width="20"
+                                Height="20"
+                                VerticalAlignment="Center" />
+                            <Button
+                                x:Name="CreateDebugBundleButton"
+                                Content="Create Debug Bundle"
+                                Click="OnCreateDebugBundleClick" />
+                            <Button
+                                x:Name="RevealDebugBundleButton"
+                                Content="Reveal in Explorer"
+                                Visibility="Collapsed"
+                                Click="OnRevealDebugBundleClick" />
+                            <Button
+                                Content="Dismiss"
+                                Visibility="{x:Bind NativeUiErrorDismissVisibility, Mode=OneWay}"
+                                Click="OnDismissErrorsClick" />
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
             </Grid>

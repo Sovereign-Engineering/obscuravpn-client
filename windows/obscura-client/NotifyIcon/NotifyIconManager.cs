@@ -17,9 +17,6 @@ public sealed partial class NotifyIconManager
 
     static readonly TimeSpan ConnectingFrameInterval = TimeSpan.FromMilliseconds(500);
 
-    const string CreateDebugBundleText = "Create Debug Bundle";
-    const string CreatingDebugBundleText = "Creating Debug Bundle (takes a few minutes)";
-
     readonly App _app;
     // UI updates must be executed on the thread that created the UI
     readonly DispatcherQueue _uiQueue;
@@ -191,7 +188,7 @@ public sealed partial class NotifyIconManager
         var inProgress = debugBundleStatus.InProgress;
         var createDebugBundle = new MenuFlyoutItem
         {
-            Text = inProgress ? CreatingDebugBundleText : CreateDebugBundleText,
+            Text = inProgress ? DebugBundle.CreatingActionText : DebugBundle.CreateActionText,
             IsEnabled = !inProgress,
         };
         createDebugBundle.Click += (_, _) => CreateDebugBundle();

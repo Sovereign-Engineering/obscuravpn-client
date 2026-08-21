@@ -1,3 +1,4 @@
+pub mod autostart;
 pub mod debug_bundle;
 pub mod exit_list_watch;
 pub mod file_manager;
@@ -25,13 +26,22 @@ pub async fn current_user_name() -> Option<String> {
     Some(user.name)
 }
 
+pub fn user_config_dir() -> Option<camino::Utf8PathBuf> {
+    xdg_base_dir("XDG_CONFIG_HOME", &[".config"])
+}
+
 pub fn client_log_dir() -> Option<camino::Utf8PathBuf> {
-    let xdg_state_home = std::env::var("XDG_STATE_HOME").ok().filter(|dir| !dir.is_empty());
+    Some(xdg_base_dir("XDG_STATE_HOME", &[".local", "state"])?.join("obscura").join("logs"))
+}
+
+fn xdg_base_dir(env_var: &str, home_relative: &[&str]) -> Option<camino::Utf8PathBuf> {
+    let xdg_dir = std::env::var(env_var).ok().filter(|dir| !dir.is_empty());
     let home = std::env::var("HOME").ok().filter(|dir| !dir.is_empty());
-    let state_home = match (xdg_state_home, home) {
-        (Some(xdg_state_home), _) => camino::Utf8PathBuf::from(xdg_state_home),
-        (None, Some(home)) => camino::Utf8PathBuf::from_iter([home.as_str(), ".local", "state"]),
-        (None, None) => return None,
-    };
-    Some(state_home.join("obscura").join("logs"))
+    match (xdg_dir, home) {
+        (Some(xdg_dir), _) => Some(camino::Utf8PathBuf::from(xdg_dir)),
+        (None, Some(home)) => Some(camino::Utf8PathBuf::from_iter(
+            std::iter::once(home.as_str()).chain(home_relative.iter().copied()),
+        )),
+        (None, None) => None,
+    }
 }

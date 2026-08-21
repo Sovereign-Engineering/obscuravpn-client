@@ -12,6 +12,7 @@ use futures::channel::mpsc::Receiver;
 use gtk4::gio::{DBusError, DBusProxy, ResourceLookupFlags};
 use gtk4::glib::translate::ToGlibPtr as _;
 use obscuravpn_client::exit_selection::ExitSelector;
+use obscuravpn_client::linux::autostart;
 use obscuravpn_client::linux::debug_bundle::{DebugBundleError, GuiDebugBundler};
 use obscuravpn_client::linux::file_manager::reveal_item_in_dir;
 use obscuravpn_client::linux::ipc::run_command;
@@ -272,6 +273,9 @@ pub enum Cmd {
     },
     LinuxAddOperator {},
     RestartApp {},
+    RegisterAsLoginItem {},
+    UnregisterAsLoginItem {},
+    RefreshLoginItemStatus {},
 }
 
 #[derive(strum::EnumIter, strum::Display, strum::EnumString, Default, PartialEq)]
@@ -412,6 +416,15 @@ fn command_bridge(
         Cmd::RestartApp {} => {
             glib_run_linux_fix_and_reply(async { Ok(()) }, true, &value_context, reply, restart);
         }
+        Cmd::RegisterAsLoginItem {} => {
+            glib_run_login_item_cmd_and_reply(autostart::register_autostart(), &value_context, reply, gui_status);
+        }
+        Cmd::UnregisterAsLoginItem {} => {
+            glib_run_login_item_cmd_and_reply(autostart::unregister_autostart(), &value_context, reply, gui_status);
+        }
+        Cmd::RefreshLoginItemStatus {} => {
+            glib_run_login_item_cmd_and_reply(async { Ok(()) }, &value_context, reply, gui_status);
+        }
         Cmd::JsonFfiCmd { ref cmd, timeout_ms } => {
             let mgr_cmd: ManagerCmd = serde_json::from_str(cmd).unwrap();
 
@@ -508,6 +521,36 @@ fn glib_run_linux_fix_and_reply(
                         }
                     }
                     Err(error) => reply.return_error_message(error.as_static_str()),
+                }
+            }
+        ),
+    );
+}
+
+fn glib_run_login_item_cmd_and_reply(
+    cmd: impl Future<Output = Result<(), ()>> + Send + 'static,
+    value_context: &javascriptcore::Context,
+    reply: &webkit6::ScriptMessageReply,
+    gui_status: Arc<GuiStatusWatch>,
+) {
+    tokio_to_glib_local_fut_pipe(
+        async move {
+            let result = cmd.await;
+            gui_status.refresh_login_item_status().await;
+            result
+        },
+        glib::clone!(
+            #[strong]
+            reply,
+            #[strong]
+            value_context,
+            move |res: Result<(), ()>| async move {
+                match res {
+                    Ok(()) => reply.return_value(&javascriptcore::Value::new_string(
+                        &value_context,
+                        Some(&serde_json::json!({}).to_string()),
+                    )),
+                    Err(()) => reply.return_error_message(LinuxErrorCode::Other.as_static_str()),
                 }
             }
         ),

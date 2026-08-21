@@ -25,6 +25,8 @@ use std::sync::Arc;
 struct GuiArgs {
     #[arg(long, hide = true, global = true)]
     no_group_refresh: bool,
+    #[arg(long, help = "Use in autostart entries")]
+    xdg_autostart: bool,
     #[arg(long, help = "Print version")]
     version: bool,
     #[command(subcommand)]
@@ -66,7 +68,7 @@ fn main() -> ExitCode {
     let runtime = tokio::runtime::Runtime::new().expect("failed to initialize tokio runtime");
     let _runtime_guard = runtime.enter();
 
-    let GuiArgs { no_group_refresh, version, command } = GuiArgs::parse();
+    let GuiArgs { no_group_refresh, xdg_autostart: _, version, command } = GuiArgs::parse();
     let command = if version {
         GuiCommand::Version
     } else {

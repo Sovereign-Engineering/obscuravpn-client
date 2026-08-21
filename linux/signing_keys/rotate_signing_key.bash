@@ -39,6 +39,17 @@ export_privkey_encrypted() {
 	printf '%s\n' "$privkey" | gpg --armor --encrypt --recipient-file "$recipient_file"
 }
 
+generate_superseded_revocation() {
+	local fingerprint="$1"
+
+	gpg --command-fd 0 --armor --gen-revoke "$fingerprint" <<-EOF
+		y
+		2
+
+		y
+	EOF
+}
+
 usage() {
 	cat >&2 <<EOF
 usage: $0 ENCRYPTED_PRIVKEYS_DIR PRIVKEY_RECIPIENT_FILE
@@ -130,9 +141,9 @@ main() {
 	local new_next_privkey_encrypted_data
 	new_next_privkey_encrypted_data="$(export_privkey_encrypted "$new_next_fingerprint" "$privkey_recipient_file")"
 
-	echo "revoking outgoing current key $outgoing_fingerprint (answer gpg's prompts)..." >&2
+	echo "revoking outgoing current key $outgoing_fingerprint (reason: superseded)..." >&2
 	printf '%s\n' "$outgoing_privkey" | gpg --quiet --import
-	gpg --armor --gen-revoke "$outgoing_fingerprint" | gpg --import
+	generate_superseded_revocation "$outgoing_fingerprint" | gpg --import
 	local outgoing_public_revoked
 	outgoing_public_revoked="$(gpg --armor --export "$outgoing_fingerprint")"
 

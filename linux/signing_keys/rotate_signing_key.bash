@@ -103,6 +103,8 @@ main() {
 	local new_current_fingerprint
 	new_current_fingerprint="$(gpg --with-colons --show-keys "$keys_dir/next.public.asc" | extract_fingerprint)"
 
+	# Both are necessary for `gpg` to recognize the secret key for the next steps
+	gpg --import "$privkey_recipient_file"
 	gpg --card-status >/dev/null 2>&1 || true
 
 	echo "decrypting outgoing current privkey (needed to revoke it)..." >&2

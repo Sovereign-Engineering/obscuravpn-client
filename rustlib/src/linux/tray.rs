@@ -81,7 +81,7 @@ fn status_line(os_status: &OsStatus) -> String {
             LinuxServiceDegradation::UnitInactive => "Service not running".to_owned(),
             LinuxServiceDegradation::UnitActivating => "Service starting...".to_owned(),
             LinuxServiceDegradation::UnitNotInstalled => "Service not installed".to_owned(),
-            LinuxServiceDegradation::SocketPermissionDenied => "Service access denied".to_owned(),
+            LinuxServiceDegradation::SocketPermissionDenied { user: _ } => "Service access denied".to_owned(),
             LinuxServiceDegradation::VersionMismatch { service_version: _, app_version: _, installed_app_version_differs: _ } => {
                 "Service version differs from app".to_owned()
             }

@@ -57,7 +57,9 @@ pub enum LinuxServiceDegradation {
     UnitInactive,
     UnitActivating,
     UnitNotInstalled,
-    SocketPermissionDenied,
+    SocketPermissionDenied {
+        user: Option<String>,
+    },
     VersionMismatch {
         service_version: String,
         app_version: String,

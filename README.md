@@ -151,6 +151,8 @@ You may also need to install [Windows App SDK](https://learn.microsoft.com/windo
 
 Install [Powershell 7](https://learn.microsoft.com/powershell/scripting/install/install-powershell-on-windows)
 
+Optionally install winapp cli: `winget install Microsoft.WinAppCli`
+
 On Windows, definitely ARM64 machines, you need to add `C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\Llvm\ARM64\bin` to path.
 
 Download the signed [wintun 0.14.1 DLLs](https://www.wintun.net/).
@@ -159,11 +161,16 @@ You can use `Get-FileHash -Path .\wintun-0.14.1.zip -Algorithm SHA256` to verify
 
 Extract to `windows/wintun-0.14.1` such that `windows/wintun-0.14.1/bin/arm64/wintun.dll` is a file.
 
-To test the service, if you have sudo enabled (System > Advanced settings), you can run `sudo cargo run --bin obscura service` in the rustlib dir. Alternatively, open an admin-enabled terminal and run the command without sudo.
+To test the service, if you have sudo enabled (System > Advanced settings), you can run `just service`. Alternatively, open an admin-enabled terminal and run `cargo run --bin obscura service` in the rustlib dir.
 
 The default config directory is `%APPDATA%\Obscura`. When testing the service, you may find it beneficial to manually add in an account number to `config.json`.
 
 To clean DNS query manually from powershell, run `Remove-DnsClientNrptRule -Name "{fb157da8-6578-4f53-81ea-0a9168e96c1f}"`
+
+To run the UI, you have two options
+
+1. Visual Studio (open [obscura-client.slnx](windows/obscura-client/obscura-client.slnx))
+2. Run `just ui [arch]`
 
 #### Cross-Compiling
 
@@ -220,6 +227,8 @@ Inside Visual Studio,
 1. `obscura-client` unpackaged should be selected at the top.
 2. Select Release, x64 (or ARM64).
 3. Build the `wix-msi` project.
+
+Note this requires a self signed certificates to test.
 
 ## Swift unit tests
 

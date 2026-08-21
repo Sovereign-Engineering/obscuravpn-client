@@ -84,7 +84,12 @@ public partial class App : Application
         GlobalContext.Properties["pid"] = Environment.ProcessId;
 
         var layout = new SerializedLayout();
-        layout.AddArrangement(new log4net.Layout.Arrangements.DefaultArrangement());
+        layout.AddMember("timestamp|%utcdate{yyyy-MM-dd'T'HH:mm:ss.ffffff'Z'}");
+        layout.AddMember("level");
+        layout.AddMember("logger");
+        layout.AddMember("thread");
+        layout.AddMember("message");
+        layout.AddMember("exception");
         layout.AddMember("pid");
         layout.ActivateOptions();
 

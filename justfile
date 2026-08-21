@@ -85,3 +85,23 @@ gen-license-rust:
 
 fix-message-ids:
 	cargo run --manifest-path xtask/Cargo.toml -- fix rustlib
+
+# run the rust service (requires sudo enabled or an admin terminal)
+[windows]
+service:
+	cd rustlib; sudo cargo run --bin obscura service
+
+# run the windows gui
+[windows]
+ui arch="":
+	#! pwsh
+	$arch = "{{arch}}"
+	if (-not $arch) {
+		$arch = ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture -eq 'Arm64') ? 'ARM64' : 'x64'
+	}
+	cd windows/obscura-client
+	if (Get-Command winapp -ErrorAction SilentlyContinue) {
+		winapp run --arch $arch.ToLower()
+	} else {
+		dotnet run -v diag -c Debug /p:Platform=$arch
+	}

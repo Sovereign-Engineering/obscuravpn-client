@@ -20,7 +20,7 @@
                   IsBackButtonVisible="False"
                   IsPaneToggleButtonVisible="False">
             <TitleBar.IconSource>
-                <ImageIconSource ImageSource="/Assets/Square150x150Logo.scale-200.png" />
+                <ImageIconSource ImageSource="{StaticResource AppLogoImage}" />
             </TitleBar.IconSource>
         </TitleBar>
 

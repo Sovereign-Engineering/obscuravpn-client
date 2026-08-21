@@ -26,7 +26,7 @@
             IsPaneToggleButtonVisible="False"
             PaneToggleRequested="TitleBar_PaneToggleRequested">
             <TitleBar.IconSource>
-                <ImageIconSource ImageSource="/Assets/Square150x150Logo.scale-200.png" />
+                <ImageIconSource ImageSource="{StaticResource AppLogoImage}" />
             </TitleBar.IconSource>
         </TitleBar>
 
@@ -119,6 +119,37 @@
                     x:Name="WebView"
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Stretch" />
+                <Grid
+                    x:Name="SplashOverlay"
+                    IsHitTestVisible="False"
+                    Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+                    <StackPanel
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="20">
+                        <Border
+                            Width="96"
+                            Height="96"
+                            CornerRadius="16"
+                            HorizontalAlignment="Center">
+                            <Border.Background>
+                                <ImageBrush
+                                    ImageSource="{StaticResource AppLogoImage}"
+                                    Stretch="UniformToFill" />
+                            </Border.Background>
+                        </Border>
+                        <TextBlock
+                            Text="Obscura VPN"
+                            Style="{ThemeResource SubtitleTextBlockStyle}"
+                            HorizontalAlignment="Center" />
+                        <ProgressRing
+                            x:Name="SplashProgressRing"
+                            IsActive="True"
+                            Width="32"
+                            Height="32"
+                            HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Grid>
                 <Grid
                     x:Name="ErrorFallback"
                     Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"

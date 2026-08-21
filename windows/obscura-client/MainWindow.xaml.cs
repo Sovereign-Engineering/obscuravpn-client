@@ -262,6 +262,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
 
     private async void InitializeWebView()
     {
+        WebView.DefaultBackgroundColor = Microsoft.UI.Colors.Transparent;
         try {
             // The default user data folder is next to the executable,
             // however the install dir (i.e. Program Files) is protected.
@@ -273,6 +274,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         } catch (Exception ex) {
             Log.Error($"WebView.EnsureCoreWebView2Async failed: {ex.Message}");
             AddNativeUiError(ex.ToString());
+            HideSplashOverlay();
             return;
         }
 
@@ -317,6 +319,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
 
     private void OnInitialNavigationCompleted(CoreWebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
     {
+        HideSplashOverlay();
         if (args.IsSuccess)
         {
             sender.NavigationCompleted -= OnInitialNavigationCompleted;
@@ -325,6 +328,11 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         {
             Log.Error($"webview initial navigation failed {args.WebErrorStatus}");
         }
+    }
+
+    void HideSplashOverlay()
+    {
+        SplashOverlay.Visibility = Visibility.Collapsed;
     }
 
     private void OnWindowMessageReceived(object? sender, WindowMessageEventArgs e)

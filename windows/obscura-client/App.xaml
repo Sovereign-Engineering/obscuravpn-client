@@ -11,6 +11,7 @@
                 <!-- Other merged dictionaries here -->
             </ResourceDictionary.MergedDictionaries>
             <!-- Other app resources here -->
+            <BitmapImage x:Key="AppLogoImage" UriSource="ms-appx:///Assets/Square150x150Logo.scale-200.png" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

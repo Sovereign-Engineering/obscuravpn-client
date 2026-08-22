@@ -34,6 +34,9 @@
 //!         oifname "obscuravpn" accept
 //!         # Tunnel resolver traffic may only leave via the tun device.
 //!         ip daddr 10.64.0.1 drop
+//!         # Traffic entering other tunnel devices.
+//!         meta oifkind "tun" accept
+//!         meta oifkind "wireguard" accept
 //!         # Link scope DHCPv4 traffic.
 //!         ip daddr 255.255.255.255 udp sport 68 udp dport 67 accept
 //!         # Link scope DHCPv6 traffic.
@@ -135,6 +138,7 @@ const NFTA_META_KEY: u16 = 2;
 const NFTA_META_SREG: u16 = 3;
 const NFT_META_MARK: u32 = try_c_int_into_u32(libc::NFT_META_MARK).unwrap();
 const NFT_META_OIFNAME: u32 = try_c_int_into_u32(libc::NFT_META_OIFNAME).unwrap();
+const NFT_META_OIFKIND: u32 = 27;
 const NFT_META_NFPROTO: u32 = try_c_int_into_u32(libc::NFT_META_NFPROTO).unwrap();
 const NFT_META_L4PROTO: u32 = try_c_int_into_u32(libc::NFT_META_L4PROTO).unwrap();
 
@@ -427,6 +431,8 @@ fn kill_switch_chain(local_network_access: bool, dns: &[IpAddr], tun_name: &str)
         });
     }
     rules.extend([
+        vec![MetaLoad(NFT_META_OIFKIND), CmpEq(b"tun\0".to_vec()), Accept],
+        vec![MetaLoad(NFT_META_OIFKIND), CmpEq(b"wireguard\0".to_vec()), Accept],
         dhcp_rule(AF_INET, IPV4_DADDR_OFFSET, Ipv4Addr::BROADCAST.octets().to_vec(), 68, 67),
         dhcp_rule(
             AF_INET6,

@@ -31,7 +31,6 @@ check_key_expiry() {
 check_not_revoked() {
   local key='' revocations=''
   require_args "key revocations" "$@"
-  [ -s "$revocations" ] || return 0
   local fingerprint
   fingerprint="$(key_fingerprints <"$key" | head -1)"
   if key_fingerprints <"$revocations" | grep -qx "$fingerprint"; then
@@ -91,10 +90,8 @@ main() {
   check_not_revoked --key "$PWD/$keys_dir/next.public.asc" --revocations "$PWD/$keys_dir/revocation.asc"
   [ "$(cat "$PWD/$keys_dir/current.public.asc" "$PWD/$keys_dir/next.public.asc" | key_fingerprints | wc -l)" = 2 ] \
     || die "expected exactly 2 keys in current+next"
-  if [ -s "$PWD/$keys_dir/revocation.asc" ]; then
-    [ "$(key_fingerprints <"$PWD/$keys_dir/revocation.asc" | wc -l)" = "$(grep -c 'BEGIN PGP' "$PWD/$keys_dir/revocation.asc")" ] \
-      || die "revocation.asc must contain full public keys"
-  fi
+  [ "$(key_fingerprints <"$PWD/$keys_dir/revocation.asc" | wc -l)" = "$(grep -c 'BEGIN PGP' "$PWD/$keys_dir/revocation.asc")" ] \
+    || die "revocation.asc must contain full public keys"
 
   local arches target_arch package_format
   arches=(x86_64)

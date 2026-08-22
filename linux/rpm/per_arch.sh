@@ -24,11 +24,7 @@ main() {
   sed -e "s/@VERSION@/${version}/g" -e "s/@DATE@/$(date "+%a %b %d %Y")/g" /repo/linux/rpm/obscura.spec >"$HOME/rpmbuild/SPECS/obscura.spec"
 
   cat "$keys_dir/current.public.asc" "$keys_dir/next.public.asc" >"$sources/RPM-GPG-KEY-obscura"
-  if [ -s "$keys_dir/revocation.asc" ]; then
-    key_fingerprints <"$keys_dir/revocation.asc" | tr '[:upper:]' '[:lower:]' >"$sources/RPM-GPG-KEY-obscura-revoked"
-  else
-    : >"$sources/RPM-GPG-KEY-obscura-revoked"
-  fi
+  key_fingerprints <"$keys_dir/revocation.asc" | tr '[:upper:]' '[:lower:]' >"$sources/RPM-GPG-KEY-obscura-revoked"
 
   cat >"$sources/obscura.repo" <<EOF
 [obscura]

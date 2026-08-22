@@ -26,11 +26,7 @@ main() {
 
   cat "$keys_dir/current.public.asc" "$keys_dir/next.public.asc" "$keys_dir/revocation.asc" | gpg --dearmor >src/obscura.gpg
   cat "$keys_dir/current.public.asc" "$keys_dir/next.public.asc" | key_fingerprints | sed 's/$/:4:/' >src/obscura-trusted
-  if [ -s "$keys_dir/revocation.asc" ]; then
-    key_fingerprints <"$keys_dir/revocation.asc" >src/obscura-revoked
-  else
-    : >src/obscura-revoked
-  fi
+  key_fingerprints <"$keys_dir/revocation.asc" >src/obscura-revoked
 
   makepkg -f
   local namcap_out

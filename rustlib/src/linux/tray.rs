@@ -41,6 +41,7 @@ struct TrayIcons {
     disconnected: Vec<Icon>,
     connecting: [Vec<Icon>; 3],
     connected: Vec<Icon>,
+    needs_attention: Vec<Icon>,
 }
 
 impl TrayIcons {
@@ -53,6 +54,7 @@ impl TrayIcons {
                 Self::render_icon_sizes(include_str!("../../tray-icons/Connecting-3-light.svg"))?,
             ],
             connected: Self::render_icon_sizes(include_str!("../../tray-icons/Connected-light.svg"))?,
+            needs_attention: Self::render_icon_sizes(include_str!("../../tray-icons/NeedsAttention-light.svg"))?,
         })
     }
 
@@ -281,9 +283,13 @@ impl Tray for TrayState {
         }
     }
 
+    fn attention_icon_pixmap(&self) -> Vec<Icon> {
+        ICONS.needs_attention.clone()
+    }
+
     fn icon_pixmap(&self) -> Vec<Icon> {
         match &self.os_status.service_status {
-            ServiceStatus::Initializing | ServiceStatus::Degraded { last_status: _, linux_degradation: _ } => ICONS.disconnected.clone(),
+            ServiceStatus::Initializing | ServiceStatus::Degraded { last_status: _, linux_degradation: _ } => ICONS.needs_attention.clone(),
             ServiceStatus::Healthy(status) => match &status.vpn_status {
                 VpnStatus::Disconnected {} => ICONS.disconnected.clone(),
                 VpnStatus::Connecting { tunnel_args: _, connect_error: _, reconnecting: _ } => ICONS.connecting[self.connecting_frame].clone(),

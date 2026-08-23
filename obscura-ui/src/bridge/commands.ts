@@ -183,9 +183,9 @@ export interface Notice {
 }
 
 
-// Windows-only
+// Windows and Linux only
 export async function refreshLoginItemStatus(): Promise<void> {
-  if (PLATFORM !== Platform.Windows) return;
+  if (PLATFORM !== Platform.Windows && PLATFORM !== Platform.Linux) return;
   await invoke('refreshLoginItemStatus');
 }
 

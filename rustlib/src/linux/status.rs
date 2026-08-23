@@ -38,6 +38,13 @@ pub struct OsStatus {
     pub debug_bundle_status: DebugBundleStatus,
     pub can_send_mail: bool,
     pub service_status: ServiceStatus,
+    pub login_item_status: LoginItemStatus,
+}
+
+#[derive(derive_more::Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct LoginItemStatus {
+    pub registered: bool,
 }
 
 #[derive(derive_more::Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
@@ -69,9 +76,30 @@ pub enum LinuxServiceDegradation {
 }
 
 impl OsStatus {
+    pub fn new(login_item_status: LoginItemStatus) -> Self {
+        Self {
+            version: Uuid::new_v4(),
+            internet_available: true,
+            os_vpn_status: NEVPNStatus::Invalid,
+            src_version: release_version(),
+            updater_status: Default::default(),
+            debug_bundle_status: Default::default(),
+            can_send_mail: true,
+            service_status: ServiceStatus::Initializing,
+            login_item_status,
+        }
+    }
+
     pub fn set_debug_bundle_status(&mut self, status: DebugBundleStatus) {
         if self.debug_bundle_status != status {
             self.debug_bundle_status = status;
+            self.version = Uuid::new_v4();
+        }
+    }
+
+    pub fn set_login_item_status(&mut self, status: LoginItemStatus) {
+        if self.login_item_status != status {
+            self.login_item_status = status;
             self.version = Uuid::new_v4();
         }
     }
@@ -84,21 +112,6 @@ impl OsStatus {
             };
             self.service_status = service_status;
             self.version = Uuid::new_v4();
-        }
-    }
-}
-
-impl Default for OsStatus {
-    fn default() -> Self {
-        Self {
-            version: Uuid::new_v4(),
-            internet_available: true,
-            os_vpn_status: NEVPNStatus::Invalid,
-            src_version: release_version(),
-            updater_status: Default::default(),
-            debug_bundle_status: Default::default(),
-            can_send_mail: true,
-            service_status: ServiceStatus::Initializing,
         }
     }
 }

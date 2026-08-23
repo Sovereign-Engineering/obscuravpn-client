@@ -25,7 +25,7 @@ const IS_WINDOWS = PLATFORM === Platform.Windows;
 export default function Settings() {
   return (
     <Stack mb='xl' gap='lg' align='flex-start' className={classes.container}>
-      {!IS_LINUX && <GeneralSettings />}
+      <GeneralSettings />
       <DnsSettings />
       <ExperimentalSettings />
       <NetworkSettings />

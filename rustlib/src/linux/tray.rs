@@ -429,7 +429,7 @@ async fn run_tray(status: Arc<GuiStatusWatch>, exit_list: Arc<GuiExitListWatch>,
     wait_until_abandoned_trays_dropped(Duration::from_secs(1)).await;
     let handle = loop {
         let tray = TrayState {
-            os_status: OsStatus::default(),
+            os_status: status.current(),
             connecting_frame: 0,
             requests: requests.clone(),
             exit_list: None,

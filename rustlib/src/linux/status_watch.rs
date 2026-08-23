@@ -9,7 +9,7 @@ use uuid::Uuid;
 use super::ipc::{LinuxIpcError, run_command};
 use super::status::{DebugBundleStatus, LinuxServiceDegradation, OsStatus, ServiceStatus};
 use super::systemd::SystemdUnitStatus;
-use super::{argv0, current_user_name};
+use super::{argv0, autostart, current_user_name};
 use crate::manager::Status;
 use crate::manager_cmd::ManagerCmd;
 use crate::version::release_version;
@@ -21,10 +21,23 @@ pub struct GuiStatusWatch {
 
 impl GuiStatusWatch {
     pub async fn watch(debug_bundle_status: watch::Receiver<DebugBundleStatus>) -> Arc<Self> {
-        let (tx, _) = watch::channel(OsStatus::default());
+        let (tx, _) = watch::channel(OsStatus::new(autostart::autostart_status().await));
         let poller = tokio::spawn(run_status_poller(tx.clone()));
         let forwarder = tokio::spawn(forward_debug_bundle_status(tx.clone(), debug_bundle_status));
         Arc::new(Self { tx, _tasks: [AbortOnDropHandle::new(poller), AbortOnDropHandle::new(forwarder)] })
+    }
+
+    pub fn current(&self) -> OsStatus {
+        self.tx.borrow().clone()
+    }
+
+    pub async fn refresh_login_item_status(&self) {
+        let status = autostart::autostart_status().await;
+        self.tx.send_if_modified(|os_status| {
+            let version = os_status.version;
+            os_status.set_login_item_status(status);
+            os_status.version != version
+        });
     }
 
     pub async fn changed(&self, known_version: Option<Uuid>) -> OsStatus {

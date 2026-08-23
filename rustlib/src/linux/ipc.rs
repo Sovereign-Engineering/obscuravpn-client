@@ -73,6 +73,17 @@ pub async fn run_command<O: DeserializeOwned>(cmd: ManagerCmd) -> Result<Result<
         }
     })?;
 
+    let header = LinuxIpcHeader::read(&mut stream).await.map_err(|()| LinuxIpcError::Other)?;
+    if header.version != release_version() {
+        tracing::error!(
+            message_id = "sQ8bHn4Z",
+            service_version = header.version,
+            client_version = release_version(),
+            "IPC header version does not match this binary"
+        );
+        return Err(LinuxIpcError::VersionMismatch { service_version: header.version, app_version: release_version().to_owned() });
+    }
+
     let json_cmd = serde_json::to_vec(&cmd).map_err(|error| {
         tracing::error!(message_id = "AdBGoG5S", ?error, "failed to serialize command");
         LinuxIpcError::Other
@@ -89,17 +100,6 @@ pub async fn run_command<O: DeserializeOwned>(cmd: ManagerCmd) -> Result<Result<
         tracing::error!(message_id = "FGduR73M", ?error, "failed to send json command");
         LinuxIpcError::Other
     })?;
-
-    let header = LinuxIpcHeader::read(&mut stream).await.map_err(|()| LinuxIpcError::Other)?;
-    if header.version != release_version() {
-        tracing::error!(
-            message_id = "sQ8bHn4Z",
-            service_version = header.version,
-            client_version = release_version(),
-            "IPC header version does not match this binary"
-        );
-        return Err(LinuxIpcError::VersionMismatch { service_version: header.version, app_version: release_version().to_owned() });
-    }
 
     let mut response = Vec::new();
     stream.read_to_end(&mut response).await.map_err(|error| {

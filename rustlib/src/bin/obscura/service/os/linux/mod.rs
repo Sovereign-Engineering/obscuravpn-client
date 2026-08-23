@@ -144,7 +144,8 @@ impl LinuxOsImpl {
     /// Returns next manager command. Blocks until a command is available. The response function is called with the command result.
     pub async fn next_manager_command(&self) -> (ManagerCmd, Box<dyn FnOnce(Result<ManagerCmdOk, ManagerCmdErrorCode>) + Send>) {
         loop {
-            let (json_cmd, response_fn) = self.ipc.next().await;
+            let request = self.ipc.next().await;
+            let decoded = ManagerCmd::from_json(&request.message);
             let response_fn = move |result: Result<ManagerCmdOk, ManagerCmdErrorCode>| {
                 let json_response = serde_json::to_vec(&result)
                     .map_err(|error| {
@@ -152,9 +153,9 @@ impl LinuxOsImpl {
                         ManagerCmdErrorCode::Other
                     })
                     .unwrap_or(JSON_OTHER_ERROR.into());
-                response_fn(json_response)
+                request.respond(json_response)
             };
-            match ManagerCmd::from_json(&json_cmd) {
+            match decoded {
                 Ok(cmd) => return (cmd, Box::new(response_fn)),
                 Err(error) => response_fn(Err(error)),
             }

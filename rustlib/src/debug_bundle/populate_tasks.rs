@@ -13,7 +13,7 @@ use std::net::IpAddr;
 pub async fn populate_debug_tasks(dir: &Utf8Path, side: DebugBundleSide, backend_addrs: Vec<IpAddr>) {
     #[cfg(target_os = "linux")]
     let fwmark = match side {
-        DebugBundleSide::Client => None,
+        DebugBundleSide::Ui => None,
         DebugBundleSide::Service => Some(crate::net::FWMARK),
     };
     #[cfg(not(target_os = "linux"))]

@@ -1,5 +1,5 @@
 //! Windows permissions for a service debug bundle: readable by every local user so the
-//! unprivileged client can collect it, writable by nobody but the service.
+//! unprivileged UI can collect it, writable by nobody but the service.
 
 use crate::os::windows::sddl::{DACL, FileRights, Inherit, SecurityDescriptor, Trustee};
 use camino::Utf8Path;

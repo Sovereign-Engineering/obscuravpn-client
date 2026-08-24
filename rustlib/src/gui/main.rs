@@ -7,12 +7,12 @@ use camino::Utf8PathBuf;
 use clap::{Parser, Subcommand};
 use nix::fcntl::{Flock, FlockArg};
 use obscuravpn_client::linux::argv0;
-use obscuravpn_client::linux::client_log_dir;
 use obscuravpn_client::linux::debug_bundle::GuiDebugBundler;
 use obscuravpn_client::linux::exit_list_watch::GuiExitListWatch;
 use obscuravpn_client::linux::ipc::{run_command, try_group_refresh_fix};
 use obscuravpn_client::linux::status_watch::GuiStatusWatch;
 use obscuravpn_client::linux::tray::spawn_tray;
+use obscuravpn_client::linux::ui_log_dir;
 use obscuravpn_client::logging::{self, LogPersistence};
 use obscuravpn_client::manager_cmd::ManagerCmd;
 use obscuravpn_client::version::release_version;
@@ -94,7 +94,7 @@ impl GuiCommand {
             GuiCommand::IpcTest | GuiCommand::Version => false,
         };
         let mut log_dir = None;
-        if persistence && let Some(dir) = client_log_dir() {
+        if persistence && let Some(dir) = ui_log_dir() {
             if let Err(error) = std::fs::create_dir_all(&dir) {
                 eprintln!("failed to create log dir {dir}: {error}");
             }

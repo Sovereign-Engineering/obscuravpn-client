@@ -1,8 +1,8 @@
 use super::status::DebugBundleStatus;
-use crate::debug_bundle::client::{populate_client_debug_bundle, zip_and_remove_dir};
 use crate::debug_bundle::command::DebugTaskCommand;
 use crate::debug_bundle::populate_tasks::add_task;
 use crate::debug_bundle::service::ServiceDebugBundleHandle;
+use crate::debug_bundle::ui::{populate_ui_debug_bundle, zip_and_remove_dir};
 use crate::debug_bundle::{DIR_PREFIX, DebugBundleSide, make_private_temp_dir, try_copy_dir_contents_recursive};
 use crate::linux::ipc::run_command;
 use crate::linux::systemd::UNIT_NAME;
@@ -19,13 +19,13 @@ pub enum DebugBundleError {
 }
 
 pub struct GuiDebugBundler {
-    client_log_dir: Option<Utf8PathBuf>,
+    ui_log_dir: Option<Utf8PathBuf>,
     status: watch::Sender<DebugBundleStatus>,
 }
 
 impl GuiDebugBundler {
-    pub fn new(client_log_dir: Option<Utf8PathBuf>) -> Self {
-        Self { client_log_dir, status: watch::channel(DebugBundleStatus::default()).0 }
+    pub fn new(ui_log_dir: Option<Utf8PathBuf>) -> Self {
+        Self { ui_log_dir, status: watch::channel(DebugBundleStatus::default()).0 }
     }
 
     pub fn subscribe(&self) -> watch::Receiver<DebugBundleStatus> {
@@ -45,7 +45,7 @@ impl GuiDebugBundler {
             return Err(DebugBundleError::InProgress);
         }
 
-        let result = create_combined_debug_bundle(user_feedback, self.client_log_dir.as_deref()).await;
+        let result = create_combined_debug_bundle(user_feedback, self.ui_log_dir.as_deref()).await;
 
         self.status.send_modify(|status| {
             *status = DebugBundleStatus {
@@ -58,7 +58,7 @@ impl GuiDebugBundler {
     }
 }
 
-pub async fn create_combined_debug_bundle(user_feedback: String, client_log_dir: Option<&Utf8Path>) -> Result<Utf8PathBuf, ()> {
+pub async fn create_combined_debug_bundle(user_feedback: String, ui_log_dir: Option<&Utf8Path>) -> Result<Utf8PathBuf, ()> {
     let work_dir = make_private_temp_dir().await?;
     let staging = work_dir.join("staging");
     tokio::fs::create_dir(&staging)
@@ -85,18 +85,18 @@ pub async fn create_combined_debug_bundle(user_feedback: String, client_log_dir:
     let timestamp = Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true);
     tokio::join!(
         collect_service_bundle,
-        populate_client_debug_bundle(&staging, user_feedback, &timestamp),
-        populate_linux_client_debug_tasks(&staging)
+        populate_ui_debug_bundle(&staging, user_feedback, &timestamp),
+        populate_linux_ui_debug_tasks(&staging)
     );
-    if let Some(client_log_dir) = client_log_dir {
-        try_copy_dir_contents_recursive(client_log_dir, &staging.join("logs-client")).await;
+    if let Some(ui_log_dir) = ui_log_dir {
+        try_copy_dir_contents_recursive(ui_log_dir, &staging.join("logs-ui")).await;
     }
 
     let timestamp = timestamp.replace(':', "-");
     zip_and_remove_dir(&staging, &work_dir, format!("{DIR_PREFIX}{timestamp}")).await
 }
 
-async fn populate_linux_client_debug_tasks(dir: &Utf8Path) {
+async fn populate_linux_ui_debug_tasks(dir: &Utf8Path) {
     let mut tasks = Vec::new();
     for (name, program, args) in [
         (
@@ -110,7 +110,7 @@ async fn populate_linux_client_debug_tasks(dir: &Utf8Path) {
         add_task(
             &mut tasks,
             dir,
-            DebugBundleSide::Client,
+            DebugBundleSide::Ui,
             name,
             DebugTaskCommand::run(program.to_owned(), args),
         );

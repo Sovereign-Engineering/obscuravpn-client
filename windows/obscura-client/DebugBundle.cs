@@ -221,7 +221,7 @@ public static partial class DebugBundle
             await CollectServiceBundleAsync(stagingDir);
             await Task.Run(() =>
             {
-                PopulateClientBundle(stagingDir, userFeedback, nativeUiErrors, timestampUtc);
+                PopulateUiBundle(stagingDir, userFeedback, nativeUiErrors, timestampUtc);
                 ZipFile.CreateFromDirectory(stagingDir, zipPath);
             });
         }
@@ -266,7 +266,7 @@ public static partial class DebugBundle
         }
     }
 
-    static void PopulateClientBundle(string dir, string? userFeedback, List<string>? nativeUiErrors, DateTime timestampUtc)
+    static void PopulateUiBundle(string dir, string? userFeedback, List<string>? nativeUiErrors, DateTime timestampUtc)
     {
         try
         {
@@ -294,11 +294,11 @@ public static partial class DebugBundle
         }
         try
         {
-            CopyDirContents(App.ClientLogDir, Path.Combine(dir, "logs-client"));
+            CopyDirContents(App.UiLogDir, Path.Combine(dir, "logs-ui"));
         }
         catch (Exception ex)
         {
-            Log.Error($"Failed to copy client logs into debug bundle: {ex}");
+            Log.Error($"Failed to copy UI logs into debug bundle: {ex}");
         }
     }
 

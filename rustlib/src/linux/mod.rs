@@ -30,7 +30,7 @@ pub fn user_config_dir() -> Option<camino::Utf8PathBuf> {
     xdg_base_dir("XDG_CONFIG_HOME", &[".config"])
 }
 
-pub fn client_log_dir() -> Option<camino::Utf8PathBuf> {
+pub fn ui_log_dir() -> Option<camino::Utf8PathBuf> {
     Some(xdg_base_dir("XDG_STATE_HOME", &[".local", "state"])?.join("obscura").join("logs"))
 }
 

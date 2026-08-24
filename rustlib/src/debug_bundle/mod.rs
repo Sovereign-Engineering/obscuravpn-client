@@ -1,7 +1,5 @@
 mod builder;
 pub mod bundle_info;
-#[cfg(target_os = "linux")]
-pub mod client;
 pub mod command;
 pub mod debug_info;
 pub mod dns;
@@ -9,6 +7,8 @@ pub mod http;
 pub mod populate_tasks;
 pub mod service;
 pub mod task;
+#[cfg(target_os = "linux")]
+pub mod ui;
 #[cfg(target_os = "windows")]
 mod windows_acl;
 pub mod zipper;
@@ -24,14 +24,14 @@ pub const DIR_PREFIX: &str = "obscura-debug-bundle-";
 
 #[derive(Debug, Clone, Copy)]
 pub enum DebugBundleSide {
-    Client,
+    Ui,
     Service,
 }
 
 impl DebugBundleSide {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Self::Client => "client",
+            Self::Ui => "ui",
             Self::Service => "service",
         }
     }

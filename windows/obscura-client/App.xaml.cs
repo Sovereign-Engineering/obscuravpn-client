@@ -44,7 +44,7 @@ public partial class App : Application
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "Obscura");
 
-    internal static string ClientLogDir => Path.Combine(ObscuraLocalAppDir, "logs");
+    internal static string UiLogDir => Path.Combine(ObscuraLocalAppDir, "logs");
 
     /// <summary>
     /// Initializes the singleton application object.  This is the first line of authored code
@@ -96,7 +96,7 @@ public partial class App : Application
         var traceAppender = new TraceAppender { Layout = layout };
         traceAppender.ActivateOptions();
 
-        var logDir = ClientLogDir;
+        var logDir = UiLogDir;
         Directory.CreateDirectory(logDir);
 
         var fileAppender = new RollingFileAppender

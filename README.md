@@ -10,6 +10,8 @@ No support is provided for this code directly. However, if you are experiencing 
 
 At this time we are unable to accept external contributions. This is something that we plan to resolve soon. However until we finish the paperwork we are unable to look at any patches and will close all PRs without looking at them.
 
+Conventions, terminology, and intended behavior are documented in the [docs](docs/) directory. Contributions must align with these documents or change them accordingly.
+
 ## macOS App
 
 On macOS the app installs and manages a [network extension](https://developer.apple.com/documentation/networkextension) (system extension).

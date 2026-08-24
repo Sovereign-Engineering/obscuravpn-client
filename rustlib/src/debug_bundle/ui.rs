@@ -5,15 +5,15 @@ use super::{DebugBundleSide, try_write_json_file};
 use crate::constants::DEFAULT_API_IP_SEED;
 use camino::{Utf8Path, Utf8PathBuf};
 
-pub async fn populate_client_debug_bundle(dir: &Utf8Path, user_feedback: Option<&str>, bundle_timestamp: &str) {
-    populate_debug_tasks(dir, DebugBundleSide::Client, vec![DEFAULT_API_IP_SEED]).await;
+pub async fn populate_ui_debug_bundle(dir: &Utf8Path, user_feedback: Option<&str>, bundle_timestamp: &str) {
+    populate_debug_tasks(dir, DebugBundleSide::Ui, vec![DEFAULT_API_IP_SEED]).await;
     try_write_json_file(dir.join("info.json"), &BundleInfo::collect(bundle_timestamp.to_owned())).await;
     if let Some(user_feedback) = user_feedback {
         let _ = tokio::fs::write(dir.join("user-feedback.txt"), user_feedback)
             .await
             .map_err(|error| tracing::error!(message_id = "cJ3nZk8V", ?error, "failed to write user feedback into debug bundle"));
     }
-    tracing::info!(message_id = "rW6kTm3B", %dir, "populated client debug bundle contents");
+    tracing::info!(message_id = "rW6kTm3B", %dir, "populated UI debug bundle contents");
 }
 
 pub(crate) async fn zip_and_remove_dir(src: &Utf8Path, dst_parent: &Utf8Path, name: String) -> Result<Utf8PathBuf, ()> {

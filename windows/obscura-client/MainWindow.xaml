@@ -231,6 +231,57 @@
                         </StackPanel>
                     </StackPanel>
                 </Grid>
+                <Grid
+                    x:Name="WebView2MissingOverlay"
+                    Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                    Padding="32"
+                    Visibility="Collapsed">
+                    <StackPanel
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        MaxWidth="440"
+                        Spacing="16">
+                        <FontIcon
+                            FontFamily="Segoe MDL2 Assets"
+                            Glyph="&#xE7BA;"
+                            FontSize="40"
+                            Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                            HorizontalAlignment="Center" />
+                        <TextBlock
+                            Text="WebView2 Runtime Required"
+                            Style="{ThemeResource TitleTextBlockStyle}"
+                            TextWrapping="Wrap"
+                            TextAlignment="Center"
+                            HorizontalAlignment="Center" />
+                        <TextBlock
+                            Text="Obscura needs WebView2 runtime to show the interface, which is not installed."
+                            Style="{ThemeResource BodyTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            TextWrapping="Wrap"
+                            TextAlignment="Center" />
+                        <StackPanel
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            Spacing="8">
+                            <HyperlinkButton
+                                x:Name="WebView2DownloadLink"
+                                Content="developer.microsoft.com/microsoft-edge/webview2"
+                                NavigateUri="https://developer.microsoft.com/microsoft-edge/webview2#download"
+                                VerticalAlignment="Center" />
+                            <Button
+                                x:Name="CopyWebView2LinkButton"
+                                Content="Copy Link"
+                                Click="OnCopyWebView2LinkClick"
+                                VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock
+                            Text="Restart Obscura once the runtime is installed."
+                            Style="{ThemeResource CaptionTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                            TextWrapping="Wrap"
+                            TextAlignment="Center" />
+                    </StackPanel>
+                </Grid>
             </Grid>
         </NavigationView>
     </Grid>

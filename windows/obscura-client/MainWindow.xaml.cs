@@ -13,6 +13,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -136,6 +137,25 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         if (OsStatus.Instance.DebugBundleStatus.LatestPath is { } path)
         {
             _ = new RevealItemInDirCommand { Path = path }.RunAsync();
+        }
+    }
+
+    // The runtime is missing on machines that often have no browser either (Windows Sandbox,
+    // stripped enterprise images), so the URL has to be reachable without following the link.
+    void OnCopyWebView2LinkClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var package = new DataPackage();
+            package.SetText(WebView2DownloadLink.NavigateUri.ToString());
+            Clipboard.SetContent(package);
+            Clipboard.Flush();
+            CopyWebView2LinkButton.Content = "Copied";
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"Failed to copy WebView2 download link: {ex.Message}");
+            CopyWebView2LinkButton.Content = "Copy Failed";
         }
     }
 
@@ -263,6 +283,20 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     private async void InitializeWebView()
     {
         WebView.DefaultBackgroundColor = Microsoft.UI.Colors.Transparent;
+        // Although Windows ships with WebView2 by default, it's possible for it to be removed.
+        string? runtimeVersion = null;
+        try {
+            runtimeVersion = CoreWebView2Environment.GetAvailableBrowserVersionString();
+        } catch (Exception ex) {
+            Log.Error($"WebView2 runtime lookup failed: {ex}");
+        }
+        if (string.IsNullOrEmpty(runtimeVersion)) {
+            Log.Error("WebView2 runtime is not installed");
+            WebView2MissingOverlay.Visibility = Visibility.Visible;
+            AbandonWebUI();
+            return;
+        }
+        Log.Info($"WebView2 runtime version: {runtimeVersion}");
         try {
             // The default user data folder is next to the executable,
             // however the install dir (i.e. Program Files) is protected.
@@ -272,9 +306,9 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
                 null, userDataFolder, new CoreWebView2EnvironmentOptions());
             await WebView.EnsureCoreWebView2Async(env);
         } catch (Exception ex) {
-            Log.Error($"WebView.EnsureCoreWebView2Async failed: {ex.Message}");
+            Log.Error($"WebView.EnsureCoreWebView2Async failed (HRESULT 0x{ex.HResult:X8}): {ex}");
             AddNativeUiError(ex.ToString());
-            HideSplashOverlay();
+            AbandonWebUI();
             return;
         }
 
@@ -333,6 +367,14 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     void HideSplashOverlay()
     {
         SplashOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    // The web UI will never load. Complete _webUIReady so a queued protocol launch
+    // (e.g. /payment-succeeded) stops waiting on it and logs instead of hanging silently.
+    void AbandonWebUI()
+    {
+        HideSplashOverlay();
+        _webUIReady.TrySetResult();
     }
 
     private void OnWindowMessageReceived(object? sender, WindowMessageEventArgs e)

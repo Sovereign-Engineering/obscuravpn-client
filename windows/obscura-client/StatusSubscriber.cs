@@ -88,7 +88,7 @@ public sealed partial class StatusSubscriber
             Log.Info($"auto-connect skipped, tunnel is already {status.VpnStatus.Kind}");
             return;
         }
-        Log.Info("auto-connecting");
+        Log.Info($"auto-connecting to {status.LastExit}");
         var args = new SetTunnelArgs { Args = new TunnelArgs { Exit = status.LastExit }, Active = true };
         try { await IPCCommand.RunWithArgAsync(args); }
         catch (Exception ex) { Log.Error($"auto-connect failed: {ex}"); }

@@ -238,9 +238,11 @@ class GetExitListArgs : IIPCCommandArg
 
 public class StartTunnelCommand : IObscuraCommand
 {
+    private static readonly ILog Log = LogManager.GetLogger(typeof(StartTunnelCommand));
     public required string TunnelArgs { get; set; }
     public async Task<string> RunAsync()
     {
+        Log.Info($"startTunnel tunnelArgs: {TunnelArgs}");
         var args = JsonSerializer.Deserialize<TunnelArgs>(TunnelArgs, JsonConfig.Options)
             ?? throw new ArgumentException($"Failed to parse tunnelArgs: {TunnelArgs}");
         return await IPCCommand.RunWithArgAsync(new SetTunnelArgs { Args = args, Active = true });

@@ -67,6 +67,14 @@ public sealed class ExitSelector
     [JsonIgnore]
     public string? CityCode => City?.CityCode;
 
+    public override string ToString() => Kind switch
+    {
+        ExitSelectorKind.Exit => $"exit {ExitId}",
+        ExitSelectorKind.City => $"city {CountryCode}/{CityCode}",
+        ExitSelectorKind.Country => $"country {CountryCode}",
+        _ => "any",
+    };
+
     public static ExitSelector ForAny() => new() { Any = new AnyData() };
     public static ExitSelector ForCity(string countryCode, string cityCode) =>
         new() { City = new CityData { CountryCode = countryCode, CityCode = cityCode } };

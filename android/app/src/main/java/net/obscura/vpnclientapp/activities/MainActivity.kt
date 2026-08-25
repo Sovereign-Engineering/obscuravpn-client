@@ -43,6 +43,7 @@ class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.O
     private fun handleIntent(intent: Intent?) = intent?.data?.let { uri -> this.ui.handleObscuraUri(this, uri) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        log.trace("onCreate")
         super.onCreate(savedInstanceState)
 
         requireUIProcess()
@@ -80,18 +81,19 @@ class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.O
     }
 
     override fun onResume() {
+        log.trace("onResume")
         super.onResume()
-
-        ui.onResume()
+        this.ui.onResume()
     }
 
     override fun onPause() {
+        log.trace("onPause")
         super.onPause()
-
-        ui.onPause()
+        this.ui.onPause()
     }
 
     override fun onDestroy() {
+        log.trace("onDestroy")
         super.onDestroy()
         this.preferences.unregisterListener(this)
         if (this.isVpnServiceBound) {

@@ -7,7 +7,9 @@ import android.widget.FrameLayout
 import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -118,13 +120,16 @@ class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet?
 
         this.purchaseTokenUploader =
             mainActivity.lifecycleScope.launch(Dispatchers.Default) {
-                val purchaseTokens = mainActivity.billingFacade.fetchPurchaseTokens()
-                if (purchaseTokens != null) {
-                    for (purchaseToken in purchaseTokens) {
-                        try {
-                            uploadPurchaseToken(binder, purchaseToken, null)
-                        } catch (_: ErrorCodeException) {
-                            // This is already logged internally
+                mainActivity.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                    log.debug("running purchase token uploader")
+                    val purchaseTokens = mainActivity.billingFacade.fetchPurchaseTokens()
+                    if (purchaseTokens != null) {
+                        for (purchaseToken in purchaseTokens) {
+                            try {
+                                uploadPurchaseToken(binder, purchaseToken, null)
+                            } catch (_: ErrorCodeException) {
+                                // This is already logged internally
+                            }
                         }
                     }
                 }

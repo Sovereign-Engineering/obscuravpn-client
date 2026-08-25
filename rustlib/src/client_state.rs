@@ -599,7 +599,7 @@ impl ClientStateHandle {
 
     fn api_client(&self) -> Result<Arc<Client>, ApiError> {
         let Some(account_id) = self.borrow().config.account_id.clone() else {
-            return Err(ApiError::NoAccountId);
+            return Err(ApiError::NotLoggedIn);
         };
 
         self.change(|inner| {

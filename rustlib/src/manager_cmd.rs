@@ -50,6 +50,7 @@ pub enum ManagerCmdErrorCode {
     ApiSignupLimitExceeded,
     ApiUnreachable,
     ConfigSaveError,
+    NotLoggedIn,
     Other,
 }
 
@@ -110,7 +111,7 @@ impl From<&ApiError> for ManagerCmdErrorCode {
                     Self::ApiError
                 }
             },
-            ApiError::NoAccountId => Self::ApiError,
+            ApiError::NotLoggedIn => Self::NotLoggedIn,
         }
     }
 }

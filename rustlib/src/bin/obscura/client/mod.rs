@@ -24,6 +24,8 @@ pub enum ClientError {
     NoService,
     #[error("Malformed account ID.")]
     MalformedAccountId,
+    #[error("Not logged in.")]
+    NotLoggedIn,
     #[error("The running Obscura VPN service does not match this app version ({app_version}).")]
     VersionMismatch { service_version: String, app_version: String },
 }
@@ -33,6 +35,7 @@ impl From<ManagerCmdErrorCode> for ClientError {
         match error {
             ManagerCmdErrorCode::ApiInvalidAccountId => ClientError::MalformedAccountId,
             ManagerCmdErrorCode::ApiUnreachable => ClientError::ApiUnreachable,
+            ManagerCmdErrorCode::NotLoggedIn => ClientError::NotLoggedIn,
             ManagerCmdErrorCode::ApiAssociateAccountConflict
             | ManagerCmdErrorCode::ApiError
             | ManagerCmdErrorCode::ApiNoLongerSupported

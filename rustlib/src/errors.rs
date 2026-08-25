@@ -31,6 +31,7 @@ pub enum ConnectErrorCode {
     NoInternet,
     NoLongerSupported,
     NoSlotsLeft,
+    NotLoggedIn,
     Other,
 }
 
@@ -46,7 +47,7 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
         tracing::info!(message_id = "qwt58GUq", "deriving connect error code for {}", err);
         match err {
             TunnelConnectError::ApiError(err) => match err {
-                ApiError::NoAccountId => Self::Other,
+                ApiError::NotLoggedIn => Self::NotLoggedIn,
                 ApiError::ApiClient(err) => match err {
                     ClientError::ApiError(err) => match err.body.error {
                         AccountExpired {} => Self::AccountExpired,
@@ -125,8 +126,8 @@ pub enum TunnelConnectError {
 pub enum ApiError {
     #[error(transparent)]
     ApiClient(#[from] ClientError),
-    #[error("no account id")]
-    NoAccountId,
+    #[error("not logged in")]
+    NotLoggedIn,
 }
 
 #[derive(Debug, Error)]

@@ -261,10 +261,7 @@ fn resolver_rule_destination(rule: &RuleMessage) -> Option<IpAddr> {
         && rule.attributes.contains(&RuleAttribute::Table(ROUTE_TABLE))
         && rule.attributes.contains(&RuleAttribute::Priority(RULE_PREF_RESOLVER))
         && rule.attributes.contains(&RuleAttribute::Protocol(RouteProtocol::Other(ROUTE_PROTOCOL)))
-        && !rule
-            .attributes
-            .iter()
-            .any(|attribute| matches!(attribute, RuleAttribute::FwMark(_) | RuleAttribute::SuppressPrefixLen(_)));
+        && !rule.attributes.iter().any(|attribute| matches!(attribute, RuleAttribute::FwMark(_)));
     matches.then_some(ip)
 }
 
@@ -309,7 +306,7 @@ fn capture_rule(family: AddressFamily) -> RuleMessage {
 }
 
 fn is_capture_rule(rule: &RuleMessage) -> bool {
-    // Same matching logic as is_suppress_rule, except the roles of suppress_prefixlength and fwmark are inverted.
+    // Same matching logic as is_suppress_rule.
     rule.header.action == RuleAction::ToTable
         && rule.header.flags.contains(RuleFlags::Invert)
         && rule.header.src_len == 0
@@ -318,10 +315,6 @@ fn is_capture_rule(rule: &RuleMessage) -> bool {
         && rule.attributes.contains(&RuleAttribute::Priority(RULE_PREF_CAPTURE))
         && rule.attributes.contains(&RuleAttribute::FwMark(FWMARK))
         && rule.attributes.contains(&RuleAttribute::Protocol(RouteProtocol::Other(ROUTE_PROTOCOL)))
-        && !rule
-            .attributes
-            .iter()
-            .any(|attribute| matches!(attribute, RuleAttribute::SuppressPrefixLen(_)))
 }
 
 fn capture_route(tun: &NetworkInterface, ip_version: IpVersion) -> RouteMessage {

@@ -8,7 +8,7 @@ use crate::error::{LinuxErrorCode, LinuxFixErrorCode};
 use crate::fix::{add_operator, restart_service};
 use crate::{GtkAppFinished, MainThreadToken, auto_connect};
 use futures::StreamExt;
-use futures::channel::mpsc::Receiver;
+use futures::channel::mpsc::{Receiver, UnboundedReceiver, UnboundedSender, unbounded};
 use gtk4::gio::{DBusError, DBusProxy, ResourceLookupFlags};
 use gtk4::glib::translate::ToGlibPtr as _;
 use obscuravpn_client::exit_selection::ExitSelector;
@@ -16,7 +16,7 @@ use obscuravpn_client::linux::autostart;
 use obscuravpn_client::linux::debug_bundle::{DebugBundleError, GuiDebugBundler};
 use obscuravpn_client::linux::file_manager::reveal_item_in_dir;
 use obscuravpn_client::linux::ipc::run_command;
-use obscuravpn_client::linux::status::OsStatus;
+use obscuravpn_client::linux::status::{NavigationView, OsStatus};
 use obscuravpn_client::linux::status_watch::GuiStatusWatch;
 use obscuravpn_client::linux::tray::{ShowTarget, TrayRequest};
 use obscuravpn_client::manager::{self, TunnelArgs};
@@ -46,18 +46,19 @@ fn navigation_split_view(
     restart: Rc<RefCell<Option<tokio::sync::oneshot::Sender<()>>>>,
     dev_visible: Rc<Cell<bool>>,
     debug_bundler: Arc<GuiDebugBundler>,
-) -> (gtk::Box, ListBox) {
+    webview_signals: UnboundedSender<WebviewSignal>,
+) -> (gtk::Box, ListBox, WebView) {
     let split_view = gtk::Box::new(Orientation::Horizontal, 0);
 
-    let webview = webview(gui_status, restart, debug_bundler);
+    let webview = webview(gui_status.clone(), restart, debug_bundler, webview_signals);
     webview.set_hexpand(true);
 
-    let sidebar = sidebar(&webview, dev_visible);
+    let sidebar = sidebar(gui_status, dev_visible);
 
     split_view.append(&sidebar);
     split_view.append(&webview);
 
-    (split_view, sidebar)
+    (split_view, sidebar, webview)
 }
 
 const JS_ERROR_CAPTURE: &str = r#"
@@ -116,6 +117,7 @@ fn webview(
     gui_status: Arc<GuiStatusWatch>,
     restart: Rc<RefCell<Option<tokio::sync::oneshot::Sender<()>>>>,
     debug_bundler: Arc<GuiDebugBundler>,
+    webview_signals: UnboundedSender<WebviewSignal>,
 ) -> WebView {
     let user_content_manager = webkit6::UserContentManager::new();
 
@@ -136,8 +138,12 @@ fn webview(
     );
     user_content_manager.add_script(&log_capture_script);
 
-    user_content_manager.connect_script_message_with_reply_received(Some("commandBridge"), move |ucm, value, reply| {
-        command_bridge(ucm, value, reply, gui_status.clone(), restart.clone(), debug_bundler.clone())
+    user_content_manager.connect_script_message_with_reply_received(Some("commandBridge"), {
+        let webview_signals = webview_signals.clone();
+        move |ucm, value, reply| {
+            let _ = webview_signals.unbounded_send(WebviewSignal::CommandReceived);
+            command_bridge(ucm, value, reply, gui_status.clone(), restart.clone(), debug_bundler.clone())
+        }
     });
     user_content_manager.register_script_message_handler_with_reply("commandBridge", None);
 
@@ -174,6 +180,17 @@ fn webview(
     }
 
     webview.connect_decide_policy(decide_policy);
+
+    webview.connect_load_changed(move |_webview, event| {
+        if event == webkit6::LoadEvent::Started {
+            let _ = webview_signals.unbounded_send(WebviewSignal::LoadStarted);
+        }
+    });
+
+    webview.connect_web_process_terminated(|webview, reason| {
+        tracing::error!(message_id = "Fq2xNr7V", ?reason, "webview process terminated, reloading");
+        webview.reload();
+    });
 
     // let inspector = webview.inspector().unwrap();
     // inspector.show();
@@ -257,6 +274,9 @@ pub enum Cmd {
     GetOsStatus {
         known_version: Option<Uuid>,
     },
+    SetNavigationView {
+        view: NavigationView,
+    },
     JsonFfiCmd {
         cmd: String,
         timeout_ms: Option<serde_json::value::Number>,
@@ -278,52 +298,55 @@ pub enum Cmd {
     RefreshLoginItemStatus {},
 }
 
-#[derive(strum::EnumIter, strum::Display, strum::EnumString, Default, PartialEq)]
-pub enum AppView {
-    #[default]
-    Connection,
-    Location,
-    Account,
-    Settings,
-    Help,
-    About,
-    Developer,
+fn view_icon_name(view: NavigationView) -> &'static str {
+    match view {
+        NavigationView::Connection => "obscura-connection-symbolic",
+        NavigationView::Location => "obscura-location-symbolic",
+        NavigationView::Account => "obscura-account-symbolic",
+        NavigationView::Settings => "obscura-settings-symbolic",
+        NavigationView::Help => "obscura-help-symbolic",
+        NavigationView::About => "obscura-about-symbolic",
+        NavigationView::Developer => "obscura-developer-symbolic",
+    }
 }
 
-impl AppView {
-    // Used for navigation
-    fn ipc_value(&self) -> String {
-        self.to_string().to_lowercase()
-    }
+pub(crate) enum WebviewSignal {
+    CommandReceived,
+    LoadStarted,
+    PaymentSucceeded,
+}
 
-    fn icon_name(&self) -> &'static str {
-        match self {
-            AppView::Connection => "obscura-connection-symbolic",
-            AppView::Location => "obscura-location-symbolic",
-            AppView::Account => "obscura-account-symbolic",
-            AppView::Settings => "obscura-settings-symbolic",
-            AppView::Help => "obscura-help-symbolic",
-            AppView::About => "obscura-about-symbolic",
-            AppView::Developer => "obscura-developer-symbolic",
+async fn dispatch_payment_succeeded(webview: &WebView) {
+    let script = r#"window.dispatchEvent(new CustomEvent("paymentSucceeded"));"#;
+    if let Err(error) = webview.evaluate_javascript_future(script, None, None).await {
+        tracing::error!(message_id = "Hs5cYw7N", %error, "failed to dispatch paymentSucceeded event to webview");
+    }
+}
+
+async fn forward_webview_events(webview: WebView, mut signals: UnboundedReceiver<WebviewSignal>) {
+    let mut page_ready = false;
+    let mut pending_payment_succeeded = false;
+    while let Some(signal) = signals.next().await {
+        match signal {
+            WebviewSignal::CommandReceived => {
+                if !page_ready {
+                    page_ready = true;
+                    if pending_payment_succeeded {
+                        pending_payment_succeeded = false;
+                        dispatch_payment_succeeded(&webview).await;
+                    }
+                }
+            }
+            WebviewSignal::LoadStarted => page_ready = false,
+            WebviewSignal::PaymentSucceeded => {
+                if page_ready {
+                    dispatch_payment_succeeded(&webview).await;
+                } else {
+                    pending_payment_succeeded = true;
+                }
+            }
         }
     }
-}
-
-async fn navigate_webview_to(webview: &WebView, av: &AppView) {
-    let script = navigate_js(av);
-    if let Err(error) = webview.evaluate_javascript_future(&script, None, None).await {
-        tracing::warn!(message_id = "JdNqtceL", view = %av, %error, "failed to dispatch navigation event to webview");
-    }
-}
-
-fn navigate_js(av: &AppView) -> String {
-    format!(
-        r###"__WEBKIT_NAV_EVENT__ = new CustomEvent("navUpdate", {{ detail: "{ipc_value}" }});
-window.dispatchEvent(__WEBKIT_NAV_EVENT__);
-"###,
-        ipc_value = av.ipc_value()
-    )
-    .to_string()
 }
 
 fn command_bridge(
@@ -406,6 +429,12 @@ fn command_bridge(
                     }
                 ),
             );
+        }
+        Cmd::SetNavigationView { view } => {
+            gui_status.set_navigation_view(view);
+            let json_string = serde_json::json!({}).to_string();
+            let jsc6_val = javascriptcore::Value::new_string(&value_context, Some(&json_string));
+            reply.return_value(&jsc6_val);
         }
         Cmd::RestartService { enable } => {
             glib_run_linux_fix_and_reply(restart_service(enable), false, &value_context, reply, restart);
@@ -639,111 +668,65 @@ fn log_handler(_ucm: &webkit6::UserContentManager, value: &webkit6::javascriptco
     eprintln!("log str: '{}'", value.to_str());
 }
 
-fn appview_to_row_widget(appview: &AppView) -> gtk::Box {
+fn view_row_widget(view: NavigationView) -> gtk::Box {
     let hbox = gtk::Box::new(Orientation::Horizontal, 8);
-    let icon = gtk::Image::from_icon_name(appview.icon_name());
+    let icon = gtk::Image::from_icon_name(view_icon_name(view));
     icon.set_pixel_size(24);
     let label = Label::builder()
         .halign(Align::Start)
         .valign(Align::Center)
-        .label(appview.to_string())
+        .label(view.to_string())
         .build();
     hbox.append(&icon);
     hbox.append(&label);
     hbox
 }
 
-fn appview_string_to_row_widget(av_str: &str) -> gtk::Box {
-    let av = AppView::from_str(av_str).unwrap();
-    appview_to_row_widget(&av)
+fn view_at_row_index(index: i32) -> Option<NavigationView> {
+    let index = usize::try_from(index).ok()?;
+    NavigationView::iter().nth(index)
 }
 
-fn sidebar(webview: &WebView, dev_visible: Rc<Cell<bool>>) -> ListBox {
-    // NOTE: Using StringList as the model may be overkill or not
-    let model = {
-        let rust_model_owned: Vec<String> = AppView::iter().map(|av| av.to_string()).collect();
-
-        let rust_model_2: Vec<&str> = rust_model_owned.iter().map(String::as_str).collect();
-
-        let rust_model: &[&str] = rust_model_2.as_slice();
-
-        gtk::StringList::new(rust_model)
-    };
-
+fn sidebar(gui_status: Arc<GuiStatusWatch>, dev_visible: Rc<Cell<bool>>) -> ListBox {
     let list = ListBox::builder()
         .selection_mode(SelectionMode::Browse)
         .css_classes(vec!["navigation-sidebar".to_owned(), "sidebar".to_owned()])
         .build();
 
-    list.bind_model(Some(&model), move |obj| {
-        let list_object: String = obj
-            .downcast_ref::<gtk::StringObject>()
-            .expect("The object should be of type `StringObject`.")
-            .into();
-        appview_string_to_row_widget(&list_object).upcast()
+    for view in NavigationView::iter() {
+        list.append(&view_row_widget(view));
+    }
+
+    list.set_filter_func(move |row| match view_at_row_index(row.index()) {
+        Some(NavigationView::Developer) => dev_visible.get(),
+        Some(_) | None => true,
     });
 
-    list.set_filter_func(glib::clone!(
-        #[strong]
-        model,
-        move |row| {
-            let row_index: u32 = row.index().try_into().unwrap();
-            let av_gstring: gtk::StringObject = model.item(row_index).and_downcast::<gtk::StringObject>().unwrap();
-            let av_string = String::from(av_gstring);
-            if av_string == "Developer" {
-                return dev_visible.get();
-            }
-            true
-        }
-    ));
-
-    list.connect_row_selected(glib::clone!(
-        #[strong]
-        webview,
-        move |lb, mb_lbr| {
-            // Try to select first row if none selected
-            let Some(lbr) = mb_lbr else {
-                let Some(first_row) = lb.row_at_index(0) else {
-                    return;
-                };
-                lb.select_row(Some(&first_row));
+    list.connect_row_selected(move |lb, mb_lbr| {
+        // Try to select first row if none selected
+        let Some(lbr) = mb_lbr else {
+            let Some(first_row) = lb.row_at_index(0) else {
                 return;
             };
+            lb.select_row(Some(&first_row));
+            return;
+        };
 
-            glib::spawn_future_local(glib::clone!(
-                #[strong]
-                lbr,
-                #[strong]
-                model,
-                #[strong]
-                webview,
-                async move {
-                    let av = lbr_to_appview(&lbr, &model);
-
-                    navigate_webview_to(&webview, &av).await;
-                }
-            ));
-        }
-    ));
+        let Some(view) = view_at_row_index(lbr.index()) else {
+            return;
+        };
+        gui_status.set_navigation_view(view);
+    });
 
     list
-}
-
-fn lbr_to_appview(lbr: &gtk::ListBoxRow, model: &impl IsA<gio::ListModel>) -> AppView {
-    let row_index: u32 = lbr.index().try_into().unwrap();
-
-    let av_gstring: gtk::StringObject = model.item(row_index).and_downcast::<gtk::StringObject>().unwrap();
-
-    let av_string = String::from(av_gstring);
-
-    AppView::from_str(&av_string).unwrap()
 }
 
 fn build_primary_window(
     gui_status: Arc<GuiStatusWatch>,
     restart: Rc<RefCell<Option<tokio::sync::oneshot::Sender<()>>>>,
     debug_bundler: Arc<GuiDebugBundler>,
-) -> (gtk::ApplicationWindow, ListBox) {
+    webview_signals: UnboundedSender<WebviewSignal>,
+) -> (gtk::ApplicationWindow, ListBox, WebView) {
     let window = gtk::ApplicationWindow::builder()
         .title("Obscura VPN")
         .hide_on_close(true) // So that closing window doesn't quit app
@@ -757,7 +740,7 @@ fn build_primary_window(
 
     let dev_visible = Rc::new(Cell::new(false));
 
-    let (split_view, sidebar) = navigation_split_view(gui_status, restart, dev_visible.clone(), debug_bundler);
+    let (split_view, sidebar, webview) = navigation_split_view(gui_status, restart, dev_visible.clone(), debug_bundler, webview_signals);
     window.set_child(Some(&split_view));
 
     // Ctrl+Shift+D toggles Developer sidebar item
@@ -780,11 +763,11 @@ fn build_primary_window(
     controller.add_shortcut(shortcut);
     window.add_controller(controller);
 
-    (window, sidebar)
+    (window, sidebar, webview)
 }
 
-fn select_view_row(sidebar: &ListBox, view: &AppView) {
-    let Some(index) = AppView::iter().position(|av| av == *view) else {
+fn select_view_row(sidebar: &ListBox, view: NavigationView) {
+    let Some(index) = NavigationView::iter().position(|v| v == view) else {
         return;
     };
     let Ok(index) = i32::try_from(index) else {
@@ -795,6 +778,31 @@ fn select_view_row(sidebar: &ListBox, view: &AppView) {
         return;
     };
     sidebar.select_row(Some(&row));
+}
+
+fn open_app_url(uri: &str, window: &gtk::ApplicationWindow, gui_status: &GuiStatusWatch, webview_signals: &UnboundedSender<WebviewSignal>) {
+    tracing::info!(message_id = "kW2sQp9J", %uri, "opening app URL");
+    window.present();
+    let parsed = match glib::Uri::parse(uri, glib::UriFlags::NONE) {
+        Ok(parsed) => parsed,
+        Err(error) => {
+            tracing::error!(message_id = "Vb6nTq3X", %uri, %error, "failed to parse app URL");
+            return;
+        }
+    };
+    if parsed.scheme() != "obscuravpn" {
+        tracing::error!(message_id = "Rj8mFd4Z", %uri, "ignoring app URL with unexpected scheme");
+        return;
+    }
+    match parsed.path().as_str() {
+        "" | "/" | "/open" => {}
+        "/account" | "/manage-subscription" => gui_status.set_navigation_view(NavigationView::Account),
+        "/location" => gui_status.set_navigation_view(NavigationView::Location),
+        "/payment-succeeded" => {
+            let _ = webview_signals.unbounded_send(WebviewSignal::PaymentSucceeded);
+        }
+        path => tracing::error!(message_id = "Gt4kLp2M", %path, "unknown app URL path"),
+    }
 }
 
 fn print_gresources(res: &gio::Resource, path: &str) {
@@ -819,6 +827,7 @@ pub(crate) fn run_gtk_app(
     gui_status: Arc<GuiStatusWatch>,
     mut tray_receiver: Receiver<TrayRequest>,
     debug_bundler: Arc<GuiDebugBundler>,
+    urls: Vec<String>,
 ) -> GtkAppFinished {
     eprintln!("First light");
 
@@ -847,13 +856,31 @@ pub(crate) fn run_gtk_app(
 
     let app = gtk::Application::builder()
         .application_id("net.obscura.vpn.gui")
-        .flags(gio::ApplicationFlags::default())
+        .flags(gio::ApplicationFlags::HANDLES_OPEN)
         .build();
 
     let restart_requested = Arc::new(AtomicBool::new(false));
     let (quit_tx, quit_rx) = tokio::sync::oneshot::channel();
     let restart = Rc::new(RefCell::new(Some(quit_tx)));
-    let (window, sidebar) = build_primary_window(gui_status.clone(), restart.clone(), debug_bundler);
+    let (webview_signals, webview_signal_receiver) = unbounded();
+    let (window, sidebar, webview) = build_primary_window(gui_status.clone(), restart.clone(), debug_bundler, webview_signals.clone());
+
+    glib::spawn_future_local(forward_webview_events(webview, webview_signal_receiver));
+
+    glib::spawn_future_local(glib::clone!(
+        #[strong]
+        sidebar,
+        #[strong]
+        gui_status,
+        async move {
+            let mut known_version = None;
+            loop {
+                let status = gui_status.changed(known_version).await;
+                known_version = Some(status.version);
+                select_view_row(&sidebar, status.navigation_view);
+            }
+        }
+    ));
 
     glib::spawn_future_local(glib::clone!(
         #[strong]
@@ -861,7 +888,7 @@ pub(crate) fn run_gtk_app(
         #[strong]
         window,
         #[strong]
-        sidebar,
+        gui_status,
         async move {
             while let Some(request) = tray_receiver.next().await {
                 match request {
@@ -869,7 +896,7 @@ pub(crate) fn run_gtk_app(
                         window.present();
                         match target {
                             ShowTarget::MainWindow => {}
-                            ShowTarget::LocationView => select_view_row(&sidebar, &AppView::Location),
+                            ShowTarget::LocationView => gui_status.set_navigation_view(NavigationView::Location),
                         }
                     }
                     TrayRequest::Quit => app.quit(),
@@ -897,6 +924,20 @@ pub(crate) fn run_gtk_app(
         }
     ));
 
+    app.connect_open(glib::clone!(
+        #[strong]
+        window,
+        #[strong]
+        gui_status,
+        #[strong]
+        webview_signals,
+        move |_app, files, _hint| {
+            for file in files {
+                open_app_url(&file.uri(), &window, &gui_status, &webview_signals);
+            }
+        }
+    ));
+
     let restart_requested_setter = restart_requested.clone();
     tokio_to_glib_local_fut_pipe(
         async move {
@@ -919,7 +960,9 @@ pub(crate) fn run_gtk_app(
         ),
     );
 
-    let gtk_exit_code = app.run_with_args::<&str>(&[]);
+    let mut gtk_args = vec!["obscura-gui".to_string()];
+    gtk_args.extend(urls);
+    let gtk_exit_code = app.run_with_args(&gtk_args);
     if restart_requested.load(Ordering::Relaxed) {
         GtkAppFinished::Restart
     } else {

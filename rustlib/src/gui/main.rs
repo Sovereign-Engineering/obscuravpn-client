@@ -30,6 +30,8 @@ struct GuiArgs {
     xdg_autostart: bool,
     #[arg(long, help = "Print version")]
     version: bool,
+    #[arg(hide = true)]
+    urls: Vec<String>,
     #[command(subcommand)]
     command: Option<GuiCommand>,
 }
@@ -69,7 +71,7 @@ fn main() -> ExitCode {
     let runtime = tokio::runtime::Runtime::new().expect("failed to initialize tokio runtime");
     let _runtime_guard = runtime.enter();
 
-    let GuiArgs { no_group_refresh, xdg_autostart: _, version, command } = GuiArgs::parse();
+    let GuiArgs { no_group_refresh, xdg_autostart: _, version, urls, command } = GuiArgs::parse();
     let command = if version {
         GuiCommand::Version
     } else {
@@ -83,7 +85,7 @@ fn main() -> ExitCode {
             println!("{}", release_version());
             ExitCode::SUCCESS
         }
-        GuiCommand::RunGui => run_gui(main_thread, no_group_refresh, log_dir),
+        GuiCommand::RunGui => run_gui(main_thread, no_group_refresh, log_dir, urls),
     }
 }
 
@@ -119,7 +121,7 @@ impl GuiCommand {
     }
 }
 
-fn run_gui(main_thread: MainThreadToken, no_group_refresh: bool, log_dir: Option<Utf8PathBuf>) -> ExitCode {
+fn run_gui(main_thread: MainThreadToken, no_group_refresh: bool, log_dir: Option<Utf8PathBuf>, urls: Vec<String>) -> ExitCode {
     let debug_bundler = Arc::new(GuiDebugBundler::new(log_dir));
     let (gui_status, tray_receiver) = tokio::runtime::Handle::current().block_on(async {
         if !no_group_refresh {
@@ -131,7 +133,7 @@ fn run_gui(main_thread: MainThreadToken, no_group_refresh: bool, log_dir: Option
         (gui_status, tray_receiver)
     });
 
-    match wip::run_gtk_app(main_thread, gui_status, tray_receiver, debug_bundler) {
+    match wip::run_gtk_app(main_thread, gui_status, tray_receiver, debug_bundler, urls) {
         GtkAppFinished::Exit(exit_code) => exit_code,
         GtkAppFinished::Restart => restart(),
     }

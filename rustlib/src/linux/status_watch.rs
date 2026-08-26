@@ -7,7 +7,7 @@ use tokio_util::task::AbortOnDropHandle;
 use uuid::Uuid;
 
 use super::ipc::{LinuxIpcError, run_command};
-use super::status::{DebugBundleStatus, LinuxServiceDegradation, OsStatus, ServiceStatus};
+use super::status::{DebugBundleStatus, LinuxServiceDegradation, NavigationView, OsStatus, ServiceStatus};
 use super::systemd::SystemdUnitStatus;
 use super::{argv0, autostart, current_user_name};
 use crate::manager::Status;
@@ -29,6 +29,14 @@ impl GuiStatusWatch {
 
     pub fn current(&self) -> OsStatus {
         self.tx.borrow().clone()
+    }
+
+    pub fn set_navigation_view(&self, view: NavigationView) {
+        self.tx.send_if_modified(|os_status| {
+            let version = os_status.version;
+            os_status.set_navigation_view(view);
+            os_status.version != version
+        });
     }
 
     pub async fn refresh_login_item_status(&self) {

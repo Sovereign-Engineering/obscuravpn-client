@@ -45,6 +45,7 @@ etherparse = "0.17.0"
 flume = { version = "0.11.1", features = ["async"] }
 futures = "0.3.29"
 ipnetwork = { version = "0.21.1", features = ["serde"] }
+libadwaita = { version = "0.7", optional = true }
 libc = "0.2.178"
 rand = "0.8.5"
 reqwest = { git = "https://github.com/Sovereign-Engineering/reqwest", rev = "7ba2e76a02454b0fa414e0ddbf8aa609ed05b944", default-features = false, features = [
@@ -157,7 +158,7 @@ cbindgen = "0.28.0"
 ring = "0.17.14"
 
 [features]
-gui = ["dep:gtk4", "dep:webkit6"]
+gui = ["dep:gtk4", "dep:libadwaita", "dep:webkit6"]
 
 # Temporary SO_MARK fork. Patches do not propagate, consumers need this entry too.
 [patch.crates-io]

@@ -85,7 +85,7 @@
         rustDepsArgsNative = rustDepsArgs // { buildInputs = lib.optionals pkgs.stdenv.isLinux [ pkgs.tpm2-tss ]; };
         rustDepsArgsNative-gui = rustDepsArgsNative // {
           cargoExtraArgs = "--locked --bin obscura-gui --features=gui";
-          buildInputs = rustDepsArgsNative.buildInputs ++ [ pkgs.glib pkgs.gtk4 pkgs.webkitgtk_6_0 ];
+          buildInputs = rustDepsArgsNative.buildInputs ++ [ pkgs.glib pkgs.gtk4 pkgs.libadwaita pkgs.webkitgtk_6_0 ];
         };
         rustDepsArgs-android = rustDepsArgs // androidRustEnv // {
           buildInputs = [ android.androidsdk ];

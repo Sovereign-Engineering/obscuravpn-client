@@ -26,6 +26,18 @@ impl From<&VpnStatus> for NEVPNStatus {
     }
 }
 
+#[derive(derive_more::Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Copy, strum::Display, strum::EnumIter)]
+#[serde(rename_all = "camelCase")]
+pub enum NavigationView {
+    Connection,
+    Location,
+    Account,
+    Settings,
+    Help,
+    About,
+    Developer,
+}
+
 #[serde_with::serde_as]
 #[derive(derive_more::Debug, Serialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -34,6 +46,7 @@ pub struct OsStatus {
     pub internet_available: bool,
     pub os_vpn_status: NEVPNStatus,
     pub src_version: &'static str,
+    pub navigation_view: NavigationView,
     pub updater_status: UpdaterStatus,
     pub debug_bundle_status: DebugBundleStatus,
     pub can_send_mail: bool,
@@ -82,11 +95,19 @@ impl OsStatus {
             internet_available: true,
             os_vpn_status: NEVPNStatus::Invalid,
             src_version: release_version(),
+            navigation_view: NavigationView::Connection,
             updater_status: Default::default(),
             debug_bundle_status: Default::default(),
             can_send_mail: true,
             service_status: ServiceStatus::Initializing,
             login_item_status,
+        }
+    }
+
+    pub fn set_navigation_view(&mut self, view: NavigationView) {
+        if self.navigation_view != view {
+            self.navigation_view = view;
+            self.version = Uuid::new_v4();
         }
     }
 

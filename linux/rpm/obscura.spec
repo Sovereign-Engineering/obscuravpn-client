@@ -15,6 +15,7 @@ Privacy that's more than a promise.
 %package -n obscura-gui
 Summary:        Obscura VPN desktop application
 Requires:       obscura-cli = %{version}-%{release}
+Requires:       desktop-file-utils
 %description -n obscura-gui
 Privacy that's more than a promise.
 

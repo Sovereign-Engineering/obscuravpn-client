@@ -14,7 +14,7 @@ Description: Obscura VPN command-line client and service
 
 Package: obscura-gui
 Architecture: @ARCH@
-Depends: libc6 (>= 2.39), ${shlibs:Depends}, ${misc:Depends}, obscura-cli (= ${binary:Version})
+Depends: libc6 (>= 2.39), desktop-file-utils, ${shlibs:Depends}, ${misc:Depends}, obscura-cli (= ${binary:Version})
 Description: Obscura VPN desktop application
  Privacy that's more than a promise.
 

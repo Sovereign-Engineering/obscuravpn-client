@@ -30,7 +30,8 @@ public sealed class AppUpdater
     // from the AppCastItem (which carries no notes of its own).
     internal string AvailableReleaseNotes { get; private set; } = "";
     readonly DispatcherQueue _uiDispatcher;
-    static readonly HttpClient HttpClient = new();
+    // Only fetches release notes; anything larger than this is not release notes.
+    static readonly HttpClient HttpClient = new() { MaxResponseContentBufferSize = 256 * 1024 };
     UpdateWindow? _updateWindow;
     int _checkInProgress;
     // Version we last raised a notification for to avoid redundant notifications

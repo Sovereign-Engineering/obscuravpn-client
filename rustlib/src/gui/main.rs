@@ -1,10 +1,13 @@
 mod auto_connect;
 mod error;
 mod fix;
-mod wip;
+mod gtk_gui;
+mod webview;
+mod webview_cmd;
 
 use camino::Utf8PathBuf;
 use clap::{Parser, Subcommand};
+use gtk_gui::run_gtk_app;
 use nix::fcntl::{Flock, FlockArg};
 use obscuravpn_client::linux::argv0;
 use obscuravpn_client::linux::debug_bundle::GuiDebugBundler;
@@ -135,7 +138,7 @@ fn run_gui(main_thread: MainThreadToken, no_group_refresh: bool, log_dir: Option
         (gui_status, tray_receiver)
     });
 
-    match wip::run_gtk_app(main_thread, gui_status, tray_receiver, debug_bundler, urls, ui_config) {
+    match run_gtk_app(main_thread, gui_status, tray_receiver, debug_bundler, urls, ui_config) {
         GtkAppFinished::Exit(exit_code) => exit_code,
         GtkAppFinished::Restart => restart(),
     }

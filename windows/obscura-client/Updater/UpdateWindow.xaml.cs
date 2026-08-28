@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml;
 using NetSparkleUpdater;
 using NetSparkleUpdater.Enums;
 using NetSparkleUpdater.Events;
+using Obscura_Client.Markdown;
 using Windows.ApplicationModel.Core;
 using Windows.Foundation;
 using Windows.Graphics;
@@ -50,11 +51,13 @@ public sealed partial class UpdateWindow : Window
             presenter.IsResizable = false;
         }
 
-        HeadingText.Text = $"Obscura VPN v{_item.Version} is available (you have {OsStatus.Instance.SrcVersion}).";
-        ReleaseNotes.Text = string.IsNullOrWhiteSpace(releaseNotes)
+        HeadingText.Text = $"Obscura VPN v{_item.Version} is available";
+        CurrentVersionText.Text = $"You have {OsStatus.Instance.SrcVersion}";
+        var notes = string.IsNullOrWhiteSpace(releaseNotes)
             ? (string.IsNullOrWhiteSpace(_item.ReleaseNotesLink) ? "" : $"[Release notes]({_item.ReleaseNotesLink})")
             : releaseNotes;
-        NotesBorder.Visibility = string.IsNullOrWhiteSpace(ReleaseNotes.Text) ? Visibility.Collapsed : Visibility.Visible;
+        MarkdownText.Render(ReleaseNotes, notes);
+        NotesBorder.Visibility = string.IsNullOrWhiteSpace(notes) ? Visibility.Collapsed : Visibility.Visible;
 
         // Best-effort pre-show sizing so the first presented frame is already close to its
         // final size, then re-fit once the tree is loaded (fonts/theme fully resolved).

@@ -15,7 +15,7 @@ import { fmt } from './common/fmt';
 import { NotificationId } from './common/notifIds';
 import { useAsync } from './common/useAsync';
 import { useLoadable } from './common/useLoadable';
-import { MIN_LOAD_MS, normalizeError, showErrorNotification } from './common/utils';
+import { MIN_LOAD_MS, normalizeError, showErrorNotification, sleep } from './common/utils';
 import { CColorSchemeContext } from './components/CachedColorScheme';
 import { ScrollableView } from './components/ScrollableView';
 import { VpnError } from './components/VpnErrorFmt';
@@ -233,12 +233,19 @@ export default function () {
     let keepAlive = true;
     (async () => {
       while (keepAlive) {
-        const newOsStatus = await commands.osStatus(knownOsStatusId);
-        knownOsStatusId = newOsStatus.version;
-        setOsStatus(newOsStatus);
-        const newAppStatus = latestAppStatus(newOsStatus.serviceStatus);
-        if (newAppStatus !== undefined) {
-          setStatus(prev => (prev?.version === newAppStatus.version ? prev : newAppStatus));
+        try {
+          const newOsStatus = await commands.osStatus(knownOsStatusId);
+          knownOsStatusId = newOsStatus.version;
+          setOsStatus(newOsStatus);
+          const newAppStatus = latestAppStatus(newOsStatus.serviceStatus);
+          if (newAppStatus !== undefined) {
+            setStatus(prev => (prev?.version === newAppStatus.version ? prev : newAppStatus));
+          }
+        } catch (error) {
+          const e = normalizeError(error);
+          console.error('command osStatus failed', e.message);
+          notifications.show({ title: t('errorFetchingOsStatus'), message: e.message, color: 'red' });
+          await sleep(1000);
         }
       }
     })();

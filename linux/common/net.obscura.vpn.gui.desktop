@@ -9,4 +9,5 @@ Terminal=false
 Categories=Network;Security;
 Keywords=VPN;Privacy;Obscura;
 MimeType=x-scheme-handler/obscuravpn;
+StartupNotify=true
 StartupWMClass=net.obscura.vpn.gui

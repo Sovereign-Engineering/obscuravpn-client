@@ -37,7 +37,7 @@ export function PaymentManagementSheet({ opened, onClose }: PaymentManagementShe
   }, [osStatus.offerCodeRedemptionSuccess, appStatus.account?.account_info.active, setPaymentProcessing]);
 
   if (isProcessingPayment) {
-    return <ProcessingPaymentSheet opened={true}/>;
+    return <ProcessingPaymentSheet opened={true} />;
   }
 
   const externalPaymentsAllowed = osStatus.storeKit?.externalPaymentsAllowed || osStatus.playBilling === false
@@ -172,7 +172,11 @@ function AppleSubscriptionProductCard({ product, subscribed }: AppleSubscription
       if (purchaseSuccessful) {
         console.log('Purchase flow completed, show payment processing UI.');
         setPaymentProcessing(true);
-        await pollAccount();
+        try {
+          await pollAccount();
+        } catch (e) {
+          showErrorNotification(t, e, 'Account Error');
+        }
       } else {
         // user dismissed payment sheet
       }
@@ -253,7 +257,11 @@ function GoogleSubscriptionProductCard({ subscribed }: GoogleSubscriptionProduct
       if (purchaseSuccessful) {
         console.log('Purchase flow completed, show payment processing UI.');
         setPaymentProcessing(true);
-        await pollAccount();
+        try {
+          await pollAccount();
+        } catch (e) {
+          showErrorNotification(t, e, 'Account Error');
+        }
       } else {
         // user dismissed payment sheet
       }

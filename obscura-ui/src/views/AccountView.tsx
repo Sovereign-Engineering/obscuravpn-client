@@ -13,7 +13,7 @@ import * as ObscuraAccount from '../common/accountUtils';
 import { AccountInfo, accountIsExpired, accountTimeRemaining, hasActiveSubscription, hasAppleSubscription, hasCredit, isRenewing, paidUntil, useReRenderWhenExpired } from '../common/api';
 import { AppContext, NEVPNStatus } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
-import { normalizeError } from '../common/utils';
+import { normalizeError, showErrorNotification } from '../common/utils';
 import { AccountNumberSection } from '../components/AccountNumberSection';
 import { ButtonLink } from '../components/ButtonLink';
 import { ConfirmationDialog } from '../components/ConfirmationDialog';
@@ -25,7 +25,6 @@ import PaidUpSubscriptionActive from '../res/paid-up-subscription-active.svg?rea
 import PaidUpBadge from '../res/paid-up.svg?react';
 import SubscriptionActiveBadge from '../res/subscription-active.svg?react';
 import SubscriptionPausedBadge from '../res/subscription-paused.svg?react';
-import { fmtErrorI18n } from '../translations/i18n';
 import classes from './AccountView.module.css';
 
 export default function Account() {
@@ -343,14 +342,7 @@ function AccountRefreshButton({ smallerSize = false }: { smallerSize?: boolean }
     try {
       await pollAccount();
     } catch (e) {
-      const error = normalizeError(e);
-      const message = error instanceof commands.CommandError
-        ? fmtErrorI18n(t, error) : error.message;
-      notifications.show({
-        title: t('Account Error'),
-        message: message,
-        color: 'red',
-      });
+      showErrorNotification(t, e, 'Account Error');
     }
   }
 

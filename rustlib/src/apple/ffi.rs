@@ -65,6 +65,18 @@ pub unsafe extern "C" fn initialize(
         let runtime = Runtime::new().expect("Failed to create tokio runtime");
         let _runtime_guard = runtime.enter();
 
+        #[cfg(target_os = "ios")]
+        runtime.spawn(async {
+            unsafe extern "C" {
+                fn os_proc_available_memory() -> usize;
+            }
+            loop {
+                let available_memory = unsafe { os_proc_available_memory() };
+                tracing::info!(message_id = "MdRy2fJq", available_memory, "available memory");
+                tokio::time::sleep(std::time::Duration::from_secs(300)).await;
+            }
+        });
+
         let config_dir = config_dir.to_string().into();
         let user_agent = user_agent.to_string();
         let wg_key_store = WgKeyStore::Keychain {

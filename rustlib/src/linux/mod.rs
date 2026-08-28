@@ -34,6 +34,10 @@ pub fn ui_log_dir() -> Option<camino::Utf8PathBuf> {
     Some(xdg_base_dir("XDG_STATE_HOME", &[".local", "state"])?.join("obscura").join("logs"))
 }
 
+pub fn ui_config_dir() -> Option<camino::Utf8PathBuf> {
+    Some(user_config_dir()?.join("obscura"))
+}
+
 fn xdg_base_dir(env_var: &str, home_relative: &[&str]) -> Option<camino::Utf8PathBuf> {
     let xdg_dir = std::env::var(env_var).ok().filter(|dir| !dir.is_empty());
     let home = std::env::var("HOME").ok().filter(|dir| !dir.is_empty());

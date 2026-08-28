@@ -12,9 +12,10 @@ use obscuravpn_client::linux::exit_list_watch::GuiExitListWatch;
 use obscuravpn_client::linux::ipc::{run_command, try_group_refresh_fix};
 use obscuravpn_client::linux::status_watch::GuiStatusWatch;
 use obscuravpn_client::linux::tray::spawn_tray;
-use obscuravpn_client::linux::ui_log_dir;
+use obscuravpn_client::linux::{ui_config_dir, ui_log_dir};
 use obscuravpn_client::logging::{self, LogPersistence};
 use obscuravpn_client::manager_cmd::ManagerCmd;
+use obscuravpn_client::ui_config::UiConfigHandle;
 use obscuravpn_client::version::release_version;
 use std::marker::PhantomData;
 use std::os::unix::process::CommandExt;
@@ -123,6 +124,7 @@ impl GuiCommand {
 
 fn run_gui(main_thread: MainThreadToken, no_group_refresh: bool, log_dir: Option<Utf8PathBuf>, urls: Vec<String>) -> ExitCode {
     let debug_bundler = Arc::new(GuiDebugBundler::new(log_dir));
+    let ui_config = Arc::new(UiConfigHandle::load(ui_config_dir()));
     let (gui_status, tray_receiver) = tokio::runtime::Handle::current().block_on(async {
         if !no_group_refresh {
             try_group_refresh_fix().await;
@@ -133,7 +135,7 @@ fn run_gui(main_thread: MainThreadToken, no_group_refresh: bool, log_dir: Option
         (gui_status, tray_receiver)
     });
 
-    match wip::run_gtk_app(main_thread, gui_status, tray_receiver, debug_bundler, urls) {
+    match wip::run_gtk_app(main_thread, gui_status, tray_receiver, debug_bundler, urls, ui_config) {
         GtkAppFinished::Exit(exit_code) => exit_code,
         GtkAppFinished::Restart => restart(),
     }

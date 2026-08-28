@@ -29,7 +29,7 @@ export default function Settings() {
       <DnsSettings />
       <ExperimentalSettings />
       <NetworkSettings />
-      {!IS_LINUX && <AppearanceSettings />}
+      <AppearanceSettings />
     </Stack>
   );
 }

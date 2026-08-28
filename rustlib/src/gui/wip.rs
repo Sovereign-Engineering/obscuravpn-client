@@ -11,6 +11,7 @@ use futures::StreamExt;
 use futures::channel::mpsc::{Receiver, UnboundedReceiver, UnboundedSender, unbounded};
 use gtk4::gio::{DBusError, DBusProxy, ResourceLookupFlags};
 use gtk4::glib::translate::ToGlibPtr as _;
+use libadwaita::StyleManager;
 use obscuravpn_client::exit_selection::ExitSelector;
 use obscuravpn_client::linux::autostart;
 use obscuravpn_client::linux::debug_bundle::{DebugBundleError, GuiDebugBundler};
@@ -21,6 +22,7 @@ use obscuravpn_client::linux::status_watch::GuiStatusWatch;
 use obscuravpn_client::linux::tray::{ShowTarget, TrayRequest};
 use obscuravpn_client::manager::{self, TunnelArgs};
 use obscuravpn_client::manager_cmd::{ManagerCmd, ManagerCmdErrorCode, ManagerCmdOk};
+use obscuravpn_client::ui_config::{ColorScheme, UiConfigHandle};
 use serde::{Deserialize, Serialize};
 use std::cell::{Cell, RefCell};
 use std::future::Future;
@@ -47,10 +49,11 @@ fn navigation_split_view(
     dev_visible: Rc<Cell<bool>>,
     debug_bundler: Arc<GuiDebugBundler>,
     webview_signals: UnboundedSender<WebviewSignal>,
+    ui_config: Arc<UiConfigHandle>,
 ) -> (gtk::Box, ListBox, WebView) {
     let split_view = gtk::Box::new(Orientation::Horizontal, 0);
 
-    let webview = webview(gui_status.clone(), restart, debug_bundler, webview_signals);
+    let webview = webview(gui_status.clone(), restart, debug_bundler, webview_signals, ui_config);
     webview.set_hexpand(true);
 
     let sidebar = sidebar(gui_status, dev_visible);
@@ -118,6 +121,7 @@ fn webview(
     restart: Rc<RefCell<Option<tokio::sync::oneshot::Sender<()>>>>,
     debug_bundler: Arc<GuiDebugBundler>,
     webview_signals: UnboundedSender<WebviewSignal>,
+    ui_config: Arc<UiConfigHandle>,
 ) -> WebView {
     let user_content_manager = webkit6::UserContentManager::new();
 
@@ -142,7 +146,15 @@ fn webview(
         let webview_signals = webview_signals.clone();
         move |ucm, value, reply| {
             let _ = webview_signals.unbounded_send(WebviewSignal::CommandReceived);
-            command_bridge(ucm, value, reply, gui_status.clone(), restart.clone(), debug_bundler.clone())
+            command_bridge(
+                ucm,
+                value,
+                reply,
+                gui_status.clone(),
+                restart.clone(),
+                debug_bundler.clone(),
+                ui_config.clone(),
+            )
         }
     });
     user_content_manager.register_script_message_handler_with_reply("commandBridge", None);
@@ -274,6 +286,9 @@ pub enum Cmd {
     GetOsStatus {
         known_version: Option<Uuid>,
     },
+    SetColorScheme {
+        value: ColorScheme,
+    },
     SetNavigationView {
         view: NavigationView,
     },
@@ -349,6 +364,14 @@ async fn forward_webview_events(webview: WebView, mut signals: UnboundedReceiver
     }
 }
 
+fn apply_color_scheme(color_scheme: ColorScheme) {
+    StyleManager::default().set_color_scheme(match color_scheme {
+        ColorScheme::Auto => libadwaita::ColorScheme::Default,
+        ColorScheme::Light => libadwaita::ColorScheme::ForceLight,
+        ColorScheme::Dark => libadwaita::ColorScheme::ForceDark,
+    });
+}
+
 fn command_bridge(
     _ucm: &webkit6::UserContentManager,
     value: &webkit6::javascriptcore::Value,
@@ -356,6 +379,7 @@ fn command_bridge(
     gui_status: Arc<GuiStatusWatch>,
     restart: Rc<RefCell<Option<tokio::sync::oneshot::Sender<()>>>>,
     debug_bundler: Arc<GuiDebugBundler>,
+    ui_config: Arc<UiConfigHandle>,
 ) -> bool {
     let command_json_gstring = value.to_str();
     let command_json_str = command_json_gstring.as_str();
@@ -426,6 +450,23 @@ fn command_bridge(
                         eprintln!("JsonFfiCmd: returning: '{:?}'", json_string);
                         reply.return_value(&jsc6_val.clone());
                         eprintln!("JsonFfiCmd: returned: '{:?}'", json_string);
+                    }
+                ),
+            );
+        }
+        Cmd::SetColorScheme { value } => {
+            apply_color_scheme(value);
+            tokio_to_glib_local_fut_pipe(
+                ui_config.update(move |ui_config| ui_config.color_scheme = value),
+                glib::clone!(
+                    #[strong]
+                    reply,
+                    #[strong]
+                    value_context,
+                    move |()| async move {
+                        let json_string = serde_json::json!({}).to_string();
+                        let jsc6_val = javascriptcore::Value::new_string(&value_context, Some(&json_string));
+                        reply.return_value(&jsc6_val);
                     }
                 ),
             );
@@ -726,6 +767,7 @@ fn build_primary_window(
     restart: Rc<RefCell<Option<tokio::sync::oneshot::Sender<()>>>>,
     debug_bundler: Arc<GuiDebugBundler>,
     webview_signals: UnboundedSender<WebviewSignal>,
+    ui_config: Arc<UiConfigHandle>,
 ) -> (gtk::ApplicationWindow, ListBox, WebView) {
     let window = gtk::ApplicationWindow::builder()
         .title("Obscura VPN")
@@ -740,7 +782,7 @@ fn build_primary_window(
 
     let dev_visible = Rc::new(Cell::new(false));
 
-    let (split_view, sidebar, webview) = navigation_split_view(gui_status, restart, dev_visible.clone(), debug_bundler, webview_signals);
+    let (split_view, sidebar, webview) = navigation_split_view(gui_status, restart, dev_visible.clone(), debug_bundler, webview_signals, ui_config);
     window.set_child(Some(&split_view));
 
     // Ctrl+Shift+D toggles Developer sidebar item
@@ -828,6 +870,7 @@ pub(crate) fn run_gtk_app(
     mut tray_receiver: Receiver<TrayRequest>,
     debug_bundler: Arc<GuiDebugBundler>,
     urls: Vec<String>,
+    ui_config: Arc<UiConfigHandle>,
 ) -> GtkAppFinished {
     eprintln!("First light");
 
@@ -837,6 +880,11 @@ pub(crate) fn run_gtk_app(
         eprintln!("Failed to init gtk4");
         return GtkAppFinished::Exit(ExitCode::FAILURE);
     };
+    let Ok(()) = libadwaita::init() else {
+        eprintln!("Failed to init libadwaita");
+        return GtkAppFinished::Exit(ExitCode::FAILURE);
+    };
+    apply_color_scheme(ui_config.get().color_scheme);
 
     let resources_bytes: &[u8] = include_bytes!(concat!(env!("OBSCURA_GRESOURCES_DIR"), "/icons.gresource"));
     let gbytes = glib::Bytes::from_static(resources_bytes);
@@ -863,7 +911,7 @@ pub(crate) fn run_gtk_app(
     let (quit_tx, quit_rx) = tokio::sync::oneshot::channel();
     let restart = Rc::new(RefCell::new(Some(quit_tx)));
     let (webview_signals, webview_signal_receiver) = unbounded();
-    let (window, sidebar, webview) = build_primary_window(gui_status.clone(), restart.clone(), debug_bundler, webview_signals.clone());
+    let (window, sidebar, webview) = build_primary_window(gui_status.clone(), restart.clone(), debug_bundler, webview_signals.clone(), ui_config);
 
     glib::spawn_future_local(forward_webview_events(webview, webview_signal_receiver));
 

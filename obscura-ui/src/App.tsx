@@ -47,7 +47,7 @@ export default function () {
   };
 
   useSystemChecks();
-  useHotkeys(PLATFORM === Platform.Linux ? [] : [[PLATFORM === Platform.macOS ? 'mod+J' : 'ctrl+J', toggleColorScheme]]);
+  useHotkeys([[PLATFORM === Platform.macOS ? 'mod+J' : 'ctrl+J', toggleColorScheme]]);
 
   // App State
   const [vpnConnected, setVpnConnected] = useState(false);

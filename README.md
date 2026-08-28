@@ -147,6 +147,8 @@ Install [Rust](https://rust-lang.org/learn/get-started/).
 
 Install [just](https://github.com/casey/just/releases) (`winget install Casey.Just`)
 
+Install [DotNET 10](https://dotnet.microsoft.com/en-us/download/dotnet/10.0).
+
 Install [nvm-windows](https://github.com/coreybutler/nvm-windows/releases) (`winget install nvm-windows`) and then run `nvm install lts && nvm use lts && corepack enable`.
 
 You may also need to install [Windows App SDK](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads) manually to get the client app running.
@@ -168,6 +170,12 @@ To test the service, if you have sudo enabled (System > Advanced settings), you 
 The default config directory is `%APPDATA%\Obscura`. When testing the service, you may find it beneficial to manually add in an account number to `config.json`.
 
 To clean DNS query manually from powershell, run `Remove-DnsClientNrptRule -Name "{fb157da8-6578-4f53-81ea-0a9168e96c1f}"`
+
+You might need to add a source to dotnet nuget:
+
+1. Navigate to `windows/obscura-client`.
+2. Run `dotnet nuget add source https://api.nuget.org/v3/index.json -n nuget.org`.
+3. Download the dependencies via `dotnet restore`.
 
 To run the UI, you have two options
 

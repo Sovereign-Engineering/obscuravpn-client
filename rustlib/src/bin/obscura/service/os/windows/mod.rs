@@ -6,7 +6,7 @@ pub mod tun;
 
 use bytes::Bytes;
 use ipc::ServiceIpc;
-use obscuravpn_client::manager_cmd::{ManagerCmd, ManagerCmdErrorCode, ManagerCmdOk};
+use obscuravpn_client::manager_cmd::{ManagerCmd, ManagerCmdErrorCode, ManagerCmdOk, PeerUid};
 use obscuravpn_client::net::NetworkInterface;
 use obscuravpn_client::network_config::OsNetworkConfig;
 use obscuravpn_client::os::os_trait::Os;
@@ -33,7 +33,13 @@ impl WindowsOsImpl {
         Ok(Self { tun, active_adapter_watcher: adapters::watch_active_adapter(), ipc: ServiceIpc::new()? })
     }
 
-    pub async fn next_manager_command(&self) -> (ManagerCmd, Box<dyn FnOnce(Result<ManagerCmdOk, ManagerCmdErrorCode>) + Send>) {
+    pub async fn next_manager_command(
+        &self,
+    ) -> (
+        ManagerCmd,
+        Option<PeerUid>,
+        Box<dyn FnOnce(Result<ManagerCmdOk, ManagerCmdErrorCode>) + Send>,
+    ) {
         loop {
             let (json_cmd, response_fn) = self.ipc.next().await;
             let response_fn = move |result: Result<ManagerCmdOk, ManagerCmdErrorCode>| {
@@ -46,7 +52,7 @@ impl WindowsOsImpl {
                 response_fn(json_response)
             };
             match ManagerCmd::from_json(&json_cmd) {
-                Ok(cmd) => return (cmd, Box::new(response_fn)),
+                Ok(cmd) => return (cmd, None, Box::new(response_fn)),
                 Err(error) => response_fn(Err(error)),
             }
         }

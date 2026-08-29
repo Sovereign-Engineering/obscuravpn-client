@@ -240,7 +240,6 @@
   "linuxService-authorizeButton": "Authorize this user",
   "linuxService-copyCommand": "copy command",
   "linuxService-enableAndStartButton": "Enable and start service",
-  "linuxService-restartAppAfterwardsHint": "Then restart the app:",
   "linuxService-restartAppButton": "Restart app",
   "linuxService-restartServiceButton": "Restart service",
   "linuxService-serviceVersion": "Service Version",

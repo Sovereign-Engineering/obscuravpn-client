@@ -71,9 +71,9 @@ pub async fn run(
         tokio::select! {
             biased;
             _ = &mut shutdown => break,
-            (cmd, response_fn) = os_impl.next_manager_command() => {
+            (cmd, peer_uid, response_fn) = os_impl.next_manager_command() => {
                 let manager = manager.clone();
-                tokio::spawn(async move { response_fn(cmd.run(&manager).await) });
+                tokio::spawn(async move { response_fn(cmd.run(&manager, peer_uid).await) });
             }
         }
     }

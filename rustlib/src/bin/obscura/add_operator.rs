@@ -42,23 +42,6 @@ fn add_operator_impl(mut users: Vec<String>) -> ! {
             eprintln!("Added {user} to 'obscura' group.")
         }
     }
-    // Unlock the group (removes `!*` or `!` from `/etc/gshadow`). Otherwise, `sg` will ask for the non-existent group password on some systems
-    let command: Vec<&str> = sudo.into_iter().chain(["gpasswd", "-r", "obscura"]).collect();
-    let failed = std::process::Command::new(command[0])
-        .args(&command[1..])
-        .status()
-        .map_err(|error| tracing::error!(message_id = "d2vw10pw", ?error, "failed to run {}: {error}", command[0]))
-        .and_then(|status| status.success().then_some(()).ok_or(()))
-        .is_err();
-    failed_any |= failed;
-    if failed {
-        match shlex::try_join(command.iter().copied()) {
-            Ok(quoted_command) => eprintln!("Failed to unlock 'obscura' group using:\n    {quoted_command}"),
-            Err(_) => {
-                eprintln!("Failed to unlock 'obscura' group. You may have to log out and log in once before using the obscura command without sudo.")
-            }
-        }
-    }
 
     if failed_any { exit(1) } else { exit(0) }
 }

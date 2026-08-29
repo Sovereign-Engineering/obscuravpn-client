@@ -176,7 +176,6 @@ impl WebviewCmd {
             }
             WebviewCmd::LinuxAddOperator {} => {
                 add_operator().await.map_err(LinuxErrorCode::from)?;
-                context.restart.send_replace(true);
                 Ok(EMPTY_OBJECT.to_owned())
             }
             WebviewCmd::RestartApp {} => {

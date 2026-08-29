@@ -28,6 +28,9 @@ use crate::{
     network_config::DnsContentBlock,
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PeerUid(pub u32);
+
 /// High-level json command error codes, which are actionable for frontends.
 /// Actionable means any of:
 /// - Useful to trigger specific frontend behavior (e.g. control flow branches)
@@ -261,7 +264,7 @@ impl ManagerCmd {
         Ok(cmd)
     }
 
-    pub async fn run(self, manager: &Manager) -> Result<ManagerCmdOk, ManagerCmdErrorCode> {
+    pub async fn run(self, manager: &Manager, peer_uid: Option<PeerUid>) -> Result<ManagerCmdOk, ManagerCmdErrorCode> {
         match self {
             Self::ApiAppleAssociateAccount { app_transaction_jws } => map_result(manager.apple_associate_account(app_transaction_jws).await),
             Self::ApiDeleteAccount {} => map_result(manager.delete_account().await),
@@ -280,7 +283,7 @@ impl ManagerCmd {
                     ManagerCmdErrorCode::Other
                 }),
             Self::CreateServiceDebugBundle {} => manager
-                .create_service_debug_bundle()
+                .create_service_debug_bundle(peer_uid)
                 .await
                 .map(ManagerCmdOk::CreateServiceDebugBundle)
                 .map_err(|()| ManagerCmdErrorCode::Other),

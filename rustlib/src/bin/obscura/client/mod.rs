@@ -1,6 +1,3 @@
-mod ipc;
-
-use crate::client::ipc::ipc_test;
 use crate::{ClientCommand, ClientDebugBundleArgs, ClientLoginArgs, ClientStatusArgs};
 use anyhow::Context;
 use chrono::{MappedLocalTime, TimeZone};
@@ -59,13 +56,7 @@ impl From<LinuxIpcError> for ClientError {
     }
 }
 
-pub async fn run(no_group_refresh: bool, cmd: ClientCommand) -> Result<(), ClientError> {
-    // Group memberships changes do not automatically propagate into existing sessions. If we detect that launching the process with updated group memberships is necessary to do IPC, we replace the current process with a new one launched in a context with updated group memberships.
-    if no_group_refresh {
-        tracing::debug!(message_id = "jpjl9cI9", "skipping group refresh fix due to CLI flag");
-    } else if !matches!(cmd, ClientCommand::AddOperator { users: _ }) {
-        obscuravpn_client::linux::ipc::try_group_refresh_fix().await;
-    }
+pub async fn run(cmd: ClientCommand) -> Result<(), ClientError> {
     match cmd {
         ClientCommand::AddOperator { users } => crate::add_operator::run_add_operator(users).await,
         ClientCommand::Login(args) => login(args).await,
@@ -73,7 +64,6 @@ pub async fn run(no_group_refresh: bool, cmd: ClientCommand) -> Result<(), Clien
         ClientCommand::Disconnect(_args) => go_to_target_state(None).await,
         ClientCommand::Status(args) => status(args).await,
         ClientCommand::DebugBundle(args) => debug_bundle(args).await,
-        ClientCommand::IpcTest(args) => ipc_test(args).await,
     }
 }
 

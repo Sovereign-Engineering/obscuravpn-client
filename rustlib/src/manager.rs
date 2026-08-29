@@ -33,7 +33,7 @@ use crate::{
     errors::{ApiError, ConfigDirty, ConfigDirtyOrApiError, ConnectErrorCode},
     exit_selection::ExitSelector,
     logging::LogPersistence,
-    manager_cmd::{ManagerCmdErrorCode, ManagerCmdOk},
+    manager_cmd::{ManagerCmdErrorCode, ManagerCmdOk, PeerUid},
     net::NetworkInterface,
     network_config::DnsContentBlock,
     os::os_trait::Os,
@@ -342,12 +342,12 @@ impl Manager {
             .await?
     }
 
-    pub async fn create_service_debug_bundle(&self) -> Result<ServiceDebugBundleHandle, ()> {
+    pub async fn create_service_debug_bundle(&self, peer_uid: Option<PeerUid>) -> Result<ServiceDebugBundleHandle, ()> {
         let config = self.client_state.borrow().config().clone().into();
         let network_info = NetworkInfo::new(&self.client_state);
         let debug_info = self.get_debug_info().await;
         let log_dir = self.log_persistence.as_ref().map(LogPersistence::log_dir).map(ToOwned::to_owned);
-        let bundle = service::create_service_debug_bundle(&config, &network_info, &debug_info, log_dir.as_deref()).await?;
+        let bundle = service::create_service_debug_bundle(&config, &network_info, &debug_info, log_dir.as_deref(), peer_uid).await?;
         self.service_debug_bundles
             .lock()
             .unwrap()

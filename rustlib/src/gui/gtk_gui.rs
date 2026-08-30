@@ -6,7 +6,7 @@ use futures::StreamExt;
 use futures::channel::mpsc::Receiver;
 use libadwaita::StyleManager;
 use obscuravpn_client::linux::debug_bundle::GuiDebugBundler;
-use obscuravpn_client::linux::status::NavigationView;
+use obscuravpn_client::linux::status::{NavigationView, ServiceStatus};
 use obscuravpn_client::linux::status_watch::GuiStatusWatch;
 use obscuravpn_client::linux::tray::{ShowTarget, TrayRequest};
 use obscuravpn_client::ui_config::{ColorScheme, UiConfigHandle};
@@ -101,6 +101,10 @@ pub(crate) fn run_gtk_app(
             loop {
                 let status = gui_status.changed(known_version).await;
                 known_version = Some(status.version);
+                sidebar.set_visible(match &status.service_status {
+                    ServiceStatus::Healthy(app_status) => app_status.account_id.is_some() && !app_status.in_new_account_flow,
+                    ServiceStatus::Initializing | ServiceStatus::Degraded { last_status: _, linux_degradation: _ } => false,
+                });
                 match i32::try_from(status.navigation_view.index())
                     .ok()
                     .and_then(|index| sidebar.row_at_index(index))
@@ -303,6 +307,7 @@ fn build_sidebar(gui_status: Arc<GuiStatusWatch>, dev_visible: Rc<Cell<bool>>) -
     let list = ListBox::builder()
         .selection_mode(SelectionMode::Browse)
         .css_classes(["navigation-sidebar", "sidebar"])
+        .visible(false)
         .build();
 
     for view in NavigationView::iter() {

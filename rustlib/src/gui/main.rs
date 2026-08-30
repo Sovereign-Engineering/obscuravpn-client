@@ -25,11 +25,10 @@ use std::process::ExitCode;
 use std::sync::Arc;
 
 #[derive(Parser)]
+#[command(name = "obscura-gui", version = release_version())]
 struct GuiArgs {
     #[arg(long, help = "Use in autostart entries")]
     xdg_autostart: bool,
-    #[arg(long, help = "Print version")]
-    version: bool,
     #[arg(hide = true)]
     urls: Vec<String>,
     #[command(subcommand)]
@@ -69,12 +68,8 @@ fn main() -> ExitCode {
     let runtime = tokio::runtime::Runtime::new().expect("failed to initialize tokio runtime");
     let _runtime_guard = runtime.enter();
 
-    let GuiArgs { xdg_autostart: _, version, urls, command } = GuiArgs::parse();
-    let command = if version {
-        GuiCommand::Version
-    } else {
-        command.unwrap_or(GuiCommand::RunGui)
-    };
+    let GuiArgs { xdg_autostart: _, urls, command } = GuiArgs::parse();
+    let command = command.unwrap_or(GuiCommand::RunGui);
     let (_log_lock, _log_persistence, log_dir) = command.init_logging();
 
     match command {

@@ -1,6 +1,7 @@
 use camino::Utf8PathBuf;
 use clap::{ArgAction, Args, Parser, Subcommand};
 use obscuravpn_client::logging::{self, LogPersistence};
+use obscuravpn_client::version::release_version;
 use std::process::exit;
 use std::time::Duration;
 use tracing_subscriber::filter::{EnvFilter, LevelFilter};
@@ -162,6 +163,7 @@ impl ServiceCommand {
 }
 
 #[derive(Parser)]
+#[command(name = "obscura", version = release_version())]
 pub struct Cli {
     #[command(subcommand)]
     command: Command,

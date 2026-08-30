@@ -36,11 +36,6 @@ pub fn flush_and_stop_persisted_log() {
 }
 
 extern "C" fn at_exit() {
-    tracing::error!(
-        message_id = "kQ3xE7pv",
-        "process exiting via exit(); atexit probe backtrace:\n{:#}",
-        std::backtrace::Backtrace::force_capture()
-    );
     flush_and_stop_persisted_log();
 }
 

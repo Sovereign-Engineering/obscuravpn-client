@@ -153,10 +153,10 @@ impl ServiceCommand {
         #[cfg(target_os = "linux")]
         let base_layer: Box<dyn Layer<Registry> + Send + Sync> = match std::env::var_os("JOURNAL_STREAM").map(|_| tracing_journald::Layer::new()) {
             Some(Ok(layer)) => Box::new(layer),
-            Some(Err(_)) | None => Box::new(fmt::Layer::default()),
+            Some(Err(_)) | None => Box::new(fmt::Layer::default().with_writer(std::io::stderr)),
         };
         #[cfg(not(target_os = "linux"))]
-        let base_layer: Box<dyn Layer<Registry> + Send + Sync> = Box::new(fmt::Layer::default());
+        let base_layer: Box<dyn Layer<Registry> + Send + Sync> = Box::new(fmt::Layer::default().with_writer(std::io::stderr));
         logging::init(base_layer, persistence_dir.as_deref())
     }
 }

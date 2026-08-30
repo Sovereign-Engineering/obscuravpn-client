@@ -113,7 +113,7 @@ impl GuiCommand {
         }
 
         let persist_dir = if log_lock.is_some() { log_dir.as_deref() } else { None };
-        let log_persistence = logging::init(tracing_subscriber::fmt::Layer::default(), persist_dir);
+        let log_persistence = logging::init(tracing_subscriber::fmt::Layer::default().with_writer(std::io::stderr), persist_dir);
         (log_lock, log_persistence, log_dir)
     }
 }

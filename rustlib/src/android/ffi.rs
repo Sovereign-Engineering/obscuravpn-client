@@ -103,7 +103,7 @@ fn json_ffi(global: &'static Global, env: &mut JNIEnv, j_json_cmd: &JString, j_f
     let _runtime_guard = global.runtime.enter();
     let jvm = env.get_java_vm()?;
     tokio::spawn(async move {
-        let result = cmd.run(&global.manager).await;
+        let result = cmd.run(&global.manager, None).await;
         // This attaches the current thread to the JVM for the entire life of
         // the thread, which is significantly more performant than
         // attaching/detaching on each use. This will be a no-op if already

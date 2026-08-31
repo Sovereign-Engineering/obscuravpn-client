@@ -269,7 +269,7 @@ function setup_and_connect() {
   local account_id=''
   require_args "account_id" "$@"
   ssh_run obscura add-operator user
-  ssh_run RUST_LOG=debug obscura ipc-test
+  ssh_run RUST_LOG=debug obscura status
   ssh_run obscura login "${account_id}"
   ssh_run obscura connect
 }

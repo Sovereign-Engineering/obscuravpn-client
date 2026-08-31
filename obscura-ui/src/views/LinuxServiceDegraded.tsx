@@ -23,7 +23,6 @@ interface Degraded {
   details?: Detail[];
   fix?: Fix;
   terminalCommand?: string;
-  restartAppAfterwards?: boolean;
 }
 
 function describe(degradation: LinuxServiceDegradation): Degraded {
@@ -35,7 +34,6 @@ function describe(degradation: LinuxServiceDegradation): Degraded {
         messageKey: 'linuxService-socketPermissionDeniedMessage',
         fix: { command: commands.linuxAddOperator, labelKey: 'linuxService-authorizeButton' },
         terminalCommand: user === null ? 'sudo obscura add-operator' : `sudo obscura add-operator ${user}`,
-        restartAppAfterwards: true,
       };
     }
     const { serviceVersion, appVersion, installedAppVersionDiffers } = degradation.versionMismatch;
@@ -82,8 +80,7 @@ function describe(degradation: LinuxServiceDegradation): Degraded {
 export default function LinuxServiceDegraded({ degradation }: { degradation: LinuxServiceDegradation }) {
   const { t } = useTranslation();
   const fixCommand = commands.useCommand({ command: (fix: () => Promise<void>) => fix(), showNotification: true });
-  const restartAppCommand = commands.useCommand({ command: commands.restartApp, showNotification: true });
-  const { titleKey, messageKey, details, fix, terminalCommand, restartAppAfterwards } = describe(degradation);
+  const { titleKey, messageKey, details, fix, terminalCommand } = describe(degradation);
 
   return (
     <Stack align='center' gap='md' maw={420}>
@@ -114,14 +111,6 @@ export default function LinuxServiceDegraded({ degradation }: { degradation: Lin
               )}
             </CopyButton>
           </Group>
-        </Stack>
-      )}
-      {restartAppAfterwards === true && (
-        <Stack align='center' gap='xs'>
-          <Text c='dimmed' size='sm' ta='center'>{t('linuxService-restartAppAfterwardsHint')}</Text>
-          <Button variant='light' loading={restartAppCommand.showLoadingUI} onClick={() => restartAppCommand.execute()}>
-            {t('linuxService-restartAppButton')}
-          </Button>
         </Stack>
       )}
     </Stack>

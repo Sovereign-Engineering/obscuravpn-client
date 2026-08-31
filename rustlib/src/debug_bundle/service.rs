@@ -8,6 +8,7 @@ use crate::constants::DEFAULT_API_DOMAIN;
 use crate::debug_bundle::debug_info::DebugInfo;
 use crate::debug_bundle::populate_tasks::populate_debug_tasks;
 use crate::debug_bundle::{DebugBundleSide, try_write_json_file};
+use crate::manager_cmd::PeerUid;
 use crate::net::NetworkInterface;
 use camino::{Utf8Path, Utf8PathBuf};
 use serde::{Deserialize, Serialize};
@@ -31,7 +32,7 @@ pub struct ServiceDebugBundleHandle {
 }
 
 impl ServiceDebugBundleHandle {
-    // On unix the dir starts private and make_group_readable widens it once the bundle is complete.
+    // On unix the dir starts private and make_user_readable widens it once the bundle is complete.
     // On Windows entries inherit the dir's DACL as they are created, so the dir gets its final one up front.
     async fn mkdir() -> Result<Self, ()> {
         #[cfg(unix)]
@@ -41,9 +42,9 @@ impl ServiceDebugBundleHandle {
         Ok(Self { path, token: ServiceDebugBundleToken(Uuid::new_v4()) })
     }
 
-    // Contents get their modes first (0640 files, 0750 dirs) and the top dir last, so the group can only ever see a finished bundle.
+    // Files become 0400 owned by the requester (if known); directories stay root-owned at 0755 so the requester can read and traverse but not write them, which keeps the service's later recursive delete safe from a planted symlink. The top dir is done last, so nobody else can see an unfinished bundle.
     #[cfg(unix)]
-    async fn make_group_readable(&self) -> Result<(), ()> {
+    async fn make_user_readable(&self, peer_uid: PeerUid) -> Result<(), ()> {
         use std::os::unix::fs::PermissionsExt as _;
 
         let mut queue = vec![self.path.clone()];
@@ -76,22 +77,25 @@ impl ServiceDebugBundleHandle {
                 else {
                     continue;
                 };
-                let mode = if file_type.is_dir() {
+                if file_type.is_dir() {
                     queue.push(path.clone());
-                    0o750
+                    let _ = tokio::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755))
+                        .await
+                        .map_err(|error| tracing::error!(message_id = "hK3nDv7M", ?error, %path, "failed to adjust dir permissions"));
                 } else if file_type.is_file() {
-                    0o640
+                    let _ = tokio::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o400))
+                        .await
+                        .map_err(|error| tracing::error!(message_id = "vK2xNs5D", ?error, %path, "failed to adjust file permissions"));
+                    let _ = std::os::unix::fs::lchown(&path, Some(peer_uid.0), None)
+                        .map_err(|error| tracing::error!(message_id = "nQ5wPj2K", ?error, %path, "failed to chown file to requester"));
                 } else {
                     continue;
-                };
-                let _ = tokio::fs::set_permissions(&path, std::fs::Permissions::from_mode(mode))
-                    .await
-                    .map_err(|error| tracing::error!(message_id = "vK2xNs5D", ?error, %path, "failed to adjust entry permissions"));
+                }
             }
         }
-        tokio::fs::set_permissions(&self.path, std::fs::Permissions::from_mode(0o750))
+        tokio::fs::set_permissions(&self.path, std::fs::Permissions::from_mode(0o755))
             .await
-            .map_err(|error| tracing::error!(message_id = "hW9bTq4G", ?error, path =% self.path, "failed to make debug bundle dir group readable"))?;
+            .map_err(|error| tracing::error!(message_id = "hW9bTq4G", ?error, path =% self.path, "failed to set debug bundle dir mode"))?;
         Ok(())
     }
 }
@@ -101,13 +105,21 @@ pub async fn create_service_debug_bundle(
     network_info: &NetworkInfo,
     debug_info: &DebugInfo,
     log_dir: Option<&Utf8Path>,
+    peer_uid: Option<PeerUid>,
 ) -> Result<ServiceDebugBundleHandle, ()> {
     let bundle = ServiceDebugBundleHandle::mkdir().await?;
     tracing::info!(message_id = "kZ6pVw2N", path =% bundle.path, "created service debug bundle dir");
     populate_service_debug_bundle(&bundle.path, config, network_info, debug_info, log_dir).await;
     #[cfg(unix)]
-    bundle.make_group_readable().await?;
-    tracing::info!(message_id = "mV5tXn9C", path =% bundle.path, "service debug bundle ready");
+    if let Some(peer_uid) = peer_uid {
+        bundle.make_user_readable(peer_uid).await?;
+    }
+    tracing::info!(
+        message_id = "mV5tXn9C",
+        path =% bundle.path,
+        peer_uid = peer_uid.map(|uid| uid.0),
+        "service debug bundle ready"
+    );
     Ok(bundle)
 }
 

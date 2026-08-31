@@ -17,7 +17,7 @@ use crate::service::os::linux::routes::traffic_capture_routes::{enable_src_valid
 use crate::service::os::linux::service_lock::ServiceLock;
 use crate::service::os::linux::tun::Tun;
 use bytes::Bytes;
-use obscuravpn_client::manager_cmd::{ManagerCmd, ManagerCmdErrorCode, ManagerCmdOk};
+use obscuravpn_client::manager_cmd::{ManagerCmd, ManagerCmdErrorCode, ManagerCmdOk, PeerUid};
 use obscuravpn_client::net::NetworkInterface;
 use obscuravpn_client::network_config::OsNetworkConfig;
 use obscuravpn_client::os::os_trait::Os;
@@ -142,9 +142,16 @@ impl Os for LinuxOsImpl {
 
 impl LinuxOsImpl {
     /// Returns next manager command. Blocks until a command is available. The response function is called with the command result.
-    pub async fn next_manager_command(&self) -> (ManagerCmd, Box<dyn FnOnce(Result<ManagerCmdOk, ManagerCmdErrorCode>) + Send>) {
+    pub async fn next_manager_command(
+        &self,
+    ) -> (
+        ManagerCmd,
+        Option<PeerUid>,
+        Box<dyn FnOnce(Result<ManagerCmdOk, ManagerCmdErrorCode>) + Send>,
+    ) {
         loop {
             let request = self.ipc.next().await;
+            let peer_uid = request.peer_uid;
             let decoded = ManagerCmd::from_json(&request.message);
             let response_fn = move |result: Result<ManagerCmdOk, ManagerCmdErrorCode>| {
                 let json_response = serde_json::to_vec(&result)
@@ -156,7 +163,7 @@ impl LinuxOsImpl {
                 request.respond(json_response)
             };
             match decoded {
-                Ok(cmd) => return (cmd, Box::new(response_fn)),
+                Ok(cmd) => return (cmd, Some(peer_uid), Box::new(response_fn)),
                 Err(error) => response_fn(Err(error)),
             }
         }

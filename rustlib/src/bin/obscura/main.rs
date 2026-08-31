@@ -69,9 +69,6 @@ pub struct ClientStatusArgs {
 }
 
 #[derive(Args, Debug)]
-pub struct ClientIpcTestArgs {}
-
-#[derive(Args, Debug)]
 pub struct ClientDebugBundleArgs {
     /// Message for the Obscura team, included in the debug bundle.
     pub feedback: String,
@@ -93,8 +90,6 @@ pub enum ClientCommand {
     #[cfg(target_os = "linux")]
     /// Create a debug bundle and print its path.
     DebugBundle(ClientDebugBundleArgs),
-    #[command(hide = true)]
-    IpcTest(ClientIpcTestArgs),
 }
 
 impl ClientCommand {
@@ -170,8 +165,6 @@ impl ServiceCommand {
 pub struct Cli {
     #[command(subcommand)]
     command: Command,
-    #[clap(long, hide = true, global = true)]
-    no_group_refresh: bool,
     /// Extra logs (-v: errors, -vv: info, -vvv: everything).
     #[clap(short, long, action = ArgAction::Count, global = true)]
     verbose: u8,
@@ -194,7 +187,7 @@ async fn async_main() {
     match cli.command {
         Command::Client(command) => {
             command.init_logging(cli.verbose);
-            run_client(cli.no_group_refresh, command).await
+            run_client(command).await
         }
         Command::Service(command) => {
             let log_persistence = command.init_logging();
@@ -231,15 +224,15 @@ async fn run_service(_args: ServiceArgs, _log_persistence: Option<LogPersistence
 }
 
 #[cfg(target_os = "linux")]
-async fn run_client(no_group_refresh: bool, args: ClientCommand) {
-    if let Err(error) = client::run(no_group_refresh, args).await {
+async fn run_client(args: ClientCommand) {
+    if let Err(error) = client::run(args).await {
         eprintln!("{}", error);
         exit(1)
     }
 }
 
 #[cfg(not(target_os = "linux"))]
-async fn run_client(_no_group_refresh: bool, _args: ClientCommand) {
+async fn run_client(_args: ClientCommand) {
     eprintln!("unsupported OS");
     exit(1)
 }

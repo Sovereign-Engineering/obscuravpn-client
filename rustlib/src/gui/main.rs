@@ -12,12 +12,10 @@ use nix::fcntl::{Flock, FlockArg};
 use obscuravpn_client::linux::argv0;
 use obscuravpn_client::linux::debug_bundle::GuiDebugBundler;
 use obscuravpn_client::linux::exit_list_watch::GuiExitListWatch;
-use obscuravpn_client::linux::ipc::{run_command, try_group_refresh_fix};
 use obscuravpn_client::linux::status_watch::GuiStatusWatch;
 use obscuravpn_client::linux::tray::spawn_tray;
 use obscuravpn_client::linux::{ui_config_dir, ui_log_dir};
 use obscuravpn_client::logging::{self, LogPersistence};
-use obscuravpn_client::manager_cmd::ManagerCmd;
 use obscuravpn_client::ui_config::UiConfigHandle;
 use obscuravpn_client::version::release_version;
 use std::marker::PhantomData;
@@ -28,8 +26,6 @@ use std::sync::Arc;
 
 #[derive(Parser)]
 struct GuiArgs {
-    #[arg(long, hide = true, global = true)]
-    no_group_refresh: bool,
     #[arg(long, help = "Use in autostart entries")]
     xdg_autostart: bool,
     #[arg(long, help = "Print version")]
@@ -42,8 +38,6 @@ struct GuiArgs {
 
 #[derive(Subcommand)]
 enum GuiCommand {
-    #[command(hide = true)]
-    IpcTest,
     #[command(hide = true)]
     Version,
     #[command(hide = true)]
@@ -75,7 +69,7 @@ fn main() -> ExitCode {
     let runtime = tokio::runtime::Runtime::new().expect("failed to initialize tokio runtime");
     let _runtime_guard = runtime.enter();
 
-    let GuiArgs { no_group_refresh, xdg_autostart: _, version, urls, command } = GuiArgs::parse();
+    let GuiArgs { xdg_autostart: _, version, urls, command } = GuiArgs::parse();
     let command = if version {
         GuiCommand::Version
     } else {
@@ -84,12 +78,11 @@ fn main() -> ExitCode {
     let (_log_lock, _log_persistence, log_dir) = command.init_logging();
 
     match command {
-        GuiCommand::IpcTest => ipc_test(),
         GuiCommand::Version => {
             println!("{}", release_version());
             ExitCode::SUCCESS
         }
-        GuiCommand::RunGui => run_gui(main_thread, no_group_refresh, log_dir, urls),
+        GuiCommand::RunGui => run_gui(main_thread, log_dir, urls),
     }
 }
 
@@ -97,7 +90,7 @@ impl GuiCommand {
     fn init_logging(&self) -> (Option<Flock<std::fs::File>>, Option<LogPersistence>, Option<Utf8PathBuf>) {
         let persistence = match self {
             GuiCommand::RunGui => true,
-            GuiCommand::IpcTest | GuiCommand::Version => false,
+            GuiCommand::Version => false,
         };
         let mut log_dir = None;
         if persistence && let Some(dir) = ui_log_dir() {
@@ -125,13 +118,10 @@ impl GuiCommand {
     }
 }
 
-fn run_gui(main_thread: MainThreadToken, no_group_refresh: bool, log_dir: Option<Utf8PathBuf>, urls: Vec<String>) -> ExitCode {
+fn run_gui(main_thread: MainThreadToken, log_dir: Option<Utf8PathBuf>, urls: Vec<String>) -> ExitCode {
     let debug_bundler = Arc::new(GuiDebugBundler::new(log_dir));
     let ui_config = Arc::new(UiConfigHandle::load(ui_config_dir()));
     let (gui_status, tray_receiver) = tokio::runtime::Handle::current().block_on(async {
-        if !no_group_refresh {
-            try_group_refresh_fix().await;
-        }
         let gui_status = GuiStatusWatch::watch(debug_bundler.subscribe()).await;
         let exit_list = GuiExitListWatch::watch().await;
         let tray_receiver = spawn_tray(gui_status.clone(), exit_list).await;
@@ -141,13 +131,6 @@ fn run_gui(main_thread: MainThreadToken, no_group_refresh: bool, log_dir: Option
     match run_gtk_app(main_thread, gui_status, tray_receiver, debug_bundler, urls, ui_config) {
         GtkAppFinished::Exit(exit_code) => exit_code,
         GtkAppFinished::Restart => restart(),
-    }
-}
-
-fn ipc_test() -> ExitCode {
-    match tokio::runtime::Handle::current().block_on(run_command::<()>(ManagerCmd::Ping {})) {
-        Ok(Ok(())) => ExitCode::SUCCESS,
-        _ => ExitCode::FAILURE,
     }
 }
 

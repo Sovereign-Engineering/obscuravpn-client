@@ -8,6 +8,8 @@ pub enum LinuxServiceStartError {
     NoDnsManager,
     #[error("Failed to set up nftables.")]
     NftablesSetup,
+    #[error("Failed to set up the TUN device.")]
+    TunSetup,
     #[error("Unexpected error. Details: {0}")]
     Unexpected(#[from] anyhow::Error),
 }

@@ -1,6 +1,7 @@
 use camino::Utf8PathBuf;
 use clap::{ArgAction, Args, Parser, Subcommand};
 use obscuravpn_client::logging::{self, LogPersistence};
+use obscuravpn_client::version::release_version;
 use std::process::exit;
 use std::time::Duration;
 use tracing_subscriber::filter::{EnvFilter, LevelFilter};
@@ -153,15 +154,16 @@ impl ServiceCommand {
         #[cfg(target_os = "linux")]
         let base_layer: Box<dyn Layer<Registry> + Send + Sync> = match std::env::var_os("JOURNAL_STREAM").map(|_| tracing_journald::Layer::new()) {
             Some(Ok(layer)) => Box::new(layer),
-            Some(Err(_)) | None => Box::new(fmt::Layer::default()),
+            Some(Err(_)) | None => Box::new(fmt::Layer::default().with_writer(std::io::stderr)),
         };
         #[cfg(not(target_os = "linux"))]
-        let base_layer: Box<dyn Layer<Registry> + Send + Sync> = Box::new(fmt::Layer::default());
+        let base_layer: Box<dyn Layer<Registry> + Send + Sync> = Box::new(fmt::Layer::default().with_writer(std::io::stderr));
         logging::init(base_layer, persistence_dir.as_deref())
     }
 }
 
 #[derive(Parser)]
+#[command(name = "obscura", version = release_version())]
 pub struct Cli {
     #[command(subcommand)]
     command: Command,

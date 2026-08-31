@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::manager::{Status, VpnStatus};
 use crate::version::release_version;
+use strum::IntoEnumIterator;
 use uuid::Uuid;
 
 #[serde_with::serde_as]
@@ -36,6 +37,16 @@ pub enum NavigationView {
     Help,
     About,
     Developer,
+}
+
+impl NavigationView {
+    pub fn index(self) -> usize {
+        Self::iter().position(|view| view == self).expect("iteration yields every variant")
+    }
+
+    pub fn from_index(index: usize) -> Option<Self> {
+        Self::iter().nth(index)
+    }
 }
 
 #[serde_with::serde_as]

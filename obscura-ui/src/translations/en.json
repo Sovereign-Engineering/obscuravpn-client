@@ -340,6 +340,7 @@
   "socials": "Socials",
   "Source": "Source",
   "splashScreenText": "Loading initial app status",
+  "splashSupportMsg": "Found a bug or need help? Send a debug bundle to <0>{{ email }}</0>",
   "Status": "Status",
   "strictLeakPreventionDescription": "Protects against routing table attacks from your local network",
   "strictLeakPreventionLabel": "[Unstable] Enable Strict Leak Prevention",

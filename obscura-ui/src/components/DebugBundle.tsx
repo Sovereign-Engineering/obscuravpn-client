@@ -16,7 +16,8 @@ const ICON_SIZE = 20;
 
 export enum DebugBundleVariant {
   Card = 'card',
-  LoginLabel = 'label'
+  LoginLabel = 'label',
+  Splash = 'splash'
 }
 
 // this component may be used before appContext is created, and thus requires explicitly passing osStatus
@@ -102,7 +103,7 @@ export default function DebugBundle({ osStatus, variant = DebugBundleVariant.Car
   }
 
   const createArchiveBtn = (
-    <Button onClick={open} disabled={!!osStatus.debugBundleStatus.inProgress} fullWidth={IS_HANDHELD_DEVICE}>
+    <Button variant={variant === DebugBundleVariant.Splash ? 'light' : undefined} onClick={open} disabled={!!osStatus.debugBundleStatus.inProgress} fullWidth={IS_HANDHELD_DEVICE}>
       {t('createDebugBundle')}
     </Button>
   );
@@ -124,14 +125,22 @@ export default function DebugBundle({ osStatus, variant = DebugBundleVariant.Car
       </>
     );
   } else {
+    const buttons = (
+      <Group>
+        {createArchiveBtn}
+        {loadingSpinner}
+        {archiveAvailable && <ArchiveActionButtons osStatus={osStatus} inProgress={!!osStatus.debugBundleStatus.inProgress} userFeedback={userFeedback} />}
+      </Group>
+    );
     return (
       <>
         {modal}
-        <Group>
-          {createArchiveBtn}
-          {loadingSpinner}
-          {archiveAvailable && <ArchiveActionButtons osStatus={osStatus} inProgress={!!osStatus.debugBundleStatus.inProgress} userFeedback={userFeedback} />}
-        </Group>
+        {variant === DebugBundleVariant.Splash ? (
+          <Stack align='center' gap='sm'>
+            <SupportMessage osStatus={osStatus} i18nKey='splashSupportMsg' size='sm' color='dimmed' userFeedback={userFeedback} />
+            {buttons}
+          </Stack>
+        ) : buttons}
       </>
     );
   }
@@ -139,16 +148,17 @@ export default function DebugBundle({ osStatus, variant = DebugBundleVariant.Car
 
 interface SupportMessageProps {
   osStatus: OsStatus;
+  i18nKey?: 'supportMsgOrDebugBundle' | 'splashSupportMsg';
   size?: 'sm';
   color?: string;
   userFeedback?: string;
 }
 
-function SupportMessage({ osStatus, size, color, userFeedback }: SupportMessageProps) {
+function SupportMessage({ osStatus, i18nKey = 'supportMsgOrDebugBundle', size, color, userFeedback }: SupportMessageProps) {
   const mailto = useMailto(osStatus, userFeedback);
   return (
     <Text size={size} c={color} ta='center' component={size ? undefined : 'span'}>
-      <Trans i18nKey='supportMsgOrDebugBundle' values={{ email: EMAIL }} components={[<Anchor href={mailto} />]} />
+      <Trans i18nKey={i18nKey} values={{ email: EMAIL }} components={[<Anchor href={mailto} />]} />
     </Text>
   );
 };

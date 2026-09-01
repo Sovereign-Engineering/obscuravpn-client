@@ -25,7 +25,7 @@ main() {
   sed "s/@ARCH@/${arch}/g" /repo/linux/deb/control >debian/control
   install -m755 /repo/linux/deb/rules debian/rules
   cp /repo/linux/common/obscura-sysusers.conf debian/obscura-cli.sysusers
-  { echo "Copyright 2025 Sovereign Engineering Inc. All rights reserved."; echo; cat /repo/LICENSE.md; } >debian/copyright
+  { echo "Copyright 2026 Sovereign Engineering Inc. All rights reserved."; echo; cat /repo/LICENSE.md; } >debian/copyright
   cat >debian/changelog <<EOF
 obscura (${version}) stable; urgency=low
 

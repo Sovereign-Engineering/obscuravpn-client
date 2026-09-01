@@ -73,7 +73,11 @@ function DnsSettings() {
             <Stack gap='sm'>
               <Radio value="obscura" label={t('dnsModeObscura')} />
               <Stack gap='xs' ml='xl'>{checkboxes}</Stack>
-              <Radio value="system" label={t('dnsModeSystem')} description={t('dnsModeSystemDescription')} />
+              <Radio
+                value="system"
+                label={t(IS_LINUX ? 'dnsModeSystemLinux' : 'dnsModeSystemApple')}
+                description={t('dnsModeSystemDescription')}
+              />
             </Stack>
           </Radio.Group>
         ) : (

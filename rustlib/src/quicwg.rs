@@ -51,6 +51,8 @@ pub const QUIC_IDLE_TIMEOUT: Duration = Duration::from_secs(600);
 
 const QUIC_STEP_TIMEOUT: Duration = Duration::from_secs(30);
 
+const CONTROL_STREAM_WINDOW: u32 = 4 * 1024;
+
 /// How fast to call `update_timers`.
 ///
 /// In the boringtun repo they call it at 4Hz, however we have traditionally called it at 1Hz and doesn't seem to have any problems.
@@ -666,6 +668,9 @@ impl QuicWgConnHandshaking {
         let mut transport_config = quinn::TransportConfig::default();
         transport_config.max_concurrent_uni_streams(0u8.into());
         transport_config.max_concurrent_bidi_streams(0u8.into());
+        transport_config.stream_receive_window(CONTROL_STREAM_WINDOW.into());
+        transport_config.receive_window(CONTROL_STREAM_WINDOW.into());
+        transport_config.send_window(CONTROL_STREAM_WINDOW.into());
         let mut mtu_discovery_config = MtuDiscoveryConfig::default();
         mtu_discovery_config.upper_bound(DEFAULT_UDP_PAYLOAD_SIZE);
         mtu_discovery_config.black_hole_cooldown(Duration::from_secs(10));

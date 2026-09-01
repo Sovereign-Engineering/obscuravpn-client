@@ -529,7 +529,7 @@ impl ClientStateHandle {
                 this.mtu,
             )
         };
-        let racing_handshakes = race_relay_handshakes(
+        let mut racing_handshakes = race_relay_handshakes(
             network_interface,
             &relays.value,
             sni,
@@ -546,11 +546,11 @@ impl ClientStateHandle {
         let mut best_candidate = None;
 
         loop {
-            let next = timeout_at(deadline.into(), racing_handshakes.recv_async()).await;
+            let next = timeout_at(deadline.into(), racing_handshakes.next()).await;
             let (relay, port, rtt, handshaking) = match next {
-                Ok(Ok(n)) => n,
-                Ok(Err(error)) => {
-                    tracing::info!(message_id = "aeY9Acha", ?error, "relay selection channel ended",);
+                Ok(Some(n)) => n,
+                Ok(None) => {
+                    tracing::info!(message_id = "aeY9Acha", "all relay handshake attempts finished",);
                     break;
                 }
                 Err(error) => {
@@ -585,10 +585,11 @@ impl ClientStateHandle {
                 break;
             }
         }
-
         let Some((relay, port, rtt, handshaking)) = best_candidate else {
+            racing_handshakes.abandon().await;
             return Err(RelaySelectionError::NoSuccess.into());
         };
+        spawn(racing_handshakes.abandon());
         tracing::info!(message_id = "Xdbn2PYb", relay.id, port, rtt_ms = rtt.as_millis(), "selected relay");
         Ok((relay, handshaking))
     }

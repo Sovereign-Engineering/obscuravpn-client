@@ -23,19 +23,35 @@ pub struct Tun {
 }
 
 impl Tun {
-    pub fn create() -> anyhow::Result<Self> {
+    pub fn create() -> Result<Self, ()> {
         let network_config = OsNetworkConfig::dummy(DnsContentBlock::default(), false, false);
-        let dev = Arc::new(
-            tun_rs::DeviceBuilder::new()
-                // NetworkManager classifies new TUN devices without assigned IPs as `NM_DEVICE_STATE_UNMANAGED` instead of just externally connected and refuses all device configuration interactions. As initial state this is harmless in tested versions, but avoiding the state is simpler and may be safer.
-                .ipv4(network_config.ipv4, 32u8, None)
-                .ipv6(network_config.ipv6.network(), network_config.ipv6.prefix())
-                .mtu(network_config.mtu)
-                .name(TUN_NAME.to_string())
-                .build_async()?,
-        );
-        let interface_index = dev.if_index()?.try_into()?;
-        Ok(Self { dev, interface_index, read_task: Mutex::new(None) })
+        tracing::info!(message_id = "6JEntSBS", name = TUN_NAME, "creating tun device");
+        let dev = tun_rs::DeviceBuilder::new()
+            .name(TUN_NAME.to_string())
+            .enable(false)
+            .build_async()
+            .map_err(|error| {
+                tracing::error!(message_id = "lNB6HpcA", ?error, name = TUN_NAME, "failed to create tun device");
+            })?;
+        let raw_interface_index = dev.if_index().map_err(|error| {
+            tracing::error!(message_id = "W7SQqz3F", ?error, "failed to get interface index of new tun device");
+        })?;
+        let interface_index = raw_interface_index.try_into().map_err(|error| {
+            tracing::error!(
+                message_id = "DPsyfMWl",
+                ?error,
+                raw_interface_index,
+                "interface index of new tun device is out of range"
+            );
+        })?;
+        let tun = Self { dev: Arc::new(dev), interface_index, read_task: Mutex::new(None) };
+        // NetworkManager classifies new TUN devices without assigned IPs as `NM_DEVICE_STATE_UNMANAGED` instead of just externally connected and refuses all device configuration interactions. As initial state this is harmless in tested versions, but avoiding the state is simpler and may be safer.
+        tun.set_config(network_config.mtu, network_config.ipv4, network_config.ipv6)?;
+        tun.dev.enabled(true).map_err(|error| {
+            tracing::error!(message_id = "O2sZ95mQ", ?error, "failed to bring up new tun device");
+        })?;
+        tracing::info!(message_id = "qvZBRbWp", interface_index = raw_interface_index, "tun device ready");
+        Ok(tun)
     }
 
     pub fn interface(&self) -> NetworkInterface {

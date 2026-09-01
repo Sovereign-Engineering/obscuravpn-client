@@ -55,7 +55,7 @@ impl LinuxOsImpl {
         let mut fd_store = FdStore::take_from_systemd();
         let nft = NftTable::create_or_adopt(&mut fd_store).map_err(|()| LinuxServiceStartError::NftablesSetup)?;
         fd_store.remove_unclaimed();
-        let tun = Tun::create()?;
+        let tun = Tun::create().map_err(|()| LinuxServiceStartError::TunSetup)?;
         let routing = spawn_route_enforcer(tun.interface()).await;
         let preferred_network_interface = watch_preferred_network_interface().await;
         let _ = enable_src_valid_mark();

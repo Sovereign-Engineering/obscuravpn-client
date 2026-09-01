@@ -48,6 +48,14 @@ pub async fn set_dns(tun: &NetworkInterface, dns: &[IpAddr]) -> Result<(), ()> {
         .set_link_domains(tun.index.into(), vec![(".".to_string(), true)])
         .await
         .map_err(|error| tracing::error!(message_id = "92tR6ndT", ?error, "failed to set tun DNS domain: {}", error))?;
+    proxy
+        .set_link_dns_over_tls(tun.index.into(), "no".to_string())
+        .await
+        .map_err(|error| tracing::error!(message_id = "kY3nRw7B", ?error, "failed to disable DNS-over-TLS for tun: {}", error))?;
+    proxy
+        .flush_caches()
+        .await
+        .map_err(|error| tracing::error!(message_id = "cQ8mVt2J", ?error, "failed to flush resolved caches: {}", error))?;
     Ok(())
 }
 

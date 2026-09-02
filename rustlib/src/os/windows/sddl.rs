@@ -64,6 +64,12 @@ impl Trustee {
         Self("BU")
     }
 
+    /// `IU` -- `NT AUTHORITY\INTERACTIVE`, i.e. users logged on interactively (console or RDP),
+    /// excluding network logons and service accounts.
+    pub const fn interactive() -> Self {
+        Self("IU")
+    }
+
     /// `OW` -- OWNER RIGHTS, which resolves to whoever owns the object, so the creator keeps access
     /// without naming a specific account.
     pub const fn owner_rights() -> Self {
@@ -237,6 +243,17 @@ mod tests {
             .allow_packaged(FileRights::ReadWrite, PFN)
             .build()
             .expect("kernel should accept the conditional SYSAPPID SDDL");
+    }
+
+    /// Debug pipe shape: interactively logged-on users instead of the packaged-GUI pin.
+    #[test]
+    fn debug_pipe_sddl_round_trips_through_kernel() {
+        DACL::new()
+            .allow(FileRights::FullAccess, Trustee::local_system(), Inherit::None)
+            .allow(FileRights::FullAccess, Trustee::builtin_administrators(), Inherit::None)
+            .allow(FileRights::ReadWrite, Trustee::interactive(), Inherit::None)
+            .build()
+            .expect("kernel should accept the interactive-users SDDL");
     }
 
     /// Inheritance is per-ACE, which is what lets one call on a dir give its child dirs and child

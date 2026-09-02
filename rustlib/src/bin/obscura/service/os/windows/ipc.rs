@@ -9,6 +9,7 @@ use tokio::net::windows::named_pipe::{NamedPipeServer, ServerOptions};
 use tokio::time::timeout;
 use windows::Win32::Security::SECURITY_ATTRIBUTES;
 
+#[cfg(not(debug_assertions))]
 use super::PACKAGE_FAMILY_NAME;
 use obscuravpn_client::os::windows::sddl::{DACL, FileRights, Inherit, SA_LENGTH, SecurityDescriptor, Trustee};
 
@@ -152,11 +153,20 @@ unsafe impl Sync for PipeSecurityAttributes {}
 
 impl PipeSecurityAttributes {
     fn new() -> std::io::Result<Self> {
-        let dacl = DACL::new()
-            .allow(FileRights::FullAccess, Trustee::local_system(), Inherit::None)
-            .allow(FileRights::FullAccess, Trustee::builtin_administrators(), Inherit::None)
-            // Restricted: pin read/write to our packaged GUI via a conditional WIN://SYSAPPID ACE.
-            .allow_packaged(FileRights::ReadWrite, PACKAGE_FAMILY_NAME);
+        let dacl = DACL::new().allow(FileRights::FullAccess, Trustee::local_system(), Inherit::None).allow(
+            FileRights::FullAccess,
+            Trustee::builtin_administrators(),
+            Inherit::None,
+        );
+
+        // Restrict read/write to PFN of the GUI.
+        #[cfg(not(debug_assertions))]
+        let dacl = dacl.allow_packaged(FileRights::ReadWrite, PACKAGE_FAMILY_NAME);
+
+        // Debug GUI does not have the PFN;
+        // Grant interactively logged-on users instead.
+        #[cfg(debug_assertions)]
+        let dacl = dacl.allow(FileRights::ReadWrite, Trustee::interactive(), Inherit::None);
 
         let sd = dacl.build()?;
 

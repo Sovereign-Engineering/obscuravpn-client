@@ -167,6 +167,8 @@ Extract to `windows/wintun-0.14.1` such that `windows/wintun-0.14.1/bin/arm64/wi
 
 To test the service, if you have sudo enabled (System > Advanced settings), you can run `just service`. Alternatively, open an admin-enabled terminal and run `cargo run --bin obscura service` in the rustlib dir.
 
+To run the debug build while the client is already installed, make sure to stop the Windows service before running the service in debug mode with the debug GUI client.
+
 The default config directory is `%APPDATA%\Obscura`. When testing the service, you may find it beneficial to manually add in an account number to `config.json`.
 
 To clean DNS query manually from powershell, run `Remove-DnsClientNrptRule -Name "{fb157da8-6578-4f53-81ea-0a9168e96c1f}"`

@@ -212,10 +212,10 @@ function ConnectionProgressBar() {
                 }
                 {
                     !showOfflineUI && (connectionInProgress === ConnectionInProgress.Disconnecting || (!vpnConnected && connectionInProgress === ConnectionInProgress.UNSET)) &&
-                    <Stack gap='xs' align='center' justify='flex-end' h={50} className={classes.trafficVulnerable}>
-                        <Progress className={classes.trafficVulnerableProgressBar} value={100} color='red.6' h={2} />
+                    <Stack gap='xs' align='center' justify='flex-end' h={50} className={classes.obscuraNotConnected}>
+                        <Progress className={classes.obscuraNotConnectedProgressBar} value={100} color='red.6' h={2} />
                         <Text size='xs' c='red.6'>
-                            {t('trafficVulnerable')}
+                            {t('obscuraNotConnected')}
                         </Text>
                     </Stack>
                 }

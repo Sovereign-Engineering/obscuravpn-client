@@ -323,8 +323,8 @@ function VpnStatusCard() {
           return t('trafficSuspended');
         }
         if (vpnConnected) return t('trafficProtected');
-        if (connectionInProgress !== ConnectionInProgress.UNSET) return t('trafficVulnerable');
-        return showOfflineUI ? t('connectToInternet') : t('trafficVulnerable');
+        if (connectionInProgress !== ConnectionInProgress.UNSET) return t('obscuraNotConnected');
+        return showOfflineUI ? t('connectToInternet') : t('obscuraNotConnected');
     };
 
     const isAccountExpired = accountInfo ? accountIsExpired(accountInfo) : false;

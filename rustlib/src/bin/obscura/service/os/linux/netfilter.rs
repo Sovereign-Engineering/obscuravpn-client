@@ -45,6 +45,11 @@
 //!         icmpv6 type nd-router-solicit accept
 //!         icmpv6 type nd-neighbor-solicit accept
 //!         icmpv6 type nd-neighbor-advert accept
+//!         # DNS to LAN resolvers, dropped ahead of the local network accepts. Not rendered if system DNS is used.
+//!         meta l4proto udp th dport 53 drop
+//!         meta l4proto udp th dport 853 drop
+//!         meta l4proto tcp th dport 53 drop
+//!         meta l4proto tcp th dport 853 drop
 //!         # Local network, rendered only if enabled.
 //!         ip daddr 10.0.0.0/8 accept
 //!         ip daddr 172.16.0.0/12 accept
@@ -169,6 +174,7 @@ const NFTA_BITWISE_MASK: u16 = 4;
 const NFTA_BITWISE_XOR: u16 = 5;
 
 const IPPROTO_UDP: u8 = try_c_int_into_u8(libc::IPPROTO_UDP).unwrap();
+const IPPROTO_TCP: u8 = try_c_int_into_u8(libc::IPPROTO_TCP).unwrap();
 const IPPROTO_ICMPV6: u8 = try_c_int_into_u8(libc::IPPROTO_ICMPV6).unwrap();
 
 const ND_ROUTER_SOLICIT: u8 = 133;
@@ -411,13 +417,15 @@ fn chains(policy: &TrafficPolicy, tun_name: &str) -> Vec<Chain> {
         },
     ];
     match policy {
-        TrafficPolicy::Engage { local_network_access, dns } => chains.push(kill_switch_chain(*local_network_access, dns, tun_name)),
+        TrafficPolicy::Engage { local_network_access, dns, use_system_dns } => {
+            chains.push(kill_switch_chain(*local_network_access, dns, *use_system_dns, tun_name))
+        }
         TrafficPolicy::Disengage => {}
     }
     chains
 }
 
-fn kill_switch_chain(local_network_access: bool, dns: &[IpAddr], tun_name: &str) -> Chain {
+fn kill_switch_chain(local_network_access: bool, dns: &[IpAddr], use_system_dns: bool, tun_name: &str) -> Chain {
     use Expr::*;
     let mut rules = vec![
         vec![MetaLoad(NFT_META_OIFNAME), CmpEq(b"lo\0".to_vec()), Accept],
@@ -452,6 +460,19 @@ fn kill_switch_chain(local_network_access: bool, dns: &[IpAddr], tun_name: &str)
             CmpEq(vec![nd_type]),
             Accept,
         ]);
+    }
+    if !use_system_dns {
+        for l4proto in [IPPROTO_UDP, IPPROTO_TCP] {
+            for port in [53u16, 853] {
+                rules.push(vec![
+                    MetaLoad(NFT_META_L4PROTO),
+                    CmpEq(vec![l4proto]),
+                    Payload { base: NFT_PAYLOAD_TRANSPORT_HEADER, offset: 2, len: 2 },
+                    CmpEq(port.to_be_bytes().to_vec()),
+                    Drop,
+                ]);
+            }
+        }
     }
     if local_network_access {
         for net in LAN_V4 {

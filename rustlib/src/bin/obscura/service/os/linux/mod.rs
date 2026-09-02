@@ -29,7 +29,11 @@ use tokio::sync::watch::{Receiver, Sender};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TrafficPolicy {
-    Engage { local_network_access: bool, dns: Vec<IpAddr> },
+    Engage {
+        local_network_access: bool,
+        dns: Vec<IpAddr>,
+        use_system_dns: bool,
+    },
     Disengage,
 }
 
@@ -91,6 +95,7 @@ impl Os for LinuxOsImpl {
             } else {
                 network_config.dns.clone()
             },
+            use_system_dns: network_config.use_system_dns,
         };
         result = result.and(self.routing.send(policy.clone()).map_err(|error| {
             tracing::error!(message_id = "bK3wNr8T", ?error, "route enforcer is not running");

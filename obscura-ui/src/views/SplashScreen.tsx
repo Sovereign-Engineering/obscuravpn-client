@@ -3,7 +3,7 @@ import { useThrottledValue } from '@mantine/hooks';
 import AppIcon from '../../../apple/client/Assets.xcassets/AppIcon.appiconset/icon_128x128.png';
 import { LinuxServiceDegradation, OsStatusWVpnStatus, WindowsServiceDegradation } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
-import DebugBundle from '../components/DebugBundle';
+import DebugBundle, { DebugBundleVariant } from '../components/DebugBundle';
 import ObscuraWordmark from '../components/ObscuraWordmark';
 import LinuxServiceDegraded from './LinuxServiceDegraded';
 import WindowsServiceDegraded from './WindowsServiceDegraded';
@@ -33,7 +33,7 @@ export default function SplashScreen({ osStatus, linuxDegradation, windowsDegrad
         </Group>}
       {osStatus !== null && (degraded || osStatusThrottled !== null) &&
         <div style={{ padding: '0 20px' }}>
-          <DebugBundle osStatus={osStatus} />
+          <DebugBundle osStatus={osStatus} variant={DebugBundleVariant.Splash} />
         </div>}
     </Stack>
   );

@@ -34,9 +34,11 @@
 //!         oifname "obscuravpn" accept
 //!         # Tunnel resolver traffic may only leave via the tun device.
 //!         ip daddr 10.64.0.1 drop
-//!         # Traffic entering other tunnel devices.
-//!         meta oifkind "tun" accept
+//!         # Traffic entering wireguard devices.
 //!         meta oifkind "wireguard" accept
+//!         # Tailscale traffic entering its tun device and its marked underlay traffic, rendered only if enabled.
+//!         oifname "tailscale0" accept
+//!         meta mark & 0x00ff0000 == 0x00080000 accept
 //!         # Link scope DHCPv4 traffic.
 //!         ip daddr 255.255.255.255 udp sport 68 udp dport 67 accept
 //!         # Link scope DHCPv6 traffic.
@@ -180,6 +182,10 @@ const IPPROTO_ICMPV6: u8 = try_c_int_into_u8(libc::IPPROTO_ICMPV6).unwrap();
 const ND_ROUTER_SOLICIT: u8 = 133;
 const ND_NEIGHBOR_SOLICIT: u8 = 135;
 const ND_NEIGHBOR_ADVERT: u8 = 136;
+
+// Tailscale claims only mark bits 16:23. We match under its mask like its own routing rules do.
+const TAILSCALE_FWMARK_MASK: u32 = 0xff0000;
+const TAILSCALE_BYPASS_MARK: u32 = 0x80000;
 
 const IPV4_DADDR_OFFSET: u32 = 16;
 const IPV6_DADDR_OFFSET: u32 = 24;
@@ -417,15 +423,19 @@ fn chains(policy: &TrafficPolicy, tun_name: &str) -> Vec<Chain> {
         },
     ];
     match policy {
-        TrafficPolicy::Engage { local_network_access, dns, use_system_dns } => {
-            chains.push(kill_switch_chain(*local_network_access, dns, *use_system_dns, tun_name))
-        }
+        TrafficPolicy::Engage { local_network_access, tailscale_bypass, dns, use_system_dns } => chains.push(kill_switch_chain(
+            *local_network_access,
+            *tailscale_bypass,
+            dns,
+            *use_system_dns,
+            tun_name,
+        )),
         TrafficPolicy::Disengage => {}
     }
     chains
 }
 
-fn kill_switch_chain(local_network_access: bool, dns: &[IpAddr], use_system_dns: bool, tun_name: &str) -> Chain {
+fn kill_switch_chain(local_network_access: bool, tailscale_bypass: bool, dns: &[IpAddr], use_system_dns: bool, tun_name: &str) -> Chain {
     use Expr::*;
     let mut rules = vec![
         vec![MetaLoad(NFT_META_OIFNAME), CmpEq(b"lo\0".to_vec()), Accept],
@@ -438,9 +448,17 @@ fn kill_switch_chain(local_network_access: bool, dns: &[IpAddr], use_system_dns:
             IpAddr::V6(ip) => daddr_rule(AF_INET6, IPV6_DADDR_OFFSET, ip.octets().to_vec(), None, Drop),
         });
     }
+    rules.push(vec![MetaLoad(NFT_META_OIFKIND), CmpEq(b"wireguard\0".to_vec()), Accept]);
+    if tailscale_bypass {
+        rules.push(vec![MetaLoad(NFT_META_OIFNAME), CmpEq(b"tailscale0\0".to_vec()), Accept]);
+        rules.push(vec![
+            MetaLoad(NFT_META_MARK),
+            BitwiseMask(TAILSCALE_FWMARK_MASK.to_ne_bytes().to_vec()),
+            CmpEq(TAILSCALE_BYPASS_MARK.to_ne_bytes().to_vec()),
+            Accept,
+        ]);
+    }
     rules.extend([
-        vec![MetaLoad(NFT_META_OIFKIND), CmpEq(b"tun\0".to_vec()), Accept],
-        vec![MetaLoad(NFT_META_OIFKIND), CmpEq(b"wireguard\0".to_vec()), Accept],
         dhcp_rule(AF_INET, IPV4_DADDR_OFFSET, Ipv4Addr::BROADCAST.octets().to_vec(), 68, 67),
         dhcp_rule(
             AF_INET6,

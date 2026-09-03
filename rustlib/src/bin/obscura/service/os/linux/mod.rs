@@ -31,6 +31,7 @@ use tokio::sync::watch::{Receiver, Sender};
 pub enum TrafficPolicy {
     Engage {
         local_network_access: bool,
+        tailscale_bypass: bool,
         dns: Vec<IpAddr>,
         use_system_dns: bool,
     },
@@ -90,6 +91,7 @@ impl Os for LinuxOsImpl {
         let mut result = Ok(());
         let policy = TrafficPolicy::Engage {
             local_network_access: network_config.local_network_access,
+            tailscale_bypass: network_config.tailscale_bypass,
             dns: if network_config.use_system_dns {
                 vec![]
             } else {

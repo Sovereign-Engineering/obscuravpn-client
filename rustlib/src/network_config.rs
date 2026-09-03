@@ -1,3 +1,7 @@
+#[cfg(any(target_os = "android", target_os = "linux"))]
+use crate::config::LocalNetworkAccess;
+#[cfg(target_os = "linux")]
+use crate::config::TailscaleBypass;
 #[cfg(target_os = "android")]
 use crate::local_network::{Route, tunnel_routes};
 use ipnetwork::Ipv6Network;
@@ -102,6 +106,8 @@ pub struct OsNetworkConfig {
     pub use_system_dns: bool,
     #[cfg(target_os = "linux")]
     pub local_network_access: bool,
+    #[cfg(target_os = "linux")]
+    pub tailscale_bypass: bool,
 }
 
 impl OsNetworkConfig {
@@ -110,7 +116,8 @@ impl OsNetworkConfig {
         exit_provider_name: &str,
         dns_content_block: DnsContentBlock,
         use_system_dns: bool,
-        #[cfg(any(target_os = "android", target_os = "linux"))] allow_local_network_access: bool,
+        #[cfg(any(target_os = "android", target_os = "linux"))] local_network_access: LocalNetworkAccess,
+        #[cfg(target_os = "linux")] tailscale_bypass: TailscaleBypass,
     ) -> Self {
         let dns = if exit_provider_name == MULLVAD_EXIT_PROVIDER_NAME
             && let Some(dns) = dns_content_block.mullvad_dns_ip()
@@ -122,14 +129,16 @@ impl OsNetworkConfig {
 
         Self {
             #[cfg(target_os = "android")]
-            routes: tunnel_routes(&dns, allow_local_network_access),
+            routes: tunnel_routes(&dns, local_network_access.is_enabled()),
             dns,
             ipv4: tunnel_network_config.ipv4,
             ipv6: tunnel_network_config.ipv6,
             mtu: tunnel_network_config.mtu,
             use_system_dns,
             #[cfg(target_os = "linux")]
-            local_network_access: allow_local_network_access,
+            local_network_access: local_network_access.is_enabled(),
+            #[cfg(target_os = "linux")]
+            tailscale_bypass: tailscale_bypass.is_enabled(),
         }
     }
 
@@ -137,7 +146,8 @@ impl OsNetworkConfig {
     pub fn dummy(
         dns_content_block: DnsContentBlock,
         use_system_dns: bool,
-        #[cfg(any(target_os = "android", target_os = "linux"))] allow_local_network_access: bool,
+        #[cfg(any(target_os = "android", target_os = "linux"))] local_network_access: LocalNetworkAccess,
+        #[cfg(target_os = "linux")] tailscale_bypass: TailscaleBypass,
     ) -> Self {
         Self::new(
             &TunnelNetworkConfig::dummy(),
@@ -145,7 +155,9 @@ impl OsNetworkConfig {
             dns_content_block,
             use_system_dns,
             #[cfg(any(target_os = "android", target_os = "linux"))]
-            allow_local_network_access,
+            local_network_access,
+            #[cfg(target_os = "linux")]
+            tailscale_bypass,
         )
     }
 }

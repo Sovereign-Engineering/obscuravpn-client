@@ -15,7 +15,7 @@ use crate::{config::PinnedLocation, exit_selection::ExitSelectionState};
 use crate::{config::RotationReason, net::NetworkInterface, network_config::DnsConfig, quicwg::QuicWgConnHandshaking, wg_key_store::WgKeyStore};
 use crate::{config::cached::ConfigCached, exit_selection::ExitSelector};
 use crate::{
-    config::{self, Config, ConfigLoadError, LocalNetworkAccess},
+    config::{self, Config, ConfigLoadError, LocalNetworkAccess, TailscaleBypass},
     errors::RelaySelectionError,
     quicwg::QuicWgConn,
 };
@@ -118,7 +118,8 @@ impl ClientState {
                 DnsConfig::Default => false,
                 DnsConfig::System => true,
             },
-            local_network_access: self.config.local_network_access.is_enabled(),
+            local_network_access: self.config.local_network_access,
+            tailscale_bypass: self.config.tailscale_bypass,
         }
     }
 
@@ -371,6 +372,10 @@ impl ClientStateHandle {
                 LocalNetworkAccess::Disabled
             }
         })
+    }
+
+    pub fn set_tailscale_bypass(&self, enable: bool) {
+        self.change_config(|config| config.tailscale_bypass = if enable { TailscaleBypass::Enabled } else { TailscaleBypass::Disabled })
     }
 
     pub async fn connect(

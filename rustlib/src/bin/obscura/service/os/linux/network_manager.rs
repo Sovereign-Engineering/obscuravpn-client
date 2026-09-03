@@ -1,3 +1,4 @@
+use obscuravpn_client::config::{LocalNetworkAccess, TailscaleBypass};
 use obscuravpn_client::net::NetworkInterface;
 use obscuravpn_client::network_config::{DnsContentBlock, OsNetworkConfig};
 use semver::Version;
@@ -87,7 +88,7 @@ pub async fn set_dns(tun: &NetworkInterface, network_config: &OsNetworkConfig) -
 pub async fn reset_dns(tun: &NetworkInterface) -> Result<(), ()> {
     let (nm_proxy, _nm_version) = NetworkManagerProxy::connect().await?;
     let proxy = nm_proxy.device_proxy(tun).await?;
-    let network_config = OsNetworkConfig::dummy(DnsContentBlock::default(), false, false);
+    let network_config = OsNetworkConfig::dummy(DnsContentBlock::default(), false, LocalNetworkAccess::Disabled, TailscaleBypass::Disabled);
     apply_device_settings(tun, &proxy, &network_config, false).await
 }
 

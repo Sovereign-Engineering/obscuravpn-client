@@ -365,6 +365,7 @@
   "supportMsgOrDebugBundle": "Reach out or send a debug bundle to <0>{{ email }}</0>",
   "synchronizing": "Synchronizing",
   "System": "System",
+  "tailscaleBypassLabel": "Allow Tailscale traffic",
   "toggleTheme": "Toggle theme",
   "Top Up": "Top Up",
   "tosAndPrivacyPolicy": "Terms of Service and Privacy Policy",

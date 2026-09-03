@@ -203,6 +203,7 @@ export interface AppStatus {
     featureFlagKeys: FeatureFlagKey[],
     useSystemDns: boolean,
     localNetworkAccess: boolean,
+    tailscaleBypass: boolean,
 }
 
 interface IAppContext {

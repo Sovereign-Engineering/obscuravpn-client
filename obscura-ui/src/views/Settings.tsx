@@ -198,6 +198,12 @@ function NetworkSettings() {
             <LocalNetworkAccessSwitch />
           </>
         )}
+        {IS_LINUX && (
+          <>
+            <Divider w='100%' />
+            <TailscaleBypassSwitch />
+          </>
+        )}
       </Stack>
     </Card>
   );
@@ -307,6 +313,24 @@ function StrictLeakPreventionSwitch() {
         {t('strictLeakPreventionReliabilityWarning')}
       </Alert>
     </Stack>
+  );
+}
+
+function TailscaleBypassSwitch() {
+  const { t } = useTranslation();
+  const { appStatus } = useContext(AppContext);
+  const { tailscaleBypass } = appStatus;
+  const { showLoadingUI, error, execute: setTailscaleBypass } = commands.useCommand({ command: commands.setTailscaleBypass });
+
+  return (
+    <Switch
+      w='100%'
+      error={error}
+      checked={tailscaleBypass}
+      onChange={(event) => setTailscaleBypass(event.currentTarget.checked)}
+      disabled={showLoadingUI}
+      label={t('tailscaleBypassLabel')}
+    />
   );
 }
 

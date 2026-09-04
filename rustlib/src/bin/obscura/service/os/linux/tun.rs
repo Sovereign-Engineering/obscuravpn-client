@@ -1,5 +1,6 @@
 use bytes::Bytes;
 use ipnetwork::Ipv6Network;
+use obscuravpn_client::config::{LocalNetworkAccess, TailscaleBypass};
 use obscuravpn_client::net::NetworkInterface;
 use obscuravpn_client::network_config::{DnsContentBlock, OsNetworkConfig};
 use obscuravpn_client::os::packet_buffer::PacketBuffer;
@@ -24,7 +25,7 @@ pub struct Tun {
 
 impl Tun {
     pub fn create() -> Result<Self, ()> {
-        let network_config = OsNetworkConfig::dummy(DnsContentBlock::default(), false, false);
+        let network_config = OsNetworkConfig::dummy(DnsContentBlock::default(), false, LocalNetworkAccess::Disabled, TailscaleBypass::Disabled);
         tracing::info!(message_id = "6JEntSBS", name = TUN_NAME, "creating tun device");
         let dev = tun_rs::DeviceBuilder::new()
             .name(TUN_NAME.to_string())

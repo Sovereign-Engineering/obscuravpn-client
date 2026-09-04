@@ -282,6 +282,10 @@ export async function setLocalNetworkAccess(enable: boolean): Promise<void> {
   await jsonFfiCmd('setLocalNetworkAccess', { enable });
 }
 
+export async function setTailscaleBypass(enable: boolean): Promise<void> {
+  await jsonFfiCmd('setTailscaleBypass', { enable });
+}
+
 export async function setFeatureFlag(flag: FeatureFlagKey, active: boolean) {
   await jsonFfiCmd('setFeatureFlag', { flag, active });
 }

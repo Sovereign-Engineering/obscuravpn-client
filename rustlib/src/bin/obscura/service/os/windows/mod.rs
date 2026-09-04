@@ -18,7 +18,9 @@ mod adapters;
 mod gaa;
 mod iphelper;
 
-/// MSIX package family name, computed in `build.rs` from the signing certificate's Publisher
+/// MSIX package family name, computed in `build.rs` from the signing certificate's Publisher.
+/// Only referenced in release builds; debug builds don't pin the IPC pipe to a package identity.
+#[cfg(not(debug_assertions))]
 pub const PACKAGE_FAMILY_NAME: &str = env!("OBSCURA_PACKAGE_FAMILY_NAME");
 
 pub struct WindowsOsImpl {

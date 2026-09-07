@@ -32,6 +32,11 @@
 //!         meta mark 0x6f627363 accept
 //!         # All traffic entering the tun device is accepted.
 //!         oifname "obscuravpn" accept
+//!         # Forwarded replies arriving through the tun device (e.g. for flows from docker containers).
+//!         iifname "obscuravpn" ct direction reply accept
+//!         # Locally generated ICMP errors for accepted flows (e.g. fragmentation needed for forwarded packets from docker containers).
+//!         iif 0 meta l4proto icmp ct state & related == related accept
+//!         iif 0 meta l4proto ipv6-icmp ct state & related == related accept
 //!         # Tunnel resolver traffic may only leave via the tun device.
 //!         ip daddr 10.64.0.1 drop
 //!         # Traffic entering wireguard devices.
@@ -48,10 +53,10 @@
 //!         icmpv6 type nd-neighbor-solicit accept
 //!         icmpv6 type nd-neighbor-advert accept
 //!         # DNS to LAN resolvers, dropped ahead of the local network accepts. Not rendered if system DNS is used.
-//!         meta l4proto udp th dport 53 drop
-//!         meta l4proto udp th dport 853 drop
-//!         meta l4proto tcp th dport 53 drop
-//!         meta l4proto tcp th dport 853 drop
+//!         udp dport 53 drop
+//!         udp dport 853 drop
+//!         tcp dport 53 drop
+//!         tcp dport 853 drop
 //!         # Local network, rendered only if enabled.
 //!         ip daddr 10.0.0.0/8 accept
 //!         ip daddr 172.16.0.0/12 accept
@@ -144,7 +149,10 @@ const NFTA_META_DREG: u16 = 1;
 const NFTA_META_KEY: u16 = 2;
 const NFTA_META_SREG: u16 = 3;
 const NFT_META_MARK: u32 = try_c_int_into_u32(libc::NFT_META_MARK).unwrap();
+const NFT_META_IIFNAME: u32 = try_c_int_into_u32(libc::NFT_META_IIFNAME).unwrap();
 const NFT_META_OIFNAME: u32 = try_c_int_into_u32(libc::NFT_META_OIFNAME).unwrap();
+const NFT_META_IIF: u32 = try_c_int_into_u32(libc::NFT_META_IIF).unwrap();
+const LOCALLY_GENERATED_IIF: u32 = 0;
 const NFT_META_OIFKIND: u32 = 27;
 const NFT_META_NFPROTO: u32 = try_c_int_into_u32(libc::NFT_META_NFPROTO).unwrap();
 const NFT_META_L4PROTO: u32 = try_c_int_into_u32(libc::NFT_META_L4PROTO).unwrap();
@@ -158,6 +166,10 @@ const NFTA_CT_DREG: u16 = 1;
 const NFTA_CT_KEY: u16 = 2;
 const NFTA_CT_SREG: u16 = 4;
 const NFT_CT_MARK: u32 = try_c_int_into_u32(libc::NFT_CT_MARK).unwrap();
+const NFT_CT_DIRECTION: u32 = try_c_int_into_u32(libc::NFT_CT_DIRECTION).unwrap();
+const NFT_CT_STATE: u32 = try_c_int_into_u32(libc::NFT_CT_STATE).unwrap();
+const IP_CT_DIR_REPLY: u8 = 1;
+const NF_CT_STATE_RELATED_BIT: u32 = 1 << 2;
 
 const NFTA_IMMEDIATE_DREG: u16 = 1;
 const NFTA_IMMEDIATE_DATA: u16 = 2;
@@ -177,6 +189,7 @@ const NFTA_BITWISE_XOR: u16 = 5;
 
 const IPPROTO_UDP: u8 = try_c_int_into_u8(libc::IPPROTO_UDP).unwrap();
 const IPPROTO_TCP: u8 = try_c_int_into_u8(libc::IPPROTO_TCP).unwrap();
+const IPPROTO_ICMP: u8 = try_c_int_into_u8(libc::IPPROTO_ICMP).unwrap();
 const IPPROTO_ICMPV6: u8 = try_c_int_into_u8(libc::IPPROTO_ICMPV6).unwrap();
 
 const ND_ROUTER_SOLICIT: u8 = 133;
@@ -441,7 +454,26 @@ fn kill_switch_chain(local_network_access: bool, tailscale_bypass: bool, dns: &[
         vec![MetaLoad(NFT_META_OIFNAME), CmpEq(b"lo\0".to_vec()), Accept],
         vec![MetaLoad(NFT_META_MARK), CmpEq(FWMARK.to_ne_bytes().to_vec()), Accept],
         vec![MetaLoad(NFT_META_OIFNAME), CmpEq(nul_terminated(tun_name)), Accept],
+        vec![
+            MetaLoad(NFT_META_IIFNAME),
+            CmpEq(nul_terminated(tun_name)),
+            CtLoadDirection,
+            CmpEq(vec![IP_CT_DIR_REPLY]),
+            Accept,
+        ],
     ];
+    for l4proto in [IPPROTO_ICMP, IPPROTO_ICMPV6] {
+        rules.push(vec![
+            MetaLoad(NFT_META_IIF),
+            CmpEq(LOCALLY_GENERATED_IIF.to_ne_bytes().to_vec()),
+            MetaLoad(NFT_META_L4PROTO),
+            CmpEq(vec![l4proto]),
+            CtLoadState,
+            BitwiseMask(NF_CT_STATE_RELATED_BIT.to_ne_bytes().to_vec()),
+            CmpEq(NF_CT_STATE_RELATED_BIT.to_ne_bytes().to_vec()),
+            Accept,
+        ]);
+    }
     for ip in dns {
         rules.push(match ip {
             IpAddr::V4(ip) => daddr_rule(AF_INET, IPV4_DADDR_OFFSET, ip.octets().to_vec(), None, Drop),
@@ -566,6 +598,8 @@ enum Expr {
     MetaSetMark,
     CmpEq(Vec<u8>),
     CtLoadMark,
+    CtLoadDirection,
+    CtLoadState,
     CtSetMark,
     Accept,
     Drop,
@@ -591,6 +625,14 @@ impl Expr {
             }),
             Expr::CtLoadMark => expr(msg, "ct", |data| {
                 data.attr_u32_be(NFTA_CT_KEY, NFT_CT_MARK);
+                data.attr_u32_be(NFTA_CT_DREG, NFT_REG_1);
+            }),
+            Expr::CtLoadDirection => expr(msg, "ct", |data| {
+                data.attr_u32_be(NFTA_CT_KEY, NFT_CT_DIRECTION);
+                data.attr_u32_be(NFTA_CT_DREG, NFT_REG_1);
+            }),
+            Expr::CtLoadState => expr(msg, "ct", |data| {
+                data.attr_u32_be(NFTA_CT_KEY, NFT_CT_STATE);
                 data.attr_u32_be(NFTA_CT_DREG, NFT_REG_1);
             }),
             Expr::CtSetMark => expr(msg, "ct", |data| {

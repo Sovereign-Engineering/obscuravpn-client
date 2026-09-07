@@ -22,7 +22,6 @@ pub(crate) struct WebviewCmdContext {
     pub(crate) gui_status: Arc<GuiStatusWatch>,
     pub(crate) debug_bundler: Arc<GuiDebugBundler>,
     pub(crate) ui_config: Arc<UiConfigHandle>,
-    pub(crate) color_scheme: tokio::sync::watch::Sender<ColorScheme>,
     pub(crate) restart: tokio::sync::watch::Sender<bool>,
     pub(crate) page_ready: tokio::sync::watch::Sender<bool>,
 }
@@ -103,7 +102,7 @@ impl WebviewCmd {
                 to_json(&context.gui_status.changed(known_version).await)
             }
             WebviewCmd::SetColorScheme { value } => {
-                context.color_scheme.send_replace(value);
+                context.gui_status.set_color_scheme(value);
                 context.ui_config.update(move |ui_config| ui_config.color_scheme = value).await;
                 Ok(EMPTY_OBJECT.to_owned())
             }

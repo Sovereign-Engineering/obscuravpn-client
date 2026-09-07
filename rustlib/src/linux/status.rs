@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::manager::{Status, VpnStatus};
+use crate::ui_config::ColorScheme;
 use crate::version::release_version;
 use strum::IntoEnumIterator;
 use uuid::Uuid;
@@ -58,6 +59,7 @@ pub struct OsStatus {
     pub os_vpn_status: NEVPNStatus,
     pub src_version: &'static str,
     pub navigation_view: NavigationView,
+    pub color_scheme: ColorScheme,
     pub updater_status: UpdaterStatus,
     pub debug_bundle_status: DebugBundleStatus,
     pub can_send_mail: bool,
@@ -100,13 +102,14 @@ pub enum LinuxServiceDegradation {
 }
 
 impl OsStatus {
-    pub fn new(login_item_status: LoginItemStatus) -> Self {
+    pub fn new(login_item_status: LoginItemStatus, color_scheme: ColorScheme) -> Self {
         Self {
             version: Uuid::new_v4(),
             internet_available: true,
             os_vpn_status: NEVPNStatus::Invalid,
             src_version: release_version(),
             navigation_view: NavigationView::Connection,
+            color_scheme,
             updater_status: Default::default(),
             debug_bundle_status: Default::default(),
             can_send_mail: true,
@@ -118,6 +121,13 @@ impl OsStatus {
     pub fn set_navigation_view(&mut self, view: NavigationView) {
         if self.navigation_view != view {
             self.navigation_view = view;
+            self.version = Uuid::new_v4();
+        }
+    }
+
+    pub fn set_color_scheme(&mut self, color_scheme: ColorScheme) {
+        if self.color_scheme != color_scheme {
+            self.color_scheme = color_scheme;
             self.version = Uuid::new_v4();
         }
     }

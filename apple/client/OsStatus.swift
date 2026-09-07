@@ -14,6 +14,7 @@ class OsStatus: Encodable {
     var osVpnStatus: NEVPNStatus
     let srcVersion = sourceVersion()
     var strictLeakPrevention: Bool
+    var colorScheme: AppAppearance = .selected
     var updaterStatus = UpdaterStatus()
     var debugBundleStatus = DebugBundleStatus()
     #if os(macOS)

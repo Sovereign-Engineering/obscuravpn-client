@@ -137,12 +137,14 @@ class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.O
     }
 
     private fun applyColorScheme() {
+        val scheme = this.preferences.colorScheme
         AppCompatDelegate.setDefaultNightMode(
-            when (this.preferences.colorScheme) {
+            when (scheme) {
                 Preferences.ColorScheme.Auto -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
                 Preferences.ColorScheme.Dark -> AppCompatDelegate.MODE_NIGHT_YES
                 Preferences.ColorScheme.Light -> AppCompatDelegate.MODE_NIGHT_NO
             }
         )
+        this.osStatusManager.update { this.colorScheme = scheme }
     }
 }

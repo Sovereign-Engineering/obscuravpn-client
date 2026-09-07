@@ -1,4 +1,4 @@
-import { Accordion, ActionIcon, Alert, Button, Card, Checkbox, Divider, Group, Radio, Stack, Switch, Text, Title, useMantineColorScheme } from '@mantine/core';
+import { Accordion, ActionIcon, Alert, Button, Card, Checkbox, Divider, Group, Radio, Stack, Switch, Text, Title } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import React, { ReactNode, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -12,6 +12,7 @@ import { AppContext, DNSContentBlock, featureFlagEnabled, FeatureFlagKey, KnownF
 import commonClasses from '../common/common.module.css';
 import { NotificationId } from '../common/notifIds';
 import { useAsync } from '../common/useAsync';
+import { useSetAppearance } from '../common/useSetAppearance';
 import { normalizeError } from '../common/utils';
 import { fmtErrorI18n, TranslationKey } from '../translations/i18n';
 import classes from './Settings.module.css';
@@ -247,8 +248,8 @@ function ExperimentalSettings() {
 
 function AppearanceSettings() {
   const { t } = useTranslation();
-  const { setColorScheme } = useMantineColorScheme();
-  const resetMantineColorScheme = () => setColorScheme('auto');
+  const { osStatus } = useContext(AppContext);
+  const setAppearance = useSetAppearance();
 
   return (
     <Card padding='md' radius='md' w='100%' shadow='xs' pb='lg'>
@@ -258,15 +259,8 @@ function AppearanceSettings() {
           {colorSchemeOptions.map(({ colorScheme, i18nKey, icon }) => (
             <ActionIcon
               key={colorScheme}
-              variant='default'
-              onClick={async () => {
-                resetMantineColorScheme();
-                try {
-                  await commands.setColorScheme(colorScheme);
-                } catch (e) {
-                  console.error('Failed to set theme:', e);
-                }
-              }}
+              variant={colorScheme === osStatus.colorScheme ? 'light' : 'default'}
+              onClick={() => setAppearance(colorScheme)}
               h={80}
               w={100}
             >

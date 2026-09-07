@@ -2,6 +2,7 @@ package net.obscura.vpnclientapp.ui
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import net.obscura.vpnclientapp.preferences.Preferences
 
 @Serializable
 data class OsStatus(
@@ -10,6 +11,7 @@ data class OsStatus(
     val osVpnStatus: OsVpnStatus,
     val srcVersion: String,
     val navigationView: NavigationView?,
+    val colorScheme: Preferences.ColorScheme,
     val updaterStatus: UpdaterStatus,
     val debugBundleStatus: DebugBundleStatus,
     val canSendMail: Boolean,

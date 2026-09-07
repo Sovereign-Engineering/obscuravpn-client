@@ -12,6 +12,7 @@ use super::systemd::SystemdUnitStatus;
 use super::{argv0, autostart, current_user_name};
 use crate::manager::Status;
 use crate::manager_cmd::ManagerCmd;
+use crate::ui_config::ColorScheme;
 use crate::version::release_version;
 
 pub struct GuiStatusWatch {
@@ -20,8 +21,8 @@ pub struct GuiStatusWatch {
 }
 
 impl GuiStatusWatch {
-    pub async fn watch(debug_bundle_status: watch::Receiver<DebugBundleStatus>) -> Arc<Self> {
-        let (tx, _) = watch::channel(OsStatus::new(autostart::autostart_status().await));
+    pub async fn watch(debug_bundle_status: watch::Receiver<DebugBundleStatus>, color_scheme: ColorScheme) -> Arc<Self> {
+        let (tx, _) = watch::channel(OsStatus::new(autostart::autostart_status().await, color_scheme));
         let poller = tokio::spawn(run_status_poller(tx.clone()));
         let forwarder = tokio::spawn(forward_debug_bundle_status(tx.clone(), debug_bundle_status));
         Arc::new(Self { tx, _tasks: [AbortOnDropHandle::new(poller), AbortOnDropHandle::new(forwarder)] })
@@ -35,6 +36,14 @@ impl GuiStatusWatch {
         self.tx.send_if_modified(|os_status| {
             let version = os_status.version;
             os_status.set_navigation_view(view);
+            os_status.version != version
+        });
+    }
+
+    pub fn set_color_scheme(&self, color_scheme: ColorScheme) {
+        self.tx.send_if_modified(|os_status| {
+            let version = os_status.version;
+            os_status.set_color_scheme(color_scheme);
             os_status.version != version
         });
     }

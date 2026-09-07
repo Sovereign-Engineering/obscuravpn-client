@@ -15,6 +15,7 @@ import { fmt } from './common/fmt';
 import { NotificationId } from './common/notifIds';
 import { useAsync } from './common/useAsync';
 import { useLoadable } from './common/useLoadable';
+import { useSetAppearance } from './common/useSetAppearance';
 import { MIN_LOAD_MS, normalizeError, showErrorNotification, sleep } from './common/utils';
 import { CColorSchemeContext } from './components/CachedColorScheme';
 import { ScrollableView } from './components/ScrollableView';
@@ -36,15 +37,9 @@ export default function () {
   const navigate = useNavigate();
   const location = useLocation();
   const colorScheme = useContext(CColorSchemeContext);
+  const setAppearance = useSetAppearance();
 
-  const toggleColorScheme = async () => {
-    const newColorScheme = colorScheme === 'dark' ? 'light' : 'dark';
-    try {
-      await commands.setColorScheme(newColorScheme);
-    } catch (e) {
-      console.error('Failed to set theme:', e);
-    }
-  };
+  const toggleColorScheme = () => setAppearance(colorScheme === 'dark' ? 'light' : 'dark');
 
   useSystemChecks();
   useHotkeys([[PLATFORM === Platform.macOS ? 'mod+J' : 'ctrl+J', toggleColorScheme]]);

@@ -168,6 +168,7 @@ public class OsStatus
 
     public string Version { get; private set; } = Guid.NewGuid().ToString();
     public NavigationView NavigationView { get; private set; } = NavigationView.Connection;
+    public AppColorScheme ColorScheme { get; private set; } = AppColorScheme.Auto;
     // Windows reports internet connectivity unreliably
     public bool InternetAvailable => true;
     public string SrcVersion { get; } = GetSrcVersion();
@@ -191,7 +192,17 @@ public class OsStatus
     private WindowsServiceDegradation? _serviceDegradation;
     private NeStatus? _lastHealthyStatus;
 
-    private OsStatus() { }
+    private OsStatus()
+    {
+        try
+        {
+            ColorScheme = ClientSettings.ColorScheme.ToAppColorScheme();
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"failed to read stored color scheme: {ex.Message}");
+        }
+    }
 
     /// <summary>
     /// Update a field and bump the version, notifying any waiters.
@@ -264,6 +275,19 @@ public class OsStatus
     public void SetNavigationView(NavigationView view)
     {
         Update(s => s.NavigationView = view);
+    }
+
+    /// <summary>
+    /// Set the color scheme preference and bump the version.
+    /// </summary>
+    public void SetColorScheme(AppColorScheme colorScheme)
+    {
+        UpdateIf(s =>
+        {
+            if (s.ColorScheme == colorScheme) return false;
+            s.ColorScheme = colorScheme;
+            return true;
+        });
     }
 
     /// <summary>

@@ -58,6 +58,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
         NSApp.terminate(nil)
     }
 
+    // Applies the user's appearance preference to the NSWindow (rather than the hosted SwiftUI Group)
+    func applySelectedAppearance() {
+        self.primaryWindow?.appearance = AppAppearance.selected.nsAppearance
+    }
+
     func openPrimaryWindow() {
         self.primaryWindow.makeKeyAndOrderFront(nil)
         self.primaryWindow.orderFrontRegardless()
@@ -117,6 +122,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
         // maintain previous swift-ui Window behaviour
         window.isReleasedWhenClosed = false
         self.primaryWindow = window
+        self.applySelectedAppearance()
 
         if !launchedAsLoginItem {
             self.showPrimaryWindow()
@@ -348,7 +354,6 @@ struct MainWindowContentView: View {
                     .frame(minWidth: self.MIN_WIDTH, minHeight: self.MIN_HEIGHT)
             }
         }
-        .preferredColorScheme(self.startupModel.selectedAppearance.colorScheme)
     }
 }
 

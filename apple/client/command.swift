@@ -51,19 +51,29 @@ extension CommandHandler {
                 throw errorCodeOther
             }
         case .setColorScheme(let colorScheme):
+            _ = appState.osStatus.update { value in
+                value.colorScheme = colorScheme
+                value.version = UUID()
+            }
+
             DispatchQueue.main.async {
                 StartupModel.shared.selectedAppearance = colorScheme
+                #if os(macOS)
+                    (NSApp.delegate as? AppDelegate)?.applySelectedAppearance()
+                #endif
             }
 
-            // When setting color scheme to no preference (nil),
-            //  only the header changes appearance immediately
-            // This bug is applicable to iOS 18 & macOS Sequoia:
-            //  https://developer.apple.com/forums/thread/677212?answerId=805661022#805661022
+            #if !os(macOS)
+                // When setting color scheme to no preference (nil),
+                //  only the header changes appearance immediately
+                // This bug is applicable to iOS 18 & macOS Sequoia:
+                //  https://developer.apple.com/forums/thread/677212?answerId=805661022#805661022
 
-            // Setting to nil a second time results in the expected visual change
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
-                StartupModel.shared.selectedAppearance = colorScheme
-            }
+                // Setting to nil a second time results in the expected visual change
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
+                    StartupModel.shared.selectedAppearance = colorScheme
+                }
+            #endif
         case .jsonFfiCmd(cmd: let jsonCmd, let timeoutMs):
             let attemptTimeout: Duration? = switch timeoutMs {
             case .some(let ms): .milliseconds(ms)

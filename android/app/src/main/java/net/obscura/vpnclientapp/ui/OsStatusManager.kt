@@ -11,6 +11,7 @@ import kotlinx.coroutines.completeWith
 import net.obscura.lib.util.Logger
 import net.obscura.vpnclientapp.BuildConfig
 import net.obscura.vpnclientapp.client.jsonConfig
+import net.obscura.vpnclientapp.preferences.Preferences
 
 private val log = Logger(OsStatusManager::class)
 
@@ -18,6 +19,7 @@ private val log = Logger(OsStatusManager::class)
 class OsStatusManager @Inject constructor(@ApplicationContext context: Context) :
     NetworkStatusObserver.Callback, PrivateDnsObserver.Callback {
     data class State(
+        var colorScheme: Preferences.ColorScheme = Preferences.ColorScheme.Auto,
         var debugBundleStatus: OsStatus.DebugBundleStatus =
             OsStatus.DebugBundleStatus(
                 inProgress = false,
@@ -61,6 +63,7 @@ class OsStatusManager @Inject constructor(@ApplicationContext context: Context) 
                     osVpnStatus = this.current.state.vpnStatus,
                     srcVersion = BuildConfig.VERSION_NAME,
                     navigationView = this.current.state.navigationView,
+                    colorScheme = this.current.state.colorScheme,
                     updaterStatus =
                         OsStatus.UpdaterStatus(
                             type = "uninitiated",

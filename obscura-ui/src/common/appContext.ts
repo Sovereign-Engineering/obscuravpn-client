@@ -73,6 +73,8 @@ export enum NavigationView {
   Settings = "settings",
 }
 
+export type ColorScheme = 'light' | 'dark' | 'auto';
+
 export interface OsStatusShared {
     version: string,
     internetAvailable: boolean,
@@ -90,6 +92,7 @@ export interface OsStatusShared {
       error?: string
     },
     navigationView?: NavigationView,
+    colorScheme: ColorScheme,
     // macOS specific (other platforms should specify uninitiated)
     updaterStatus: UpdaterStatus,
     storeKit?: {

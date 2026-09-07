@@ -117,7 +117,7 @@ fn run_gui(main_thread: MainThreadToken, log_dir: Option<Utf8PathBuf>, urls: Vec
     let debug_bundler = Arc::new(GuiDebugBundler::new(log_dir));
     let ui_config = Arc::new(UiConfigHandle::load(ui_config_dir()));
     let (gui_status, tray_receiver) = tokio::runtime::Handle::current().block_on(async {
-        let gui_status = GuiStatusWatch::watch(debug_bundler.subscribe()).await;
+        let gui_status = GuiStatusWatch::watch(debug_bundler.subscribe(), ui_config.get().color_scheme).await;
         let exit_list = GuiExitListWatch::watch().await;
         let tray_receiver = spawn_tray(gui_status.clone(), exit_list).await;
         (gui_status, tray_receiver)

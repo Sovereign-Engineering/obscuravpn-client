@@ -101,20 +101,33 @@ public enum AppColorScheme
     Auto,
 }
 
+static class AppColorSchemeExtensions
+{
+    internal static ElementTheme ToElementTheme(this AppColorScheme value) => value switch
+    {
+        AppColorScheme.Dark => ElementTheme.Dark,
+        AppColorScheme.Light => ElementTheme.Light,
+        _ => ElementTheme.Default,
+    };
+
+    internal static AppColorScheme ToAppColorScheme(this ElementTheme theme) => theme switch
+    {
+        ElementTheme.Dark => AppColorScheme.Dark,
+        ElementTheme.Light => AppColorScheme.Light,
+        _ => AppColorScheme.Auto,
+    };
+}
+
 public class SetColorSchemeCommand : IObscuraCommand
 {
     public required AppColorScheme Value { get; set; }
 
     public Task<string> RunAsync()
     {
-        var theme = Value switch
-        {
-            AppColorScheme.Dark => ElementTheme.Dark,
-            AppColorScheme.Light => ElementTheme.Light,
-            _ => ElementTheme.Default,
-        };
+        var theme = Value.ToElementTheme();
         App.Current.ApplyColorScheme(theme);
         ClientSettings.ColorScheme = theme;
+        OsStatus.Instance.SetColorScheme(Value);
         return IObscuraCommand.UnitResponse;
     }
 }

@@ -1,6 +1,6 @@
 use bytes::Bytes;
 use ipnetwork::Ipv6Network;
-use obscuravpn_client::config::{LocalNetworkAccess, TailscaleBypass};
+use obscuravpn_client::config::{LocalNetworkAccess, TailscaleBypass, WireGuardBypass};
 use obscuravpn_client::net::NetworkInterface;
 use obscuravpn_client::network_config::{DnsContentBlock, OsNetworkConfig};
 use obscuravpn_client::os::packet_buffer::PacketBuffer;
@@ -95,7 +95,13 @@ impl Tun {
     }
 
     pub fn set_dummy_config(&self) -> Result<(), ()> {
-        let network_config = OsNetworkConfig::dummy(DnsContentBlock::default(), false, LocalNetworkAccess::Disabled, TailscaleBypass::Disabled);
+        let network_config = OsNetworkConfig::dummy(
+            DnsContentBlock::default(),
+            false,
+            LocalNetworkAccess::Disabled,
+            TailscaleBypass::Disabled,
+            WireGuardBypass::Disabled,
+        );
         self.set_config(network_config.mtu, network_config.ipv4, network_config.ipv6)
     }
 

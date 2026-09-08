@@ -106,9 +106,15 @@ const FAMILIES: [(IpVersion, AddressFamily); 2] = [(IpVersion::V4, AddressFamily
 
 fn wanted_resolver_rules(policy: &TrafficPolicy, family: AddressFamily) -> BTreeSet<IpAddr> {
     match policy {
-        TrafficPolicy::Engage { dns, local_network_access: _, tailscale_bypass: _, use_system_dns: _, tunnel_ipv4: _, tunnel_ipv6: _ } => {
-            dns.iter().copied().filter(|ip| address_family(*ip) == family).collect()
-        }
+        TrafficPolicy::Engage {
+            dns,
+            local_network_access: _,
+            tailscale_bypass: _,
+            wireguard_bypass: _,
+            use_system_dns: _,
+            tunnel_ipv4: _,
+            tunnel_ipv6: _,
+        } => dns.iter().copied().filter(|ip| address_family(*ip) == family).collect(),
         TrafficPolicy::Disengage => BTreeSet::new(),
     }
 }

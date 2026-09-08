@@ -286,6 +286,10 @@ export async function setTailscaleBypass(enable: boolean): Promise<void> {
   await jsonFfiCmd('setTailscaleBypass', { enable });
 }
 
+export async function setWireGuardBypass(enable: boolean): Promise<void> {
+  await jsonFfiCmd('setWireGuardBypass', { enable });
+}
+
 export async function setFeatureFlag(flag: FeatureFlagKey, active: boolean) {
   await jsonFfiCmd('setFeatureFlag', { flag, active });
 }

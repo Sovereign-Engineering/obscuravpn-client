@@ -15,7 +15,7 @@ use crate::{config::PinnedLocation, exit_selection::ExitSelectionState};
 use crate::{config::RotationReason, net::NetworkInterface, network_config::DnsConfig, quicwg::QuicWgConnHandshaking, wg_key_store::WgKeyStore};
 use crate::{config::cached::ConfigCached, exit_selection::ExitSelector};
 use crate::{
-    config::{self, Config, ConfigLoadError, LocalNetworkAccess, TailscaleBypass},
+    config::{self, Config, ConfigLoadError, LocalNetworkAccess, TailscaleBypass, WireGuardBypass},
     errors::RelaySelectionError,
     quicwg::QuicWgConn,
 };
@@ -120,6 +120,7 @@ impl ClientState {
             },
             local_network_access: self.config.local_network_access,
             tailscale_bypass: self.config.tailscale_bypass,
+            wireguard_bypass: self.config.wireguard_bypass,
         }
     }
 
@@ -376,6 +377,10 @@ impl ClientStateHandle {
 
     pub fn set_tailscale_bypass(&self, enable: bool) {
         self.change_config(|config| config.tailscale_bypass = if enable { TailscaleBypass::Enabled } else { TailscaleBypass::Disabled })
+    }
+
+    pub fn set_wireguard_bypass(&self, enable: bool) {
+        self.change_config(|config| config.wireguard_bypass = if enable { WireGuardBypass::Enabled } else { WireGuardBypass::Disabled })
     }
 
     pub async fn connect(

@@ -203,6 +203,8 @@ function NetworkSettings() {
           <>
             <Divider w='100%' />
             <TailscaleBypassSwitch />
+            <Divider w='100%' />
+            <WireGuardBypassSwitch />
           </>
         )}
       </Stack>
@@ -324,6 +326,24 @@ function TailscaleBypassSwitch() {
       onChange={(event) => setTailscaleBypass(event.currentTarget.checked)}
       disabled={showLoadingUI}
       label={t('tailscaleBypassLabel')}
+    />
+  );
+}
+
+function WireGuardBypassSwitch() {
+  const { t } = useTranslation();
+  const { appStatus } = useContext(AppContext);
+  const { wireguardBypass } = appStatus;
+  const { showLoadingUI, error, execute: setWireGuardBypass } = commands.useCommand({ command: commands.setWireGuardBypass });
+
+  return (
+    <Switch
+      w='100%'
+      error={error}
+      checked={wireguardBypass}
+      onChange={(event) => setWireGuardBypass(event.currentTarget.checked)}
+      disabled={showLoadingUI}
+      label={t('wireguardBypassLabel')}
     />
   );
 }

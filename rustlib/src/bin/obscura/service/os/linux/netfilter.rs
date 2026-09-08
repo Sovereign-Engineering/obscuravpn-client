@@ -55,7 +55,7 @@
 //!         iif 0 meta l4proto ipv6-icmp ct state & related == related accept
 //!         # Tunnel resolver traffic may only leave via the tun device.
 //!         ip daddr 10.64.0.1 drop
-//!         # Traffic entering wireguard devices.
+//!         # Traffic entering wireguard devices, rendered only if enabled.
 //!         meta oifkind "wireguard" accept
 //!         # Tailscale traffic entering its tun device and its marked underlay traffic, rendered only if enabled.
 //!         oifname "tailscale0" accept
@@ -482,11 +482,20 @@ fn tables(policy: &TrafficPolicy, tun_name: &str) -> Vec<Table> {
     ];
     let mut arp_chains = Vec::new();
     match policy {
-        TrafficPolicy::Engage { local_network_access, tailscale_bypass, dns, use_system_dns, tunnel_ipv4, tunnel_ipv6 } => {
+        TrafficPolicy::Engage {
+            local_network_access,
+            tailscale_bypass,
+            wireguard_bypass,
+            dns,
+            use_system_dns,
+            tunnel_ipv4,
+            tunnel_ipv6,
+        } => {
             inet_chains.push(tunnel_ingress_chain(tun_name, *tunnel_ipv4, *tunnel_ipv6));
             inet_chains.push(kill_switch_chain(
                 *local_network_access,
                 *tailscale_bypass,
+                *wireguard_bypass,
                 dns,
                 *use_system_dns,
                 tun_name,
@@ -541,7 +550,14 @@ fn arp_input_chain(tunnel_ipv4: Ipv4Addr) -> Chain {
     }
 }
 
-fn kill_switch_chain(local_network_access: bool, tailscale_bypass: bool, dns: &[IpAddr], use_system_dns: bool, tun_name: &str) -> Chain {
+fn kill_switch_chain(
+    local_network_access: bool,
+    tailscale_bypass: bool,
+    wireguard_bypass: bool,
+    dns: &[IpAddr],
+    use_system_dns: bool,
+    tun_name: &str,
+) -> Chain {
     use Expr::*;
     let mut rules = vec![
         vec![MetaLoad(NFT_META_OIFNAME), CmpEq(b"lo\0".to_vec()), Accept],
@@ -573,7 +589,9 @@ fn kill_switch_chain(local_network_access: bool, tailscale_bypass: bool, dns: &[
             IpAddr::V6(ip) => daddr_rule(AF_INET6, IPV6_DADDR_OFFSET, ip.octets().to_vec(), None, Drop),
         });
     }
-    rules.push(vec![MetaLoad(NFT_META_OIFKIND), CmpEq(b"wireguard\0".to_vec()), Accept]);
+    if wireguard_bypass {
+        rules.push(vec![MetaLoad(NFT_META_OIFKIND), CmpEq(b"wireguard\0".to_vec()), Accept]);
+    }
     if tailscale_bypass {
         rules.push(vec![MetaLoad(NFT_META_OIFNAME), CmpEq(b"tailscale0\0".to_vec()), Accept]);
         rules.push(vec![

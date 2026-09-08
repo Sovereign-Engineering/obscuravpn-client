@@ -32,6 +32,7 @@ pub enum TrafficPolicy {
     Engage {
         local_network_access: bool,
         tailscale_bypass: bool,
+        wireguard_bypass: bool,
         dns: Vec<IpAddr>,
         use_system_dns: bool,
         tunnel_ipv4: Ipv4Addr,
@@ -94,6 +95,7 @@ impl Os for LinuxOsImpl {
         let policy = TrafficPolicy::Engage {
             local_network_access: network_config.local_network_access,
             tailscale_bypass: network_config.tailscale_bypass,
+            wireguard_bypass: network_config.wireguard_bypass,
             dns: if network_config.use_system_dns {
                 vec![]
             } else {

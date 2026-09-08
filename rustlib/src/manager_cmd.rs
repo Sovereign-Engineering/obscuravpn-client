@@ -205,6 +205,9 @@ pub enum ManagerCmd {
     SetTailscaleBypass {
         enable: bool,
     },
+    SetWireGuardBypass {
+        enable: bool,
+    },
 }
 
 #[derive(Debug, derive_more::From, Serialize)]
@@ -333,6 +336,7 @@ impl ManagerCmd {
             Self::SetUseSystemDns { enable } => manager.run_on_client_state(|c| c.set_use_system_dns(enable)),
             Self::SetLocalNetworkAccess { enable } => manager.run_on_client_state(|c| c.set_local_network_access(enable)),
             Self::SetTailscaleBypass { enable } => manager.run_on_client_state(|c| c.set_tailscale_bypass(enable)),
+            Self::SetWireGuardBypass { enable } => manager.run_on_client_state(|c| c.set_wireguard_bypass(enable)),
         }
     }
 }

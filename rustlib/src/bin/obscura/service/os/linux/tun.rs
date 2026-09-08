@@ -25,7 +25,6 @@ pub struct Tun {
 
 impl Tun {
     pub fn create() -> Result<Self, ()> {
-        let network_config = OsNetworkConfig::dummy(DnsContentBlock::default(), false, LocalNetworkAccess::Disabled, TailscaleBypass::Disabled);
         tracing::info!(message_id = "6JEntSBS", name = TUN_NAME, "creating tun device");
         let dev = tun_rs::DeviceBuilder::new()
             .name(TUN_NAME.to_string())
@@ -47,7 +46,7 @@ impl Tun {
         })?;
         let tun = Self { dev: Arc::new(dev), interface_index, read_task: Mutex::new(None) };
         // NetworkManager classifies new TUN devices without assigned IPs as `NM_DEVICE_STATE_UNMANAGED` instead of just externally connected and refuses all device configuration interactions. As initial state this is harmless in tested versions, but avoiding the state is simpler and may be safer.
-        tun.set_config(network_config.mtu, network_config.ipv4, network_config.ipv6)?;
+        tun.set_dummy_config()?;
         tun.dev.enabled(true).map_err(|error| {
             tracing::error!(message_id = "O2sZ95mQ", ?error, "failed to bring up new tun device");
         })?;
@@ -93,6 +92,11 @@ impl Tun {
                 ),
             }
         }
+    }
+
+    pub fn set_dummy_config(&self) -> Result<(), ()> {
+        let network_config = OsNetworkConfig::dummy(DnsContentBlock::default(), false, LocalNetworkAccess::Disabled, TailscaleBypass::Disabled);
+        self.set_config(network_config.mtu, network_config.ipv4, network_config.ipv6)
     }
 
     pub fn set_config(&self, mtu: u16, ipv4: Ipv4Addr, ipv6: Ipv6Network) -> Result<(), ()> {

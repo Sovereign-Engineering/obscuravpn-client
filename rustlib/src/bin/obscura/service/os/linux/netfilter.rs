@@ -1,8 +1,11 @@
-//! We maintain one nftables table, which has two purposes:
+//! We maintain nftables tables with the following purposes:
 //! - Restore fwmark on inbound packets of service flows.
 //! - Drop non-tunnel packets that don't carry our fwmark. Exceptions documented below.
+//! - Drop unsolicited tun device ingress.
+//! - Drop packets for the tunnel address arriving anywhere else.
+//! - Drop ARP requests for the tunnel address.
 //!
-//! The table carries the owner flag, so it can't be modified by other netlink sockets and the kernel destroys it when our netlink socket closes. The socket is stored in the systemd fdstore so the table survives service restarts.
+//! The tables carry the owner flag, so they can't be modified by other netlink sockets and the kernel destroys them when our netlink socket closes. The socket is stored in the systemd fdstore so the tables survive service restarts.
 //!
 //! The complete ruleset, engaged, with local network access enabled:
 //!
@@ -21,6 +24,19 @@
 //!     chain mark-restore {
 //!         type filter hook prerouting priority mangle; policy accept;
 //!         ct mark 0x6f627363 meta mark set ct mark
+//!     }
+//!
+//!     # After conntrack so flow direction is known, but before DNAT may change the destination. This chain only exists if the target state is connected.
+//!     chain tunnel-ingress {
+//!         type filter hook prerouting priority -199; policy accept;
+//!         # Loopback traffic is always accepted.
+//!         iifname "lo" accept
+//!         # Only replies to flows we initiated may come out of the tunnel.
+//!         iifname "obscuravpn" ct direction reply accept
+//!         iifname "obscuravpn" drop
+//!         # The tunnel address is reachable only through the tunnel and from the host itself.
+//!         ip daddr 10.64.12.34 drop
+//!         ip6 daddr fc00:bbbb:bbbb:bb01::1:2345 drop
 //!     }
 //!
 //!     # All traffic not explicitly accepted here is dropped. This chain only exists if the target state is connected.
@@ -74,6 +90,17 @@
 //!         ip6 daddr ff05::/16 accept
 //!     }
 //! }
+//!
+//! $ sudo nft list table arp obscura
+//! table arp obscura { # progname obscura
+//!     flags owner
+//!
+//!     # Drop ARP requests for the tunnel address. This chain only exists if the target state is connected.
+//!     chain arp-input {
+//!         type filter hook input priority filter; policy accept;
+//!         arp operation request arp daddr ip 10.64.12.34 drop
+//!     }
+//! }
 //! ```
 
 use crate::service::os::linux::TrafficPolicy;
@@ -108,11 +135,14 @@ const NFT_MSG_DESTROYTABLE: u16 = (NFNL_SUBSYS_NFTABLES << 8) | 26;
 
 const NFPROTO_UNSPEC: u8 = try_c_int_into_u8(libc::NFPROTO_UNSPEC).unwrap();
 const NFPROTO_INET: u8 = try_c_int_into_u8(libc::NFPROTO_INET).unwrap();
+const NFPROTO_ARP: u8 = try_c_int_into_u8(libc::NFPROTO_ARP).unwrap();
 const AF_INET: u8 = try_c_int_into_u8(libc::AF_INET).unwrap();
 const AF_INET6: u8 = try_c_int_into_u8(libc::AF_INET6).unwrap();
 
 const NF_INET_PRE_ROUTING: u32 = try_c_int_into_u32(libc::NF_INET_PRE_ROUTING).unwrap();
 const NF_INET_POST_ROUTING: u32 = try_c_int_into_u32(libc::NF_INET_POST_ROUTING).unwrap();
+const NF_ARP_IN: u32 = try_c_int_into_u32(libc::NF_ARP_IN).unwrap();
+const NF_IP_PRI_CONNTRACK: i32 = libc::NF_IP_PRI_CONNTRACK;
 const NF_IP_PRI_MANGLE: i32 = libc::NF_IP_PRI_MANGLE;
 const NF_IP_PRI_FILTER: i32 = libc::NF_IP_PRI_FILTER;
 
@@ -203,12 +233,18 @@ const TAILSCALE_BYPASS_MARK: u32 = 0x80000;
 const IPV4_DADDR_OFFSET: u32 = 16;
 const IPV6_DADDR_OFFSET: u32 = 24;
 
+const ARP_OPERATION_OFFSET: u32 = 6;
+const ARP_TARGET_IP_OFFSET: u32 = 24;
+const ARP_OPERATION_REQUEST: u16 = 1;
+
 const FD_NAME_NFT: &str = "nft";
 
 const TABLE_NAME: &str = "obscura";
 const CHAIN_MARK_SAVE: &str = "mark-save";
 const CHAIN_MARK_RESTORE: &str = "mark-restore";
+const CHAIN_TUNNEL_INGRESS: &str = "tunnel-ingress";
 const CHAIN_KILL_SWITCH: &str = "kill-switch";
+const CHAIN_ARP_INPUT: &str = "arp-input";
 
 pub struct NftTable {
     socket: AsyncFd<OwnedFd>,
@@ -268,37 +304,41 @@ impl NftTable {
         let begin = Msg::new(NFNL_MSG_BATCH_BEGIN, NLM_F_REQUEST, self.next_seq(), NFPROTO_UNSPEC, NFNL_SUBSYS_NFTABLES);
         batch.extend(begin.finish());
 
-        let mut destroy = self.change_msg(NFT_MSG_DESTROYTABLE, 0);
-        destroy.attr_str(NFTA_TABLE_NAME, TABLE_NAME);
-        batch.extend(destroy.finish());
+        for family in [NFPROTO_INET, NFPROTO_ARP] {
+            let mut destroy = self.change_msg(family, NFT_MSG_DESTROYTABLE, 0);
+            destroy.attr_str(NFTA_TABLE_NAME, TABLE_NAME);
+            batch.extend(destroy.finish());
+        }
 
-        let mut table = self.change_msg(NFT_MSG_NEWTABLE, NLM_F_CREATE);
-        table.attr_str(NFTA_TABLE_NAME, TABLE_NAME);
-        table.attr_u32_be(NFTA_TABLE_FLAGS, NFT_TABLE_F_OWNER);
-        batch.extend(table.finish());
+        for Table { family, chains } in tables(&policy, tun_name) {
+            let mut table = self.change_msg(family, NFT_MSG_NEWTABLE, NLM_F_CREATE);
+            table.attr_str(NFTA_TABLE_NAME, TABLE_NAME);
+            table.attr_u32_be(NFTA_TABLE_FLAGS, NFT_TABLE_F_OWNER);
+            batch.extend(table.finish());
 
-        for Chain { name, hook, priority, policy: chain_policy, rules } in chains(&policy, tun_name) {
-            let mut chain = self.change_msg(NFT_MSG_NEWCHAIN, NLM_F_CREATE);
-            chain.attr_str(NFTA_CHAIN_TABLE, TABLE_NAME);
-            chain.attr_str(NFTA_CHAIN_NAME, name);
-            chain.attr_str(NFTA_CHAIN_TYPE, "filter");
-            chain.nested(NFTA_CHAIN_HOOK, |chain| {
-                chain.attr_u32_be(NFTA_HOOK_HOOKNUM, hook);
-                chain.attr_u32_be(NFTA_HOOK_PRIORITY, priority.cast_unsigned());
-            });
-            chain.attr_u32_be(NFTA_CHAIN_POLICY, chain_policy);
-            batch.extend(chain.finish());
-
-            for exprs in rules {
-                let mut rule = self.change_msg(NFT_MSG_NEWRULE, NLM_F_CREATE | NLM_F_APPEND);
-                rule.attr_str(NFTA_RULE_TABLE, TABLE_NAME);
-                rule.attr_str(NFTA_RULE_CHAIN, name);
-                rule.nested(NFTA_RULE_EXPRESSIONS, |rule| {
-                    for expr in &exprs {
-                        expr.emit(rule);
-                    }
+            for Chain { name, hook, priority, policy: chain_policy, rules } in chains {
+                let mut chain = self.change_msg(family, NFT_MSG_NEWCHAIN, NLM_F_CREATE);
+                chain.attr_str(NFTA_CHAIN_TABLE, TABLE_NAME);
+                chain.attr_str(NFTA_CHAIN_NAME, name);
+                chain.attr_str(NFTA_CHAIN_TYPE, "filter");
+                chain.nested(NFTA_CHAIN_HOOK, |chain| {
+                    chain.attr_u32_be(NFTA_HOOK_HOOKNUM, hook);
+                    chain.attr_u32_be(NFTA_HOOK_PRIORITY, priority.cast_unsigned());
                 });
-                batch.extend(rule.finish());
+                chain.attr_u32_be(NFTA_CHAIN_POLICY, chain_policy);
+                batch.extend(chain.finish());
+
+                for exprs in rules {
+                    let mut rule = self.change_msg(family, NFT_MSG_NEWRULE, NLM_F_CREATE | NLM_F_APPEND);
+                    rule.attr_str(NFTA_RULE_TABLE, TABLE_NAME);
+                    rule.attr_str(NFTA_RULE_CHAIN, name);
+                    rule.nested(NFTA_RULE_EXPRESSIONS, |rule| {
+                        for expr in &exprs {
+                            expr.emit(rule);
+                        }
+                    });
+                    batch.extend(rule.finish());
+                }
             }
         }
 
@@ -350,8 +390,8 @@ impl NftTable {
         }
     }
 
-    fn change_msg(&mut self, msg_type: u16, extra_flags: u16) -> Msg {
-        Msg::new(msg_type, NLM_F_REQUEST | NLM_F_ACK | extra_flags, self.next_seq(), NFPROTO_INET, 0)
+    fn change_msg(&mut self, family: u8, msg_type: u16, extra_flags: u16) -> Msg {
+        Msg::new(msg_type, NLM_F_REQUEST | NLM_F_ACK | extra_flags, self.next_seq(), family, 0)
     }
 
     fn next_seq(&mut self) -> u32 {
@@ -408,6 +448,11 @@ impl NftTable {
     }
 }
 
+struct Table {
+    family: u8,
+    chains: Vec<Chain>,
+}
+
 struct Chain {
     name: &'static str,
     hook: u32,
@@ -416,10 +461,10 @@ struct Chain {
     rules: Vec<Vec<Expr>>,
 }
 
-fn chains(policy: &TrafficPolicy, tun_name: &str) -> Vec<Chain> {
+fn tables(policy: &TrafficPolicy, tun_name: &str) -> Vec<Table> {
     use Expr::*;
     let mark = FWMARK.to_ne_bytes().to_vec();
-    let mut chains = vec![
+    let mut inet_chains = vec![
         Chain {
             name: CHAIN_MARK_SAVE,
             hook: NF_INET_POST_ROUTING,
@@ -435,17 +480,65 @@ fn chains(policy: &TrafficPolicy, tun_name: &str) -> Vec<Chain> {
             rules: vec![vec![CtLoadMark, CmpEq(mark), MetaSetMark]],
         },
     ];
+    let mut arp_chains = Vec::new();
     match policy {
-        TrafficPolicy::Engage { local_network_access, tailscale_bypass, dns, use_system_dns } => chains.push(kill_switch_chain(
-            *local_network_access,
-            *tailscale_bypass,
-            dns,
-            *use_system_dns,
-            tun_name,
-        )),
+        TrafficPolicy::Engage { local_network_access, tailscale_bypass, dns, use_system_dns, tunnel_ipv4, tunnel_ipv6 } => {
+            inet_chains.push(tunnel_ingress_chain(tun_name, *tunnel_ipv4, *tunnel_ipv6));
+            inet_chains.push(kill_switch_chain(
+                *local_network_access,
+                *tailscale_bypass,
+                dns,
+                *use_system_dns,
+                tun_name,
+            ));
+            arp_chains.push(arp_input_chain(*tunnel_ipv4));
+        }
         TrafficPolicy::Disengage => {}
     }
-    chains
+    vec![
+        Table { family: NFPROTO_INET, chains: inet_chains },
+        Table { family: NFPROTO_ARP, chains: arp_chains },
+    ]
+}
+
+fn tunnel_ingress_chain(tun_name: &str, tunnel_ipv4: Ipv4Addr, tunnel_ipv6: Ipv6Addr) -> Chain {
+    use Expr::*;
+    Chain {
+        name: CHAIN_TUNNEL_INGRESS,
+        hook: NF_INET_PRE_ROUTING,
+        priority: NF_IP_PRI_CONNTRACK + 1,
+        policy: NF_ACCEPT,
+        rules: vec![
+            vec![MetaLoad(NFT_META_IIFNAME), CmpEq(b"lo\0".to_vec()), Accept],
+            vec![
+                MetaLoad(NFT_META_IIFNAME),
+                CmpEq(nul_terminated(tun_name)),
+                CtLoadDirection,
+                CmpEq(vec![IP_CT_DIR_REPLY]),
+                Accept,
+            ],
+            vec![MetaLoad(NFT_META_IIFNAME), CmpEq(nul_terminated(tun_name)), Drop],
+            daddr_rule(AF_INET, IPV4_DADDR_OFFSET, tunnel_ipv4.octets().to_vec(), None, Drop),
+            daddr_rule(AF_INET6, IPV6_DADDR_OFFSET, tunnel_ipv6.octets().to_vec(), None, Drop),
+        ],
+    }
+}
+
+fn arp_input_chain(tunnel_ipv4: Ipv4Addr) -> Chain {
+    use Expr::*;
+    Chain {
+        name: CHAIN_ARP_INPUT,
+        hook: NF_ARP_IN,
+        priority: NF_IP_PRI_FILTER,
+        policy: NF_ACCEPT,
+        rules: vec![vec![
+            Payload { base: NFT_PAYLOAD_NETWORK_HEADER, offset: ARP_OPERATION_OFFSET, len: 2 },
+            CmpEq(ARP_OPERATION_REQUEST.to_be_bytes().to_vec()),
+            Payload { base: NFT_PAYLOAD_NETWORK_HEADER, offset: ARP_TARGET_IP_OFFSET, len: 4 },
+            CmpEq(tunnel_ipv4.octets().to_vec()),
+            Drop,
+        ]],
+    }
 }
 
 fn kill_switch_chain(local_network_access: bool, tailscale_bypass: bool, dns: &[IpAddr], use_system_dns: bool, tun_name: &str) -> Chain {

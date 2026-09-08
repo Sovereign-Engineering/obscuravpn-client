@@ -23,7 +23,7 @@ use obscuravpn_client::network_config::OsNetworkConfig;
 use obscuravpn_client::os::os_trait::Os;
 use obscuravpn_client::quicwg::QuicWgConnPacketSender;
 pub use start_error::LinuxServiceStartError;
-use std::net::IpAddr;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use tokio::sync::Mutex;
 use tokio::sync::watch::{Receiver, Sender};
 
@@ -34,6 +34,8 @@ pub enum TrafficPolicy {
         tailscale_bypass: bool,
         dns: Vec<IpAddr>,
         use_system_dns: bool,
+        tunnel_ipv4: Ipv4Addr,
+        tunnel_ipv6: Ipv6Addr,
     },
     Disengage,
 }
@@ -98,6 +100,8 @@ impl Os for LinuxOsImpl {
                 network_config.dns.clone()
             },
             use_system_dns: network_config.use_system_dns,
+            tunnel_ipv4: network_config.ipv4,
+            tunnel_ipv6: network_config.ipv6.network(),
         };
         result = result.and(self.routing.send(policy.clone()).map_err(|error| {
             tracing::error!(message_id = "bK3wNr8T", ?error, "route enforcer is not running");
@@ -137,6 +141,7 @@ impl Os for LinuxOsImpl {
                 }
             }
         }
+        result = result.and(self.tun.set_dummy_config());
         result = result.and(self.nft.lock().await.apply_ruleset(TrafficPolicy::Disengage, &tun.name).await);
         *current_network_config = result.map(|_| None);
         result

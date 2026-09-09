@@ -3,6 +3,7 @@
 //! - Drop non-tunnel packets that don't carry our fwmark. Exceptions documented below.
 //! - Drop unsolicited tun device ingress.
 //! - Drop packets for the tunnel address arriving anywhere else.
+//! - Drop unsolicited packets unless explicitly exempt (e.g. local network, Tailscale, WireGuard).
 //! - Drop ARP requests for the tunnel address.
 //!
 //! The tables carry the owner flag, so they can't be modified by other netlink sockets and the kernel destroys them when our netlink socket closes. The socket is stored in the systemd fdstore so the tables survive service restarts.
@@ -37,6 +38,35 @@
 //!         # The tunnel address is reachable only through the tunnel and from the host itself.
 //!         ip daddr 10.64.12.34 drop
 //!         ip6 daddr fc00:bbbb:bbbb:bb01::1:2345 drop
+//!     }
+//!
+//!     # Unsolicited packets for this host are dropped. Forwarded traffic does not pass this hook. This chain only exists if the target state is connected.
+//!     chain input {
+//!         type filter hook input priority filter; policy drop;
+//!         # Loopback traffic is always accepted.
+//!         iifname "lo" accept
+//!         # Replies to flows this host initiated, including tunnel traffic that passed tunnel-ingress and ICMP errors for our flows.
+//!         ct direction reply accept
+//!         # DHCPv4 server responses.
+//!         meta nfproto ipv4 udp sport 67 udp dport 68 accept
+//!         # DHCPv6 server responses.
+//!         ip6 saddr fe80::/10 udp sport 547 udp dport 546 accept
+//!         # IPv6 router and neighbor discovery.
+//!         ip6 saddr fe80::/10 icmpv6 type nd-router-advert accept
+//!         ip6 saddr fe80::/10 icmpv6 type nd-redirect accept
+//!         icmpv6 type nd-neighbor-solicit accept
+//!         icmpv6 type nd-neighbor-advert accept
+//!         # Traffic arriving through wireguard devices, rendered only if enabled.
+//!         meta iifkind "wireguard" accept
+//!         # Traffic arriving through the Tailscale device, rendered only if enabled.
+//!         iifname "tailscale0" accept
+//!         # Flows initiated from the local network, rendered only if enabled.
+//!         ip saddr 10.0.0.0/8 accept
+//!         ip saddr 172.16.0.0/12 accept
+//!         ip saddr 192.168.0.0/16 accept
+//!         ip saddr 169.254.0.0/16 accept
+//!         ip6 saddr fe80::/10 accept
+//!         ip6 saddr fc00::/7 accept
 //!     }
 //!
 //!     # All traffic not explicitly accepted here is dropped. This chain only exists if the target state is connected.
@@ -105,6 +135,7 @@
 
 use crate::service::os::linux::TrafficPolicy;
 use crate::service::os::linux::fd_store::FdStore;
+use ipnetwork::Ipv6Network;
 use nix::errno::Errno;
 use nix::fcntl::{FcntlArg, OFlag, fcntl};
 use nix::sys::socket::{AddressFamily, MsgFlags, NetlinkAddr, SockFlag, SockProtocol, SockType, bind, getsockname, recv, send, socket};
@@ -140,6 +171,7 @@ const AF_INET: u8 = try_c_int_into_u8(libc::AF_INET).unwrap();
 const AF_INET6: u8 = try_c_int_into_u8(libc::AF_INET6).unwrap();
 
 const NF_INET_PRE_ROUTING: u32 = try_c_int_into_u32(libc::NF_INET_PRE_ROUTING).unwrap();
+const NF_INET_LOCAL_IN: u32 = try_c_int_into_u32(libc::NF_INET_LOCAL_IN).unwrap();
 const NF_INET_POST_ROUTING: u32 = try_c_int_into_u32(libc::NF_INET_POST_ROUTING).unwrap();
 const NF_ARP_IN: u32 = try_c_int_into_u32(libc::NF_ARP_IN).unwrap();
 const NF_IP_PRI_CONNTRACK: i32 = libc::NF_IP_PRI_CONNTRACK;
@@ -183,6 +215,7 @@ const NFT_META_IIFNAME: u32 = try_c_int_into_u32(libc::NFT_META_IIFNAME).unwrap(
 const NFT_META_OIFNAME: u32 = try_c_int_into_u32(libc::NFT_META_OIFNAME).unwrap();
 const NFT_META_IIF: u32 = try_c_int_into_u32(libc::NFT_META_IIF).unwrap();
 const LOCALLY_GENERATED_IIF: u32 = 0;
+const NFT_META_IIFKIND: u32 = 26;
 const NFT_META_OIFKIND: u32 = 27;
 const NFT_META_NFPROTO: u32 = try_c_int_into_u32(libc::NFT_META_NFPROTO).unwrap();
 const NFT_META_L4PROTO: u32 = try_c_int_into_u32(libc::NFT_META_L4PROTO).unwrap();
@@ -223,15 +256,20 @@ const IPPROTO_ICMP: u8 = try_c_int_into_u8(libc::IPPROTO_ICMP).unwrap();
 const IPPROTO_ICMPV6: u8 = try_c_int_into_u8(libc::IPPROTO_ICMPV6).unwrap();
 
 const ND_ROUTER_SOLICIT: u8 = 133;
+const ND_ROUTER_ADVERT: u8 = 134;
 const ND_NEIGHBOR_SOLICIT: u8 = 135;
 const ND_NEIGHBOR_ADVERT: u8 = 136;
+const ND_REDIRECT: u8 = 137;
 
 // Tailscale claims only mark bits 16:23. We match under its mask like its own routing rules do.
 const TAILSCALE_FWMARK_MASK: u32 = 0xff0000;
 const TAILSCALE_BYPASS_MARK: u32 = 0x80000;
 
+const IPV4_SADDR_OFFSET: u32 = 12;
 const IPV4_DADDR_OFFSET: u32 = 16;
+const IPV6_SADDR_OFFSET: u32 = 8;
 const IPV6_DADDR_OFFSET: u32 = 24;
+const LINK_LOCAL_V6: Ipv6Network = Ipv6Network::new_checked(Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0), 10).unwrap();
 
 const ARP_OPERATION_OFFSET: u32 = 6;
 const ARP_TARGET_IP_OFFSET: u32 = 24;
@@ -243,6 +281,7 @@ const TABLE_NAME: &str = "obscura";
 const CHAIN_MARK_SAVE: &str = "mark-save";
 const CHAIN_MARK_RESTORE: &str = "mark-restore";
 const CHAIN_TUNNEL_INGRESS: &str = "tunnel-ingress";
+const CHAIN_INPUT: &str = "input";
 const CHAIN_KILL_SWITCH: &str = "kill-switch";
 const CHAIN_ARP_INPUT: &str = "arp-input";
 
@@ -492,6 +531,7 @@ fn tables(policy: &TrafficPolicy, tun_name: &str) -> Vec<Table> {
             tunnel_ipv6,
         } => {
             inet_chains.push(tunnel_ingress_chain(tun_name, *tunnel_ipv4, *tunnel_ipv6));
+            inet_chains.push(input_chain(*local_network_access, *tailscale_bypass, *wireguard_bypass));
             inet_chains.push(kill_switch_chain(
                 *local_network_access,
                 *tailscale_bypass,
@@ -527,8 +567,8 @@ fn tunnel_ingress_chain(tun_name: &str, tunnel_ipv4: Ipv4Addr, tunnel_ipv6: Ipv6
                 Accept,
             ],
             vec![MetaLoad(NFT_META_IIFNAME), CmpEq(nul_terminated(tun_name)), Drop],
-            daddr_rule(AF_INET, IPV4_DADDR_OFFSET, tunnel_ipv4.octets().to_vec(), None, Drop),
-            daddr_rule(AF_INET6, IPV6_DADDR_OFFSET, tunnel_ipv6.octets().to_vec(), None, Drop),
+            addr_rule(AF_INET, IPV4_DADDR_OFFSET, tunnel_ipv4.octets().to_vec(), None, Drop),
+            addr_rule(AF_INET6, IPV6_DADDR_OFFSET, tunnel_ipv6.octets().to_vec(), None, Drop),
         ],
     }
 }
@@ -585,8 +625,8 @@ fn kill_switch_chain(
     }
     for ip in dns {
         rules.push(match ip {
-            IpAddr::V4(ip) => daddr_rule(AF_INET, IPV4_DADDR_OFFSET, ip.octets().to_vec(), None, Drop),
-            IpAddr::V6(ip) => daddr_rule(AF_INET6, IPV6_DADDR_OFFSET, ip.octets().to_vec(), None, Drop),
+            IpAddr::V4(ip) => addr_rule(AF_INET, IPV4_DADDR_OFFSET, ip.octets().to_vec(), None, Drop),
+            IpAddr::V6(ip) => addr_rule(AF_INET6, IPV6_DADDR_OFFSET, ip.octets().to_vec(), None, Drop),
         });
     }
     if wireguard_bypass {
@@ -602,25 +642,25 @@ fn kill_switch_chain(
         ]);
     }
     rules.extend([
-        dhcp_rule(AF_INET, IPV4_DADDR_OFFSET, Ipv4Addr::BROADCAST.octets().to_vec(), 68, 67),
+        dhcp_rule(
+            AF_INET,
+            Some(AddrMatch { offset: IPV4_DADDR_OFFSET, network: Ipv4Addr::BROADCAST.octets().to_vec(), mask: None }),
+            68,
+            67,
+        ),
         dhcp_rule(
             AF_INET6,
-            IPV6_DADDR_OFFSET,
-            Ipv6Addr::new(0xff02, 0, 0, 0, 0, 0, 1, 2).octets().to_vec(),
+            Some(AddrMatch {
+                offset: IPV6_DADDR_OFFSET,
+                network: Ipv6Addr::new(0xff02, 0, 0, 0, 0, 0, 1, 2).octets().to_vec(),
+                mask: None,
+            }),
             546,
             547,
         ),
     ]);
     for nd_type in [ND_ROUTER_SOLICIT, ND_NEIGHBOR_SOLICIT, ND_NEIGHBOR_ADVERT] {
-        rules.push(vec![
-            MetaLoad(NFT_META_NFPROTO),
-            CmpEq(vec![AF_INET6]),
-            MetaLoad(NFT_META_L4PROTO),
-            CmpEq(vec![IPPROTO_ICMPV6]),
-            Payload { base: NFT_PAYLOAD_TRANSPORT_HEADER, offset: 0, len: 1 },
-            CmpEq(vec![nd_type]),
-            Accept,
-        ]);
+        rules.push(nd_rule(nd_type, None));
     }
     if !use_system_dns {
         for l4proto in [IPPROTO_UDP, IPPROTO_TCP] {
@@ -637,7 +677,7 @@ fn kill_switch_chain(
     }
     if local_network_access {
         for net in LAN_V4 {
-            rules.push(daddr_rule(
+            rules.push(addr_rule(
                 AF_INET,
                 IPV4_DADDR_OFFSET,
                 net.network().octets().to_vec(),
@@ -646,7 +686,7 @@ fn kill_switch_chain(
             ));
         }
         for net in LAN_V6 {
-            rules.push(daddr_rule(
+            rules.push(addr_rule(
                 AF_INET6,
                 IPV6_DADDR_OFFSET,
                 net.network().octets().to_vec(),
@@ -664,36 +704,120 @@ fn kill_switch_chain(
     }
 }
 
-fn dhcp_rule(nfproto: u8, daddr_offset: u32, daddr: Vec<u8>, sport: u16, dport: u16) -> Vec<Expr> {
+fn input_chain(local_network_access: bool, tailscale_bypass: bool, wireguard_bypass: bool) -> Chain {
     use Expr::*;
-    let daddr_len = u32::try_from(daddr.len()).unwrap();
-    vec![
+    let mut rules = vec![
+        vec![MetaLoad(NFT_META_IIFNAME), CmpEq(b"lo\0".to_vec()), Accept],
+        vec![CtLoadDirection, CmpEq(vec![IP_CT_DIR_REPLY]), Accept],
+        dhcp_rule(AF_INET, None, 67, 68),
+        dhcp_rule(AF_INET6, Some(link_local_v6_source()), 547, 546),
+        nd_rule(ND_ROUTER_ADVERT, Some(link_local_v6_source())),
+        nd_rule(ND_REDIRECT, Some(link_local_v6_source())),
+        nd_rule(ND_NEIGHBOR_SOLICIT, None),
+        nd_rule(ND_NEIGHBOR_ADVERT, None),
+    ];
+    if wireguard_bypass {
+        rules.push(vec![MetaLoad(NFT_META_IIFKIND), CmpEq(b"wireguard\0".to_vec()), Accept]);
+    }
+    if tailscale_bypass {
+        rules.push(vec![MetaLoad(NFT_META_IIFNAME), CmpEq(b"tailscale0\0".to_vec()), Accept]);
+    }
+    if local_network_access {
+        for net in LAN_V4 {
+            if net.network().is_multicast() || net.network().is_broadcast() {
+                continue;
+            }
+            rules.push(addr_rule(
+                AF_INET,
+                IPV4_SADDR_OFFSET,
+                net.network().octets().to_vec(),
+                (net.prefix() < 32).then(|| net.mask().octets().to_vec()),
+                Accept,
+            ));
+        }
+        for net in LAN_V6 {
+            if net.network().is_multicast() {
+                continue;
+            }
+            rules.push(addr_rule(
+                AF_INET6,
+                IPV6_SADDR_OFFSET,
+                net.network().octets().to_vec(),
+                (net.prefix() < 128).then(|| net.mask().octets().to_vec()),
+                Accept,
+            ));
+        }
+    }
+    Chain { name: CHAIN_INPUT, hook: NF_INET_LOCAL_IN, priority: NF_IP_PRI_FILTER, policy: NF_DROP, rules }
+}
+
+struct AddrMatch {
+    offset: u32,
+    network: Vec<u8>,
+    mask: Option<Vec<u8>>,
+}
+
+fn link_local_v6_source() -> AddrMatch {
+    AddrMatch {
+        offset: IPV6_SADDR_OFFSET,
+        network: LINK_LOCAL_V6.network().octets().to_vec(),
+        mask: Some(LINK_LOCAL_V6.mask().octets().to_vec()),
+    }
+}
+
+fn addr_match_exprs(AddrMatch { offset, network, mask }: AddrMatch) -> Vec<Expr> {
+    use Expr::*;
+    let len = u32::try_from(network.len()).unwrap();
+    let mut exprs = vec![Payload { base: NFT_PAYLOAD_NETWORK_HEADER, offset, len }];
+    if let Some(mask) = mask {
+        exprs.push(BitwiseMask(mask));
+    }
+    exprs.push(CmpEq(network));
+    exprs
+}
+
+fn nd_rule(nd_type: u8, source: Option<AddrMatch>) -> Vec<Expr> {
+    use Expr::*;
+    let mut exprs = vec![MetaLoad(NFT_META_NFPROTO), CmpEq(vec![AF_INET6])];
+    if let Some(source) = source {
+        exprs.extend(addr_match_exprs(source));
+    }
+    exprs.extend([
+        MetaLoad(NFT_META_L4PROTO),
+        CmpEq(vec![IPPROTO_ICMPV6]),
+        Payload { base: NFT_PAYLOAD_TRANSPORT_HEADER, offset: 0, len: 1 },
+        CmpEq(vec![nd_type]),
+        Accept,
+    ]);
+    exprs
+}
+
+fn dhcp_rule(nfproto: u8, addr: Option<AddrMatch>, sport: u16, dport: u16) -> Vec<Expr> {
+    use Expr::*;
+    let mut exprs = vec![
         MetaLoad(NFT_META_NFPROTO),
         CmpEq(vec![nfproto]),
         MetaLoad(NFT_META_L4PROTO),
         CmpEq(vec![IPPROTO_UDP]),
-        Payload { base: NFT_PAYLOAD_NETWORK_HEADER, offset: daddr_offset, len: daddr_len },
-        CmpEq(daddr),
+    ];
+    if let Some(addr) = addr {
+        exprs.extend(addr_match_exprs(addr));
+    }
+    exprs.extend([
         Payload { base: NFT_PAYLOAD_TRANSPORT_HEADER, offset: 0, len: 2 },
         CmpEq(sport.to_be_bytes().to_vec()),
         Payload { base: NFT_PAYLOAD_TRANSPORT_HEADER, offset: 2, len: 2 },
         CmpEq(dport.to_be_bytes().to_vec()),
         Accept,
-    ]
+    ]);
+    exprs
 }
 
-fn daddr_rule(nfproto: u8, offset: u32, network: Vec<u8>, mask: Option<Vec<u8>>, verdict: Expr) -> Vec<Expr> {
+fn addr_rule(nfproto: u8, offset: u32, network: Vec<u8>, mask: Option<Vec<u8>>, verdict: Expr) -> Vec<Expr> {
     use Expr::*;
-    let len = u32::try_from(network.len()).unwrap();
-    let mut exprs = vec![
-        MetaLoad(NFT_META_NFPROTO),
-        CmpEq(vec![nfproto]),
-        Payload { base: NFT_PAYLOAD_NETWORK_HEADER, offset, len },
-    ];
-    if let Some(mask) = mask {
-        exprs.push(BitwiseMask(mask));
-    }
-    exprs.extend([CmpEq(network), verdict]);
+    let mut exprs = vec![MetaLoad(NFT_META_NFPROTO), CmpEq(vec![nfproto])];
+    exprs.extend(addr_match_exprs(AddrMatch { offset, network, mask }));
+    exprs.push(verdict);
     exprs
 }
 

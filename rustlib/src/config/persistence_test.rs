@@ -170,6 +170,7 @@ fn test_ignore_invalid_fields() {
         dns: Default::default(),
         local_network_access: Default::default(),
         tailscale_bypass: Default::default(),
+        wireguard_bypass: Default::default(),
         dns_cache: Default::default(),
         use_wireguard_key_cache: (),
         cached_account_status: Default::default(),

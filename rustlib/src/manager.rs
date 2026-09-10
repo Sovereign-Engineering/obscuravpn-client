@@ -69,6 +69,7 @@ pub struct Status {
     pub use_system_dns: bool,
     pub local_network_access: bool,
     pub tailscale_bypass: bool,
+    pub wireguard_bypass: bool,
     pub dns_content_block: DnsContentBlock,
 }
 
@@ -87,6 +88,7 @@ impl Status {
             dns_content_block,
             local_network_access,
             tailscale_bypass,
+            wireguard_bypass,
             ..
         } = client_state.config();
         let api_url = client_state.base_url();
@@ -106,6 +108,7 @@ impl Status {
             use_system_dns: dns.is_system(),
             local_network_access: local_network_access.is_enabled(),
             tailscale_bypass: tailscale_bypass.is_enabled(),
+            wireguard_bypass: wireguard_bypass.is_enabled(),
             dns_content_block: *dns_content_block,
         }
     }

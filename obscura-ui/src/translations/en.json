@@ -420,6 +420,7 @@
   "windowsService-startButton": "Start service",
   "windowsService-stoppedMessage": "The service that runs the VPN is stopped. Starting it requires administrator approval.",
   "windowsService-stoppedTitle": "Obscura VPN Service is not running",
+  "wireguardBypassLabel": "Allow WireGuard® traffic",
   "Yes": "Yes",
   "yourDevice": "Your device"
 }

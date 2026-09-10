@@ -1,8 +1,12 @@
-//! We maintain one nftables table, which has two purposes:
+//! We maintain nftables tables with the following purposes:
 //! - Restore fwmark on inbound packets of service flows.
 //! - Drop non-tunnel packets that don't carry our fwmark. Exceptions documented below.
+//! - Drop unsolicited tun device ingress.
+//! - Drop packets for the tunnel address arriving anywhere else.
+//! - Drop unsolicited packets unless explicitly exempt (e.g. local network, Tailscale, WireGuard).
+//! - Drop ARP requests for the tunnel address.
 //!
-//! The table carries the owner flag, so it can't be modified by other netlink sockets and the kernel destroys it when our netlink socket closes. The socket is stored in the systemd fdstore so the table survives service restarts.
+//! The tables carry the owner flag, so they can't be modified by other netlink sockets and the kernel destroys them when our netlink socket closes. The socket is stored in the systemd fdstore so the tables survive service restarts.
 //!
 //! The complete ruleset, engaged, with local network access enabled:
 //!
@@ -23,6 +27,48 @@
 //!         ct mark 0x6f627363 meta mark set ct mark
 //!     }
 //!
+//!     # After conntrack so flow direction is known, but before DNAT may change the destination. This chain only exists if the target state is connected.
+//!     chain tunnel-ingress {
+//!         type filter hook prerouting priority -199; policy accept;
+//!         # Loopback traffic is always accepted.
+//!         iifname "lo" accept
+//!         # Only replies to flows we initiated may come out of the tunnel.
+//!         iifname "obscuravpn" ct direction reply accept
+//!         iifname "obscuravpn" drop
+//!         # The tunnel address is reachable only through the tunnel and from the host itself.
+//!         ip daddr 10.64.12.34 drop
+//!         ip6 daddr fc00:bbbb:bbbb:bb01::1:2345 drop
+//!     }
+//!
+//!     # Unsolicited packets for this host are dropped. Forwarded traffic does not pass this hook. This chain only exists if the target state is connected.
+//!     chain input {
+//!         type filter hook input priority filter; policy drop;
+//!         # Loopback traffic is always accepted.
+//!         iifname "lo" accept
+//!         # Replies to flows this host initiated, including tunnel traffic that passed tunnel-ingress and ICMP errors for our flows.
+//!         ct direction reply accept
+//!         # DHCPv4 server responses.
+//!         meta nfproto ipv4 udp sport 67 udp dport 68 accept
+//!         # DHCPv6 server responses.
+//!         ip6 saddr fe80::/10 udp sport 547 udp dport 546 accept
+//!         # IPv6 router and neighbor discovery.
+//!         ip6 saddr fe80::/10 icmpv6 type nd-router-advert accept
+//!         ip6 saddr fe80::/10 icmpv6 type nd-redirect accept
+//!         icmpv6 type nd-neighbor-solicit accept
+//!         icmpv6 type nd-neighbor-advert accept
+//!         # Traffic arriving through wireguard devices, rendered only if enabled.
+//!         meta iifkind "wireguard" accept
+//!         # Traffic arriving through the Tailscale device, rendered only if enabled.
+//!         iifname "tailscale0" accept
+//!         # Flows initiated from the local network, rendered only if enabled.
+//!         ip saddr 10.0.0.0/8 accept
+//!         ip saddr 172.16.0.0/12 accept
+//!         ip saddr 192.168.0.0/16 accept
+//!         ip saddr 169.254.0.0/16 accept
+//!         ip6 saddr fe80::/10 accept
+//!         ip6 saddr fc00::/7 accept
+//!     }
+//!
 //!     # All traffic not explicitly accepted here is dropped. This chain only exists if the target state is connected.
 //!     chain kill-switch {
 //!         type filter hook postrouting priority filter; policy drop;
@@ -32,9 +78,14 @@
 //!         meta mark 0x6f627363 accept
 //!         # All traffic entering the tun device is accepted.
 //!         oifname "obscuravpn" accept
+//!         # Forwarded replies arriving through the tun device (e.g. for flows from docker containers).
+//!         iifname "obscuravpn" ct direction reply accept
+//!         # Locally generated ICMP errors for accepted flows (e.g. fragmentation needed for forwarded packets from docker containers).
+//!         iif 0 meta l4proto icmp ct state & related == related accept
+//!         iif 0 meta l4proto ipv6-icmp ct state & related == related accept
 //!         # Tunnel resolver traffic may only leave via the tun device.
 //!         ip daddr 10.64.0.1 drop
-//!         # Traffic entering wireguard devices.
+//!         # Traffic entering wireguard devices, rendered only if enabled.
 //!         meta oifkind "wireguard" accept
 //!         # Tailscale traffic entering its tun device and its marked underlay traffic, rendered only if enabled.
 //!         oifname "tailscale0" accept
@@ -48,10 +99,10 @@
 //!         icmpv6 type nd-neighbor-solicit accept
 //!         icmpv6 type nd-neighbor-advert accept
 //!         # DNS to LAN resolvers, dropped ahead of the local network accepts. Not rendered if system DNS is used.
-//!         meta l4proto udp th dport 53 drop
-//!         meta l4proto udp th dport 853 drop
-//!         meta l4proto tcp th dport 53 drop
-//!         meta l4proto tcp th dport 853 drop
+//!         udp dport 53 drop
+//!         udp dport 853 drop
+//!         tcp dport 53 drop
+//!         tcp dport 853 drop
 //!         # Local network, rendered only if enabled.
 //!         ip daddr 10.0.0.0/8 accept
 //!         ip daddr 172.16.0.0/12 accept
@@ -69,10 +120,22 @@
 //!         ip6 daddr ff05::/16 accept
 //!     }
 //! }
+//!
+//! $ sudo nft list table arp obscura
+//! table arp obscura { # progname obscura
+//!     flags owner
+//!
+//!     # Drop ARP requests for the tunnel address. This chain only exists if the target state is connected.
+//!     chain arp-input {
+//!         type filter hook input priority filter; policy accept;
+//!         arp operation request arp daddr ip 10.64.12.34 drop
+//!     }
+//! }
 //! ```
 
 use crate::service::os::linux::TrafficPolicy;
 use crate::service::os::linux::fd_store::FdStore;
+use ipnetwork::Ipv6Network;
 use nix::errno::Errno;
 use nix::fcntl::{FcntlArg, OFlag, fcntl};
 use nix::sys::socket::{AddressFamily, MsgFlags, NetlinkAddr, SockFlag, SockProtocol, SockType, bind, getsockname, recv, send, socket};
@@ -103,11 +166,15 @@ const NFT_MSG_DESTROYTABLE: u16 = (NFNL_SUBSYS_NFTABLES << 8) | 26;
 
 const NFPROTO_UNSPEC: u8 = try_c_int_into_u8(libc::NFPROTO_UNSPEC).unwrap();
 const NFPROTO_INET: u8 = try_c_int_into_u8(libc::NFPROTO_INET).unwrap();
+const NFPROTO_ARP: u8 = try_c_int_into_u8(libc::NFPROTO_ARP).unwrap();
 const AF_INET: u8 = try_c_int_into_u8(libc::AF_INET).unwrap();
 const AF_INET6: u8 = try_c_int_into_u8(libc::AF_INET6).unwrap();
 
 const NF_INET_PRE_ROUTING: u32 = try_c_int_into_u32(libc::NF_INET_PRE_ROUTING).unwrap();
+const NF_INET_LOCAL_IN: u32 = try_c_int_into_u32(libc::NF_INET_LOCAL_IN).unwrap();
 const NF_INET_POST_ROUTING: u32 = try_c_int_into_u32(libc::NF_INET_POST_ROUTING).unwrap();
+const NF_ARP_IN: u32 = try_c_int_into_u32(libc::NF_ARP_IN).unwrap();
+const NF_IP_PRI_CONNTRACK: i32 = libc::NF_IP_PRI_CONNTRACK;
 const NF_IP_PRI_MANGLE: i32 = libc::NF_IP_PRI_MANGLE;
 const NF_IP_PRI_FILTER: i32 = libc::NF_IP_PRI_FILTER;
 
@@ -144,7 +211,11 @@ const NFTA_META_DREG: u16 = 1;
 const NFTA_META_KEY: u16 = 2;
 const NFTA_META_SREG: u16 = 3;
 const NFT_META_MARK: u32 = try_c_int_into_u32(libc::NFT_META_MARK).unwrap();
+const NFT_META_IIFNAME: u32 = try_c_int_into_u32(libc::NFT_META_IIFNAME).unwrap();
 const NFT_META_OIFNAME: u32 = try_c_int_into_u32(libc::NFT_META_OIFNAME).unwrap();
+const NFT_META_IIF: u32 = try_c_int_into_u32(libc::NFT_META_IIF).unwrap();
+const LOCALLY_GENERATED_IIF: u32 = 0;
+const NFT_META_IIFKIND: u32 = 26;
 const NFT_META_OIFKIND: u32 = 27;
 const NFT_META_NFPROTO: u32 = try_c_int_into_u32(libc::NFT_META_NFPROTO).unwrap();
 const NFT_META_L4PROTO: u32 = try_c_int_into_u32(libc::NFT_META_L4PROTO).unwrap();
@@ -158,6 +229,10 @@ const NFTA_CT_DREG: u16 = 1;
 const NFTA_CT_KEY: u16 = 2;
 const NFTA_CT_SREG: u16 = 4;
 const NFT_CT_MARK: u32 = try_c_int_into_u32(libc::NFT_CT_MARK).unwrap();
+const NFT_CT_DIRECTION: u32 = try_c_int_into_u32(libc::NFT_CT_DIRECTION).unwrap();
+const NFT_CT_STATE: u32 = try_c_int_into_u32(libc::NFT_CT_STATE).unwrap();
+const IP_CT_DIR_REPLY: u8 = 1;
+const NF_CT_STATE_RELATED_BIT: u32 = 1 << 2;
 
 const NFTA_IMMEDIATE_DREG: u16 = 1;
 const NFTA_IMMEDIATE_DATA: u16 = 2;
@@ -177,25 +252,38 @@ const NFTA_BITWISE_XOR: u16 = 5;
 
 const IPPROTO_UDP: u8 = try_c_int_into_u8(libc::IPPROTO_UDP).unwrap();
 const IPPROTO_TCP: u8 = try_c_int_into_u8(libc::IPPROTO_TCP).unwrap();
+const IPPROTO_ICMP: u8 = try_c_int_into_u8(libc::IPPROTO_ICMP).unwrap();
 const IPPROTO_ICMPV6: u8 = try_c_int_into_u8(libc::IPPROTO_ICMPV6).unwrap();
 
 const ND_ROUTER_SOLICIT: u8 = 133;
+const ND_ROUTER_ADVERT: u8 = 134;
 const ND_NEIGHBOR_SOLICIT: u8 = 135;
 const ND_NEIGHBOR_ADVERT: u8 = 136;
+const ND_REDIRECT: u8 = 137;
 
 // Tailscale claims only mark bits 16:23. We match under its mask like its own routing rules do.
 const TAILSCALE_FWMARK_MASK: u32 = 0xff0000;
 const TAILSCALE_BYPASS_MARK: u32 = 0x80000;
 
+const IPV4_SADDR_OFFSET: u32 = 12;
 const IPV4_DADDR_OFFSET: u32 = 16;
+const IPV6_SADDR_OFFSET: u32 = 8;
 const IPV6_DADDR_OFFSET: u32 = 24;
+const LINK_LOCAL_V6: Ipv6Network = Ipv6Network::new_checked(Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0), 10).unwrap();
+
+const ARP_OPERATION_OFFSET: u32 = 6;
+const ARP_TARGET_IP_OFFSET: u32 = 24;
+const ARP_OPERATION_REQUEST: u16 = 1;
 
 const FD_NAME_NFT: &str = "nft";
 
 const TABLE_NAME: &str = "obscura";
 const CHAIN_MARK_SAVE: &str = "mark-save";
 const CHAIN_MARK_RESTORE: &str = "mark-restore";
+const CHAIN_TUNNEL_INGRESS: &str = "tunnel-ingress";
+const CHAIN_INPUT: &str = "input";
 const CHAIN_KILL_SWITCH: &str = "kill-switch";
+const CHAIN_ARP_INPUT: &str = "arp-input";
 
 pub struct NftTable {
     socket: AsyncFd<OwnedFd>,
@@ -255,37 +343,41 @@ impl NftTable {
         let begin = Msg::new(NFNL_MSG_BATCH_BEGIN, NLM_F_REQUEST, self.next_seq(), NFPROTO_UNSPEC, NFNL_SUBSYS_NFTABLES);
         batch.extend(begin.finish());
 
-        let mut destroy = self.change_msg(NFT_MSG_DESTROYTABLE, 0);
-        destroy.attr_str(NFTA_TABLE_NAME, TABLE_NAME);
-        batch.extend(destroy.finish());
+        for family in [NFPROTO_INET, NFPROTO_ARP] {
+            let mut destroy = self.change_msg(family, NFT_MSG_DESTROYTABLE, 0);
+            destroy.attr_str(NFTA_TABLE_NAME, TABLE_NAME);
+            batch.extend(destroy.finish());
+        }
 
-        let mut table = self.change_msg(NFT_MSG_NEWTABLE, NLM_F_CREATE);
-        table.attr_str(NFTA_TABLE_NAME, TABLE_NAME);
-        table.attr_u32_be(NFTA_TABLE_FLAGS, NFT_TABLE_F_OWNER);
-        batch.extend(table.finish());
+        for Table { family, chains } in tables(&policy, tun_name) {
+            let mut table = self.change_msg(family, NFT_MSG_NEWTABLE, NLM_F_CREATE);
+            table.attr_str(NFTA_TABLE_NAME, TABLE_NAME);
+            table.attr_u32_be(NFTA_TABLE_FLAGS, NFT_TABLE_F_OWNER);
+            batch.extend(table.finish());
 
-        for Chain { name, hook, priority, policy: chain_policy, rules } in chains(&policy, tun_name) {
-            let mut chain = self.change_msg(NFT_MSG_NEWCHAIN, NLM_F_CREATE);
-            chain.attr_str(NFTA_CHAIN_TABLE, TABLE_NAME);
-            chain.attr_str(NFTA_CHAIN_NAME, name);
-            chain.attr_str(NFTA_CHAIN_TYPE, "filter");
-            chain.nested(NFTA_CHAIN_HOOK, |chain| {
-                chain.attr_u32_be(NFTA_HOOK_HOOKNUM, hook);
-                chain.attr_u32_be(NFTA_HOOK_PRIORITY, priority.cast_unsigned());
-            });
-            chain.attr_u32_be(NFTA_CHAIN_POLICY, chain_policy);
-            batch.extend(chain.finish());
-
-            for exprs in rules {
-                let mut rule = self.change_msg(NFT_MSG_NEWRULE, NLM_F_CREATE | NLM_F_APPEND);
-                rule.attr_str(NFTA_RULE_TABLE, TABLE_NAME);
-                rule.attr_str(NFTA_RULE_CHAIN, name);
-                rule.nested(NFTA_RULE_EXPRESSIONS, |rule| {
-                    for expr in &exprs {
-                        expr.emit(rule);
-                    }
+            for Chain { name, hook, priority, policy: chain_policy, rules } in chains {
+                let mut chain = self.change_msg(family, NFT_MSG_NEWCHAIN, NLM_F_CREATE);
+                chain.attr_str(NFTA_CHAIN_TABLE, TABLE_NAME);
+                chain.attr_str(NFTA_CHAIN_NAME, name);
+                chain.attr_str(NFTA_CHAIN_TYPE, "filter");
+                chain.nested(NFTA_CHAIN_HOOK, |chain| {
+                    chain.attr_u32_be(NFTA_HOOK_HOOKNUM, hook);
+                    chain.attr_u32_be(NFTA_HOOK_PRIORITY, priority.cast_unsigned());
                 });
-                batch.extend(rule.finish());
+                chain.attr_u32_be(NFTA_CHAIN_POLICY, chain_policy);
+                batch.extend(chain.finish());
+
+                for exprs in rules {
+                    let mut rule = self.change_msg(family, NFT_MSG_NEWRULE, NLM_F_CREATE | NLM_F_APPEND);
+                    rule.attr_str(NFTA_RULE_TABLE, TABLE_NAME);
+                    rule.attr_str(NFTA_RULE_CHAIN, name);
+                    rule.nested(NFTA_RULE_EXPRESSIONS, |rule| {
+                        for expr in &exprs {
+                            expr.emit(rule);
+                        }
+                    });
+                    batch.extend(rule.finish());
+                }
             }
         }
 
@@ -337,8 +429,8 @@ impl NftTable {
         }
     }
 
-    fn change_msg(&mut self, msg_type: u16, extra_flags: u16) -> Msg {
-        Msg::new(msg_type, NLM_F_REQUEST | NLM_F_ACK | extra_flags, self.next_seq(), NFPROTO_INET, 0)
+    fn change_msg(&mut self, family: u8, msg_type: u16, extra_flags: u16) -> Msg {
+        Msg::new(msg_type, NLM_F_REQUEST | NLM_F_ACK | extra_flags, self.next_seq(), family, 0)
     }
 
     fn next_seq(&mut self) -> u32 {
@@ -395,6 +487,11 @@ impl NftTable {
     }
 }
 
+struct Table {
+    family: u8,
+    chains: Vec<Chain>,
+}
+
 struct Chain {
     name: &'static str,
     hook: u32,
@@ -403,10 +500,10 @@ struct Chain {
     rules: Vec<Vec<Expr>>,
 }
 
-fn chains(policy: &TrafficPolicy, tun_name: &str) -> Vec<Chain> {
+fn tables(policy: &TrafficPolicy, tun_name: &str) -> Vec<Table> {
     use Expr::*;
     let mark = FWMARK.to_ne_bytes().to_vec();
-    let mut chains = vec![
+    let mut inet_chains = vec![
         Chain {
             name: CHAIN_MARK_SAVE,
             hook: NF_INET_POST_ROUTING,
@@ -422,33 +519,119 @@ fn chains(policy: &TrafficPolicy, tun_name: &str) -> Vec<Chain> {
             rules: vec![vec![CtLoadMark, CmpEq(mark), MetaSetMark]],
         },
     ];
+    let mut arp_chains = Vec::new();
     match policy {
-        TrafficPolicy::Engage { local_network_access, tailscale_bypass, dns, use_system_dns } => chains.push(kill_switch_chain(
-            *local_network_access,
-            *tailscale_bypass,
+        TrafficPolicy::Engage {
+            local_network_access,
+            tailscale_bypass,
+            wireguard_bypass,
             dns,
-            *use_system_dns,
-            tun_name,
-        )),
+            use_system_dns,
+            tunnel_ipv4,
+            tunnel_ipv6,
+        } => {
+            inet_chains.push(tunnel_ingress_chain(tun_name, *tunnel_ipv4, *tunnel_ipv6));
+            inet_chains.push(input_chain(*local_network_access, *tailscale_bypass, *wireguard_bypass));
+            inet_chains.push(kill_switch_chain(
+                *local_network_access,
+                *tailscale_bypass,
+                *wireguard_bypass,
+                dns,
+                *use_system_dns,
+                tun_name,
+            ));
+            arp_chains.push(arp_input_chain(*tunnel_ipv4));
+        }
         TrafficPolicy::Disengage => {}
     }
-    chains
+    vec![
+        Table { family: NFPROTO_INET, chains: inet_chains },
+        Table { family: NFPROTO_ARP, chains: arp_chains },
+    ]
 }
 
-fn kill_switch_chain(local_network_access: bool, tailscale_bypass: bool, dns: &[IpAddr], use_system_dns: bool, tun_name: &str) -> Chain {
+fn tunnel_ingress_chain(tun_name: &str, tunnel_ipv4: Ipv4Addr, tunnel_ipv6: Ipv6Addr) -> Chain {
+    use Expr::*;
+    Chain {
+        name: CHAIN_TUNNEL_INGRESS,
+        hook: NF_INET_PRE_ROUTING,
+        priority: NF_IP_PRI_CONNTRACK + 1,
+        policy: NF_ACCEPT,
+        rules: vec![
+            vec![MetaLoad(NFT_META_IIFNAME), CmpEq(b"lo\0".to_vec()), Accept],
+            vec![
+                MetaLoad(NFT_META_IIFNAME),
+                CmpEq(nul_terminated(tun_name)),
+                CtLoadDirection,
+                CmpEq(vec![IP_CT_DIR_REPLY]),
+                Accept,
+            ],
+            vec![MetaLoad(NFT_META_IIFNAME), CmpEq(nul_terminated(tun_name)), Drop],
+            addr_rule(AF_INET, IPV4_DADDR_OFFSET, tunnel_ipv4.octets().to_vec(), None, Drop),
+            addr_rule(AF_INET6, IPV6_DADDR_OFFSET, tunnel_ipv6.octets().to_vec(), None, Drop),
+        ],
+    }
+}
+
+fn arp_input_chain(tunnel_ipv4: Ipv4Addr) -> Chain {
+    use Expr::*;
+    Chain {
+        name: CHAIN_ARP_INPUT,
+        hook: NF_ARP_IN,
+        priority: NF_IP_PRI_FILTER,
+        policy: NF_ACCEPT,
+        rules: vec![vec![
+            Payload { base: NFT_PAYLOAD_NETWORK_HEADER, offset: ARP_OPERATION_OFFSET, len: 2 },
+            CmpEq(ARP_OPERATION_REQUEST.to_be_bytes().to_vec()),
+            Payload { base: NFT_PAYLOAD_NETWORK_HEADER, offset: ARP_TARGET_IP_OFFSET, len: 4 },
+            CmpEq(tunnel_ipv4.octets().to_vec()),
+            Drop,
+        ]],
+    }
+}
+
+fn kill_switch_chain(
+    local_network_access: bool,
+    tailscale_bypass: bool,
+    wireguard_bypass: bool,
+    dns: &[IpAddr],
+    use_system_dns: bool,
+    tun_name: &str,
+) -> Chain {
     use Expr::*;
     let mut rules = vec![
         vec![MetaLoad(NFT_META_OIFNAME), CmpEq(b"lo\0".to_vec()), Accept],
         vec![MetaLoad(NFT_META_MARK), CmpEq(FWMARK.to_ne_bytes().to_vec()), Accept],
         vec![MetaLoad(NFT_META_OIFNAME), CmpEq(nul_terminated(tun_name)), Accept],
+        vec![
+            MetaLoad(NFT_META_IIFNAME),
+            CmpEq(nul_terminated(tun_name)),
+            CtLoadDirection,
+            CmpEq(vec![IP_CT_DIR_REPLY]),
+            Accept,
+        ],
     ];
+    for l4proto in [IPPROTO_ICMP, IPPROTO_ICMPV6] {
+        rules.push(vec![
+            MetaLoad(NFT_META_IIF),
+            CmpEq(LOCALLY_GENERATED_IIF.to_ne_bytes().to_vec()),
+            MetaLoad(NFT_META_L4PROTO),
+            CmpEq(vec![l4proto]),
+            CtLoadState,
+            BitwiseMask(NF_CT_STATE_RELATED_BIT.to_ne_bytes().to_vec()),
+            CmpEq(NF_CT_STATE_RELATED_BIT.to_ne_bytes().to_vec()),
+            Accept,
+        ]);
+    }
     for ip in dns {
         rules.push(match ip {
-            IpAddr::V4(ip) => daddr_rule(AF_INET, IPV4_DADDR_OFFSET, ip.octets().to_vec(), None, Drop),
-            IpAddr::V6(ip) => daddr_rule(AF_INET6, IPV6_DADDR_OFFSET, ip.octets().to_vec(), None, Drop),
+            IpAddr::V4(ip) => addr_rule(AF_INET, IPV4_DADDR_OFFSET, ip.octets().to_vec(), None, Drop),
+            IpAddr::V6(ip) => addr_rule(AF_INET6, IPV6_DADDR_OFFSET, ip.octets().to_vec(), None, Drop),
         });
     }
-    rules.push(vec![MetaLoad(NFT_META_OIFKIND), CmpEq(b"wireguard\0".to_vec()), Accept]);
+    if wireguard_bypass {
+        rules.push(vec![MetaLoad(NFT_META_OIFKIND), CmpEq(b"wireguard\0".to_vec()), Accept]);
+    }
     if tailscale_bypass {
         rules.push(vec![MetaLoad(NFT_META_OIFNAME), CmpEq(b"tailscale0\0".to_vec()), Accept]);
         rules.push(vec![
@@ -459,25 +642,25 @@ fn kill_switch_chain(local_network_access: bool, tailscale_bypass: bool, dns: &[
         ]);
     }
     rules.extend([
-        dhcp_rule(AF_INET, IPV4_DADDR_OFFSET, Ipv4Addr::BROADCAST.octets().to_vec(), 68, 67),
+        dhcp_rule(
+            AF_INET,
+            Some(AddrMatch { offset: IPV4_DADDR_OFFSET, network: Ipv4Addr::BROADCAST.octets().to_vec(), mask: None }),
+            68,
+            67,
+        ),
         dhcp_rule(
             AF_INET6,
-            IPV6_DADDR_OFFSET,
-            Ipv6Addr::new(0xff02, 0, 0, 0, 0, 0, 1, 2).octets().to_vec(),
+            Some(AddrMatch {
+                offset: IPV6_DADDR_OFFSET,
+                network: Ipv6Addr::new(0xff02, 0, 0, 0, 0, 0, 1, 2).octets().to_vec(),
+                mask: None,
+            }),
             546,
             547,
         ),
     ]);
     for nd_type in [ND_ROUTER_SOLICIT, ND_NEIGHBOR_SOLICIT, ND_NEIGHBOR_ADVERT] {
-        rules.push(vec![
-            MetaLoad(NFT_META_NFPROTO),
-            CmpEq(vec![AF_INET6]),
-            MetaLoad(NFT_META_L4PROTO),
-            CmpEq(vec![IPPROTO_ICMPV6]),
-            Payload { base: NFT_PAYLOAD_TRANSPORT_HEADER, offset: 0, len: 1 },
-            CmpEq(vec![nd_type]),
-            Accept,
-        ]);
+        rules.push(nd_rule(nd_type, None));
     }
     if !use_system_dns {
         for l4proto in [IPPROTO_UDP, IPPROTO_TCP] {
@@ -494,7 +677,7 @@ fn kill_switch_chain(local_network_access: bool, tailscale_bypass: bool, dns: &[
     }
     if local_network_access {
         for net in LAN_V4 {
-            rules.push(daddr_rule(
+            rules.push(addr_rule(
                 AF_INET,
                 IPV4_DADDR_OFFSET,
                 net.network().octets().to_vec(),
@@ -503,7 +686,7 @@ fn kill_switch_chain(local_network_access: bool, tailscale_bypass: bool, dns: &[
             ));
         }
         for net in LAN_V6 {
-            rules.push(daddr_rule(
+            rules.push(addr_rule(
                 AF_INET6,
                 IPV6_DADDR_OFFSET,
                 net.network().octets().to_vec(),
@@ -521,36 +704,120 @@ fn kill_switch_chain(local_network_access: bool, tailscale_bypass: bool, dns: &[
     }
 }
 
-fn dhcp_rule(nfproto: u8, daddr_offset: u32, daddr: Vec<u8>, sport: u16, dport: u16) -> Vec<Expr> {
+fn input_chain(local_network_access: bool, tailscale_bypass: bool, wireguard_bypass: bool) -> Chain {
     use Expr::*;
-    let daddr_len = u32::try_from(daddr.len()).unwrap();
-    vec![
+    let mut rules = vec![
+        vec![MetaLoad(NFT_META_IIFNAME), CmpEq(b"lo\0".to_vec()), Accept],
+        vec![CtLoadDirection, CmpEq(vec![IP_CT_DIR_REPLY]), Accept],
+        dhcp_rule(AF_INET, None, 67, 68),
+        dhcp_rule(AF_INET6, Some(link_local_v6_source()), 547, 546),
+        nd_rule(ND_ROUTER_ADVERT, Some(link_local_v6_source())),
+        nd_rule(ND_REDIRECT, Some(link_local_v6_source())),
+        nd_rule(ND_NEIGHBOR_SOLICIT, None),
+        nd_rule(ND_NEIGHBOR_ADVERT, None),
+    ];
+    if wireguard_bypass {
+        rules.push(vec![MetaLoad(NFT_META_IIFKIND), CmpEq(b"wireguard\0".to_vec()), Accept]);
+    }
+    if tailscale_bypass {
+        rules.push(vec![MetaLoad(NFT_META_IIFNAME), CmpEq(b"tailscale0\0".to_vec()), Accept]);
+    }
+    if local_network_access {
+        for net in LAN_V4 {
+            if net.network().is_multicast() || net.network().is_broadcast() {
+                continue;
+            }
+            rules.push(addr_rule(
+                AF_INET,
+                IPV4_SADDR_OFFSET,
+                net.network().octets().to_vec(),
+                (net.prefix() < 32).then(|| net.mask().octets().to_vec()),
+                Accept,
+            ));
+        }
+        for net in LAN_V6 {
+            if net.network().is_multicast() {
+                continue;
+            }
+            rules.push(addr_rule(
+                AF_INET6,
+                IPV6_SADDR_OFFSET,
+                net.network().octets().to_vec(),
+                (net.prefix() < 128).then(|| net.mask().octets().to_vec()),
+                Accept,
+            ));
+        }
+    }
+    Chain { name: CHAIN_INPUT, hook: NF_INET_LOCAL_IN, priority: NF_IP_PRI_FILTER, policy: NF_DROP, rules }
+}
+
+struct AddrMatch {
+    offset: u32,
+    network: Vec<u8>,
+    mask: Option<Vec<u8>>,
+}
+
+fn link_local_v6_source() -> AddrMatch {
+    AddrMatch {
+        offset: IPV6_SADDR_OFFSET,
+        network: LINK_LOCAL_V6.network().octets().to_vec(),
+        mask: Some(LINK_LOCAL_V6.mask().octets().to_vec()),
+    }
+}
+
+fn addr_match_exprs(AddrMatch { offset, network, mask }: AddrMatch) -> Vec<Expr> {
+    use Expr::*;
+    let len = u32::try_from(network.len()).unwrap();
+    let mut exprs = vec![Payload { base: NFT_PAYLOAD_NETWORK_HEADER, offset, len }];
+    if let Some(mask) = mask {
+        exprs.push(BitwiseMask(mask));
+    }
+    exprs.push(CmpEq(network));
+    exprs
+}
+
+fn nd_rule(nd_type: u8, source: Option<AddrMatch>) -> Vec<Expr> {
+    use Expr::*;
+    let mut exprs = vec![MetaLoad(NFT_META_NFPROTO), CmpEq(vec![AF_INET6])];
+    if let Some(source) = source {
+        exprs.extend(addr_match_exprs(source));
+    }
+    exprs.extend([
+        MetaLoad(NFT_META_L4PROTO),
+        CmpEq(vec![IPPROTO_ICMPV6]),
+        Payload { base: NFT_PAYLOAD_TRANSPORT_HEADER, offset: 0, len: 1 },
+        CmpEq(vec![nd_type]),
+        Accept,
+    ]);
+    exprs
+}
+
+fn dhcp_rule(nfproto: u8, addr: Option<AddrMatch>, sport: u16, dport: u16) -> Vec<Expr> {
+    use Expr::*;
+    let mut exprs = vec![
         MetaLoad(NFT_META_NFPROTO),
         CmpEq(vec![nfproto]),
         MetaLoad(NFT_META_L4PROTO),
         CmpEq(vec![IPPROTO_UDP]),
-        Payload { base: NFT_PAYLOAD_NETWORK_HEADER, offset: daddr_offset, len: daddr_len },
-        CmpEq(daddr),
+    ];
+    if let Some(addr) = addr {
+        exprs.extend(addr_match_exprs(addr));
+    }
+    exprs.extend([
         Payload { base: NFT_PAYLOAD_TRANSPORT_HEADER, offset: 0, len: 2 },
         CmpEq(sport.to_be_bytes().to_vec()),
         Payload { base: NFT_PAYLOAD_TRANSPORT_HEADER, offset: 2, len: 2 },
         CmpEq(dport.to_be_bytes().to_vec()),
         Accept,
-    ]
+    ]);
+    exprs
 }
 
-fn daddr_rule(nfproto: u8, offset: u32, network: Vec<u8>, mask: Option<Vec<u8>>, verdict: Expr) -> Vec<Expr> {
+fn addr_rule(nfproto: u8, offset: u32, network: Vec<u8>, mask: Option<Vec<u8>>, verdict: Expr) -> Vec<Expr> {
     use Expr::*;
-    let len = u32::try_from(network.len()).unwrap();
-    let mut exprs = vec![
-        MetaLoad(NFT_META_NFPROTO),
-        CmpEq(vec![nfproto]),
-        Payload { base: NFT_PAYLOAD_NETWORK_HEADER, offset, len },
-    ];
-    if let Some(mask) = mask {
-        exprs.push(BitwiseMask(mask));
-    }
-    exprs.extend([CmpEq(network), verdict]);
+    let mut exprs = vec![MetaLoad(NFT_META_NFPROTO), CmpEq(vec![nfproto])];
+    exprs.extend(addr_match_exprs(AddrMatch { offset, network, mask }));
+    exprs.push(verdict);
     exprs
 }
 
@@ -566,6 +833,8 @@ enum Expr {
     MetaSetMark,
     CmpEq(Vec<u8>),
     CtLoadMark,
+    CtLoadDirection,
+    CtLoadState,
     CtSetMark,
     Accept,
     Drop,
@@ -591,6 +860,14 @@ impl Expr {
             }),
             Expr::CtLoadMark => expr(msg, "ct", |data| {
                 data.attr_u32_be(NFTA_CT_KEY, NFT_CT_MARK);
+                data.attr_u32_be(NFTA_CT_DREG, NFT_REG_1);
+            }),
+            Expr::CtLoadDirection => expr(msg, "ct", |data| {
+                data.attr_u32_be(NFTA_CT_KEY, NFT_CT_DIRECTION);
+                data.attr_u32_be(NFTA_CT_DREG, NFT_REG_1);
+            }),
+            Expr::CtLoadState => expr(msg, "ct", |data| {
+                data.attr_u32_be(NFTA_CT_KEY, NFT_CT_STATE);
                 data.attr_u32_be(NFTA_CT_DREG, NFT_REG_1);
             }),
             Expr::CtSetMark => expr(msg, "ct", |data| {

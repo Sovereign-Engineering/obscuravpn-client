@@ -207,6 +207,7 @@ export interface AppStatus {
     useSystemDns: boolean,
     localNetworkAccess: boolean,
     tailscaleBypass: boolean,
+    wireguardBypass: boolean,
 }
 
 interface IAppContext {

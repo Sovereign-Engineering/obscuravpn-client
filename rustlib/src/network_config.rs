@@ -1,7 +1,7 @@
 #[cfg(any(target_os = "android", target_os = "linux"))]
 use crate::config::LocalNetworkAccess;
 #[cfg(target_os = "linux")]
-use crate::config::TailscaleBypass;
+use crate::config::{TailscaleBypass, WireGuardBypass};
 #[cfg(target_os = "android")]
 use crate::local_network::{Route, tunnel_routes};
 use ipnetwork::Ipv6Network;
@@ -108,6 +108,8 @@ pub struct OsNetworkConfig {
     pub local_network_access: bool,
     #[cfg(target_os = "linux")]
     pub tailscale_bypass: bool,
+    #[cfg(target_os = "linux")]
+    pub wireguard_bypass: bool,
 }
 
 impl OsNetworkConfig {
@@ -118,6 +120,7 @@ impl OsNetworkConfig {
         use_system_dns: bool,
         #[cfg(any(target_os = "android", target_os = "linux"))] local_network_access: LocalNetworkAccess,
         #[cfg(target_os = "linux")] tailscale_bypass: TailscaleBypass,
+        #[cfg(target_os = "linux")] wireguard_bypass: WireGuardBypass,
     ) -> Self {
         let dns = if exit_provider_name == MULLVAD_EXIT_PROVIDER_NAME
             && let Some(dns) = dns_content_block.mullvad_dns_ip()
@@ -139,6 +142,8 @@ impl OsNetworkConfig {
             local_network_access: local_network_access.is_enabled(),
             #[cfg(target_os = "linux")]
             tailscale_bypass: tailscale_bypass.is_enabled(),
+            #[cfg(target_os = "linux")]
+            wireguard_bypass: wireguard_bypass.is_enabled(),
         }
     }
 
@@ -148,6 +153,7 @@ impl OsNetworkConfig {
         use_system_dns: bool,
         #[cfg(any(target_os = "android", target_os = "linux"))] local_network_access: LocalNetworkAccess,
         #[cfg(target_os = "linux")] tailscale_bypass: TailscaleBypass,
+        #[cfg(target_os = "linux")] wireguard_bypass: WireGuardBypass,
     ) -> Self {
         Self::new(
             &TunnelNetworkConfig::dummy(),
@@ -158,6 +164,8 @@ impl OsNetworkConfig {
             local_network_access,
             #[cfg(target_os = "linux")]
             tailscale_bypass,
+            #[cfg(target_os = "linux")]
+            wireguard_bypass,
         )
     }
 }

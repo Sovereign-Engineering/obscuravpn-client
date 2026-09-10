@@ -280,6 +280,8 @@ pub struct Config {
     pub local_network_access: LocalNetworkAccess,
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
     pub tailscale_bypass: TailscaleBypass,
+    #[serde(deserialize_with = "crate::serde_safe::deserialize")]
+    pub wireguard_bypass: WireGuardBypass,
     #[serde(skip)]
     pub use_wireguard_key_cache: (), // Removed
     #[serde(deserialize_with = "crate::serde_safe::deserialize")]
@@ -312,6 +314,13 @@ pub enum TailscaleBypass {
     Disabled,
 }
 
+#[derive(Clone, Copy, Debug, Default, EnumIs, PartialEq, Eq, Serialize, Deserialize)]
+pub enum WireGuardBypass {
+    #[default]
+    Enabled,
+    Disabled,
+}
+
 // Redact sensitive fields by default
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ConfigDebug {
@@ -333,6 +342,7 @@ pub struct ConfigDebug {
     pub dns: DnsConfig,
     pub local_network_access: LocalNetworkAccess,
     pub tailscale_bypass: TailscaleBypass,
+    pub wireguard_bypass: WireGuardBypass,
     pub has_account_id: bool,
     pub has_cached_auth_token: bool,
     pub auto_connect: bool,
@@ -363,6 +373,7 @@ impl From<Config> for ConfigDebug {
             dns,
             local_network_access,
             tailscale_bypass,
+            wireguard_bypass,
             use_wireguard_key_cache: (),
             cached_account_status: _,
             auto_connect,
@@ -387,6 +398,7 @@ impl From<Config> for ConfigDebug {
             dns,
             local_network_access,
             tailscale_bypass,
+            wireguard_bypass,
             has_account_id: account_id.is_some(),
             has_cached_auth_token: cached_auth_token.is_some(),
             auto_connect,

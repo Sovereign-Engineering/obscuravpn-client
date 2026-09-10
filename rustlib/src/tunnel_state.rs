@@ -11,7 +11,7 @@ use tokio::time::{Instant, sleep_until};
 use uuid::Uuid;
 
 use crate::client_state::ClientStateHandle;
-use crate::config::{LocalNetworkAccess, TailscaleBypass};
+use crate::config::{LocalNetworkAccess, TailscaleBypass, WireGuardBypass};
 use crate::errors::{ErrorAt, TunnelConnectError};
 use crate::exit_selection::ExitSelectionState;
 use crate::manager::ManagerTrafficStats;
@@ -29,6 +29,7 @@ pub struct TargetState {
     pub use_system_dns: bool,
     pub local_network_access: LocalNetworkAccess,
     pub tailscale_bypass: TailscaleBypass,
+    pub wireguard_bypass: WireGuardBypass,
 }
 
 #[derive(derive_more::Debug, EnumIs)]
@@ -213,6 +214,7 @@ impl TunnelState {
                         use_system_dns: _,
                         local_network_access: _,
                         tailscale_bypass: _,
+                        wireguard_bypass: _,
                     } => tunnel_state.set_disconnected(),
                     TargetState {
                         tunnel_args: Some(target_args),
@@ -221,6 +223,7 @@ impl TunnelState {
                         use_system_dns: _,
                         local_network_access: _,
                         tailscale_bypass: _,
+                        wireguard_bypass: _,
                     } => tunnel_state.set_connecting(target_args, network_interface, disconnect_reason.take()),
                 });
             }
@@ -233,11 +236,12 @@ impl TunnelState {
                     use_system_dns,
                     local_network_access,
                     tailscale_bypass,
+                    wireguard_bypass,
                 } => {
                     #[cfg(not(any(target_os = "android", target_os = "linux")))]
                     let _ = local_network_access;
                     #[cfg(not(target_os = "linux"))]
-                    let _ = tailscale_bypass;
+                    let _ = (tailscale_bypass, wireguard_bypass);
                     let cf: ControlFlow<(), Connected> = if let Some(connected) = tunnel_state.borrow().get_connected() {
                         // Already connected, continue with next steps
                         ControlFlow::Continue(connected)
@@ -252,6 +256,8 @@ impl TunnelState {
                                     *local_network_access,
                                     #[cfg(target_os = "linux")]
                                     *tailscale_bypass,
+                                    #[cfg(target_os = "linux")]
+                                    *wireguard_bypass,
                                 ),
                                 QuicWgConnPacketSender::new(None),
                             )
@@ -311,6 +317,8 @@ impl TunnelState {
                             *local_network_access,
                             #[cfg(target_os = "linux")]
                             *tailscale_bypass,
+                            #[cfg(target_os = "linux")]
+                            *wireguard_bypass,
                         );
                         if let Err(()) = os_impl
                             .set_os_network_config(os_network_config, QuicWgConnPacketSender::new(Some(&conn)))
@@ -343,6 +351,7 @@ impl TunnelState {
                     use_system_dns: _,
                     local_network_access: _,
                     tailscale_bypass: _,
+                    wireguard_bypass: _,
                 } => {
                     selection_state = ExitSelectionState::default();
                     tracing::info!(message_id = "axfILRQy", "reached disconnected target state");
@@ -360,6 +369,7 @@ impl TunnelState {
                     use_system_dns: _,
                     local_network_access: _,
                     tailscale_bypass: _,
+                    wireguard_bypass: _,
                 } => {
                     tracing::warn!(message_id = "0K9Nep8g", "stuck in connecting state without target interface");
                     selection_state = ExitSelectionState::default();

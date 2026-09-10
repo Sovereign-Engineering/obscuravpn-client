@@ -103,7 +103,8 @@ write_files:
               "curl",
               "net-tools",
               "openssh",
-              "firefox"
+              "firefox",
+              "docker"
           ],
           "parallel_downloads": 0,
           "profile_config": {
@@ -120,7 +121,9 @@ write_files:
               }
           },
           "script": null,
-          "services": [],
+          "services": [
+              "docker"
+          ],
           "swap": false,
           "timezone": "UTC",
           "version": "3.0.14"
@@ -159,6 +162,7 @@ write_files:
       ExecStartPost=/usr/bin/arch-chroot /mnt /bin/bash -c "systemctl enable sshd"
       ExecStartPost=/usr/bin/arch-chroot /mnt /bin/bash -c "systemctl enable NetworkManager"
       ExecStartPost=/usr/bin/arch-chroot /mnt /bin/bash -c "echo 'user ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/nopasswd && chmod 0440 /etc/sudoers.d/nopasswd"
+      ExecStartPost=/usr/bin/arch-chroot /mnt /usr/bin/usermod -aG docker user
       ExecStartPost=/usr/bin/poweroff
 
       [Install]

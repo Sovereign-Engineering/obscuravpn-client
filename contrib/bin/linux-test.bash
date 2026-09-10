@@ -230,6 +230,27 @@ function add_repo() {
   done
 }
 
+function copy_docker_checks() {
+  local checks
+  checks="$(mktemp)"
+  cat > "${checks}" <<'CHECKS'
+Container egress through the tunnel, expect "mullvad_exit_ip":true while connected:
+docker run --rm curlimages/curl -sS https://am.i.mullvad.net/json
+
+DNS from inside a container:
+docker run --rm alpine nslookup obscura.net
+
+Published port:
+docker run -d --rm -p 8080:80 nginx
+curl -sI http://localhost:8080
+
+Disable local network access in the GUI settings and repeat. Egress and DNS should keep working, the published port should not.
+CHECKS
+  sxx_run scp -P 2222 "${checks}" user@localhost:docker-checks.txt
+  rm -f "${checks}"
+  echoerr "### docker-checks.txt copied to the VM"
+}
+
 function install_obscura() {
   local distro=''
   require_args "distro" "$@"
@@ -324,6 +345,7 @@ main() {
   start_vm --distro "${distro}" --flavor "${flavor}"
 
   add_repo --distro "${distro}" --no_install "${no_install}" --account_id "${account_id}"
+  copy_docker_checks
   if [ -z "${no_install}" ]; then
     install_obscura --distro "${distro}"
     setup_and_connect --account_id "${account_id}"
@@ -331,6 +353,8 @@ main() {
   fi
 
   echoerr "### ${distro} ready, click around in the QEMU window."
+  echoerr "### SSH into the VM:"
+  echoerr "###   sshpass -p pw ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -p 2222 user@localhost"
   echoerr "### Press Ctrl-C to shut the VM down."
   sleep infinity
 }

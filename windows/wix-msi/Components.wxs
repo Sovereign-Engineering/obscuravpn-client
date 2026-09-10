@@ -19,6 +19,8 @@
       </Files>
 
       <File Id="ObscuraVPNExe" Source="!(bindpath.bin)\Obscura VPN.exe" KeyPath="yes" />
+      <!-- Run by the RegisterSparsePackage* custom actions (Package.wxs); resolves Obscura.msix via $PSScriptRoot. -->
+      <File Id="RegisterSparsePackageScript" Source="register-sparse-package.ps1" />
 
       <!-- obscura.exe + the Windows service registration. -->
       <Component Id="ObscuraService" Bitness="always64">

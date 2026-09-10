@@ -30,6 +30,13 @@
     </Property>
     <Launch Condition="Installed OR (WINDOWSBUILDNUMBER &gt;= 19041)" Message="[ProductName] requires Windows 10 version 20H1 (build 19041) or newer." />
 
+    <!-- Registering the sparse package needs sideloading of signed apps; "Allow all trusted apps to
+         install" set to 0 blocks staging. Fail early instead of a mid-install rollback. -->
+    <Property Id="ALLOWTRUSTEDAPPS" Secure="yes">
+        <RegistrySearch Id="AllowTrustedAppsSearch" Root="HKLM" Key="SOFTWARE\Policies\Microsoft\Windows\Appx" Name="AllowAllTrustedApps" Type="raw" />
+    </Property>
+    <Launch Condition="Installed OR ALLOWTRUSTEDAPPS &lt;&gt; &quot;#0&quot;" Message="[ProductName] can't be installed because &quot;Allow all trusted apps to install&quot; is disabled on this device, which prevents its app-identity package from registering. To enable it, set the DWORD value HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Appx\AllowAllTrustedApps to 1 (or delete it), then run the installer again." />
+
     <Feature Id="Main" Title="Obscura VPN" Level="1">
       <ComponentGroupRef Id="ObscuraComponents" />
     </Feature>
@@ -91,16 +98,24 @@
                            TerminateProcess="0"
                            Timeout="5" />
     <!--
-      Sparse package registration (per-machine, all users): stage with the external location, then
-      provision for all current and future users.
+      Sparse package registration. register-sparse-package.ps1 (installed beside Obscura.msix) runs in
+      two modes:
+        - default (RegisterSparsePackage, LocalSystem): stage with the external location - must succeed
+          - then best-effort provision for all users via the PackageManager WinRT API. (DISM's
+          Add-AppxProvisionedPackage rejects external-location packages on older Windows 11 builds with
+          0xC1570108, and the WinRT type literals use [brackets] MSI would treat as property references,
+          so this lives in a script rather than an inline command.)
+        - -CurrentUser (RegisterSparsePackageUser, impersonated installing user): register for that user
+          with Add-AppxPackage - no elevation, and a different operation from all-user provisioning.
+      Provisioning is best-effort because an application-control policy (Smart App Control, WDAC) can
+      reject all-user provisioning; the -CurrentUser registration always runs, so the installing user
+      still gets identity, and the app re-registers per-user on launch as a last resort.
 
-      Each operation is split into two custom actions (e.g. RegisterSparsePackage immediate +
+      Each mode is split into two custom actions (e.g. RegisterSparsePackage immediate +
       RegisterSparsePackageCmd deferred) because:
-        - Deferred CAs are required twice over: they run inside the execute script (after
-          InstallFiles has actually copied Obscura.msix - immediate CAs run at script-generation
-          time, before any file exists), and only deferred + Impersonate="no" gets the LocalSystem
-          token that provisioning needs. The user-level CAs below need no elevation but still need
-          the file on disk, hence also deferred.
+        - Deferred CAs run inside the execute script (after InstallFiles has copied Obscura.msix and the
+          script - immediate CAs run before any file exists). The machine CA needs Impersonate="no" for
+          the LocalSystem token provisioning needs; the user CA needs Impersonate="yes".
         - A deferred CA cannot read installer properties like [INSTALLFOLDER]; its only input is
           CustomActionData, populated from a property named after the deferred CA's id.
       So the immediate CA resolves the properties into a command line and writes it to the
@@ -108,7 +123,7 @@
     -->
     <CustomAction Id="RegisterSparsePackage" Property="RegisterSparsePackageCmd"
                   Execute="immediate"
-                  Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command &quot;Add-AppxPackage -Stage '[INSTALLFOLDER]Obscura.msix' -ExternalLocation '[INSTALLFOLDER]'; Add-AppxProvisionedPackage -Online -PackagePath '[INSTALLFOLDER]Obscura.msix' -SkipLicense&quot;" />
+                  Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command &quot;&amp; '[INSTALLFOLDER]register-sparse-package.ps1'&quot;" />
     <CustomAction Id="RegisterSparsePackageCmd" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)"
                   DllEntry="WixQuietExec64" Execute="deferred" Impersonate="no" Return="check" />
 
@@ -117,7 +132,7 @@
          interactive users). Return="ignore" because SYSTEM-initiated installs have no user to register for. -->
     <CustomAction Id="RegisterSparsePackageUser" Property="RegisterSparsePackageUserCmd"
                   Execute="immediate"
-                  Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command &quot;Add-AppxPackage -Path '[INSTALLFOLDER]Obscura.msix' -ExternalLocation '[INSTALLFOLDER]'&quot;" />
+                  Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command &quot;&amp; '[INSTALLFOLDER]register-sparse-package.ps1' -CurrentUser&quot;" />
     <CustomAction Id="RegisterSparsePackageUserCmd" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)"
                   DllEntry="WixQuietExec64" Execute="deferred" Impersonate="yes" Return="ignore" />
 
@@ -135,21 +150,13 @@
     <CustomAction Id="UnregisterSparsePackageCmd" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)"
                   DllEntry="WixQuietExec64" Execute="deferred" Impersonate="no" Return="ignore" />
 
-    <!-- Same command as UnregisterSparsePackage, but scheduled on the install path to clear any stale
-         registration before RegisterSparsePackage. A CA can only be scheduled once, so the install
-         and uninstall paths need distinct ids. -->
-    <CustomAction Id="UnregisterStaleSparsePackage" Property="UnregisterStaleSparsePackageCmd"
-                  Execute="immediate"
-                  Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command &quot;$prov = Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -eq 'SovereignEngineering.ObscuraVPN' }; foreach ($p in $prov) { Remove-AppxProvisionedPackage -Online -PackageName $p.PackageName }; $pkgs = Get-AppxPackage -AllUsers -Name SovereignEngineering.ObscuraVPN; foreach ($pk in $pkgs) { Remove-AppxPackage -AllUsers -Package $pk.PackageFullName }&quot;" />
-    <CustomAction Id="UnregisterStaleSparsePackageCmd" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)"
-                  DllEntry="WixQuietExec64" Execute="deferred" Impersonate="no" Return="ignore" />
-
     <InstallExecuteSequence>
-      <!-- Clear any stale sparse package before registering so reinstall/repair/upgrade starts clean. -->
-      <Custom Action="UnregisterStaleSparsePackage" After="InstallFiles" Condition="NOT Installed" />
-      <Custom Action="UnregisterStaleSparsePackageCmd" After="UnregisterStaleSparsePackage" Condition="NOT Installed" />
-      <!-- Register after the .msix is on disk and after stale registration is removed. -->
-      <Custom Action="RegisterSparsePackage" After="UnregisterStaleSparsePackageCmd" Condition="NOT Installed" />
+      <!-- Register after the .msix is on disk. Upgrades intentionally do NOT wipe existing per-user
+           registrations first: they persist and keep binding the new "Obscura VPN.exe" (identity is
+           keyed on package name/publisher/app id, not version), so a user who self-repaired identity
+           isn't reset on the next update. -ForceUpdateFromAnyVersion in register-sparse-package.ps1
+           handles re-registering the same version (repair/rebuild) in place. -->
+      <Custom Action="RegisterSparsePackage" After="InstallFiles" Condition="NOT Installed" />
       <Custom Action="RegisterSparsePackageCmd" After="RegisterSparsePackage" Condition="NOT Installed" />
       <!-- Per-user registration for the installing user; runs before InstallFinalize so the GUI
            launched below already has a valid identity registration. -->

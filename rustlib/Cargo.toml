@@ -110,7 +110,7 @@ tracing-oslog = "0.3.0"
 [target.'cfg(target_os = "linux")'.dependencies]
 ksni = { version = "0.3.4", default-features = false, features = ["async-io"] }
 nix = { version = "0.31.1", features = ["fs", "socket", "user"] }
-open = "5.3.3"
+open = "5.4.4"
 resvg = { version = "0.47", default-features = false }
 rtnetlink = "0.18.1"
 sd-notify = { version = "0.5.0", features = ["fdstore"] }

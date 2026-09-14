@@ -54,6 +54,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
         self.nwPathMonitor.pathUpdateHandler = { path in
             ffiLog(.Info, "NWPathMonitor event: \(path.debugDescription)")
+            ffiLog(.Info, "NWPath availableInterfaces: [\(path.availableInterfaces.map { "\($0.name) (index: \($0.index), type: \($0.type))" }.joined(separator: ", "))]")
             if path.status != .satisfied {
                 ffiLog(.Info, "network path not satisfied")
                 rustFfi.setNetworkInterface(.none)

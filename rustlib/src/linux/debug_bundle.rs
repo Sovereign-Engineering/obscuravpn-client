@@ -9,7 +9,7 @@ use crate::linux::systemd::UNIT_NAME;
 use crate::manager_cmd::ManagerCmd;
 use camino::{Utf8Path, Utf8PathBuf};
 use chrono::{SecondsFormat, Utc};
-use futures::future::join_all;
+use futures::future::BoxFuture;
 use tokio::sync::watch;
 
 #[derive(Debug, Clone, Copy)]
@@ -83,11 +83,7 @@ pub async fn create_combined_debug_bundle(user_feedback: String, ui_log_dir: Opt
 
     let user_feedback = (!user_feedback.is_empty()).then_some(user_feedback.as_str());
     let timestamp = Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true);
-    tokio::join!(
-        collect_service_bundle,
-        populate_ui_debug_bundle(&staging, user_feedback, &timestamp),
-        populate_linux_ui_debug_tasks(&staging)
-    );
+    tokio::join!(collect_service_bundle, populate_ui_debug_bundle(&staging, user_feedback, &timestamp));
     if let Some(ui_log_dir) = ui_log_dir {
         try_copy_dir_contents_recursive(ui_log_dir, &staging.join("logs-ui")).await;
     }
@@ -96,24 +92,32 @@ pub async fn create_combined_debug_bundle(user_feedback: String, ui_log_dir: Opt
     zip_and_remove_dir(&staging, &work_dir, format!("{DIR_PREFIX}{timestamp}")).await
 }
 
-async fn populate_linux_ui_debug_tasks(dir: &Utf8Path) {
-    let mut tasks = Vec::new();
-    for (name, program, args) in [
-        (
-            "journalctl-obscura",
-            "journalctl",
-            &["-u", UNIT_NAME, "-r", "-n", "100", "-o", "verbose", "--utc"][..],
-        ),
-        ("systemctl-status-obscura", "systemctl", &["status", UNIT_NAME][..]),
-    ] {
+pub fn add_linux_debug_tasks<'a>(tasks: &mut Vec<BoxFuture<'a, ()>>, dir: &Utf8Path, side: DebugBundleSide) {
+    let commands: &[(&str, &str, &[&str])] = match side {
+        DebugBundleSide::Ui => &[
+            (
+                "journalctl-obscura",
+                "journalctl",
+                &["-u", UNIT_NAME, "-r", "-n", "100", "-o", "verbose", "--utc"],
+            ),
+            ("systemctl-status-obscura", "systemctl", &["status", UNIT_NAME]),
+        ],
+        DebugBundleSide::Service => &[
+            ("resolv-conf", "cat", &["/etc/resolv.conf"]),
+            ("resolv-conf-link", "ls", &["-l", "/etc/resolv.conf"]),
+            ("resolvectl-status", "resolvectl", &["status"]),
+            ("ip-rule", "ip", &["rule"]),
+            ("ip-route-all", "ip", &["route", "show", "table", "all"]),
+            ("nft-ruleset", "nft", &["list", "ruleset"]),
+            (
+                "journalctl-resolved",
+                "journalctl",
+                &["-u", "systemd-resolved.service", "-r", "-n", "200", "-o", "short-iso-precise", "--utc"],
+            ),
+        ],
+    };
+    for (name, program, args) in commands {
         let args = args.iter().map(|arg| (*arg).to_owned()).collect();
-        add_task(
-            &mut tasks,
-            dir,
-            DebugBundleSide::Ui,
-            name,
-            DebugTaskCommand::run(program.to_owned(), args),
-        );
+        add_task(tasks, dir, side, name, DebugTaskCommand::run((*program).to_owned(), args));
     }
-    join_all(tasks).await;
 }

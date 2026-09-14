@@ -102,7 +102,7 @@ async fn populate_linux_ui_debug_tasks(dir: &Utf8Path) {
         (
             "journalctl-obscura",
             "journalctl",
-            &["-u", UNIT_NAME, "-r", "-n", "200", "-o", "short-iso-precise", "--utc"][..],
+            &["-u", UNIT_NAME, "-r", "-n", "100", "-o", "verbose", "--utc"][..],
         ),
         ("systemctl-status-obscura", "systemctl", &["status", UNIT_NAME][..]),
     ] {

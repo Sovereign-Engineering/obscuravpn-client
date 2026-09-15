@@ -27,7 +27,6 @@ import net.obscura.vpnclientapp.client.ManagerCmd
 import net.obscura.vpnclientapp.client.ManagerCmdOk
 import net.obscura.vpnclientapp.client.RustFfi
 import net.obscura.vpnclientapp.client.jsonConfig
-import net.obscura.vpnclientapp.helpers.requireVpnServiceProcess
 import net.obscura.vpnclientapp.ui.JsonFfiBroadcastReceiver
 import org.json.JSONArray
 import org.json.JSONObject
@@ -172,7 +171,6 @@ class ObscuraVpnService : VpnService() {
         if (instance.getAndSet(this) != null) {
             log.error("instance already initialized", "xR4mNb7c")
         }
-        requireVpnServiceProcess()
 
         log.info("onCreate", "vqiGa01f")
 

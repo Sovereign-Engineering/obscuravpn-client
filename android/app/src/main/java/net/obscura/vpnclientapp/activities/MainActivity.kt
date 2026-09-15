@@ -3,7 +3,6 @@ package net.obscura.vpnclientapp.activities
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
-import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.os.Bundle
 import android.os.IBinder
@@ -15,25 +14,24 @@ import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import net.obscura.lib.util.Logger
 import net.obscura.vpnclientapp.R
-import net.obscura.vpnclientapp.helpers.requireUIProcess
-import net.obscura.vpnclientapp.preferences.Preferences
 import net.obscura.vpnclientapp.services.IObscuraVpnService
 import net.obscura.vpnclientapp.services.bindVpnService
 import net.obscura.vpnclientapp.services.unbindVpnService
 import net.obscura.vpnclientapp.ui.BillingFacade
 import net.obscura.vpnclientapp.ui.ObscuraUI
+import net.obscura.vpnclientapp.ui.OsStatus
 import net.obscura.vpnclientapp.ui.OsStatusManager
+import net.obscura.vpnclientapp.ui.PreferencesManager
 import net.obscura.vpnclientapp.ui.VpnPermissionRequestManager
 
 private val log = Logger(MainActivity::class)
 
 @AndroidEntryPoint
-class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.OnSharedPreferenceChangeListener {
+class MainActivity : AppCompatActivity(), ServiceConnection {
     @Inject lateinit var billingFacade: BillingFacade
     @Inject lateinit var osStatusManager: OsStatusManager
+    lateinit var preferencesManager: PreferencesManager
     @Inject lateinit var vpnPermissionRequestManager: VpnPermissionRequestManager
-
-    private lateinit var preferences: Preferences
 
     private lateinit var ui: ObscuraUI
 
@@ -45,8 +43,6 @@ class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.O
     override fun onCreate(savedInstanceState: Bundle?) {
         log.trace("onCreate")
         super.onCreate(savedInstanceState)
-
-        requireUIProcess()
 
         this.isFreshLaunch = savedInstanceState == null
 
@@ -68,14 +64,23 @@ class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.O
             }
         }
 
-        preferences = Preferences(this).apply { registerListener(this@MainActivity) }
-
-        applyColorScheme()
-
         this.isVpnServiceBound = this.bindVpnService(this)
+        this.preferencesManager =
+            PreferencesManager(this) { preferences ->
+                log.trace("onPreferencesChanged $preferences")
+                AppCompatDelegate.setDefaultNightMode(
+                    when (preferences.colorScheme) {
+                        OsStatus.ColorScheme.Auto -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+                        OsStatus.ColorScheme.Dark -> AppCompatDelegate.MODE_NIGHT_YES
+                        OsStatus.ColorScheme.Light -> AppCompatDelegate.MODE_NIGHT_NO
+                    }
+                )
+                this@MainActivity.osStatusManager.update { this.colorScheme = preferences.colorScheme }
+            }
     }
 
     override fun onNewIntent(intent: Intent) {
+        log.trace("onNewIntent")
         super.onNewIntent(intent)
         this.handleIntent(intent)
     }
@@ -95,7 +100,6 @@ class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.O
     override fun onDestroy() {
         log.trace("onDestroy")
         super.onDestroy()
-        this.preferences.unregisterListener(this)
         if (this.isVpnServiceBound) {
             this.unbindVpnService(this)
         }
@@ -105,15 +109,13 @@ class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.O
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
+        log.trace("onConfigurationChanged $newConfig")
         super.onConfigurationChanged(newConfig)
-
-        log.debug("configuration changed: $newConfig")
-
         this.ui.invalidate()
     }
 
     override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-        log.debug("onServiceConnected $name $service")
+        log.trace("onServiceConnected $name $service")
         this.ui.onCreate(
             this.isFreshLaunch,
             IObscuraVpnService.Stub.asInterface(service),
@@ -126,25 +128,7 @@ class MainActivity : AppCompatActivity(), ServiceConnection, SharedPreferences.O
     }
 
     override fun onServiceDisconnected(name: ComponentName?) {
-        log.debug("onServiceDisconnected $name")
+        log.trace("onServiceDisconnected $name")
         this.ui.onDestroy()
-    }
-
-    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
-        if (key == "color-scheme") {
-            applyColorScheme()
-        }
-    }
-
-    private fun applyColorScheme() {
-        val scheme = this.preferences.colorScheme
-        AppCompatDelegate.setDefaultNightMode(
-            when (scheme) {
-                Preferences.ColorScheme.Auto -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
-                Preferences.ColorScheme.Dark -> AppCompatDelegate.MODE_NIGHT_YES
-                Preferences.ColorScheme.Light -> AppCompatDelegate.MODE_NIGHT_NO
-            }
-        )
-        this.osStatusManager.update { this.colorScheme = scheme }
     }
 }

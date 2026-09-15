@@ -1,6 +1,8 @@
 package net.obscura.vpnclientapp.ui.bridge
 
 import android.content.Context
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.KeepGeneratedSerializer
 import kotlinx.serialization.Serializable
 import net.obscura.lib.util.ExternallyTaggedEnumSerializer
@@ -11,12 +13,12 @@ import net.obscura.vpnclientapp.client.ErrorCodeException
 import net.obscura.vpnclientapp.client.ManagerCmd
 import net.obscura.vpnclientapp.client.ManagerCmdOk
 import net.obscura.vpnclientapp.client.jsonConfig
-import net.obscura.vpnclientapp.preferences.Preferences
 import net.obscura.vpnclientapp.services.IObscuraVpnService
 import net.obscura.vpnclientapp.ui.JsonFfiBroadcastReceiver
 import net.obscura.vpnclientapp.ui.ObscuraUI
 import net.obscura.vpnclientapp.ui.OsStatus
 import net.obscura.vpnclientapp.ui.OsStatusManager
+import net.obscura.vpnclientapp.ui.PreferencesManager
 import net.obscura.vpnclientapp.ui.uploadPurchaseToken
 
 private val jsonUnit = jsonConfig.encodeToString(Unit)
@@ -68,14 +70,18 @@ internal sealed interface WebCmd {
             jsonUnit.also {
                 args.osStatusManager.update { this.debugBundleStatus.inProgress = true }
                 val path = runCatching {
+                    val cacheDir =
+                        withContext(Dispatchers.IO) {
+                            // TODO: Remove once `minSdk` is at least 33.
+                            // https://linear.app/soveng/issue/OBS-3939/remove-android-cache-dir-field-once-minsdk-is-at-least-33
+                            args.context.cacheDir
+                        }
                     JsonFfiCmd(
                             jsonConfig.encodeToString(
                                 ManagerCmd.CreateDebugBundle(
                                     userFeedback,
                                     bundleInfo(args.context),
-                                    // TODO: Remove once `minSdk` is at least 33.
-                                    // https://linear.app/soveng/issue/OBS-3939/remove-android-cache-dir-field-once-minsdk-is-at-least-33
-                                    args.context.cacheDir.toString(),
+                                    cacheDir.toString(),
                                 )
                             )
                         )
@@ -170,7 +176,7 @@ internal sealed interface WebCmd {
     @KeepGeneratedSerializer
     @Serializable(with = SetColorScheme.Serializer::class)
     data class SetColorScheme(
-        val value: Preferences.ColorScheme,
+        val value: OsStatus.ColorScheme,
     ) : WebCmd {
         internal object Serializer :
             ExternallyTaggedEnumVariantSerializer<SetColorScheme>(
@@ -179,7 +185,9 @@ internal sealed interface WebCmd {
             )
 
         override suspend fun run(args: WebCmdArgs) =
-            jsonUnit.also { Preferences(args.context).colorScheme = this.value }
+            jsonUnit.also {
+                args.mainActivity.preferencesManager.write(PreferencesManager.Preferences(colorScheme = this.value))
+            }
     }
 
     @KeepGeneratedSerializer

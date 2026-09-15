@@ -208,6 +208,16 @@
                             Orientation="Horizontal"
                             HorizontalAlignment="Center"
                             Spacing="8">
+                            <Button
+                                x:Name="RepairIdentityButton"
+                                Content="Repair app identity"
+                                Style="{ThemeResource AccentButtonStyle}"
+                                Visibility="{x:Bind IdentityRepairVisibility, Mode=OneWay}"
+                                Click="OnRepairIdentityClick" />
+                            <Button
+                                x:Name="CreateDebugBundleButton"
+                                Content="Create Debug Bundle"
+                                Click="OnCreateDebugBundleClick" />
                             <ProgressRing
                                 x:Name="DebugBundleProgressRing"
                                 IsActive="False"
@@ -215,10 +225,6 @@
                                 Width="20"
                                 Height="20"
                                 VerticalAlignment="Center" />
-                            <Button
-                                x:Name="CreateDebugBundleButton"
-                                Content="Create Debug Bundle"
-                                Click="OnCreateDebugBundleClick" />
                             <Button
                                 x:Name="RevealDebugBundleButton"
                                 Content="Reveal in Explorer"
@@ -229,6 +235,14 @@
                                 Visibility="{x:Bind NativeUiErrorDismissVisibility, Mode=OneWay}"
                                 Click="OnDismissErrorsClick" />
                         </StackPanel>
+                        <TextBlock
+                            x:Name="RepairIdentityNote"
+                            Text="This can take up to 30 seconds. Obscura VPN will restart automatically when it finishes."
+                            Style="{ThemeResource CaptionTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            TextWrapping="Wrap"
+                            TextAlignment="Center"
+                            Visibility="Collapsed" />
                     </StackPanel>
                 </Grid>
                 <Grid

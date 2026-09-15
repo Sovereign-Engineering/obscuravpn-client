@@ -43,6 +43,12 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         NativeUiErrors.Count > 0 && NativeUiErrors.All(e => !e.Fatal)
             ? Visibility.Visible : Visibility.Collapsed;
 
+#pragma warning disable IDE0044 // only assigned for release builds
+    private bool _identityRepairAvailable;
+#pragma warning restore IDE0044
+    public Visibility IdentityRepairVisibility =>
+        _identityRepairAvailable ? Visibility.Visible : Visibility.Collapsed;
+
     internal void AddNativeUiError(string error, bool fatal = true)
     {
         var item = new NativeUiError { Message = error, Fatal = fatal };
@@ -57,6 +63,39 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     }
 
     bool _contentDialogOpen;
+
+    void OnRepairIdentityClick(object sender, RoutedEventArgs e)
+    {
+        var button = (Button)sender;
+        button.IsEnabled = false;
+        button.Content = "Repairing…";
+        RepairIdentityNote.Visibility = Visibility.Visible;
+        // Off the UI thread, polling the store rather than awaiting: the deployment call can stall long
+        // after the registration has landed, and continuations posted to the UI dispatcher never resume here.
+        _ = Task.Run(async () =>
+        {
+            var register = SparsePackageRegistration.RegisterForCurrentUserAsync();
+            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+            while (!SparsePackageRegistration.IsRegisteredForCurrentUser())
+            {
+                if (register.IsFaulted || DateTime.UtcNow >= deadline)
+                {
+                    var error = register.Exception?.GetBaseException().Message ?? "timed out";
+                    Log.Error($"Identity repair failed: {error}");
+                    AddNativeUiError($"Couldn't register app identity: {error}", fatal: false);
+                    DispatcherQueue.TryEnqueue(() =>
+                    {
+                        button.Content = "Repair app identity";
+                        button.IsEnabled = true;
+                        RepairIdentityNote.Visibility = Visibility.Collapsed;
+                    });
+                    return;
+                }
+                await Task.Delay(500);
+            }
+            App.Current.Relaunch();
+        });
+    }
 
     async void OnCreateDebugBundleClick(object sender, RoutedEventArgs e)
     {
@@ -210,7 +249,10 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         {
             Log.Error("Process has no package identity; Obscura VPN service named pipe will be unreachable.");
 #if !DEBUG
-            AddNativeUiError("This installation is missing its app identity, so it can't reach the Obscura VPN service. Try reinstalling Obscura VPN or contacting us.");
+            _identityRepairAvailable = SparsePackageRegistration.CanRegister;
+            AddNativeUiError(_identityRepairAvailable
+                ? "This installation is missing its app identity, so it can't reach the Obscura VPN service. Click “Repair app identity” to register it for your account."
+                : "This installation is missing its app identity, so it can't reach the Obscura VPN service. Try reinstalling Obscura VPN or contacting us.");
 #endif
         }
         // Use the modern TitleBar control as the custom title bar

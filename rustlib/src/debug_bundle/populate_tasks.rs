@@ -61,6 +61,8 @@ pub async fn populate_debug_tasks(dir: &Utf8Path, side: DebugBundleSide, backend
             DebugTaskHttp::run(url, Some(backend_addrs.clone()), true, fwmark),
         );
     }
+    #[cfg(target_os = "linux")]
+    crate::linux::debug_bundle::add_linux_debug_tasks(&mut tasks, dir, side);
     join_all(tasks).await;
     tracing::info!(message_id = "bF6nWd4Q", %dir, "debug tasks finished");
 }

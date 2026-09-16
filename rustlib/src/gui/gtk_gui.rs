@@ -276,6 +276,7 @@ fn build_primary_window(gtk_init: GtkInitToken, command_context: WebviewCmdConte
     let gui_status = command_context.gui_status.clone();
     let webview = build_webview(gtk_init, command_context);
     webview.set_hexpand(true);
+    webview.set_size_request(500, 525);
     let sidebar = build_sidebar(gui_status, dev_visible.clone());
 
     let split_view = gtk::Box::new(Orientation::Horizontal, 0);

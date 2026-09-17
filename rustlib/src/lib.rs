@@ -40,3 +40,4 @@ pub mod logging;
 pub mod os;
 pub mod positive_u31;
 mod wake_instant;
+mod wg_control_message_header;

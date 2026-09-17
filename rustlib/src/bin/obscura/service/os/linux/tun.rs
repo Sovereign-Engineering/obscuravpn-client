@@ -120,6 +120,9 @@ impl Tun {
             tracing::error!(message_id = "cY11X3I6", ?error, address = ?ipv4, "failed to add IPv4 tun address");
             result = Err(());
         }
+        if let Err(error) = std::fs::write(format!("/proc/sys/net/ipv6/conf/{TUN_NAME}/disable_ipv6"), "0") {
+            tracing::error!(message_id = "kr6uCx2I", ?error, "failed to enable IPv6 on tun device");
+        }
         if let Err(error) = self.dev.add_address_v6(ipv6.network(), ipv6.prefix())
             && error.kind() != AlreadyExists
         {

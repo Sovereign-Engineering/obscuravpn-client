@@ -41,6 +41,7 @@ use crate::net::NetworkInterface;
 use crate::net::new_nonblocking_tcp;
 use crate::tokio::AbortOnDrop;
 use crate::wake_instant::WakeInstant;
+use crate::wg_control_message_header::{WgControlMessageHeader, WgMessageDirection};
 
 const WG_FIRST_HANDSHAKE_RESENDS: usize = 25; // 2.5s per handshake.
 const WG_FIRST_HANDSHAKE_TIMEOUT: Duration = Duration::from_millis(100);
@@ -282,6 +283,9 @@ impl QuicWgConn {
                     .receive_wg_message()
                     .await
                     .map_err(QuicWgWireguardHandshakeError::RespMessageReceiveError)?;
+                if let Some(header) = WgControlMessageHeader::parse(&datagram) {
+                    header.log(WgMessageDirection::Received);
+                }
                 loop {
                     let res = wg.decapsulate(None, &datagram, &mut buf);
                     match Self::handle_result(wg_sender, res) {
@@ -310,6 +314,9 @@ impl QuicWgConn {
         let mut resends = resends;
         loop {
             resends -= 1;
+            if let Some(header) = WgControlMessageHeader::parse(&handshake_init) {
+                header.log(WgMessageDirection::Sent);
+            }
             wg_sender.send_wg_message(handshake_init.clone());
             match Self::wait_for_first_handshake_response(wg, wg_receiver, wg_sender).await {
                 Ok(()) => return Ok(()),
@@ -335,6 +342,9 @@ impl QuicWgConn {
         match res {
             TunnResult::Done => ControlFlow::Break(None),
             TunnResult::WriteToNetwork(wg_message) => {
+                if let Some(header) = WgControlMessageHeader::parse(wg_message) {
+                    header.log(WgMessageDirection::Sent);
+                }
                 wg_sender.send_wg_message(Bytes::copy_from_slice(wg_message));
                 ControlFlow::Continue(())
             }
@@ -373,6 +383,9 @@ impl QuicWgConn {
             TunnResult::Done => tracing::error!(message_id = "10g8g1D1", "WG encapsulate did not yield a datagram to send"),
             TunnResult::Err(error) => tracing::warn!(message_id = "MAvGA9tf", ?error, "wireguard error"),
             TunnResult::WriteToNetwork(wg_message) => {
+                if let Some(header) = WgControlMessageHeader::parse(wg_message) {
+                    header.log(WgMessageDirection::Sent);
+                }
                 wg_state.tick_stats.wg_tx_count += 1;
                 let wg_message = Bytes::copy_from_slice(wg_message);
                 let (first, second) = match self.wg_sender.max_wg_message_size() {
@@ -438,6 +451,9 @@ impl QuicWgConn {
                         }
                     };
                     tick_stats.wg_rx_count += 1;
+                    if let Some(header) = WgControlMessageHeader::parse(&wg_message) {
+                        header.log(WgMessageDirection::Received);
+                    }
                     loop {
                         let res = wg.decapsulate(None, &wg_message, buffer);
                         if let TunnResult::WriteToNetwork(..) = &res {

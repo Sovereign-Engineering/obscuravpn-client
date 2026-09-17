@@ -66,9 +66,16 @@ public partial class App : Application
     void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
     {
         Log.Error("Unhandled Exception", e.Exception);
+        if (_window == null)
+        {
+            // Avoids becoming a zombie process if there is a crash before window creation.
+            return;
+        }
+        // Without this the process terminates as soon as the handler returns.
+        e.Handled = true;
         try
         {
-            _window?.AddNativeUiError($"Unhandled exception: {e.Exception?.ToString() ?? e.Message}", fatal: false);
+            _window.AddNativeUiError($"Unhandled exception: {e.Exception?.ToString() ?? e.Message}", fatal: false);
         }
         catch (Exception ex)
         {

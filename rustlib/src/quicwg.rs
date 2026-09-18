@@ -102,6 +102,8 @@ pub enum QuicWgConnectError {
     RelayHandshake(#[from] QuicWgRelayHandshakeError),
     #[error("wireguard handshake: {0}")]
     WireguardHandshake(QuicWgWireguardHandshakeError),
+    #[error("first pong: {0}")]
+    FirstPong(QuicWgReceiveError),
 }
 
 #[derive(Debug, Error)]
@@ -204,6 +206,11 @@ pub enum TransportKind {
     TcpTls,
 }
 
+enum Received {
+    Packet(Bytes),
+    Pong,
+}
+
 #[derive(Clone)]
 pub struct QuicWgConnPacketSender(Weak<QuicWgConn>);
 
@@ -251,7 +258,7 @@ impl QuicWgConn {
             fragmenter: Default::default(),
             fragment_buffer: WgFragmentBuffer::new(WG_FRAGMENT_BUFFER_LEN, WG_FRAGMENT_MAX_SIZE),
         });
-        Ok(Self {
+        let conn = Self {
             wg_receiver,
             wg_sender,
             wg_state,
@@ -259,7 +266,20 @@ impl QuicWgConn {
             exit_public_key,
             _tcp_tls_sender_abort: tcp_tls_sender_abort,
             _quic_control_stream: quic_control_stream,
-        })
+        };
+        conn.wait_for_first_pong().await.map_err(QuicWgConnectError::FirstPong)?;
+        Ok(conn)
+    }
+
+    async fn wait_for_first_pong(&self) -> Result<(), QuicWgReceiveError> {
+        loop {
+            match self.receive_packet_or_pong().await? {
+                Received::Pong => return Ok(()),
+                Received::Packet(packet) => {
+                    tracing::warn!(message_id = "fP3mWq8Z", len = packet.len(), "dropping packet received before first pong")
+                }
+            }
+        }
     }
 
     fn build_first_wg_handshake_init(wg: &mut Tunn) -> Result<Bytes, QuicWgWireguardHandshakeError> {
@@ -405,6 +425,15 @@ impl QuicWgConn {
 
     pub async fn receive(&self) -> Result<Bytes, QuicWgReceiveError> {
         loop {
+            match self.receive_packet_or_pong().await? {
+                Received::Packet(packet) => return Ok(packet),
+                Received::Pong => {}
+            }
+        }
+    }
+
+    async fn receive_packet_or_pong(&self) -> Result<Received, QuicWgReceiveError> {
+        loop {
             let next_liveness_poll;
             let next_wg_timers_tick;
             {
@@ -471,9 +500,9 @@ impl QuicWgConn {
                                 traffic_stats.rx_bytes += usize_into_u64(packet.len());
                                 if let Some(latest_latency) = liveness_checker.process_potential_probe_response(&packet) {
                                     traffic_stats.latest_latency_ms = u16::try_from(latest_latency.as_millis()).unwrap_or(u16::MAX);
-                                    break
+                                    return Ok(Received::Pong)
                                 }
-                                return Ok(packet)
+                                return Ok(Received::Packet(packet))
                             },
                             ControlFlow::Break(None) => break,
                         }

@@ -10,6 +10,11 @@ struct ExternalWebView: UXViewRepresentable {
         #endif
         self.webView = WKWebView(frame: .zero, configuration: webConfiguration)
         self.webView.navigationDelegate = appState.webviewsController
+        #if DEBUG
+            if #available(iOS 16.4, macOS 13.3, *) {
+                self.webView.isInspectable = true
+            }
+        #endif
     }
 }
 

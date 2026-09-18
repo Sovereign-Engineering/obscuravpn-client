@@ -25,6 +25,11 @@ class ObscuraUIWebView: WKWebView {
         #endif
         super.init(frame: .zero, configuration: webConfiguration)
         self.navigationDelegate = appState.webviewsController
+        #if DEBUG
+            if #available(iOS 16.4, macOS 13.3, *) {
+                self.isInspectable = true
+            }
+        #endif
 
         #if LOAD_DEV_SERVER
             let urlRequest = URLRequest(url: URL(string: "http://localhost:1420/")!)

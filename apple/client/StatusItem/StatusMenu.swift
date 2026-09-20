@@ -189,16 +189,13 @@ final class StatusItemManager: ObservableObject {
                             while true {
                                 self?.updateAccountItem()
                                 if let account = appState.status.account {
-                                    if !account.isActive() {
+                                    if !account.isActive {
                                         try await Task.sleep(for: .seconds(30), tolerance: .seconds(10))
                                     } else if account.expiringSoon() {
                                         try await Task.sleep(for: .seconds(60), tolerance: .seconds(30))
                                     } else {
                                         // sleep until we expect account item to show up
-                                        let toppedUpExpirationDate = account.accountInfo.topUp?.creditExpiresAt ?? 0
-                                        let stripeEndDate = account.accountInfo.stripeSubscription?.currentPeriodEnd ?? 0
-                                        let appleEndDate = account.accountInfo.appleSubscription?.renewalTime ?? 0
-                                        let end = max(toppedUpExpirationDate, stripeEndDate, appleEndDate, 0)
+                                        let end = account.periodEnd ?? 0
 
                                         // 60 seconds after threshold (-10 days) timestamp
                                         let sleepUntilTime = end - 10 * 24 * 60 * 60 + 60
@@ -502,7 +499,7 @@ final class StatusItemManager: ObservableObject {
         if let account = appState.status.account {
             let secondsStamp = UInt64(Date().timeIntervalSince1970)
             var pollAccount = false
-            if (account.accountInfo.periodEndDate == nil || account.accountInfo.periodEndDate! < Date())
+            if (account.periodEndDate == nil || account.periodEndDate! < Date())
                 && secondsStamp - account.lastUpdatedSec > 60 * 5
             {
                 pollAccount = true

@@ -119,15 +119,9 @@
 		A936D49C2DD162AB0031B646 /* InstallSystemExtensionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A936D49B2DD162AB0031B646 /* InstallSystemExtensionView.swift */; };
 		A94743F92DD17143002ACD85 /* iOSClientApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94743F72DD170F5002ACD85 /* iOSClientApp.swift */; };
 		A94B1D9C2E286B3900E5F325 /* ConditionallyDisabled.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B1D9B2E286B3900E5F325 /* ConditionallyDisabled.swift */; };
-		A94B1DCD2E28B13E00E5F325 /* AccountInfo+Util.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B1DCC2E28B13E00E5F325 /* AccountInfo+Util.swift */; };
-		A94B1DCE2E28B13E00E5F325 /* AccountInfo+Util.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B1DCC2E28B13E00E5F325 /* AccountInfo+Util.swift */; };
 		A94B1DD42E28B16800E5F325 /* Product+Convenience.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B1DD02E28B16800E5F325 /* Product+Convenience.swift */; };
 		A94B1E242E2B03B900E5F325 /* ConditionallyDisabled.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B1D9B2E286B3900E5F325 /* ConditionallyDisabled.swift */; };
 		A94B1E3D2E2B236800E5F325 /* Obscura VPN Local.storekit in Resources */ = {isa = PBXBuildFile; fileRef = A94B1E3C2E2B236800E5F325 /* Obscura VPN Local.storekit */; };
-		A94BF4462E53BBEF007FDD1C /* Account+CustomStringConvertible.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94BF4452E53BBE9007FDD1C /* Account+CustomStringConvertible.swift */; };
-		A94BF4472E53BBEF007FDD1C /* Account+CustomStringConvertible.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94BF4452E53BBE9007FDD1C /* Account+CustomStringConvertible.swift */; };
-		A94BF4482E53BBEF007FDD1C /* Account+CustomStringConvertible.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94BF4452E53BBE9007FDD1C /* Account+CustomStringConvertible.swift */; };
-		A94BF4492E53BBEF007FDD1C /* Account+CustomStringConvertible.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94BF4452E53BBE9007FDD1C /* Account+CustomStringConvertible.swift */; };
 		A95A91332DF9910C005CB52A /* ObscuraUIIOSWrapperAndTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = A95A91322DF9910C005CB52A /* ObscuraUIIOSWrapperAndTabs.swift */; };
 		A9758FDE2E41910300741928 /* HyperlinkButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9758FDD2E41910300741928 /* HyperlinkButtonStyle.swift */; };
 		A9758FDF2E41910300741928 /* HyperlinkButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9758FDD2E41910300741928 /* HyperlinkButtonStyle.swift */; };
@@ -342,10 +336,8 @@
 		A936D49B2DD162AB0031B646 /* InstallSystemExtensionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallSystemExtensionView.swift; sourceTree = "<group>"; };
 		A94743F72DD170F5002ACD85 /* iOSClientApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSClientApp.swift; sourceTree = "<group>"; };
 		A94B1D9B2E286B3900E5F325 /* ConditionallyDisabled.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConditionallyDisabled.swift; sourceTree = "<group>"; };
-		A94B1DCC2E28B13E00E5F325 /* AccountInfo+Util.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AccountInfo+Util.swift"; sourceTree = "<group>"; };
 		A94B1DD02E28B16800E5F325 /* Product+Convenience.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Product+Convenience.swift"; sourceTree = "<group>"; };
 		A94B1E3C2E2B236800E5F325 /* Obscura VPN Local.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Obscura VPN Local.storekit"; sourceTree = "<group>"; };
-		A94BF4452E53BBE9007FDD1C /* Account+CustomStringConvertible.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Account+CustomStringConvertible.swift"; sourceTree = "<group>"; };
 		A95A91322DF9910C005CB52A /* ObscuraUIIOSWrapperAndTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObscuraUIIOSWrapperAndTabs.swift; sourceTree = "<group>"; };
 		A9758FDD2E41910300741928 /* HyperlinkButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HyperlinkButtonStyle.swift; sourceTree = "<group>"; };
 		A9768FAC2DBB01AD00A4595F /* UpdaterDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdaterDriver.swift; sourceTree = "<group>"; };
@@ -569,7 +561,6 @@
 				1799341E2E9411770089B6EB /* NotificationIds.swift */,
 				30497E6D2D9ED57F008B22F9 /* Box.swift */,
 				968B02B82CFF5B7B0053D0EF /* Account.swift */,
-				A94BF4452E53BBE9007FDD1C /* Account+CustomStringConvertible.swift */,
 				96C920682CD91D94002C85EA /* String.swift */,
 				35230C182C764F0D007ECFEC /* Swift.swift */,
 				35230C152C764B97007ECFEC /* Concurrency.swift */,
@@ -584,7 +575,6 @@
 				300452772C49BC90000B78F7 /* Json.swift */,
 				309B467C2C4C152900A1B00F /* StringError.swift */,
 				30C532092CC9558000936E1F /* WatchableValue.swift */,
-				A94B1DCC2E28B13E00E5F325 /* AccountInfo+Util.swift */,
 			);
 			path = shared;
 			sourceTree = "<group>";
@@ -981,8 +971,6 @@
 				30497E6E2D9ED584008B22F9 /* Box.swift in Sources */,
 				A936D4452DD1492A0031B646 /* UXViewRepresentable.swift in Sources */,
 				A936D4462DD1492A0031B646 /* UXViewController.swift in Sources */,
-				A94B1DCE2E28B13E00E5F325 /* AccountInfo+Util.swift in Sources */,
-				A94BF4462E53BBEF007FDD1C /* Account+CustomStringConvertible.swift in Sources */,
 				9632E4642D19C5EC00BC8E3F /* AccountStatusItem.swift in Sources */,
 				30920D752C1F71BB008690C3 /* startup.swift in Sources */,
 				30920D792C2057B1008690C3 /* initNetworkExtension.swift in Sources */,
@@ -1037,7 +1025,6 @@
 			files = (
 				A9963C632DB8401100D10893 /* Sleep.swift in Sources */,
 				A9963C622DB8400D00D10893 /* PacketTunnelProvider.swift in Sources */,
-				A94BF4492E53BBEF007FDD1C /* Account+CustomStringConvertible.swift in Sources */,
 				A9963C612DB8400900D10893 /* Concurrency.swift in Sources */,
 				A9963C602DB8400300D10893 /* WatchableValue.swift in Sources */,
 				A9963C5F2DB83FFD00D10893 /* NetworkExtensionIpc.swift in Sources */,
@@ -1068,7 +1055,6 @@
 				35230C1A2C764F0D007ECFEC /* Swift.swift in Sources */,
 				352D58E12C4AE796002F3404 /* ObservableValue.swift in Sources */,
 				30920DAE2C3DC174008690C3 /* InfoDict.swift in Sources */,
-				A94BF4482E53BBEF007FDD1C /* Account+CustomStringConvertible.swift in Sources */,
 				35219C3C2C6BD57F00E63BB8 /* Debug.swift in Sources */,
 				3098C1942B921489008877AA /* main.swift in Sources */,
 				17B910022E0DB3E50073AAD7 /* Keychain.swift in Sources */,
@@ -1098,7 +1084,6 @@
 				A936D4732DD14E470031B646 /* command.swift in Sources */,
 				1DAD5D662ED8FAA100DDB469 /* StoreKitModel.swift in Sources */,
 				A936D4722DD14E040031B646 /* ScriptMessageHandlers.swift in Sources */,
-				A94BF4472E53BBEF007FDD1C /* Account+CustomStringConvertible.swift in Sources */,
 				A936D4712DD14DC30031B646 /* ObscuraUIWebView.swift in Sources */,
 				A9200A872DD127A200FD035C /* Notifications.swift in Sources */,
 				A9758FDE2E41910300741928 /* HyperlinkButtonStyle.swift in Sources */,
@@ -1134,7 +1119,6 @@
 				A998711A2DBAF8610044D136 /* Constants.swift in Sources */,
 				A99871192DBAF85C0044D136 /* ObservableValue.swift in Sources */,
 				A99871182DBAF8590044D136 /* WatchableValue.swift in Sources */,
-				A94B1DCD2E28B13E00E5F325 /* AccountInfo+Util.swift in Sources */,
 				A99871162DBAF8510044D136 /* OsStatus.swift in Sources */,
 				A99871152DBAF84D0044D136 /* app_state.swift in Sources */,
 				A99871122DBAF8080044D136 /* NoFadeButtonStyle.swift in Sources */,

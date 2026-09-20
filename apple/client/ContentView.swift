@@ -124,8 +124,8 @@ class ViewModeManager: ObservableObject {
 
 extension AccountStatus {
     var badgeText: String? {
-        guard let days = daysUntilExpiry() else { return nil }
-        if !expiringSoon() {
+        guard let days = self.daysUntilExpiry() else { return nil }
+        if !self.expiringSoon() {
             return nil
         }
         if days > 3 {
@@ -137,11 +137,11 @@ extension AccountStatus {
         if days == 1 {
             return "exp. in 1d"
         }
-        return isActive() ? "exp. today" : "expired"
+        return self.isActive ? "exp. today" : "expired"
     }
 
     var badgeColor: Color? {
-        guard let days = daysUntilExpiry() else { return nil }
+        guard let days = self.daysUntilExpiry() else { return nil }
         return days <= 3 ? .red : .yellow
     }
 }

@@ -21,9 +21,6 @@ result-*
 *.aab
 
 # Linux
-/linux/vm/*.qcow2
-/linux/vm/*.iso
-/linux/vm/diagnostics/
 *.rpm
 *.pkg.tar.zst
 *.deb

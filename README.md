@@ -434,7 +434,8 @@ apt/dnf/pacman repositories:
 It derives the signing key from `linux/signing_keys/current.public.asc` (exporting its secret
 from your gpg keyring) and prompts for its passphrase. Publish the three repository trees it
 produces, `result-linux/dist-prod/{deb,rpm,arch}`, at `https://linux-pkgs.obscura.com/{deb,rpm,arch}`.
-Pass `--test` to build instead with the committed keys in `linux/signing_keys_test/`.
+Pass `--test` to build instead with the committed keys in `linux/signing_keys_test/`. The
+resulting `result-linux/dist-test` repository packages assume the directory is served at `http://10.0.2.2:54321`, which is the host from a QEMU guest with user-mode networking.
 Pass `--dirty` to build production packages from an untagged or modified tree.
 
 ### Signing key rotation

@@ -93,6 +93,7 @@ impl From<&ApiError> for ManagerCmdErrorCode {
                     ApiErrorKind::SignupLimitExceeded { pow_challenge: _ } => Self::ApiSignupLimitExceeded,
                     ApiErrorKind::InvalidAccountId {} => Self::ApiInvalidAccountId,
                     ApiErrorKind::AccountExpired {}
+                    | ApiErrorKind::AllFriendCodesClaimed {}
                     | ApiErrorKind::AlreadyReferred {}
                     | ApiErrorKind::BadRequest {}
                     | ApiErrorKind::IneligibleForReferral {}

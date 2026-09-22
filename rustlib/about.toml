@@ -19,7 +19,23 @@ accepted = [
 no-clearly-defined = true
 
 [obscuravpn-api]
-accepted = ["PolyForm-Noncommercial-1.0.0"]
+# Our current version of cargo-about doesn't support "GPL-3.0-only"
+accepted = ["GPL-3.0 WITH GPL-3.0-linking-source-exception"]
+
+[obscuravpn-api.clarify]
+license = "GPL-3.0 WITH GPL-3.0-linking-source-exception"
+
+[[obscuravpn-api.clarify.files]]
+checksum = "5e8dcaf12ba2d09383bc010383ecdda810423295c1c2820248daaa1c7c4ce01d"
+path = "LICENSE"
 
 [obscuravpn-client]
-accepted = ["PolyForm-Noncommercial-1.0.0"]
+# Our current version of cargo-about doesn't support "GPL-3.0-only"
+accepted = ["GPL-3.0 WITH GPL-3.0-linking-source-exception"]
+
+[obscuravpn-client.clarify]
+license = "GPL-3.0 WITH GPL-3.0-linking-source-exception"
+
+[[obscuravpn-client.clarify.files]]
+checksum = "5e8dcaf12ba2d09383bc010383ecdda810423295c1c2820248daaa1c7c4ce01d"
+path = "../LICENSE"

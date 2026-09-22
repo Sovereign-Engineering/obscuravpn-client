@@ -2,7 +2,7 @@
 name = "obscuravpn-client"
 version = "0.1.0"
 edition = "2024"
-license = "PolyForm-Noncommercial-1.0.0"
+license = "GPL-3.0-only WITH GPL-3.0-linking-source-exception"
 autobins = false
 
 [[bin]]
@@ -94,7 +94,7 @@ rev = "ff3b5555b5b1c4f85ae23d8d4aaf00bea2cd2bf0"
 
 [dependencies.obscuravpn-api]
 git = "https://github.com/Sovereign-Engineering/obscuravpn-api.git"
-rev = "2ca8fb7ccfba4a644d4b4eec9cc0bac37716c49a"
+rev = "87d0d9c5a3bf49966eaa8c4840176c3a0c01a52e"
 
 [dependencies.quinn]
 git = "https://github.com/Sovereign-Engineering/quinn.git"

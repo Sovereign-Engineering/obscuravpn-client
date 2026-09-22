@@ -1,0 +1,32 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: obscura
+Source: https://github.com/Sovereign-Engineering/obscuravpn-client
+
+Files: *
+Copyright: 2026 Sovereign Engineering Inc.
+License: GPL-3 with linking-source exception
+
+License: GPL-3 with linking-source exception
+ This program is free software; you can redistribute it and/or modify it under
+ the terms of the GNU General Public License version 3 as published by the Free
+ Software Foundation.
+ .
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ .
+ You should have received a copy of the GNU General Public License along with
+ this program; if not, see <https://www.gnu.org/licenses>.
+ .
+ Additional permission under GNU GPL version 3 section 7
+ .
+ If you modify this Program, or any covered work, by linking or combining it
+ with OpenSSL, BoringSSL, AWS-LC, ring, or any other library containing parts
+ covered by the terms of the OpenSSL License or the Original SSLeay License (or
+ a modified version of any such library), the licensors of this Program grant
+ you additional permission to convey the resulting work. Corresponding Source
+ for a non-source form of such a combination shall include the source code for
+ the parts of those libraries used as well as that of the covered work.
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ version 3 can be found in "/usr/share/common-licenses/GPL-3".

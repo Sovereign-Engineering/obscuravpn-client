@@ -3,7 +3,7 @@
   <id>net.obscura.vpn.gui</id>
   <pkgname>obscura-gui</pkgname>
   <metadata_license>CC0-1.0</metadata_license>
-  <project_license>PolyForm-Noncommercial-1.0.0</project_license>
+  <project_license>GPL-3.0-only WITH GPL-3.0-linking-source-exception</project_license>
   <name>Obscura VPN</name>
   <summary>Privacy that’s more than a promise</summary>
   <description>

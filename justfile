@@ -74,7 +74,7 @@ gen-license-node:
 [windows]
 gen-license-rust:
 	#! pwsh
-	pwsh contrib/skip-if-fresh.ps1 "{{licenses-rust-windows}}" rustlib/Cargo.lock rustlib/Cargo.toml rustlib/about.toml
+	pwsh contrib/skip-if-fresh.ps1 "{{licenses-rust-windows}}" rustlib/Cargo.lock rustlib/Cargo.toml rustlib/about.toml LICENSE
 	if ($LASTEXITCODE -eq 0) {
 		Write-Host "gen-license-rust: up to date"
 		exit 0

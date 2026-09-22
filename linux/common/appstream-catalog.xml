@@ -4,7 +4,7 @@
     <id>net.obscura.vpn.gui</id>
     <name>Obscura VPN</name>
     <summary>Privacy that’s more than a promise</summary>
-    <project_license>PolyForm-Noncommercial-1.0.0</project_license>
+    <project_license>GPL-3.0-only WITH GPL-3.0-linking-source-exception</project_license>
     <description>
       <p>Can’t log. Won’t lag. Works anywhere.</p>
       <p>Obscura is the first VPN that can’t log your activity and keeps you connected wherever you go.</p>

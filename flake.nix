@@ -203,6 +203,7 @@
           buildPhaseCargoCommand = ''
             mkdir -p src/bin/obscura
             touch src/bin/obscura/main.rs src/lib.rs
+            cp ${./LICENSE} ../LICENSE
             cargo-about generate --format=json --fail >"$out"
           '';
           installPhase = " ";

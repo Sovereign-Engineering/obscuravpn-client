@@ -40,7 +40,7 @@ export default function LogIn({ accountNumber, accountActive }: LogInProps) {
 
   useEffect(() => {
     if (!!apiError) {
-      const timeoutSeconds = apiError === 'apiSignupLimitExceeded' ? 12 * 3600 : 9;
+      const timeoutSeconds = apiError === 'ipcError-apiSignupLimitExceeded' ? 12 * 3600 : 9;
       setTimeout(() => { setApiError(null) }, timeoutSeconds * 1000)
     }
   }, [apiError]);

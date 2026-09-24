@@ -143,17 +143,13 @@ export default function DeveloperViewer() {
         <JsonInput value={localStorageValue ?? 'null'} contentEditable={false} />
         <Button onClick={ () => jsonFfiCmd("terminateProcess", {})}>kill tunnel manager process</Button>
         <Button onClick={async () => {
-            if (osStatus?.navigationView) {
-                const targetView = NavigationView.Help;
-                try {
-                    await commands.setNavigationView(targetView);
-                } catch (e) {
-                    showErrorNotification(t, e, 'navigationFailed');
-                }
-                console.log(`resetting to ${targetView} (osStatus reports ${osStatus.navigationView})`);
-            } else {
-                window.location.pathname = '/';
+            const targetView = NavigationView.Help;
+            try {
+                await commands.setNavigationView(targetView);
+            } catch (e) {
+                showErrorNotification(t, e, 'navigationFailed');
             }
+            console.log(`resetting to ${targetView} (osStatus reports ${osStatus.navigationView})`);
         }}>Simulate error boundary reset</Button>
         <Button onClick={() => notifications.show({
             title: 'Failed to do nothing',

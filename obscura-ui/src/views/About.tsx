@@ -26,17 +26,12 @@ export default function About() {
   const [showLicenses, setShowLicenses] = useState(false);
   const { execute: checkForUpdates } = commands.useCommand({ command: commands.checkForUpdates, showNotification: true, rethrow: false });
   const { execute: installUpdate } = commands.useCommand({ command: commands.installUpdate, showNotification: true, rethrow: false });
-  const navigate = useNavigate();
   const [_, setVersionClicks] = useState(0);
 
   const handleVersionClick = () => {
     setVersionClicks(clicks => {
       if (clicks === 4) {
-        if (osStatus?.navigationView) {
-          commands.setNavigationView(NavigationView.Developer).catch(e => showErrorNotification(t, e, 'navigationFailed'));
-        } else {
-          navigate('/developer');
-        }
+        commands.setNavigationView(NavigationView.Developer).catch(e => showErrorNotification(t, e, 'navigationFailed'));
         return 0;
       }
       return clicks + 1;

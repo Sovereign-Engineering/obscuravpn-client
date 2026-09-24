@@ -12,7 +12,7 @@ private let logger = Logger(
     category: "ContentView"
 )
 
-enum AppView: String, Hashable, Identifiable {
+enum AppView: String, Codable, Hashable, Identifiable {
     case account
     case connection
     case location
@@ -200,7 +200,7 @@ struct ContentView: View {
             )
             .onChange(of: self.webviewsController.tab) { view in
                 // inform webUI to update navigation
-                self.webviewsController.obscuraWebView?.navigateTo(view: view)
+                self.webviewsController.obscuraWebView?.navigateTo(appState: self.appState, view: view)
             }
             .onChange(of: self.appState.status) { status in
                 if let account = self.appState.status.account {
@@ -314,6 +314,7 @@ struct ContentView: View {
                 .animation(nil, value: self.splitViewVisibility)
             #else
                 ObscuraUIIOSViewAndTabsWrapper(
+                    appState: self.appState,
                     webView: obscuraWebView,
                     webviewsController: self.webviewsController,
                     tabs: self.viewMode.getIOSViews(),

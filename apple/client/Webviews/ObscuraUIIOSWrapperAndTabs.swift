@@ -10,6 +10,7 @@ import WebKit
 // going to just use UIKit.
 
 class ObscuraUIIOSViewAndTabsViewController: UIViewController {
+    private var appState: AppState
     private var insetBottom = 0.0
     private var isKeyboardOpen = false
     private let webView: ObscuraUIWebView
@@ -27,11 +28,13 @@ class ObscuraUIIOSViewAndTabsViewController: UIViewController {
     private var cancellables = Set<AnyCancellable>()
 
     init(
+        appState: AppState,
         webView: ObscuraUIWebView,
         webviewsController: WebviewsController,
         tabs: OrderedSet<AppView>,
         showTabBar: Bool
     ) {
+        self.appState = appState
         self.showTabBar = showTabBar
         self.webView = webView
         self.tabBar = UITabBar()
@@ -156,7 +159,7 @@ class ObscuraUIIOSViewAndTabsViewController: UIViewController {
         if let index = tabs.firstIndex(of: view) {
             self.tabBar.selectedItem = self.tabBarItems[index]
         }
-        self.webView.navigateTo(view: view)
+        self.webView.navigateTo(appState: self.appState, view: view)
     }
 }
 
@@ -174,6 +177,7 @@ extension ObscuraUIIOSViewAndTabsViewController: UITabBarDelegate {
 // MARK: - SwiftUI Wrapper
 
 struct ObscuraUIIOSViewAndTabsWrapper: UIViewControllerRepresentable {
+    let appState: AppState
     let webView: ObscuraUIWebView
     let webviewsController: WebviewsController
     let tabs: OrderedSet<AppView>
@@ -181,6 +185,7 @@ struct ObscuraUIIOSViewAndTabsWrapper: UIViewControllerRepresentable {
 
     func makeUIViewController(context: Context) -> ObscuraUIIOSViewAndTabsViewController {
         return ObscuraUIIOSViewAndTabsViewController(
+            appState: self.appState,
             webView: self.webView,
             webviewsController: self.webviewsController,
             tabs: self.tabs,

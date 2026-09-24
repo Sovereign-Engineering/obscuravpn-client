@@ -15,9 +15,7 @@ root.render(
       <ErrorBoundary
         FallbackComponent={FallbackAppRender}
         // Reset the state of your app so the error doesn't happen again
-        onReset={details => {
-          location.pathname = '/';
-        }}
+        onReset={_details => {}}
         onError={logReactError}>
         <App />
       </ErrorBoundary>

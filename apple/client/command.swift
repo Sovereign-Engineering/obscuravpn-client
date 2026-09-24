@@ -11,6 +11,7 @@ enum Command: Codable {
     case stopTunnel
     case setStrictLeakPrevention(enable: Bool)
     case setColorScheme(value: AppAppearance)
+    case setNavigationView(view: AppView)
     case debugBundle(userFeedback: String?)
     case revealItemInDir(path: String)
     case emailDebugBundle(path: String, subject: String, body: String)
@@ -74,6 +75,18 @@ extension CommandHandler {
                     StartupModel.shared.selectedAppearance = colorScheme
                 }
             #endif
+        case .setNavigationView(let view):
+            let view = switch view {
+            // The Help view isn't used on iOS
+            #if os(iOS)
+                case .help:
+                    AppView.about
+            #endif
+            default: view
+            }
+            DispatchQueue.main.async {
+                self.appState.webviewsController.tab = view
+            }
         case .jsonFfiCmd(cmd: let jsonCmd, let timeoutMs):
             let attemptTimeout: Duration? = switch timeoutMs {
             case .some(let ms): .milliseconds(ms)
@@ -114,7 +127,7 @@ extension CommandHandler {
                 appState.updater.showUpdaterIfNeeded()
         #else
             case .associateAccount:
-                try await appState.associateAccount()
+                _ = try await appState.associateAccount()
             case .purchaseSubscription:
                 let result = try await appState.purchaseSubscription()
                 return try result.json()

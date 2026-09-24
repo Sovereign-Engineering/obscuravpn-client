@@ -34,8 +34,6 @@ interface View {
 
 export default function () {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const location = useLocation();
   const colorScheme = useContext(CColorSchemeContext);
   const setAppearance = useSetAppearance();
 
@@ -271,39 +269,19 @@ export default function () {
   }, [osStatus]);
 
   async function errorBoundaryOnReset() {
-    if (osStatus?.navigationView) {
-      let targetView: NavigationView;
-      if (osStatus.navigationView === NavigationView.Connection) {
-        targetView = NavigationView.Help;
-      } else {
-        targetView = NavigationView.Connection;
-      }
-      try {
-        await commands.setNavigationView(targetView);
-      } catch (e) {
-        showErrorNotification(t, e, 'navigationFailed');
-      }
-      console.log(`resetting to ${targetView} (osStatus reports ${osStatus.navigationView})`);
-    } else if (location.pathname === '/connection') {
-      window.location.pathname = '/help';
+    let targetView: NavigationView;
+    if (!osStatus?.navigationView || osStatus?.navigationView === NavigationView.Connection) {
+      targetView = NavigationView.Help;
     } else {
-      window.location.pathname = '/';
+      targetView = NavigationView.Connection;
     }
+    try {
+      await commands.setNavigationView(targetView);
+    } catch (e) {
+      showErrorNotification(t, e, 'navigationFailed');
+    }
+    console.log(`resetting to ${targetView} (osStatus reports ${osStatus?.navigationView})`);
   }
-
-  // native driven navigation
-  useEffect(() => {
-    const onNavUpdate = (e: Event) => {
-      if (e instanceof CustomEvent) {
-        console.log(`navigation to ${e.detail}`);
-        navigate(`/${e.detail}`);
-      } else {
-        console.error('expected custom event for navigation purposes, got generic Event');
-      }
-    };
-    window.addEventListener('navUpdate', onNavUpdate);
-    return () => window.removeEventListener('navUpdate', onNavUpdate);
-  }, []);
 
   const onPaymentSucceeded = () => {
     console.log("handling paymentSucceeded event");

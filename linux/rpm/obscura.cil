@@ -1,0 +1,2 @@
+(optional obscura_fdstore
+    (allow init_t unconfined_service_t (netlink_netfilter_socket (getattr read write))))

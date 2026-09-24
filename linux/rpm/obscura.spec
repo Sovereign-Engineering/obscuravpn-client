@@ -37,6 +37,7 @@ install -Dm755 %{_sourcedir}/obscura %{buildroot}%{_bindir}/obscura
 install -Dm644 /repo/linux/common/obscura.service %{buildroot}%{_unitdir}/obscura.service
 install -Dm644 /repo/linux/common/obscura-sysusers.conf %{buildroot}%{_sysusersdir}/obscura.conf
 install -Dm644 /repo/linux/common/obscura-preset.conf %{buildroot}%{_presetdir}/80-obscura.preset
+install -Dm644 /repo/linux/rpm/obscura.cil %{buildroot}%{_datadir}/selinux/packages/obscura.cil
 install -Dm755 %{_sourcedir}/obscura-gui %{buildroot}%{_bindir}/obscura-gui
 install -Dm644 /repo/linux/common/net.obscura.vpn.gui.desktop %{buildroot}%{_datadir}/applications/net.obscura.vpn.gui.desktop
 install -Dm644 /repo/linux/common/net.obscura.vpn.gui.metainfo.xml %{buildroot}%{_datadir}/metainfo/net.obscura.vpn.gui.metainfo.xml
@@ -61,6 +62,7 @@ install -Dm644 /repo/linux/rpm/obscura-repository-preset.conf %{buildroot}%{_pre
 %{_unitdir}/obscura.service
 %{_sysusersdir}/obscura.conf
 %{_presetdir}/80-obscura.preset
+%{_datadir}/selinux/packages/obscura.cil
 
 %files -n obscura-gui
 %license %{_defaultlicensedir}/obscura-gui/LICENSE
@@ -88,6 +90,9 @@ install -Dm644 /repo/linux/rpm/obscura-repository-preset.conf %{buildroot}%{_pre
 %sysusers_create_package obscura /repo/linux/common/obscura-sysusers.conf
 
 %post -n obscura-cli
+if command -v semodule >/dev/null 2>&1; then
+    semodule -X 200 -i %{_datadir}/selinux/packages/obscura.cil || true
+fi
 %systemd_post obscura.service
 if [ $1 -eq 1 ]; then
     systemctl start obscura.service || true
@@ -98,6 +103,9 @@ fi
 
 %postun -n obscura-cli
 %systemd_postun_with_restart obscura.service
+if [ $1 -eq 0 ] && command -v semodule >/dev/null 2>&1; then
+    semodule -X 200 -r obscura || true
+fi
 
 %post -n obscura-repository
 %systemd_post obscura-package-signing-key-refresh.timer

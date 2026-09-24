@@ -20,7 +20,7 @@ import { MIN_LOAD_MS, normalizeError, showErrorNotification, sleep } from './com
 import { CColorSchemeContext } from './components/CachedColorScheme';
 import { ScrollableView } from './components/ScrollableView';
 import { VpnError } from './components/VpnErrorFmt';
-import { About, Account, Connection, DeveloperView, FallbackAppRender, Help, Location, LogIn, Settings, SplashScreen } from './views';
+import { About, Account, Connection, DeveloperView, FallbackAppRender, Help, Location, LogIn, Settings, SplashScreen, Apps } from './views';
 
 // imported views need to be added to the `views` list variable
 interface View {
@@ -61,6 +61,7 @@ export default function () {
     { component: Help, path: '/help', needsScroll: false },
     { component: About, path: '/about', needsScroll: true },
     { component: Settings, path: '/settings', needsScroll: true },
+    { component: Apps, path: '/apps', needsScroll: true }
   ];
 
   const isLoggedIn = !!appStatus?.accountId;
@@ -389,7 +390,7 @@ function RenderView({ view }: { view: View }) {
     return <view.component />;
   }
   return (
-    <div className={commonClasses.applyInsets} style={{height: '100vh'}}>
+    <div className={commonClasses.applyInsets} style={{ height: '100vh' }}>
       <view.component />
     </div>
   );

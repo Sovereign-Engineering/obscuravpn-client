@@ -17,6 +17,7 @@ enum AppView: String, Codable, Hashable, Identifiable {
     case connection
     case location
     case settings
+    case apps
     case help
     case about
     case developer
@@ -39,6 +40,8 @@ enum AppView: String, Codable, Hashable, Identifiable {
             "questionmark.circle"
         case .about:
             "info.circle"
+        case .apps:
+            "iphone"
         case .developer:
             "book.and.wrench"
         }
@@ -52,14 +55,14 @@ enum AppView: String, Codable, Hashable, Identifiable {
         switch self {
         case .connection, .help:
             false
-        case .account, .settings, .location, .about, .developer:
+        case .account, .settings, .location, .about, .developer, .apps:
             true
         }
     }
 }
 
 let STABLE_VIEWS: OrderedSet<AppView> = OrderedSet([
-    .connection, .location, .account, .settings, .help, .about,
+    .connection, .location, .account, .settings, .help, .about, .apps,
 ])
 
 let EXPERIMETNAL_VIEWS: OrderedSet<AppView> = OrderedSet()

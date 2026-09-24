@@ -1,0 +1,138 @@
+.container {
+  overflow: hidden;
+  padding: 32px;
+  padding-bottom: 0;
+  container-type: inline-size;
+}
+
+.deco {
+  position: absolute;
+  pointer-events: none;
+  z-index: -1;
+  rotate: 180deg;
+  width: 340px;
+  max-width: 100%;
+  right: 0;
+  top: 0;
+
+  @container (max-width: $mantine-breakpoint-sm) {
+    rotate: 0deg;
+    bottom: 0;
+    top: unset;
+  }
+}
+
+.grid {
+  display: grid;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+
+  @container (max-width: $mantine-breakpoint-sm) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 40px;
+  }
+}
+
+.info {
+  min-width: 0;
+
+  @container (max-width: $mantine-breakpoint-sm) {
+    justify-self: center;
+    width: 100%;
+    max-width: 390px;
+  }
+}
+
+.stageWrap {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 0;
+  container-type: size;
+
+  @container (max-width: $mantine-breakpoint-sm) {
+    align-items: flex-end;
+    --images-border: 0;
+    --under-shadow-display: none;
+  }
+}
+
+.images {
+  /* Design canvas and art coordinates, in design pixels. */
+  --design-w: 390;
+  --design-h: 320;
+  --hat-x: 40;
+  --hat-w: 41.685;
+  --light-x: 26;
+  --light-y: 35;
+  --light-w: 250;
+  --dark-x: 170;
+  --dark-y: 55;
+  --dark-w: 230;
+  position: relative;
+  width: min(100cqw, 90cqh);
+  flex-shrink: 0;
+  aspect-ratio: var(--design-w) / var(--design-h);
+  border-width: 0;
+  border-bottom-width: var(--images-border, 1px);
+  border-style: solid;
+  border-image-slice: 1;
+  overflow-y: clip;
+  overflow-x: visible;
+  border-image-source: linear-gradient(to left, #0000, #00000023, #00000023, #0000);
+}
+
+.underShadow {
+  position: absolute;
+  /* normally you'd use top 100% here, but that doesnt work great on webkit, not sure why */
+  bottom: -35px;
+  display: var(--under-shadow-display, block);
+  width: 100%;
+  height: 40px;
+  border-radius: 360px;
+  background: rgba(0, 0, 0, 0.15);
+  filter: blur(15px);
+}
+
+.underShadowApple {
+  /* webkit seems to calculate blur differently so the color needs to be stronger */
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.hatMascot {
+  width: calc(100% * var(--hat-w) / var(--design-w));
+  height: auto;
+  transform: rotate(-17.82deg);
+  position: absolute;
+  left: calc(100% * var(--hat-x) / var(--design-w));
+  top: 0;
+  z-index: -1;
+}
+
+.appImage {
+  position: absolute;
+  object-fit: contain;
+}
+
+.appImageLight {
+  left: calc(100% * var(--light-x) / var(--design-w));
+  top: calc(100% * var(--light-y) / var(--design-h));
+  width: calc(100% * var(--light-w) / var(--design-w));
+}
+
+.appImageDark {
+  left: calc(100% * var(--dark-x) / var(--design-w));
+  top: calc(100% * var(--dark-y) / var(--design-h));
+  width: calc(100% * var(--dark-w) / var(--design-w));
+}
+
+@container (max-width: 18em) {
+  .cards {
+    flex-direction: column !important;
+  }
+}

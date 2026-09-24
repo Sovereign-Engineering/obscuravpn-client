@@ -8,3 +8,4 @@ export { default as LogIn } from './LogInView';
 export { default as FallbackAppRender } from './render-fallbacks/FallbackAppRender';
 export { default as Settings } from './Settings';
 export { default as SplashScreen } from './SplashScreen';
+export { default as Apps } from './Apps';

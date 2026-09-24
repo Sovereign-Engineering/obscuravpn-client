@@ -18,6 +18,7 @@
     "i18next-browser-languagedetector": "^8.2.0",
     "js-cookie": "^3.0.5",
     "localforage": "^1.10.0",
+    "qrcode": "^1.5.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-error-boundary": "^6.0.0",
@@ -42,6 +43,7 @@
   "devDependencies": {
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^20.19.24",
+    "@types/qrcode": "^1.5.6",
     "@vitejs/plugin-react": "^5.1.0",
     "@welldone-software/why-did-you-render": "^10.0.1",
     "license-checker": "^25.0.1",

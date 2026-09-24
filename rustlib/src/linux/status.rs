@@ -35,6 +35,7 @@ pub enum NavigationView {
     Location,
     Account,
     Settings,
+    Apps,
     Help,
     About,
     Developer,

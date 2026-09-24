@@ -5,6 +5,7 @@
     <file preprocess="xml-stripblanks">icons/scalable/actions/obscura-location-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/obscura-account-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/obscura-settings-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/obscura-apps-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/obscura-about-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/obscura-help-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/obscura-developer-symbolic.svg</file>

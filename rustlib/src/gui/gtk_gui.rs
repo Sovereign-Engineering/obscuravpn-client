@@ -326,7 +326,8 @@ fn build_sidebar(gui_status: Arc<GuiStatusWatch>, dev_visible: Rc<Cell<bool>>) -
             | NavigationView::Account
             | NavigationView::Settings
             | NavigationView::Help
-            | NavigationView::About,
+            | NavigationView::About
+            | NavigationView::Apps,
         )
         | None => true,
     });
@@ -359,6 +360,7 @@ fn view_row_widget(view: NavigationView) -> gtk::Box {
         NavigationView::Settings => "obscura-settings-symbolic",
         NavigationView::Help => "obscura-help-symbolic",
         NavigationView::About => "obscura-about-symbolic",
+        NavigationView::Apps => "obscura-apps-symbolic",
         NavigationView::Developer => "obscura-developer-symbolic",
     });
     icon.set_pixel_size(24);

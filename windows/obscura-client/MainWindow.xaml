@@ -90,6 +90,14 @@
                         <SymbolIcon Symbol="Setting" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
+                <NavigationViewItem Content="Apps">
+                    <NavigationViewItem.Tag>
+                        <local:NavigationView>Apps</local:NavigationView>
+                    </NavigationViewItem.Tag>
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="CellPhone" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
                 <NavigationViewItem
                     x:Name="DeveloperNavItem"
                     Content="Developer"

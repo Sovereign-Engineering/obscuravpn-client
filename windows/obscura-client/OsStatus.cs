@@ -18,6 +18,7 @@ public enum NavigationView
     Help,
     About,
     Settings,
+    Apps,
 }
 
 public class DebugBundleStatus

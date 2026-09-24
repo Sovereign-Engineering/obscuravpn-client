@@ -71,6 +71,7 @@ export enum NavigationView {
   Help = "help",
   About = "about",
   Settings = "settings",
+  Apps = "apps",
 }
 
 export type ColorScheme = 'light' | 'dark' | 'auto';

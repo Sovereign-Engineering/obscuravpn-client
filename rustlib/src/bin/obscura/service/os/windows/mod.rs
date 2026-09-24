@@ -14,8 +14,7 @@ use obscuravpn_client::quicwg::QuicWgConnPacketSender;
 pub use start_error::WindowsServiceStartError;
 use tokio::sync::watch::Receiver;
 use tun::Tun;
-mod adapters;
-mod gaa;
+mod active_adapter;
 mod iphelper;
 
 /// MSIX package family name, computed in `build.rs` from the signing certificate's Publisher.
@@ -32,7 +31,8 @@ pub struct WindowsOsImpl {
 impl WindowsOsImpl {
     pub async fn new() -> Result<Self, WindowsServiceStartError> {
         let tun = Tun::create().await?;
-        Ok(Self { tun, active_adapter_watcher: adapters::watch_active_adapter(), ipc: ServiceIpc::new()? })
+        let active_adapter_watcher = active_adapter::watch_active_adapter(tun.luid());
+        Ok(Self { tun, active_adapter_watcher, ipc: ServiceIpc::new()? })
     }
 
     pub async fn next_manager_command(

@@ -67,6 +67,11 @@ impl Tun {
         })
     }
 
+    pub fn luid(&self) -> u64 {
+        // SAFETY: `Value` is the raw 64-bit view of the LUID union.
+        unsafe { self.adapter.get_luid().Value }
+    }
+
     pub fn send(&self, packet: Bytes) {
         match u16::try_from(packet.len()) {
             Ok(packet_size) => {

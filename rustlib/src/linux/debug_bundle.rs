@@ -106,7 +106,8 @@ pub fn add_linux_debug_tasks<'a>(tasks: &mut Vec<BoxFuture<'a, ()>>, dir: &Utf8P
             ("resolv-conf", "cat", &["/etc/resolv.conf"]),
             ("resolv-conf-link", "ls", &["-l", "/etc/resolv.conf"]),
             ("resolvectl-status", "resolvectl", &["status"]),
-            ("ip-rule", "ip", &["rule"]),
+            ("ip-rule-ipv4", "ip", &["-4", "rule"]),
+            ("ip-rule-ipv6", "ip", &["-6", "rule"]),
             ("ip-route-all", "ip", &["route", "show", "table", "all"]),
             ("nft-ruleset", "nft", &["list", "ruleset"]),
             (

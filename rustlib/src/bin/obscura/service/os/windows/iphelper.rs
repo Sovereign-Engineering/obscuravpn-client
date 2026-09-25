@@ -1,11 +1,13 @@
 use ipnetwork::{IpNetwork, Ipv4Network, Ipv6Network};
+use obscuravpn_client::os::windows::adapters::list_network_adapters;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-use windows::Win32::Foundation::{ERROR_NOT_FOUND, ERROR_OBJECT_ALREADY_EXISTS, NO_ERROR};
+use windows::Win32::Foundation::{ERROR_NOT_FOUND, ERROR_OBJECT_ALREADY_EXISTS, NO_ERROR, WIN32_ERROR};
 use windows::Win32::NetworkManagement::IpHelper::{CreateIpForwardEntry2, DeleteIpForwardEntry2, InitializeIpForwardEntry, MIB_IPFORWARD_ROW2};
 use windows::Win32::NetworkManagement::IpHelper::{
     DNS_INTERFACE_SETTINGS, DNS_INTERFACE_SETTINGS_VERSION1, DNS_SETTING_NAMESERVER, SetInterfaceDnsSettings,
 };
 use windows::Win32::NetworkManagement::IpHelper::{GetIpInterfaceEntry, MIB_IPINTERFACE_ROW, SetIpInterfaceEntry};
+use windows::Win32::NetworkManagement::Ndis::NET_LUID_LH;
 use windows::Win32::Networking::WinSock::{ADDRESS_FAMILY, AF_INET, AF_INET6, IN_ADDR, IN6_ADDR, IN6_ADDR_0, SOCKADDR_IN, SOCKADDR_IN6};
 use windows::Win32::UI::Shell::SHGetKnownFolderPath;
 
@@ -20,37 +22,47 @@ const ROUTES: [IpNetwork; 4] = [
     IpNetwork::V6(Ipv6Network::new_checked(Ipv6Addr::new(0x8000, 0, 0, 0, 0, 0, 0, 0), 1).unwrap()),
 ];
 
-pub fn set_routes(adapter: &wintun::Adapter, dns: &[IpAddr], stale_dns: &[IpAddr]) -> Result<(), ()> {
+/// Excludes IPv6 addresses when IPv6 is disabled.
+fn tunnel_routes(dns: &[IpAddr], ipv6: bool) -> impl Iterator<Item = IpNetwork> {
+    ROUTES
+        .into_iter()
+        .chain(dns.iter().copied().map(IpNetwork::from))
+        .filter(move |route| ipv6 || route.is_ipv4())
+}
+
+pub fn set_routes(adapter: &wintun::Adapter, dns: &[IpAddr], stale_dns: &[IpAddr], ipv6: bool) -> Result<(), ()> {
     let if_index = adapter
         .get_adapter_index()
         .map_err(|error| tracing::error!(message_id = "Xt7kR2mN", ?error, "failed to get adapter index for setting routes"))?;
 
     let mut result = Ok(());
-    for route in &ROUTES {
-        result = result.and(add_route(if_index, route));
+    for route in tunnel_routes(dns, ipv6) {
+        result = result.and(add_route(if_index, &route));
     }
-    for ip in dns {
-        result = result.and(add_route(if_index, &IpNetwork::from(*ip)));
-    }
-    for ip in stale_dns {
+    for ip in stale_dns.iter().filter(|ip| ipv6 || ip.is_ipv4()) {
         result = result.and(remove_route(if_index, &IpNetwork::from(*ip)));
     }
     result
 }
 
-pub fn remove_routes(adapter: &wintun::Adapter, dns: &[IpAddr]) -> Result<(), ()> {
+pub fn remove_routes(adapter: &wintun::Adapter, dns: &[IpAddr], ipv6: bool) -> Result<(), ()> {
     let if_index = adapter
         .get_adapter_index()
         .map_err(|error| tracing::error!(message_id = "Yt8lS3nP", ?error, "failed to get adapter index for removing routes"))?;
 
     let mut result = Ok(());
-    for route in &ROUTES {
-        result = result.and(remove_route(if_index, route));
-    }
-    for ip in dns {
-        result = result.and(remove_route(if_index, &IpNetwork::from(*ip)));
+    for route in tunnel_routes(dns, ipv6) {
+        result = result.and(remove_route(if_index, &route));
     }
     result
+}
+
+/// Whether an adapter other than `exclude_luid` has an IPv6 default gateway, i.e. whether IPv6 traffic could bypass the tunnel.
+pub fn has_ipv6_default_route(exclude_luid: u64) -> Result<bool, ()> {
+    let adapters = list_network_adapters().map_err(|error| tracing::error!(message_id = "Hx7pB2mW", ?error, "GetAdaptersAddresses failed"))?;
+    Ok(adapters
+        .iter()
+        .any(|adapter| adapter.luid != exclude_luid && adapter.gateways.iter().any(IpAddr::is_ipv6)))
 }
 
 /// Build a `MIB_IPFORWARD_ROW2` for the given interface, destination, and prefix length.
@@ -147,32 +159,52 @@ fn family_name(family: ADDRESS_FAMILY) -> &'static str {
     }
 }
 
-fn set_metric(adapter: &wintun::Adapter, automatic: bool, metric: u32) -> Result<(), ()> {
-    let luid = adapter.get_luid();
-    let mut success = Ok(());
-    for family in [AF_INET, AF_INET6] {
-        let mut row = MIB_IPINTERFACE_ROW {
-            Family: family,
-            InterfaceLuid: {
-                // SAFETY: Accessing `Value` field of a union to copy the raw 64-bit LUID
-                windows::Win32::NetworkManagement::Ndis::NET_LUID_LH { Value: unsafe { luid.Value } }
-            },
-            ..Default::default()
-        };
+fn get_ip_interface_entry(adapter: &wintun::Adapter, family: ADDRESS_FAMILY) -> Result<MIB_IPINTERFACE_ROW, WIN32_ERROR> {
+    let mut row = MIB_IPINTERFACE_ROW {
+        Family: family,
+        // SAFETY: Accessing `Value` field of a union to copy the raw 64-bit LUID
+        InterfaceLuid: NET_LUID_LH { Value: unsafe { adapter.get_luid().Value } },
+        ..Default::default()
+    };
+    // SAFETY: `row` is a properly initialized `MIB_IPINTERFACE_ROW` with `Family` and
+    // `InterfaceLuid` set. `GetIpInterfaceEntry` reads those fields and fills the rest.
+    let result = unsafe { GetIpInterfaceEntry(&mut row) };
+    if result == NO_ERROR { Ok(row) } else { Err(result) }
+}
 
-        // SAFETY: `row` is a properly initialized `MIB_IPINTERFACE_ROW` with `Family` and
-        // `InterfaceLuid` set. `GetIpInterfaceEntry` reads those fields and fills the rest.
-        let result = unsafe { GetIpInterfaceEntry(&mut row) };
-        if result != NO_ERROR {
+/// The adapter has no IPv6 interface when IPv6 is disabled on the host or unbound from the adapter.
+pub fn has_ipv6_interface(adapter: &wintun::Adapter) -> bool {
+    match get_ip_interface_entry(adapter, AF_INET6) {
+        Ok(_) => true,
+        Err(error) if error == ERROR_NOT_FOUND => false,
+        Err(error) => {
             tracing::error!(
-                message_id = "nVRsbT3w",
-                error_code = result.0,
-                family = family_name(family),
-                "GetIpInterfaceEntry failed"
+                message_id = "Vq3nJt8L",
+                error_code = error.0,
+                "GetIpInterfaceEntry failed for IPv6, assuming it's enabled"
             );
-            success = Err(());
-            continue;
+            true
         }
+    }
+}
+
+fn set_metric(adapter: &wintun::Adapter, automatic: bool, metric: u32, ipv6: bool) -> Result<(), ()> {
+    let families: &[ADDRESS_FAMILY] = if ipv6 { &[AF_INET, AF_INET6] } else { &[AF_INET] };
+    let mut success = Ok(());
+    for &family in families {
+        let mut row = match get_ip_interface_entry(adapter, family) {
+            Ok(row) => row,
+            Err(error) => {
+                tracing::error!(
+                    message_id = "nVRsbT3w",
+                    error_code = error.0,
+                    family = family_name(family),
+                    "GetIpInterfaceEntry failed"
+                );
+                success = Err(());
+                continue;
+            }
+        };
 
         // https://learn.microsoft.com/windows/win32/api/netioapi/ns-netioapi-mib_ipinterface_row
         // For IPv4, SitePrefixLength is set to 64 by GetIpInterfaceEntry.
@@ -203,14 +235,14 @@ fn set_metric(adapter: &wintun::Adapter, automatic: bool, metric: u32) -> Result
     success
 }
 
-pub fn set_low_metric(adapter: &wintun::Adapter) -> Result<(), ()> {
-    set_metric(adapter, false, 1)?;
+pub fn set_low_metric(adapter: &wintun::Adapter, ipv6: bool) -> Result<(), ()> {
+    set_metric(adapter, false, 1, ipv6)?;
     tracing::info!(message_id = "frfGU26w", "Successfully set interface metric to 1");
     Ok(())
 }
 
-pub fn reset_interface_metric(adapter: &wintun::Adapter) -> Result<(), ()> {
-    set_metric(adapter, true, 0)?;
+pub fn reset_interface_metric(adapter: &wintun::Adapter, ipv6: bool) -> Result<(), ()> {
+    set_metric(adapter, true, 0, ipv6)?;
     tracing::info!(message_id = "5EdQ1ti3", "Successfully reset interface metric to automatic");
     Ok(())
 }
@@ -273,14 +305,15 @@ pub async fn set_ipv6_address(adapter: &wintun::Adapter, ipv6: Ipv6Network) -> R
     run_command(&mut cmd, "netsh for IPv6", "p7nWx2kF").await
 }
 
-pub async fn set_mtu(adapter: &wintun::Adapter, mtu: u16) -> Result<(), ()> {
+pub async fn set_mtu(adapter: &wintun::Adapter, mtu: u16, ipv6: bool) -> Result<(), ()> {
     let name = adapter
         .get_name()
         .map_err(|error| tracing::error!(message_id = "gHUMlkA6", ?error, "failed to get adapter name for MTU"))?;
     let netsh = get_system_directory().join("netsh.exe");
 
+    let families: &[&str] = if ipv6 { &["ipv4", "ipv6"] } else { &["ipv4"] };
     let mut result = Ok(());
-    for ip_str in ["ipv4", "ipv6"] {
+    for &ip_str in families {
         let mut cmd = tokio::process::Command::new(&netsh);
         cmd.args(["interface", ip_str, "set", "subinterface", &name])
             .arg(format!("mtu={mtu}"))

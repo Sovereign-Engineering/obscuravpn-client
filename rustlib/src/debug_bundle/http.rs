@@ -1,5 +1,6 @@
 use futures::TryStreamExt as _;
-use reqwest::dns::{Resolve, Resolving};
+use obscuravpn_api::reexports::reqwest;
+use obscuravpn_api::reexports::reqwest::dns::{Resolve, Resolving};
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;

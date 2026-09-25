@@ -48,9 +48,6 @@ ipnetwork = { version = "0.21.1", features = ["serde"] }
 libadwaita = { version = "0.7", optional = true }
 libc = "0.2.178"
 rand = "0.8.5"
-reqwest = { git = "https://github.com/Sovereign-Engineering/reqwest", rev = "7ba2e76a02454b0fa414e0ddbf8aa609ed05b944", default-features = false, features = [
-    "stream",
-] }
 ring = "0.17.14"
 rustls = "0.23.28"
 semver = "1.0.27"
@@ -94,7 +91,7 @@ rev = "ff3b5555b5b1c4f85ae23d8d4aaf00bea2cd2bf0"
 
 [dependencies.obscuravpn-api]
 git = "https://github.com/Sovereign-Engineering/obscuravpn-api.git"
-rev = "87d0d9c5a3bf49966eaa8c4840176c3a0c01a52e"
+rev = "554c994cf33a5ff03eb1847f591fb752715a12ae"
 
 [dependencies.quinn]
 git = "https://github.com/Sovereign-Engineering/quinn.git"
@@ -159,7 +156,3 @@ ring = "0.17.14"
 
 [features]
 gui = ["dep:gtk4", "dep:libadwaita", "dep:webkit6"]
-
-# Temporary SO_MARK fork. Patches do not propagate, consumers need this entry too.
-[patch.crates-io]
-hyper-util = { git = "https://github.com/Sovereign-Engineering/hyper-util", rev = "f2659bd55b85bf524abac9ab0ce4951bb67077b9" }

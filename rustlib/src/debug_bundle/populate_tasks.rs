@@ -52,6 +52,7 @@ pub async fn populate_debug_tasks(dir: &Utf8Path, side: DebugBundleSide, backend
     for (name, url) in [
         ("http-obscura-backend-sni-apple", "https://apple.com/api/ping"),
         ("http-obscura-backend-sni-google", "https://google.com/api/ping"),
+        ("http-obscura-backend-check", "https://v1.api.prod.obscura.net/api/check"),
     ] {
         add_task(
             &mut tasks,

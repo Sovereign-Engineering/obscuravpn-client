@@ -393,6 +393,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
+name = "base64"
+version = "0.23.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac07cdecf99051d9a5238b80f35af32cdeba5b336e55d957b318b50137e18da5"
+
+[[package]]
 name = "base64ct"
 version = "1.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1137,7 +1143,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -1849,15 +1855,17 @@ dependencies = [
 
 [[package]]
 name = "hyper-util"
-version = "0.1.20"
-source = "git+https://github.com/Sovereign-Engineering/hyper-util?rev=f2659bd55b85bf524abac9ab0ce4951bb67077b9#f2659bd55b85bf524abac9ab0ce4951bb67077b9"
+version = "0.1.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ddc03d96684f9226b8a787cdb71488417b53ab5ea8fdb1dac946cb9431cc8bff"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "bytes",
  "futures-channel",
  "futures-util",
  "http",
  "http-body",
+ "httparse",
  "hyper",
  "ipnet",
  "libc",
@@ -2720,7 +2728,7 @@ dependencies = [
 [[package]]
 name = "obscuravpn-api"
 version = "0.0.0"
-source = "git+https://github.com/Sovereign-Engineering/obscuravpn-api.git?rev=87d0d9c5a3bf49966eaa8c4840176c3a0c01a52e#87d0d9c5a3bf49966eaa8c4840176c3a0c01a52e"
+source = "git+https://github.com/Sovereign-Engineering/obscuravpn-api.git?rev=554c994cf33a5ff03eb1847f591fb752715a12ae#554c994cf33a5ff03eb1847f591fb752715a12ae"
 dependencies = [
  "anyhow",
  "argon2",
@@ -2784,7 +2792,6 @@ dependencies = [
  "oslog",
  "quinn 0.11.8 (git+https://github.com/Sovereign-Engineering/quinn.git?rev=8f690a22535dcf2d76c369cadd3f0bec93667a4d)",
  "rand 0.8.5",
- "reqwest",
  "resvg",
  "ring",
  "rtnetlink",
@@ -3392,10 +3399,10 @@ checksum = "adad44e29e4c806119491a7f06f03de4d1af22c3a680dd47f1e6e179439d1f56"
 
 [[package]]
 name = "reqwest"
-version = "0.13.4"
-source = "git+https://github.com/Sovereign-Engineering/reqwest?rev=7ba2e76a02454b0fa414e0ddbf8aa609ed05b944#7ba2e76a02454b0fa414e0ddbf8aa609ed05b944"
+version = "0.13.5"
+source = "git+https://github.com/Sovereign-Engineering/reqwest?rev=87cc6fc6edc6b3c8f65e5a6cd1d497e4eb8bf32f#87cc6fc6edc6b3c8f65e5a6cd1d497e4eb8bf32f"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "bytes",
  "futures-core",
  "futures-util",
@@ -3565,7 +3572,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.11.0",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -3645,7 +3652,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs 1.0.1",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]

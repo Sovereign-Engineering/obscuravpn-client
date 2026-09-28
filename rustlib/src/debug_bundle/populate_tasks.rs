@@ -78,6 +78,16 @@ pub async fn populate_debug_tasks(dir: &Utf8Path, side: DebugBundleSide, backend
         command("route-print", "route", &["print"]);
         command("netsh-ipv4-interfaces", "netsh", &["interface", "ipv4", "show", "interfaces"]);
         command("netsh-ipv6-interfaces", "netsh", &["interface", "ipv6", "show", "interfaces"]);
+        let mut powershell = |name: &str, script: &str| command(name, "powershell", &["-NoProfile", "-NonInteractive", "-Command", script]);
+        powershell(
+            "firewall-profiles",
+            "Get-NetFirewallProfile -PolicyStore ActiveStore | Format-List Name, Enabled, DefaultInboundAction, DefaultOutboundAction, AllowLocalFirewallRules",
+        );
+        powershell("network-connection-profiles", "Get-NetConnectionProfile | Format-List");
+        powershell(
+            "firewall-tunnel-rule",
+            "Get-NetFirewallRule -PolicyStore ActiveStore -DisplayName 'Obscura VPN Tunnel' | Format-List; Get-NetFirewallRule -PolicyStore ActiveStore -DisplayName 'Obscura VPN Tunnel' | Get-NetFirewallInterfaceFilter | Format-List",
+        );
         // Test routing. Okay if not reachable.
         let destinations: Vec<IpAddr> = [
             IpAddr::V4(std::net::Ipv4Addr::new(1, 1, 1, 1)),

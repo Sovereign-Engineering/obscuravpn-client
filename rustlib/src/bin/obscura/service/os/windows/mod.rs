@@ -1,3 +1,4 @@
+mod firewall;
 mod ipc;
 pub mod nrpt;
 pub mod scm;

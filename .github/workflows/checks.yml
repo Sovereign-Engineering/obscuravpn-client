@@ -41,7 +41,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: obscura-debug.apk
-          path: result/app-foss-debug.apk
+          path: result/app-foss-debug-unsigned.apk
           retention-days: 30
 
   flake_check_macos:

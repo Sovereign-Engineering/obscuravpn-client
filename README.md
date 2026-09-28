@@ -113,7 +113,7 @@ apksigner sign --ks your-keystore.jks --ks-pass pass:hunter2 --out=obscura-signe
 adb install obscura-signed.apk # Push to your device.
 ```
 
-Instead of `app-foss-release-unsigned` you can also use `app-foss-debug` for the debug build. Note that just the Android portion is a debug build, the Rust core and UI are still release builds.
+Instead of `app-foss-release-unsigned` you can also use `app-foss-debug-unsigned` for the debug build. Note that just the Android portion is a debug build, the Rust core and UI are still release builds.
 
 #### Incremental Builds
 

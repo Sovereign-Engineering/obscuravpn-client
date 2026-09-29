@@ -51,6 +51,7 @@ export function hasCredit(accountInfo: AccountInfo | undefined): boolean {
 }
 
 export interface StripeSubscriptionInfo {
+    active: boolean,
     status: StripeSubscriptionStatus,
     current_period_start: number,
     current_period_end: number,
@@ -127,14 +128,8 @@ export const enum StripeSubscriptionStatus {
     UNPAID = "unpaid",
 }
 
-// TODO: https://linear.app/soveng/issue/OBS-3495/add-active-fields-for-stripe-and-apple-subscriptions
 export function hasStripeSubscription(accountInfo: AccountInfo | undefined): boolean {
-  const subscription = accountInfo?.stripe_subscription;
-  const status = subscription?.status;
-  const cancel_at_period_end = subscription?.cancel_at_period_end === true;
-  return status === StripeSubscriptionStatus.ACTIVE
-    || status === StripeSubscriptionStatus.TRIALING
-    || (status === StripeSubscriptionStatus.PAST_DUE && !cancel_at_period_end);
+  return accountInfo?.stripe_subscription?.active === true;
 }
 
 // https://developer.apple.com/documentation/appstoreserverapi/status
@@ -147,16 +142,14 @@ export const enum AppleSubscriptionStatus {
 }
 
 export interface AppleSubscriptionInfo {
+    active: boolean,
     status: AppleSubscriptionStatus,
     auto_renew_status: boolean,
     renewal_date: number,
 }
 
-// TODO: https://linear.app/soveng/issue/OBS-3495/add-active-fields-for-stripe-and-apple-subscriptions
 export function hasAppleSubscription(accountInfo: AccountInfo | undefined): boolean {
-    const status = accountInfo?.apple_subscription?.status;
-    return status === AppleSubscriptionStatus.ACTIVE
-      || status === AppleSubscriptionStatus.GRACE_PERIOD;
+    return accountInfo?.apple_subscription?.active === true;
 }
 
 // https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.subscriptionsv2#SubscriptionState

@@ -69,8 +69,8 @@
 
         gradleOpts = [ "-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidBuildTools}/aapt2" ];
         gradleFlags = gradleOpts ++ [
-          # Prevents dependency on group-index and SNAPSHOT files: https://github.com/NixOS/nixpkgs/issues/501643
-          "-xlint"
+          "-Pobscura.unsigned=true"
+          "-xlint" # Prevents dependency on group-index and SNAPSHOT files: https://github.com/NixOS/nixpkgs/issues/501643
         ];
 
         rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./rustlib/rust-toolchain.toml;
@@ -311,12 +311,14 @@
         apks-foss = gradleDerivation {
           name = "apks-foss";
           task = "assembleFoss";
-          appOutputs = [ "apk/foss/debug/app-foss-debug.apk" "apk/foss/release/app-foss-release-unsigned.apk" ];
+          appOutputs =
+            [ "apk/foss/debug/app-foss-debug-unsigned.apk" "apk/foss/release/app-foss-release-unsigned.apk" ];
         };
         apks-play = gradleDerivation {
           name = "apks-play";
           task = "assemblePlay";
-          appOutputs = [ "apk/play/debug/app-play-debug.apk" "apk/play/release/app-play-release-unsigned.apk" ];
+          appOutputs =
+            [ "apk/play/debug/app-play-debug-unsigned.apk" "apk/play/release/app-play-release-unsigned.apk" ];
         };
         aab-play-debug = gradleDerivation {
           name = "aab-play-debug";

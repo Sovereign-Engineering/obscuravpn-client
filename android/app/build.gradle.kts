@@ -35,6 +35,12 @@ extensions.configure<ApplicationExtension> {
             isMinifyEnabled = false
             isShrinkResources = false
             resValue("string", "app_name", "Obscura VPN (Debug)")
+
+            // Android Studio builds need to be signed to work properly, but don't sign Nix builds to make reproducible
+            // and avoid using a random key each time.
+            if (providers.gradleProperty("obscura.unsigned").orNull.toBoolean()) {
+                signingConfig = null
+            }
         }
 
         getByName("release") {
@@ -44,6 +50,10 @@ extensions.configure<ApplicationExtension> {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            vcsInfo {
+                // We include our own version and this creates a non-reproducible build.
+                include = false
+            }
         }
     }
 

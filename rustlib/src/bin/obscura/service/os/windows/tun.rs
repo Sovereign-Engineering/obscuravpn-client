@@ -185,16 +185,21 @@ impl Tun {
             dns_routes.iter().copied().filter(|ip| !dns.contains(ip)).collect()
         };
 
+        let ipv6 = self.ipv6_config(ipv6);
+
         // Attempt all config steps regardless of individual failures to minimize leaks until intentionally disconnecting.
         // E.g. DNS queries shouldn't leak because route setup failed.
         let mut result = Ok(());
         result = result
-            .and(iphelper::set_mtu(&self.adapter, mtu).await)
-            .and(iphelper::set_ipv4_address(&self.adapter, ipv4).await)
-            .and(iphelper::set_ipv6_address(&self.adapter, ipv6).await)
+            .and(iphelper::set_mtu(&self.adapter, mtu, ipv6.is_some()).await)
+            .and(iphelper::set_ipv4_address(&self.adapter, ipv4).await);
+        if let Some(ipv6) = ipv6 {
+            result = result.and(iphelper::set_ipv6_address(&self.adapter, ipv6).await);
+        }
+        result = result
             .and(iphelper::set_dns_servers(&self.adapter, dns).await)
-            .and(iphelper::set_low_metric(&self.adapter))
-            .and(iphelper::set_routes(&self.adapter, dns, &stale_dns_ips))
+            .and(iphelper::set_low_metric(&self.adapter, ipv6.is_some()))
+            .and(iphelper::set_routes(&self.adapter, dns, &stale_dns_ips, ipv6.is_some()))
             // Avoid DNS outage by redirecting after adding routes
             .and(nrpt::create_rule(dns).or_else(|_| nrpt::delete_rules().map(drop)))
             .and(flush_dns_cache().await);
@@ -206,6 +211,31 @@ impl Tun {
             }
         }
         result
+    }
+
+    /// The adapter has no IPv6 interface when IPv6 is disabled on the host, so IPv6 can't be configured.
+    /// Skipping it is safe as long as no other interface can route IPv6 traffic off the host.
+    fn ipv6_config(&self, ipv6: Ipv6Network) -> Option<Ipv6Network> {
+        if iphelper::has_ipv6_interface(&self.adapter) {
+            return Some(ipv6);
+        }
+        match iphelper::has_ipv6_default_route(self.luid()) {
+            Ok(false) => {
+                tracing::warn!(
+                    message_id = "Rk4dN9sT",
+                    "tunnel adapter has no IPv6 interface and the host has no IPv6 default route, configuring IPv4 only"
+                );
+                None
+            }
+            Ok(true) => {
+                tracing::error!(
+                    message_id = "Zc6fL1yQ",
+                    "tunnel adapter has no IPv6 interface, but the host has an IPv6 default route, so IPv6 can't be skipped"
+                );
+                Some(ipv6)
+            }
+            Err(()) => Some(ipv6),
+        }
     }
 
     pub fn spawn_read_task(&self, tunnel: QuicWgConnPacketSender) {
@@ -224,12 +254,13 @@ impl Tun {
     }
 
     pub async fn shutdown(&self) -> Result<(), ()> {
+        let ipv6 = iphelper::has_ipv6_interface(&self.adapter);
         let mut result = Ok(());
         result = result.and(nrpt::delete_rules().map(drop));
         result = result.and(flush_dns_cache().await);
-        result = result.and(iphelper::reset_interface_metric(&self.adapter));
+        result = result.and(iphelper::reset_interface_metric(&self.adapter, ipv6));
         let stale_dns_ips: Vec<IpAddr> = self.dns_routes.lock().unwrap().iter().copied().collect();
-        result = result.and(iphelper::remove_routes(&self.adapter, &stale_dns_ips));
+        result = result.and(iphelper::remove_routes(&self.adapter, &stale_dns_ips, ipv6));
         if result.is_ok() {
             self.dns_routes.lock().unwrap().clear();
         }

@@ -12,6 +12,7 @@ use tokio::task::spawn_blocking;
 use wintun::Wintun;
 
 use crate::service::os::windows::WindowsServiceStartError;
+use crate::service::os::windows::firewall;
 use crate::service::os::windows::iphelper;
 use crate::service::os::windows::iphelper::flush_dns_cache;
 use crate::service::os::windows::nrpt;
@@ -58,6 +59,8 @@ impl Tun {
                 wintun::Adapter::create(&wintun, TUN_NAME, "Obscura QUICWG", None).map_err(WindowsServiceStartError::CreateWintunAdapter)?
             }
         };
+        // Not fatal: only matters when the Public profile blocks outbound by default.
+        let _ = firewall::allow_tunnel_outbound(&adapter).await;
         let session = adapter.start_session(0x800000).map_err(WindowsServiceStartError::StartWintunSession)?;
         Ok(Tun {
             adapter,

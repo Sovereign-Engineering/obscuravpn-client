@@ -54,13 +54,13 @@ DHCP servers can push routes more specific than a default (e.g. [TunnelVision, C
 
 The exit can inject arbitrary packets into the tunnel. On Linux packets from the tun are only accepted if conntrack recognizes them as replies of an existing flow.
 
-### Unsolicited traffic from the local network
+### Unsolicited traffic from the local network or the internet
 
 Regardless of whether their replies may be dropped, non-reply incoming packets may trigger application level behavior (one-shot UDP datagrams, TCP Fast Open data, QUIC 0-RTT).
 
 Not handled on Windows, but Windows Defender Firewall does not allow inbound flows by default.
 
-On Linux packets for this host are dropped unless they are replies to existing flows or link maintenance. Local network, WireGuard and Tailscale exceptions apply the same as they do for egress. Forwarded traffic is not affected.
+On Linux packets for this host are dropped unless they are replies to existing flows or link maintenance. Local network, WireGuard and Tailscale exceptions apply the same as they do for egress. Forwarded traffic is not affected. See [Linux exemption by fwmark](#linux-exemption-by-fwmark) for how to add exemptions based on fwmark.
 
 
 ### Tunnel traffic injection from the local network
@@ -73,3 +73,22 @@ On Linux we drop packets for the tunnel address arriving on any interface other 
 
 Linux answers ARP requests for local IPv4 addresses on any interface. Since tunnel addresses are stable until the WireGuard key is rotated, this would identify a machine across networks. To prevent this we drop ARP requests for the tunnel address on Linux.
 
+## Linux exemption by fwmark
+
+Flows whose first packet carries our FWMARK (0x6f627363) bypass tunnel routing and enforcement. This allows users to add nftables rules to exempt specific traffic:
+
+```
+table inet my-exemptions {
+    chain prerouting {
+        type filter hook prerouting priority mangle;
+        ip saddr 1.2.3.4 meta mark set 0x6f627363 # exempt incoming flows from 1.2.3.4
+        ip6 saddr 1234::5678 meta mark set 0x6f627363 # exempt incoming flows from 1234::5678
+        tcp dport 12345 meta mark set 0x6f627363 # exempt incoming flows to port 12345
+    }
+    chain output {
+        type route hook output priority mangle;
+        ip daddr 1.2.3.4 meta mark set 0x6f627363 # exempt outgoing flows to 1.2.3.4
+        ip6 daddr 1234::5678 meta mark set 0x6f627363 # exempt outgoing flows to 1234::5678
+    }
+}
+```

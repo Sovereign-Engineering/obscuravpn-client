@@ -1,5 +1,5 @@
 //! We maintain nftables tables with the following purposes:
-//! - Restore fwmark on inbound packets of service flows.
+//! - Restore fwmark on all packets of marked flows.
 //! - Drop non-tunnel packets that don't carry our fwmark. Exceptions documented below.
 //! - Drop unsolicited tun device ingress.
 //! - Drop packets for the tunnel address arriving anywhere else.
@@ -27,6 +27,12 @@
 //!         ct mark 0x6f627363 meta mark set ct mark
 //!     }
 //!
+//!     # Restore the mark on outgoing packets of marked flows. Route chains repeat the routing decision when the mark changes, so these packets leave outside the tunnel.
+//!     chain mark-restore-output {
+//!         type route hook output priority mangle; policy accept;
+//!         ct mark 0x6f627363 meta mark set ct mark
+//!     }
+//!
 //!     # After conntrack so flow direction is known, but before DNAT may change the destination. This chain only exists if the target state is connected.
 //!     chain tunnel-ingress {
 //!         type filter hook prerouting priority -199; policy accept;
@@ -45,6 +51,8 @@
 //!         type filter hook input priority filter; policy drop;
 //!         # Loopback traffic is always accepted.
 //!         iifname "lo" accept
+//!         # Incoming flows the administrator marked. Setting the mark requires CAP_NET_ADMIN. Saving it to conntrack marks the replies too.
+//!         meta mark 0x6f627363 ct mark set meta mark accept
 //!         # Replies to flows this host initiated, including tunnel traffic that passed tunnel-ingress and ICMP errors for our flows.
 //!         ct direction reply accept
 //!         # DHCPv4 server responses.
@@ -172,6 +180,7 @@ const AF_INET6: u8 = try_c_int_into_u8(libc::AF_INET6).unwrap();
 
 const NF_INET_PRE_ROUTING: u32 = try_c_int_into_u32(libc::NF_INET_PRE_ROUTING).unwrap();
 const NF_INET_LOCAL_IN: u32 = try_c_int_into_u32(libc::NF_INET_LOCAL_IN).unwrap();
+const NF_INET_LOCAL_OUT: u32 = try_c_int_into_u32(libc::NF_INET_LOCAL_OUT).unwrap();
 const NF_INET_POST_ROUTING: u32 = try_c_int_into_u32(libc::NF_INET_POST_ROUTING).unwrap();
 const NF_ARP_IN: u32 = try_c_int_into_u32(libc::NF_ARP_IN).unwrap();
 const NF_IP_PRI_CONNTRACK: i32 = libc::NF_IP_PRI_CONNTRACK;
@@ -280,6 +289,7 @@ const FD_NAME_NFT: &str = "nft";
 const TABLE_NAME: &str = "obscura";
 const CHAIN_MARK_SAVE: &str = "mark-save";
 const CHAIN_MARK_RESTORE: &str = "mark-restore";
+const CHAIN_MARK_RESTORE_OUTPUT: &str = "mark-restore-output";
 const CHAIN_TUNNEL_INGRESS: &str = "tunnel-ingress";
 const CHAIN_INPUT: &str = "input";
 const CHAIN_KILL_SWITCH: &str = "kill-switch";
@@ -355,11 +365,11 @@ impl NftTable {
             table.attr_u32_be(NFTA_TABLE_FLAGS, NFT_TABLE_F_OWNER);
             batch.extend(table.finish());
 
-            for Chain { name, hook, priority, policy: chain_policy, rules } in chains {
+            for Chain { name, kind, hook, priority, policy: chain_policy, rules } in chains {
                 let mut chain = self.change_msg(family, NFT_MSG_NEWCHAIN, NLM_F_CREATE);
                 chain.attr_str(NFTA_CHAIN_TABLE, TABLE_NAME);
                 chain.attr_str(NFTA_CHAIN_NAME, name);
-                chain.attr_str(NFTA_CHAIN_TYPE, "filter");
+                chain.attr_str(NFTA_CHAIN_TYPE, kind.into());
                 chain.nested(NFTA_CHAIN_HOOK, |chain| {
                     chain.attr_u32_be(NFTA_HOOK_HOOKNUM, hook);
                     chain.attr_u32_be(NFTA_HOOK_PRIORITY, priority.cast_unsigned());
@@ -492,8 +502,16 @@ struct Table {
     chains: Vec<Chain>,
 }
 
+#[derive(strum::IntoStaticStr)]
+#[strum(serialize_all = "snake_case")]
+enum ChainKind {
+    Filter,
+    Route,
+}
+
 struct Chain {
     name: &'static str,
+    kind: ChainKind,
     hook: u32,
     priority: i32,
     policy: u32,
@@ -503,20 +521,31 @@ struct Chain {
 fn tables(policy: &TrafficPolicy, tun_name: &str) -> Vec<Table> {
     use Expr::*;
     let mark = FWMARK.to_ne_bytes().to_vec();
+    let restore_mark = vec![CtLoadMark, CmpEq(mark.clone()), MetaSetMark];
     let mut inet_chains = vec![
         Chain {
             name: CHAIN_MARK_SAVE,
+            kind: ChainKind::Filter,
             hook: NF_INET_POST_ROUTING,
             priority: NF_IP_PRI_MANGLE,
             policy: NF_ACCEPT,
-            rules: vec![vec![MetaLoad(NFT_META_MARK), CmpEq(mark.clone()), CtSetMark]],
+            rules: vec![vec![MetaLoad(NFT_META_MARK), CmpEq(mark), CtSetMark]],
         },
         Chain {
             name: CHAIN_MARK_RESTORE,
+            kind: ChainKind::Filter,
             hook: NF_INET_PRE_ROUTING,
             priority: NF_IP_PRI_MANGLE,
             policy: NF_ACCEPT,
-            rules: vec![vec![CtLoadMark, CmpEq(mark), MetaSetMark]],
+            rules: vec![restore_mark.clone()],
+        },
+        Chain {
+            name: CHAIN_MARK_RESTORE_OUTPUT,
+            kind: ChainKind::Route,
+            hook: NF_INET_LOCAL_OUT,
+            priority: NF_IP_PRI_MANGLE,
+            policy: NF_ACCEPT,
+            rules: vec![restore_mark],
         },
     ];
     let mut arp_chains = Vec::new();
@@ -554,6 +583,7 @@ fn tunnel_ingress_chain(tun_name: &str, tunnel_ipv4: Ipv4Addr, tunnel_ipv6: Ipv6
     use Expr::*;
     Chain {
         name: CHAIN_TUNNEL_INGRESS,
+        kind: ChainKind::Filter,
         hook: NF_INET_PRE_ROUTING,
         priority: NF_IP_PRI_CONNTRACK + 1,
         policy: NF_ACCEPT,
@@ -577,6 +607,7 @@ fn arp_input_chain(tunnel_ipv4: Ipv4Addr) -> Chain {
     use Expr::*;
     Chain {
         name: CHAIN_ARP_INPUT,
+        kind: ChainKind::Filter,
         hook: NF_ARP_IN,
         priority: NF_IP_PRI_FILTER,
         policy: NF_ACCEPT,
@@ -697,6 +728,7 @@ fn kill_switch_chain(
     }
     Chain {
         name: CHAIN_KILL_SWITCH,
+        kind: ChainKind::Filter,
         hook: NF_INET_POST_ROUTING,
         priority: NF_IP_PRI_FILTER,
         policy: NF_DROP,
@@ -708,6 +740,7 @@ fn input_chain(local_network_access: bool, tailscale_bypass: bool, wireguard_byp
     use Expr::*;
     let mut rules = vec![
         vec![MetaLoad(NFT_META_IIFNAME), CmpEq(b"lo\0".to_vec()), Accept],
+        vec![MetaLoad(NFT_META_MARK), CmpEq(FWMARK.to_ne_bytes().to_vec()), CtSetMark, Accept],
         vec![CtLoadDirection, CmpEq(vec![IP_CT_DIR_REPLY]), Accept],
         dhcp_rule(AF_INET, None, 67, 68),
         dhcp_rule(AF_INET6, Some(link_local_v6_source()), 547, 546),
@@ -748,7 +781,14 @@ fn input_chain(local_network_access: bool, tailscale_bypass: bool, wireguard_byp
             ));
         }
     }
-    Chain { name: CHAIN_INPUT, hook: NF_INET_LOCAL_IN, priority: NF_IP_PRI_FILTER, policy: NF_DROP, rules }
+    Chain {
+        name: CHAIN_INPUT,
+        kind: ChainKind::Filter,
+        hook: NF_INET_LOCAL_IN,
+        priority: NF_IP_PRI_FILTER,
+        policy: NF_DROP,
+        rules,
+    }
 }
 
 struct AddrMatch {
@@ -828,6 +868,7 @@ fn nul_terminated(value: &str) -> Vec<u8> {
     bytes
 }
 
+#[derive(Clone)]
 enum Expr {
     MetaLoad(u32),
     MetaSetMark,

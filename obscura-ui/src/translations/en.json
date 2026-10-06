@@ -390,6 +390,7 @@
   "vpnError-noInternet": "Not connected to the internet",
   "vpnError-noLongerSupported": "This client is too old, please update to the latest version to connect",
   "vpnError-noNetworkAvailable": "Not connected to a network",
+  "vpnError-noRelay": "Unable to connect to relay servers. You may be offline or something is interfering with your connection.",
   "vpnError-noSlotsLeft": "You cannot have more than five active devices. Disconnect a device or delete a WireGuard config in your user portal",
   "vpnError-notLoggedIn": "Not logged in. Please log in to connect.",
   "vpnError-other": "An unknown error occurred, please send us a debug bundle which can be created from the status menu, Help tab, or About tab",

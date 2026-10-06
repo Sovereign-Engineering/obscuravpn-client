@@ -30,6 +30,7 @@ pub enum ConnectErrorCode {
     InvalidAccountId,
     NoInternet,
     NoLongerSupported,
+    NoRelay,
     NoSlotsLeft,
     NotLoggedIn,
     Other,
@@ -81,6 +82,7 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
                 },
             },
             TunnelConnectError::NoInternet => Self::NoInternet,
+            TunnelConnectError::RelaySelection(RelaySelectionError::NoSuccess) => Self::NoRelay,
             TunnelConnectError::NetworkConfig(_)
             | TunnelConnectError::NoExit
             | TunnelConnectError::SetOsNetworkConfig

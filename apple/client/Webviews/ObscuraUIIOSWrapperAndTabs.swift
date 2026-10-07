@@ -75,11 +75,20 @@ class ObscuraUIIOSViewAndTabsViewController: UIViewController {
     }
 
     @objc private func keyboardWillShow(notification: NSNotification) {
+        // iOS also delivers keyboard notifications for keyboards belonging to other apps (e.g. when switching in from an app with its keyboard open, or in multitasking). Only our own keyboard should affect the inset.
+        let isLocal = (notification.userInfo?[UIResponder.keyboardIsLocalUserInfoKey] as? Bool) ?? true
+        guard isLocal else { return }
         self.isKeyboardOpen = true
         self.sendSafeArea()
     }
 
     @objc private func keyboardWillHide(notification: NSNotification) {
+        self.isKeyboardOpen = false
+        self.sendSafeArea()
+    }
+
+    @objc private func appDidEnterBackground(notification: NSNotification) {
+        // Our keyboard is dismissed when backgrounded, and a hide notification isn't guaranteed. If focus is restored on return, a fresh local show notification will set this again.
         self.isKeyboardOpen = false
         self.sendSafeArea()
     }
@@ -96,6 +105,12 @@ class ObscuraUIIOSViewAndTabsViewController: UIViewController {
             self,
             selector: #selector(self.keyboardWillHide),
             name: UIResponder.keyboardWillHideNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(self.appDidEnterBackground),
+            name: UIApplication.didEnterBackgroundNotification,
             object: nil
         )
     }

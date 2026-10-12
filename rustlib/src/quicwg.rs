@@ -98,6 +98,8 @@ pub enum QuicWgConnectError {
     QuicConfig(quinn::ConnectError),
     #[error("quic connect: {0}")]
     TransportConnect(io::Error),
+    #[error("timeout {0}")]
+    Timeout(&'static str),
     #[error("relay handshake: {0}")]
     RelayHandshake(#[from] QuicWgRelayHandshakeError),
     #[error("wireguard handshake: {0}")]
@@ -568,8 +570,15 @@ impl QuicWgConnHandshaking {
         let connecting = quic_endpoint
             .connect_with(quic_config.clone(), relay_addr, relay_sni)
             .map_err(QuicWgConnectError::QuicConfig)?;
-        let connection = connecting.await.map_err(io::Error::other).map_err(QuicWgConnectError::TransportConnect)?;
-        let (send, recv) = connection.open_bi().await.map_err(QuicWgRelayHandshakeError::ControlStreamInitError)?;
+        let connection = timeout(QUIC_STEP_TIMEOUT, connecting)
+            .await
+            .map_err(|_| QuicWgConnectError::Timeout("quic connect"))?
+            .map_err(io::Error::other)
+            .map_err(QuicWgConnectError::TransportConnect)?;
+        let (send, recv) = timeout(QUIC_STEP_TIMEOUT, connection.open_bi())
+            .await
+            .map_err(|_| QuicWgRelayHandshakeError::Timeout("opening control stream"))?
+            .map_err(QuicWgRelayHandshakeError::ControlStreamInitError)?;
         let mut this = Self { relay_id, port, transport: Transport::Quic { conn: connection, send, recv } };
         this.exchange_protocol_identifiers().await?;
         Ok(this)
@@ -583,7 +592,10 @@ impl QuicWgConnHandshaking {
         relay_sni: &str,
     ) -> Result<Self, QuicWgConnectError> {
         let tcp_socket = new_nonblocking_tcp(network_interface).map_err(QuicWgConnectError::TransportConnect)?;
-        let tcp_stream = tcp_socket.connect(relay_addr).await.map_err(QuicWgConnectError::TransportConnect)?;
+        let tcp_stream = timeout(QUIC_STEP_TIMEOUT, tcp_socket.connect(relay_addr))
+            .await
+            .map_err(|_| QuicWgConnectError::Timeout("tcp connect"))?
+            .map_err(QuicWgConnectError::TransportConnect)?;
         if let Err(error) = tcp_stream.set_nodelay(true) {
             tracing::warn!(message_id = "k9KRCm3G", ?error, "failed to set tcp nodelay");
         }
@@ -593,9 +605,9 @@ impl QuicWgConnHandshaking {
             .try_into()
             .map_err(Into::into)
             .map_err(QuicWgConnectError::CryptoConfig)?;
-        let tls_stream = tls_connector
-            .connect(server_name, tcp_stream)
+        let tls_stream = timeout(QUIC_STEP_TIMEOUT, tls_connector.connect(server_name, tcp_stream))
             .await
+            .map_err(|_| QuicWgConnectError::Timeout("tls handshake"))?
             .map_err(QuicWgConnectError::TransportConnect)?;
         let mut this = Self { relay_id, port: relay_addr.port(), transport: Transport::TcpTls(tls_stream) };
         this.exchange_protocol_identifiers().await?;
@@ -603,6 +615,14 @@ impl QuicWgConnHandshaking {
     }
 
     async fn exchange_protocol_identifiers(&mut self) -> Result<(), QuicWgRelayHandshakeError> {
+        let inner = self.exchange_protocol_identifiers_no_timeout();
+        timeout(QUIC_STEP_TIMEOUT, inner)
+            .await
+            .map_err(|_| QuicWgRelayHandshakeError::Timeout("exchanging protocol identifiers"))
+            .flatten()
+    }
+
+    async fn exchange_protocol_identifiers_no_timeout(&mut self) -> Result<(), QuicWgRelayHandshakeError> {
         let mut buffer = PROTOCOL_IDENTIFIER.to_be_bytes();
         match &mut self.transport {
             Transport::Quic { send, recv, .. } => {

@@ -4,13 +4,13 @@ import OSLog
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "network extension ipc")
 
-// See ../../rustlib/src/manager_cmd.rs
+/// See ../../rustlib/src/manager_cmd.rs
 enum NeManagerCmdResult: Codable {
     case ok_json(String)
     case error(String)
 }
 
-// See ../../rustlib/src/manager_cmd.rs
+/// See ../../rustlib/src/manager_cmd.rs
 enum NeManagerCmd: Codable {
     case apiAppleAssociateAccount(appTransactionJws: String)
     case getDebugInfo
@@ -26,12 +26,12 @@ enum NeManagerCmd: Codable {
     case refreshExitList(freshness: TimeInterval)
 }
 
-// See ../../rustlib/src/manager.rs
+/// See ../../rustlib/src/manager.rs
 struct TunnelArgs: Codable {
     var exit: ExitSelector
 }
 
-// See ../../rustlib/src/manager.rs
+/// See ../../rustlib/src/manager.rs
 enum ExitSelector: Codable {
     case any
     case exit(id: String)
@@ -89,7 +89,7 @@ enum TransportKind: String, Codable, Equatable {
     case tcpTls
 }
 
-// Keep synchronized with rustlib/src/network_config.rs
+/// Keep synchronized with rustlib/src/network_config.rs
 struct OsNetworkConfig: Codable, CustomStringConvertible, Equatable {
     var description: String {
         return "ipv4: \(self.ipv4), use system dns: \(self.useSystemDns), dns: \(self.dns), ipv6: \(self.ipv6)"
@@ -102,8 +102,8 @@ struct OsNetworkConfig: Codable, CustomStringConvertible, Equatable {
     var useSystemDns: Bool
 }
 
-// We must use NSError to communicate errors via startTunnel.
-// This defines an error domain and related methods for our Rust `ConnectErrorCode`.
+/// We must use NSError to communicate errors via startTunnel.
+/// This defines an error domain and related methods for our Rust `ConnectErrorCode`.
 extension NSError {
     convenience init(connectErrorCode: String) {
         self.init(domain: connectErrorDomain, code: 0, userInfo: [variantKey: connectErrorCode])

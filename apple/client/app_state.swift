@@ -195,7 +195,9 @@ class AppState: ObservableObject {
 
         Self.logger.info("setIncludeAllNetworks \(proto.includeAllNetworks, privacy: .public) → \(enable, privacy: .public)")
 
-        if proto.includeAllNetworks == enable { return }
+        if proto.includeAllNetworks == enable {
+            return
+        }
 
         proto.includeAllNetworks = enable
         do {
@@ -334,12 +336,12 @@ class AppState: ObservableObject {
         return result != nil
     }
 
-    // Unfortunately async notification iterators are not sendable, so we often need to resubscribe to state changes.
-    // This function:
-    //    - subscribes to state changes
-    //    - checks if the initial status is unchanged (because subscribing may race with changes)
-    //    - waits for a state change notification or timeout
-    //    - returns the changed state if it didn't time out
+    /// Unfortunately async notification iterators are not sendable, so we often need to resubscribe to state changes.
+    /// This function:
+    ///    - subscribes to state changes
+    ///    - checks if the initial status is unchanged (because subscribing may race with changes)
+    ///    - waits for a state change notification or timeout
+    ///    - returns the changed state if it didn't time out
     private static func waitForStateChange(connection: NEVPNConnection, initial: NEVPNStatus, maxSeconds: Double) async -> NEVPNStatus? {
         enum Event {
             case change

@@ -4,10 +4,6 @@ import WebKit
 struct ObscuraUIWebViewMacOSWrapper: View {
     let webView: ObscuraUIWebView
 
-    init(webView: ObscuraUIWebView) {
-        self.webView = webView
-    }
-
     var body: some View {
         WebViewRepresentable(webView: self.webView)
     }

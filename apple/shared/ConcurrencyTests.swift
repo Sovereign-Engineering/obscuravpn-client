@@ -1,7 +1,7 @@
 import Testing
 
 @Test(.timeLimit(.minutes(1)))
-func asyncMutex() async throws {
+func asyncMutex() async {
     let mutex = AsyncMutex(false)
 
     await withTaskGroup(of: Void.self) { tasks in

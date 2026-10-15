@@ -81,7 +81,7 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
         }
     }
 
-    // This is here just so we can keep `products` completely private.
+    /// This is here just so we can keep `products` completely private.
     func collectDebugData() async throws -> [Any] {
         var debugData: [Any] = []
         for product in self.products {
@@ -113,7 +113,7 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
     }
 }
 
-// static representation of useful information derived from a StoreKit Product
+/// static representation of useful information derived from a StoreKit Product
 class SubscriptionProductModel: Codable {
     var displayName: String
     var description: String

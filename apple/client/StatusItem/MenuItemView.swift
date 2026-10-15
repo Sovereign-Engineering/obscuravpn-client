@@ -59,7 +59,7 @@ class MenuItemView<ContentView: View>: NSView {
         }
     }
 
-    // https://stackoverflow.com/q/6054331/7732434
+    /// https://stackoverflow.com/q/6054331/7732434
     override func draw(_ dirtyRect: NSRect) {
         // Without this, it is possible for a Toggle/NSSwitch inside the status
         // menu dropdown to appear "inactive". That is, without the app tint

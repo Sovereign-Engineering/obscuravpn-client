@@ -25,7 +25,7 @@ extension ExternalWebView {
         return self.webView
     }
 
-    // [required] refresh the view
+    /// [required] refresh the view
     func updateNSView(_ webView: WKWebView, context: Context) {}
 }
 

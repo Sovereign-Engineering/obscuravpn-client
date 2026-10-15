@@ -83,7 +83,9 @@ private class BundleTask {
     }
 
     private func writeResultWithLock(error: String?) {
-        if self.done != nil { return }
+        if self.done != nil {
+            return
+        }
 
         let done = SuspendingClock.now
         self.done = done
@@ -197,7 +199,7 @@ private class DebugBundleBuilder {
         try data.write(to: path)
     }
 
-    func writeJson<T>(name: String, _ json: T) throws where T: Encodable {
+    func writeJson<T: Encodable>(name: String, _ json: T) throws {
         let data = try self.jsonEncoder.encode(json)
         try self.writeFile(name: name, data: data)
     }
@@ -404,7 +406,9 @@ private class DebugBundleBuilder {
             )
 
             for (i, ext) in extensions.enumerated() {
-                if !ext.isEnabled { continue }
+                if !ext.isEnabled {
+                    continue
+                }
 
                 let name = "extension-\(ext.bundleIdentifier)-\(i).provisionprofile"
                 do {
@@ -782,7 +786,7 @@ private class DebugBundleBuilder {
     }
 }
 
-// Abstract DebugBundleStatus manager which ensures that inProgressCounter is appropriately incremented/decremented
+/// Abstract DebugBundleStatus manager which ensures that inProgressCounter is appropriately incremented/decremented
 public class DebugBundleRC {
     private let appState: AppState
 

@@ -28,10 +28,10 @@ enum AppAppearance: String, Codable {
     }
 
     #if os(macOS)
-        // Set on the window instead of using SwiftUI `preferredColorScheme`: reverting that to nil (auto)
-        // leaves the WKWebView pinned to the last explicit scheme; WebKit doesn't learn of auto.
-        // `NSApp.appearance` has the same defect.
-        // Verified on macOS 26.5.
+        /// Set on the window instead of using SwiftUI `preferredColorScheme`: reverting that to nil (auto)
+        /// leaves the WKWebView pinned to the last explicit scheme; WebKit doesn't learn of auto.
+        /// `NSApp.appearance` has the same defect.
+        /// Verified on macOS 26.5.
         var nsAppearance: NSAppearance? {
             switch self {
             case .dark:

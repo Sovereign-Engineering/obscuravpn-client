@@ -58,7 +58,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
         NSApp.terminate(nil)
     }
 
-    // Applies the user's appearance preference to the NSWindow (rather than the hosted SwiftUI Group)
+    /// Applies the user's appearance preference to the NSWindow (rather than the hosted SwiftUI Group)
     func applySelectedAppearance() {
         self.primaryWindow?.appearance = AppAppearance.selected.nsAppearance
     }
@@ -87,10 +87,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
         focusApp()
     }
 
-    // Apple added this method to the template to address a process injection vulnerability related to saving/restoring state
-    // https://sector7.computest.nl/post/2022-08-process-injection-breaking-all-macos-security-layers-with-a-single-vulnerability/
-    // https://stackoverflow.com/a/77320845/7732434
-    // Without this method, log warnings will show up, and the app is apparently vulnerable to compromising SIP
+    /// Apple added this method to the template to address a process injection vulnerability related to saving/restoring state
+    /// https://sector7.computest.nl/post/2022-08-process-injection-breaking-all-macos-security-layers-with-a-single-vulnerability/
+    /// https://stackoverflow.com/a/77320845/7732434
+    /// Without this method, log warnings will show up, and the app is apparently vulnerable to compromising SIP
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
         return true
     }
@@ -269,11 +269,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
     // We do not want to depend on applicationShouldTerminateAfterLastWindowClosed,
     // because it can be triggered for a variety of reasons versus triggering for exactly what we want
 
-    // Based on Carl's initial debugging, it was determined:
-    // On macOS, when a menu item is highlighted, there is a callback to unhighlight the menu item.
-    // If the app is set to accessory before the callback runs, the callback is unable to unhighlight the menu item (for whatever reason).
-    // This results in a pre-highlight/stuck state.
-    // Recreating the main menu upon opening the window alleviates the need to carefully wait to set the activation policy.
+    /// Based on Carl's initial debugging, it was determined:
+    /// On macOS, when a menu item is highlighted, there is a callback to unhighlight the menu item.
+    /// If the app is set to accessory before the callback runs, the callback is unable to unhighlight the menu item (for whatever reason).
+    /// This results in a pre-highlight/stuck state.
+    /// Recreating the main menu upon opening the window alleviates the need to carefully wait to set the activation policy.
     func windowWillClose(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
     }
@@ -297,7 +297,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNoti
         // reopens the App using Finder while the App is already running, the
         // App Menu (the left side) becomes completely frozen and unusable
         // (even the  one)
-        /// more info here:
+        // more info here:
         // https://linear.app/soveng/issue/OBS-175/no-obscura-vpn-in-menu-bar-dock-or-app-switcher-when-application-is#comment-2ecf3e57
         NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.systemuiserver")
             .first!.activate(options: [])
@@ -345,14 +345,12 @@ struct MainWindowContentView: View {
     private let MIN_HEIGHT: CGFloat = 525
 
     var body: some View {
-        Group {
-            if let appState = self.startupModel.appState {
-                ContentView(appState: appState)
-                    .frame(minWidth: self.MIN_WIDTH, minHeight: self.MIN_HEIGHT)
-            } else {
-                StartupView()
-                    .frame(minWidth: self.MIN_WIDTH, minHeight: self.MIN_HEIGHT)
-            }
+        if let appState = self.startupModel.appState {
+            ContentView(appState: appState)
+                .frame(minWidth: self.MIN_WIDTH, minHeight: self.MIN_HEIGHT)
+        } else {
+            StartupView()
+                .frame(minWidth: self.MIN_WIDTH, minHeight: self.MIN_HEIGHT)
         }
     }
 }

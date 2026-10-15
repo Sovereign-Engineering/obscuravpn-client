@@ -121,7 +121,7 @@ class OsStatus: Encodable {
     }
 }
 
-// Remove this once min OS versions become macOS 14 and iOS 17
+/// Remove this once min OS versions become macOS 14 and iOS 17
 extension NWPathMonitor {
     func stream() -> AsyncStream<Network.NWPath> {
         AsyncStream { continuation in

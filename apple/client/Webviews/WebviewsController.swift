@@ -7,7 +7,7 @@ private let logger = Logger(
     category: "WebviewsController"
 )
 
-// This is the navigation for all web views within the app
+/// This is the navigation for all web views within the app
 class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
     let safeAreaTx: AsyncStream<ObscuraUIWebView.Insets>.Continuation
     private let safeAreaRx: AsyncStream<ObscuraUIWebView.Insets>
@@ -80,8 +80,8 @@ class WebviewsController: NSObject, ObservableObject, WKNavigationDelegate {
         self.obscuraWebView?.updateSafeArea(insets)
     }
 
-    // After `didFinish`, the DOM is ready and `evaluateJavaScript` can interact with it.
-    // https://developer.apple.com/forums/thread/826932
+    /// After `didFinish`, the DOM is ready and `evaluateJavaScript` can interact with it.
+    /// https://developer.apple.com/forums/thread/826932
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         logger.trace("webView didFinish")
         if webView === self.obscuraWebView {

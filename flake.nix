@@ -38,11 +38,11 @@
 
         hash = pkgs.writeText "obscura-source-hash.txt" sourceHash;
 
-        androidBuildToolsVersion = "36.0.0";
+        androidBuildToolsVersion = "37.0.0";
         androidCmakeVersion = "3.31.6";
         android = pkgs.androidenv.composeAndroidPackages {
           toolsVersion = "26.1.1"; # frozen legacy version
-          platformToolsVersion = "36.0.0";
+          platformToolsVersion = "37.0.1";
 
           platformVersions = [ "36" ];
           buildToolsVersions = [ androidBuildToolsVersion ];
@@ -82,7 +82,7 @@
           strictDeps = true;
           nativeBuildInputs = [ pkgs.cmake pkgs.pkg-config ];
         };
-        rustDepsArgsNative = rustDepsArgs // { buildInputs = lib.optionals pkgs.stdenv.isLinux [ pkgs.tpm2-tss ]; };
+        rustDepsArgsNative = rustDepsArgs // { buildInputs = lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.tpm2-tss ]; };
         rustDepsArgsNative-gui = rustDepsArgsNative // {
           cargoExtraArgs = "--locked --bin obscura-gui --features=gui";
           buildInputs = rustDepsArgsNative.buildInputs ++ [ pkgs.glib pkgs.gtk4 pkgs.libadwaita pkgs.webkitgtk_6_0 ];
@@ -98,7 +98,15 @@
           cargoCheckCommand = "cargo ndk -t arm64-v8a check --release --lib";
         };
         rustArgs = rustDepsArgsNative // { cargoArtifacts = craneLib.buildDepsOnly rustDepsArgsNative; };
-        rustArgs-android = rustDepsArgs-android // { cargoArtifacts = craneLib.buildDepsOnly rustDepsArgs-android; };
+        rustArgs-android = rustDepsArgs-android // {
+          cargoArtifacts = craneLib.buildDepsOnly rustDepsArgs-android;
+          # HACK: cargo-ndk swallows cargo's JSON messages, so crane can't find the lib. Copy manually.
+          doNotPostBuildInstallCargoBinaries = true;
+          installPhaseCommand = ''
+            install -D -t "$out/lib" target/aarch64-linux-android/release/libobscuravpn_client.so
+            "$ANDROID_NDK_ROOT"/toolchains/llvm/prebuilt/*/bin/llvm-strip "$out/lib/libobscuravpn_client.so"
+          '';
+        };
         rustArgsNative-gui = rustDepsArgsNative-gui // {
           cargoArtifacts = craneLib.buildDepsOnly rustDepsArgsNative-gui;
         };
@@ -359,7 +367,7 @@
             taplo format --check
             touch $out
           '';
-        } // lib.optionalAttrs pkgs.stdenv.isLinux {
+        } // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
           inherit rust-cli-bin rust-gui-bin;
           clippy-gui = craneLib.cargoClippy (rustArgsNative-gui // {
             cargoClippyExtraArgs = "-- -Dwarnings";
@@ -392,7 +400,7 @@
             '';
           };
 
-          nixfmt = pkgs.runCommand "nixfmt" { nativeBuildInputs = [ pkgs.nixfmt-classic ]; } ''
+          nixfmt = pkgs.runCommand "nixfmt" { nativeBuildInputs = [ pkgs.nixfmt ]; } ''
             nixfmt --width=120 --check ${nixFiles}
             touch "$out"
           '';
@@ -421,19 +429,18 @@
         devShells = {
           default = pkgs.mkShellNoCC {
             packages = [
-              pkgs.corepack_20
               pkgs.gnused
               pkgs.gradle
               pkgs.jq
               pkgs.just
-              pkgs.nixfmt-classic
-              pkgs.nodejs_20
+              pkgs.nixfmt
+              pkgs.nodejs
               pkgs.shellcheck
               pkgs.swiftformat
               pkgs.taplo
               rustToolchain.passthru.availableComponents.rustfmt # Just rustfmt, nothing else
-            ] ++ lib.optionals pkgs.stdenv.isLinux rustArgsNative-gui.buildInputs ++ rustArgs.nativeBuildInputs
-              ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.create-dmg ];
+            ] ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux (rustArgsNative-gui.buildInputs ++ rustArgs.nativeBuildInputs)
+              ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ pkgs.create-dmg ];
 
             shellHook = ''
               export OBSCURA_MAGIC_IN_NIX_SHELL=1
@@ -441,7 +448,7 @@
           };
 
           web = pkgs.mkShellNoCC {
-            packages = [ pkgs.just pkgs.nodejs_20 pkgs.pnpm ];
+            packages = [ pkgs.just pkgs.nodejs pkgs.pnpm ];
 
             # This only changes when our dependencies or license config changes and is relatively slow.
             # So build it once and cache it.
@@ -460,7 +467,7 @@
               pkgs.jdk21
               pkgs.just
               pkgs.ninja
-              pkgs.nodejs_20
+              pkgs.nodejs
               pkgs.pkg-config
               pkgs.pnpm
             ] ++ rustArgs-android.nativeBuildInputs;
@@ -472,7 +479,7 @@
               export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:${androidBuildTools}:$PATH"
             '';
           });
-        } // lib.optionalAttrs pkgs.stdenv.isLinux {
+        } // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
           gui = pkgs.mkShell {
             inputsFrom = [ rust-gui-bin ];
             packages = [ pkgs.just pkgs.python3 ];
@@ -484,6 +491,6 @@
           inherit apks-foss apks-play aab-play-debug aab-play-release gui-gresources hash licenses licenses-node
             licenses-rust rust web-android web-ios web-linux web-macos;
           version = pkgs.writeText "version.txt" version;
-        } // lib.optionalAttrs pkgs.stdenv.isLinux { inherit rust-cli-bin rust-gui-bin; };
+        } // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux { inherit rust-cli-bin rust-gui-bin; };
       });
 }

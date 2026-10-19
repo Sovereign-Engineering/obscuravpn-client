@@ -20,6 +20,7 @@ import BoltBadgeAuto from '../components/BoltBadgeAuto';
 import { CColorSchemeContext } from '../components/CachedColorScheme';
 import { Flag } from '../components/CountryFlag';
 import ExternalLinkIcon from '../components/ExternalLinkIcon';
+import { LockInPromo } from '../components/LockInPromo';
 import ObscuraChip from '../components/ObscuraChip';
 import DecoConnected from '../res/deco/deco-connected.svg?react';
 import DecoConnectingDark1 from '../res/deco/deco-connecting-dark-1.svg?react';
@@ -113,28 +114,31 @@ export default function Connection() {
     }
 
     return (
-        <Stack align='center' h='100vh' gap={0} className={classes.container}>
+        <div className={classes.container}>
             <Deco />
-            <Space h={40} />
-            <Mascot />
-            <Stack align='center' gap={primaryButtonShown ? 0 : 20} mt={primaryButtonShown ? 0 : 20} justify='space-around'>
-                <Title order={2} fw={600}>{getTitle()}</Title>
-                <Title order={4} ta='center' mt={5} mih='xl' fw={350} className={classes.subtitle}>{Subtitle()}</Title>
+            <LockInPromo />
+            <Stack align='center' gap={0} className={classes.content}>
+                <Space h={40} />
+                <Mascot />
+                <Stack align='center' gap={primaryButtonShown ? 0 : 20} mt={primaryButtonShown ? 0 : 20} justify='space-around'>
+                    <Title order={2} fw={600}>{getTitle()}</Title>
+                    <Title order={4} ta='center' mt={5} mih='xl' fw={350} className={classes.subtitle}>{Subtitle()}</Title>
+                </Stack>
+                <Space h='xs' />
+                <PrimaryConnectButton />
+                <Space h='xs' />
+                {showLocationSelect && <LocationSelect />}
+                {
+                    vpnConnected && connectionInProgress === ConnectionInProgress.UNSET && <div className={classes.checkMyConnection}>
+                        <Space />
+                        <Text className={classes.checkMyConnection}><Anchor c='inherit' href={ObscuraAccount.CHECK_STATUS_WEBPAGE} underline='always'>{t('checkMyConnection')}</Anchor> <ExternalLinkIcon size={12} style={{ marginBottom: -1 }} /></Text>
+                    </div>
+                }
+                <div style={{ flexGrow: 1 }} />
+                <ConnectionProgressBar />
+                <Space />
             </Stack>
-            <Space h='xs' />
-            <PrimaryConnectButton />
-            <Space h='xs' />
-            {showLocationSelect && <LocationSelect />}
-            {
-                vpnConnected && connectionInProgress === ConnectionInProgress.UNSET && <div className={classes.checkMyConnection}>
-                    <Space />
-                    <Text className={classes.checkMyConnection}><Anchor c='inherit' href={ObscuraAccount.CHECK_STATUS_WEBPAGE} underline='always'>{t('checkMyConnection')}</Anchor> <ExternalLinkIcon size={12} style={{ marginBottom: -1 }} /></Text>
-                </div>
-            }
-            <div style={{ flexGrow: 1 }} />
-            <ConnectionProgressBar />
-            <Space />
-        </Stack >
+        </div>
     );
 }
 

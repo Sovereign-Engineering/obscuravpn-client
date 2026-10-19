@@ -24,8 +24,8 @@ use boringtun::x25519::{PublicKey, StaticSecret};
 use obscuravpn_api::cmd::{CacheWgKey, ETagCmd, ExitList, ListExits2};
 use obscuravpn_api::types::{AccountId, AccountInfo, AuthToken, OneExit};
 use obscuravpn_api::{
-    Client, ClientError,
-    cmd::{ApiErrorKind, Cmd, CreateTunnel, ListRelays},
+    Client, ClientError, Unauthenticated,
+    cmd::{ApiErrorKind, AuthOptional, Cmd, CreateTunnel, ListRelays},
     types::{ObfuscatedTunnelConfig, OneRelay, TunnelConfig},
 };
 use serde::{Deserialize, Serialize};
@@ -132,7 +132,7 @@ impl ClientState {
         self.config.api_url.clone().unwrap_or(DEFAULT_API_URL.to_string())
     }
 
-    fn make_api_client(&self, account_id: AccountId) -> Result<Client, ApiError> {
+    fn make_unauthenticated_api_client(&self) -> Result<Client<Unauthenticated>, ApiError> {
         let base_url = self.base_url();
         let network_interface = self.network_interface.clone();
         let alternative_hosts = vec![self.config.api_host_alternate.clone().unwrap_or_else(|| DEFAULT_API_BACKUP_DOMAIN.into())];
@@ -143,10 +143,9 @@ impl ClientState {
             ?alternative_hosts,
             "creating new API client"
         );
-        Client::new(
+        Client::new_unauthenticated(
             base_url,
             alternative_hosts,
-            account_id,
             &self.user_agent,
             #[cfg(not(any(target_os = "android", target_os = "linux", target_os = "windows")))]
             network_interface.as_ref().map(|i| i.name.as_str()),
@@ -162,6 +161,10 @@ impl ClientState {
         )
         .map_err(ClientError::from)
         .map_err(ApiError::from)
+    }
+
+    fn make_api_client(&self, account_id: AccountId) -> Result<Client, ApiError> {
+        self.make_unauthenticated_api_client().map(|client| client.into_authenticated(account_id))
     }
 }
 
@@ -604,6 +607,10 @@ impl ClientStateHandle {
         Ok((relay, handshaking))
     }
 
+    pub fn make_unauthenticated_api_client(&self) -> Result<Client<Unauthenticated>, ApiError> {
+        self.borrow().make_unauthenticated_api_client()
+    }
+
     pub fn make_api_client(&self, account_id: AccountId) -> Result<Client, ApiError> {
         self.borrow().make_api_client(account_id)
     }
@@ -640,6 +647,11 @@ impl ClientStateHandle {
         let result = api_client.run(cmd).await;
         self.cache_auth_token(&api_client);
         Ok(result?)
+    }
+
+    pub async fn api_request_without_auth<C: Cmd<Auth = AuthOptional>>(&self, cmd: C) -> Result<C::Output, ApiError> {
+        let api_client = self.make_unauthenticated_api_client()?;
+        Ok(api_client.run(cmd).await?)
     }
 
     pub async fn cached_api_request<C: ETagCmd>(&self, cmd: C, etag: Option<&[u8]>) -> Result<obscuravpn_api::Response<C::Output>, ApiError> {

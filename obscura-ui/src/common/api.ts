@@ -39,6 +39,36 @@ export interface AccountInfo {
     stripe_subscription: StripeSubscriptionInfo | null,
     auto_renews: number | null,
     current_expiry: number | null,
+    free_trial: FreeTrialInfo | null,
+    nnn: NnnCaseInfo | null,
+}
+
+export interface FreeTrialInfo {
+    active: boolean,
+    expires_at: number,
+}
+
+export type NnnShareId = string;
+
+export interface NnnCaseInfo {
+    applied_months: number | null,
+    claimed_months: number,
+    share_id: NnnShareId,
+}
+
+export interface ServiceStatusOutput {
+    free_trial: FreeTrialStatus,
+    nnn: NnnStatus,
+}
+
+export interface FreeTrialStatus {
+    available: boolean,
+}
+
+export interface NnnStatus {
+    claimed_months_target: number,
+    claimed_months_total: number,
+    submissions_open: boolean,
 }
 
 export interface TopUpInfo {

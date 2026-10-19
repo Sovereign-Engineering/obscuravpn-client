@@ -3,7 +3,7 @@ import { notifications } from '@mantine/notifications';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AccountId } from '../common/accountUtils';
-import { AccountInfo, Exit } from '../common/api';
+import { AccountInfo, Exit, ServiceStatusOutput } from '../common/api';
 import { AppStatus, DNSContentBlock, FeatureFlagKey, NavigationView, OsStatus, PinnedLocation, SubscriptionProductModel } from '../common/appContext';
 import { normalizeError } from '../common/utils';
 import { ErrorI18n, fmtErrorI18n } from '../translations/i18n';
@@ -256,6 +256,11 @@ export async function deleteAccount(): Promise<void> {
 export async function getAccount(): Promise<AccountInfo> {
     /* see obscuravpn-api/src/types.rs:AccountInfo */
     return await jsonFfiCmd('apiGetAccountInfo') as AccountInfo;
+}
+
+export async function getServiceStatus(): Promise<ServiceStatusOutput> {
+    /* see obscuravpn-api/src/cmd/status.rs:ServiceStatusOutput */
+    return await jsonFfiCmd('apiServiceStatus') as ServiceStatusOutput;
 }
 
 export function setInNewAccountFlow(value: boolean) {

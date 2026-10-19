@@ -1,4 +1,5 @@
 import '@fontsource/open-sans';
+import '@fontsource/press-start-2p';
 import { PropsWithChildren } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import Mantine from './components/Mantine';

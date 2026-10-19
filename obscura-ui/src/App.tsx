@@ -50,6 +50,7 @@ export default function () {
   const [appStatus, setStatus] = useState<AppStatus | null>(null);
   const [osStatus, setOsStatus] = useState<OsStatus | null>(null);
   const [isProcessingPayment, setPaymentProcessing] = useState(false);
+  const [trialAvailable, setTrialAvailable] = useState<boolean | null>(null);
   const ignoreConnectingErrors = useRef(false);
 
   const routes: View[] = [
@@ -247,6 +248,10 @@ export default function () {
   }, []);
 
   useEffect(() => {
+    commands.getServiceStatus().then(status => setTrialAvailable(status.free_trial.available)).catch(() => setTrialAvailable(false));
+  }, []);
+
+  useEffect(() => {
     if (appStatus !== null) handleNewStatus(appStatus);
   }, [appStatus]);
 
@@ -332,7 +337,9 @@ export default function () {
 
   const linuxDegraded = linuxDegradation(osStatus?.serviceStatus);
   const windowsDegraded = windowsDegradation(osStatus?.serviceStatus);
-  if (fetchingStatuses || linuxDegraded || windowsDegraded) {
+  const showLogin = !isLoggedIn || !!showAccountCreation;
+  // The trial flag must resolve before the login button paints, otherwise the label flashes.
+  if (fetchingStatuses || linuxDegraded || windowsDegraded || (showLogin && trialAvailable === null)) {
     const effectiveOsStatus = osStatus === null ? null : { ...osStatus, osVpnStatus: getEffectiveOsStatus(osStatus, appStatus) };
     return <SplashScreen osStatus={effectiveOsStatus} linuxDegradation={linuxDegraded} windowsDegradation={windowsDegraded} />;
   }
@@ -355,10 +362,10 @@ export default function () {
     setPaymentProcessing,
   }
 
-  if (!isLoggedIn || showAccountCreation) {
+  if (showLogin) {
     return (
       <AppContext.Provider value={appContext}>
-        <LogIn accountNumber={appStatus.accountId} accountActive={accountInfo?.active} />
+        <LogIn accountNumber={appStatus.accountId} accountActive={accountInfo?.active} trialAvailable={trialAvailable ?? false} />
       </AppContext.Provider>
     );
   }

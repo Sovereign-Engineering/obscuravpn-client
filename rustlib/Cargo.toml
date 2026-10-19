@@ -96,7 +96,7 @@ rev = "ff3b5555b5b1c4f85ae23d8d4aaf00bea2cd2bf0"
 
 [dependencies.obscuravpn-api]
 git = "https://github.com/Sovereign-Engineering/obscuravpn-api.git"
-rev = "554c994cf33a5ff03eb1847f591fb752715a12ae"
+rev = "e94483e7331b521d4d29ee7411a83e4adeffcc9d"
 
 [target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
 aws-lc-rs = { version = "*", features = [

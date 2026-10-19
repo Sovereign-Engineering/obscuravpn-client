@@ -11,6 +11,9 @@ importers:
       '@fontsource/open-sans':
         specifier: ^5.2.7
         version: 5.2.7
+      '@fontsource/press-start-2p':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@mantine/core':
         specifier: ^8.3.18
         version: 8.3.18(@mantine/hooks@8.3.18(react@19.2.0))(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -453,6 +456,9 @@ packages:
 
   '@fontsource/open-sans@5.2.7':
     resolution: {integrity: sha512-8yfgDYjE5O0vmTPdrcjV35y4yMnctsokmi9gN49Gcsr0sjzkMkR97AnKDe6OqZh2SFkYlR28fxOvi21bYEgMSw==}
+
+  '@fontsource/press-start-2p@5.3.0':
+    resolution: {integrity: sha512-gxWFxdeDglPhEYSwEeooomcaFK8kSQYLQwVxfnOJeYRj2sPEHXjpVtFgEaYfqzOjuAJGrIcJOipu2KY5YkbyuQ==}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -2064,6 +2070,8 @@ snapshots:
   '@floating-ui/utils@0.2.11': {}
 
   '@fontsource/open-sans@5.2.7': {}
+
+  '@fontsource/press-start-2p@5.3.0': {}
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:

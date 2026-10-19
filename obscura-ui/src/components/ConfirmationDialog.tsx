@@ -14,9 +14,12 @@ interface ConfirmationDialogProps extends PropsWithChildren {
   closeOnClickOutside?: boolean;
   closeOnEscape?: boolean;
   withCloseButton?: boolean;
+  contentClassName?: string;
+  bodyClassName?: string;
+  innerClassName?: string;
 }
 
-export function ConfirmationDialog({ opened, onClose, drawerSize = 'xs', title, children, drawerCloseButton, closeOnClickOutside, closeOnEscape, withCloseButton }: ConfirmationDialogProps) {
+export function ConfirmationDialog({ opened, onClose, drawerSize = 'xs', title, children, drawerCloseButton, closeOnClickOutside, closeOnEscape, withCloseButton, contentClassName, bodyClassName, innerClassName }: ConfirmationDialogProps) {
   const { t } = useTranslation();
   return (
     IS_HANDHELD_DEVICE ?
@@ -28,6 +31,8 @@ export function ConfirmationDialog({ opened, onClose, drawerSize = 'xs', title, 
         withCloseButton={withCloseButton ?? drawerCloseButton}
         closeOnClickOutside={closeOnClickOutside}
         closeOnEscape={closeOnEscape}
+        contentClassName={contentClassName}
+        bodyClassName={bodyClassName}
       >
         {children}
       </MobileDrawer> :
@@ -39,18 +44,23 @@ export function ConfirmationDialog({ opened, onClose, drawerSize = 'xs', title, 
         withCloseButton={withCloseButton}
         closeOnClickOutside={closeOnClickOutside}
         closeOnEscape={closeOnEscape}
+        classNames={{ content: contentClassName, body: bodyClassName, inner: innerClassName }}
       >
         {children}
       </Modal>
   );
 }
 
-type MobileDrawerProps = Omit<DrawerProps, 'classNames' | 'styles' | 'position'>;
+type MobileDrawerProps = Omit<DrawerProps, 'classNames' | 'styles' | 'position'> & {
+  contentClassName?: string;
+  bodyClassName?: string;
+};
 
-export function MobileDrawer({ size, title, opened, onClose, children, withCloseButton, ...others }: MobileDrawerProps) {
-  const contentClass = `${classes.drawerContent} ${commonClasses.applySideInsets}`;
+export function MobileDrawer({ size, title, opened, onClose, children, withCloseButton, contentClassName, bodyClassName, ...others }: MobileDrawerProps) {
+  const contentClass = `${classes.drawerContent} ${commonClasses.applySideInsets}${contentClassName ? ` ${contentClassName}` : ''}`;
+  const bodyClass = `${classes.drawerBody}${bodyClassName ? ` ${bodyClassName}` : ''}`;
   return (
-    <Drawer classNames={{ content: contentClass, body: classes.drawerBody }} size={size} position='bottom' opened={opened} onClose={onClose} title={title} withCloseButton={withCloseButton} {...others}>
+    <Drawer classNames={{ content: contentClass, body: bodyClass }} size={size} position='bottom' opened={opened} onClose={onClose} title={title} withCloseButton={withCloseButton} {...others}>
       {children}
     </Drawer>
   );

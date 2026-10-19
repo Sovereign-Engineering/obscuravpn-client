@@ -1,0 +1,315 @@
+.banner {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) fit-content(100%) fit-content(100%);
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+    min-height: 102px;
+    padding: 16px 20px;
+    overflow: hidden;
+    background-color: #222528;
+    isolation: isolate;
+}
+
+.bannerDeco {
+    display: none;
+}
+
+.bannerText {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    color: var(--mantine-color-white);
+}
+
+.bannerClose {
+    position: relative;
+    z-index: 1;
+    flex-shrink: 0;
+}
+
+.bannerTitle {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 12px !important;
+    font-weight: 400 !important;
+    line-height: 1.75 !important;
+}
+
+.bannerSubtitle {
+    font-size: 12px !important;
+    line-height: 1.55 !important;
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.compactCopy {
+    display: inline;
+}
+
+.fullCopy {
+    display: none;
+}
+
+.cta {
+    flex-shrink: 0;
+    height: 32px !important;
+    padding: 0 12px !important;
+    border: 1px solid rgba(255, 255, 255, 0.85) !important;
+    border-radius: 6px !important;
+    background: #FFFFFF !important;
+    color: #FF6025 !important;
+    font-size: 13px !important;
+    font-weight: 590 !important;
+    box-shadow: 0 1px 2px rgba(4, 15, 32, 0.12), 0 4px 4px rgba(4, 15, 32, 0.1), 0 8px 5px rgba(4, 15, 32, 0.06);
+}
+
+.cta:hover {
+    background: #F2F2F2 !important;
+}
+
+.modalContent {
+    background-color: #222528 !important;
+    border: none !important;
+    overflow: hidden !important;
+    /* The popup extends into the bottom inset itself so the accent decoration sits flush with the screen edge. */
+    padding-bottom: 0 !important;
+}
+
+.modalBody {
+    padding: 0 !important;
+}
+
+.modalInner {
+    --modal-inner-align: center;
+}
+
+.popup {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 32px;
+    padding: 48px 24px max(80px, calc(48px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom))));
+    overflow: hidden;
+    color: var(--mantine-color-white);
+}
+
+.accentClip {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 110px;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.accentLeft,
+.accentRight {
+    position: absolute;
+    bottom: -40px;
+    width: 59%;
+    height: auto;
+    aspect-ratio: 462 / 208;
+    pointer-events: none;
+}
+
+.accentLeft {
+    left: 50%;
+    transform: translateX(-100%);
+}
+
+.accentRight {
+    left: 50%;
+}
+
+.popupDeco {
+    display: none;
+}
+
+.popup .close {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    z-index: 2;
+}
+
+.popupContent {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 32px;
+    width: 100%;
+}
+
+.wordmark {
+    width: 150px;
+    height: auto;
+}
+
+.text {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+}
+
+.title {
+    margin: 0 !important;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 17px !important;
+    font-weight: 400 !important;
+    line-height: 1.75 !important;
+    text-align: left;
+}
+
+.subtitle {
+    font-size: 15px !important;
+    line-height: 1.4 !important;
+    text-align: left;
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+@media screen and (min-width: $mantine-breakpoint-md) {
+    .banner {
+        gap: 32px;
+        min-height: 92px;
+        padding: 12px 24px 12px 209px;
+    }
+
+    .bannerText {
+        gap: 2px;
+    }
+
+    .bannerDeco {
+        display: block;
+        position: absolute;
+        left: -63px;
+        top: -42px;
+        height: 185px;
+        width: auto;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .bannerTitle {
+        font-size: 14px !important;
+        line-height: 1.55 !important;
+    }
+}
+
+@media screen and (min-width: $mantine-breakpoint-xs) {
+    .compactCopy {
+        display: none;
+    }
+
+    .fullCopy {
+        display: inline;
+    }
+
+    .cta {
+        height: 40px !important;
+        padding: 8px 16px !important;
+        font-size: 15px !important;
+    }
+}
+
+@media screen and (min-width: $mantine-breakpoint-xs) {
+    .modalContent {
+        flex: 0 0 auto !important;
+        width: 752px;
+        max-width: calc(100vw - 32px);
+        border-radius: 32px !important;
+    }
+
+    .popup {
+        align-items: center;
+        min-height: 563px;
+        padding: 64px;
+    }
+
+    .accentClip {
+        top: 0;
+        bottom: 0;
+        height: auto;
+    }
+
+    .accentLeft,
+    .accentRight {
+        top: 279px;
+        bottom: auto;
+        width: 462px;
+        height: 208px;
+        transform-origin: center;
+    }
+
+    .accentLeft {
+        left: -201px;
+        transform: rotate(90deg);
+    }
+
+    .accentRight {
+        left: auto;
+        right: -201px;
+        transform: scaleX(-1) rotate(90deg);
+    }
+
+    .popupDeco {
+        display: block;
+        position: absolute;
+        left: 50%;
+        bottom: -80px;
+        transform: translateX(-50%);
+        width: 374px;
+        height: auto;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .popup .close {
+        top: 32px;
+        right: 32px;
+    }
+
+    .popupContent {
+        align-items: center;
+    }
+
+    .wordmark {
+        width: 184px;
+    }
+
+    .text {
+        align-items: center;
+    }
+
+    .title {
+        max-width: 425px;
+        font-size: 24px !important;
+        line-height: 1.55 !important;
+        text-align: center;
+    }
+
+    .subtitle {
+        text-align: center;
+    }
+}
+
+@media screen and (max-width: $mantine-breakpoint-xs) {
+    .modalContent {
+        width: 100%;
+        max-width: 100% !important;
+        border-radius: 24px 24px 0 0 !important;
+    }
+
+    .modalInner {
+        align-items: flex-end !important;
+        padding: 0 !important;
+    }
+}

@@ -8,8 +8,8 @@ use std::{
 use camino::Utf8PathBuf;
 use obscuravpn_api::{
     cmd::{
-        AppleAssociateAccount, AppleAssociateAccountOutput, Cmd, DeleteAccount, DeleteAccountOutput, ExitList, GetAccountInfo,
-        GoogleAssociateAccount, GoogleBillingDetails, GoogleBillingDetailsOutput,
+        AppleAssociateAccount, AppleAssociateAccountOutput, AuthOptional, Cmd, DeleteAccount, DeleteAccountOutput, ExitList, GetAccountInfo,
+        GoogleAssociateAccount, GoogleBillingDetails, GoogleBillingDetailsOutput, ServiceStatus, ServiceStatusOutput,
     },
     types::{AccountId, AccountInfo, OneExit, OneRelay, WgPubkey},
 };
@@ -247,6 +247,10 @@ impl Manager {
         self.client_state.api_request(cmd).await
     }
 
+    pub async fn api_request_without_auth<C: Cmd<Auth = AuthOptional>>(&self, cmd: C) -> Result<C::Output, ApiError> {
+        self.client_state.api_request_without_auth(cmd).await
+    }
+
     pub async fn apple_associate_account(&self, app_transaction_jws: String) -> Result<AppleAssociateAccountOutput, ApiError> {
         self.api_request(AppleAssociateAccount { app_transaction_jws }).await
     }
@@ -259,6 +263,10 @@ impl Manager {
         let account_info = self.api_request(GetAccountInfo()).await?;
         self.client_state.update_account_info(&account_info);
         Ok(account_info)
+    }
+
+    pub async fn get_service_status(&self) -> Result<ServiceStatusOutput, ApiError> {
+        self.api_request_without_auth(ServiceStatus {}).await
     }
 
     pub async fn google_associate_account(&self, purchase_token: String, promo_code: Option<String>) -> Result<(), ApiError> {

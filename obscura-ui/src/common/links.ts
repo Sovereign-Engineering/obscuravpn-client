@@ -5,3 +5,5 @@ export const TWITTER = 'https://x.com/obscuravpn';
 
 export const DOWNLOAD_IOS = 'https://obscura.com/download/ios/';
 export const DOWNLOAD_ANDROID_PLAY = 'https://obscura.com/download/android/';
+
+export const LOCK_IN_CREDIT = 'https://obscura.com/account/nnn/';

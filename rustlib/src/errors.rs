@@ -69,6 +69,11 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
                         | MoneroTopUpNotFound {}
                         | NoApiRoute {}
                         | NoMatchingExit {}
+                        | NnnAlreadySubmitted {}
+                        | NnnShareNotFound {}
+                        | NnnSubmissionsClosed {}
+                        | NnnUnavailable {}
+                        | PayloadTooLarge {}
                         | SaleNotFound {}
                         | SignupLimitExceeded { pow_challenge: _ }
                         | WgKeyRotationRequired {}

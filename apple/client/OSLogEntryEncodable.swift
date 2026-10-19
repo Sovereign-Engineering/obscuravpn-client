@@ -21,7 +21,7 @@ enum OSLogEntryCodingKeys: String, CodingKey {
 }
 
 extension OSLogEntry: Encodable {
-    // Format a log matching `log show --style=ndjson`
+    /// Format a log matching `log show --style=ndjson`
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: OSLogEntryCodingKeys.self)
 

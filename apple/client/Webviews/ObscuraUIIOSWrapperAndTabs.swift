@@ -40,12 +40,11 @@ class ObscuraUIIOSViewAndTabsViewController: UIViewController {
         self.tabBar = UITabBar()
         self.webviewsController = webviewsController
         self.tabBarItems = tabs.map { view in
-            let item = UITabBarItem(
+            UITabBarItem(
                 title: view.rawValue.capitalized,
                 image: UIImage(systemName: view.systemImageName),
                 selectedImage: UIImage(systemName: view.systemImageName)
             )
-            return item
         }
         self.tabs = tabs
 

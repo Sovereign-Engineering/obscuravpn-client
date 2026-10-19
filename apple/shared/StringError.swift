@@ -1,8 +1,10 @@
 import Foundation
 
-// Required to use `String` as `.failure` variant in `Result`
+/// Required to use `String` as `.failure` variant in `Result`
 extension String: LocalizedError {
-    public var errorDescription: String? { return self }
+    public var errorDescription: String? {
+        return self
+    }
 }
 
 // Define "ipcError-$" in webUI i18n files

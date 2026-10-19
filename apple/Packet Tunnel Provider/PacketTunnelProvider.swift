@@ -379,7 +379,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     }
 }
 
-// `done` is always non-null, but cbindgen can't emit _Nonnull for function pointers in typedefs.
+/// `done` is always non-null, but cbindgen can't emit _Nonnull for function pointers in typedefs.
 private func setNetworkConfigCallback(networkConfigJson: FfiBytes, context: UnsafeMutableRawPointer?, done: (@convention(c) (UnsafeMutableRawPointer?, Bool) -> Void)!) {
     guard let inst = PacketTunnelProvider.shared else {
         ffiLog(.Error, "setNetworkConfigCallback called with no active PacketTunnelProvider")

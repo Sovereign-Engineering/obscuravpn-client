@@ -8,7 +8,7 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
 private let creatingDebugBundleStr = "Creating Debug Bundle (takes a few minutes)"
 private let createDebugBundleStr = "Create Debug Bundle"
 
-// https://multi.app/blog/pushing-the-limits-nsstatusitem
+/// https://multi.app/blog/pushing-the-limits-nsstatusitem
 final class StatusItemManager: ObservableObject {
     private var hostingView: NSHostingView<StatusItem>
     private var statusItem: NSStatusItem
@@ -30,7 +30,7 @@ final class StatusItemManager: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var accountUpdateTask: Task<Void, Error>?
 
-    // intentionally empty to ensure that the menu item can be highlighted
+    /// intentionally empty to ensure that the menu item can be highlighted
     @objc func emptyAction() {}
 
     init() {
@@ -42,7 +42,8 @@ final class StatusItemManager: ObservableObject {
                 sizePassthrough: self.sizePassthrough,
                 bandwidthStatusModel: self.bandwidthStatusModel,
                 osStatusModel: self.osStatusModel
-            ))
+            )
+        )
         self.hostingView.frame = NSRect(x: 0, y: 0, width: 100, height: 24)
         self.statusItem.button?.frame = self.hostingView.frame
         self.statusItem.button?.addSubview(self.hostingView)
@@ -262,9 +263,11 @@ final class StatusItemManager: ObservableObject {
                                 }
                             }
                             self?.bandwidthStatusModel.uploadBandwidth = BandwidthFmt.fromTransferRate(
-                                bytesPerSecond: 0)
+                                bytesPerSecond: 0
+                            )
                             self?.bandwidthStatusModel.downloadBandwidth = BandwidthFmt.fromTransferRate(
-                                bytesPerSecond: 0)
+                                bytesPerSecond: 0
+                            )
                         }
                     }
                 }
@@ -488,7 +491,8 @@ final class StatusItemManager: ObservableObject {
                     _ = try await refreshExitList(appState.manager, freshness: 3600)
                 } catch {
                     logger.error(
-                        "Failed to refresh exit list in status menu: \(error, privacy: .public)")
+                        "Failed to refresh exit list in status menu: \(error, privacy: .public)"
+                    )
                 }
             }
         }
@@ -543,7 +547,9 @@ final class StatusItemManager: ObservableObject {
 
 private struct SizePreferenceKey: PreferenceKey {
     static var defaultValue: CGSize = .zero
-    static func reduce(value: inout CGSize, nextValue: () -> CGSize) { value = nextValue() }
+    static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
+        value = nextValue()
+    }
 }
 
 struct StatusItem: View {
@@ -562,7 +568,6 @@ struct StatusItem: View {
         return self.startupModel.appState?.status.vpnStatus
     }
 
-    @ViewBuilder
     var mainContent: some View {
         HStack(spacing: 10) {
             HStack(spacing: 3) {

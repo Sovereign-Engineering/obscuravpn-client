@@ -4,10 +4,9 @@ import Network
 
 func ffiInitializeSystemLogging(_ logDir: String?) -> OpaquePointer? {
     let logDir: String = logDir ?? ""
-    let logFlushGuard = logDir.withFfiStr { ffiLogDir in
+    return logDir.withFfiStr { ffiLogDir in
         libobscuravpn_client.initialize_apple_system_logging(ffiLogDir)
     }
-    return logFlushGuard
 }
 
 class RustFfi {

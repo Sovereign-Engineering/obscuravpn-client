@@ -6,7 +6,7 @@ plugins {
 }
 
 extensions.configure<LibraryExtension> {
-    buildToolsVersion = "36.0.0"
+    buildToolsVersion = "37.0.0"
     compileSdk = 36
     defaultConfig { minSdk = 31 }
     namespace = "net.obscura.lib.billing"

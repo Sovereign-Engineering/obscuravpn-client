@@ -118,7 +118,9 @@ public enum Sysctl {
 
     /// e.g. "MyComputer.local" (from System Preferences -> Sharing -> Computer Name) or
     /// "My-Name-iPhone" (from Settings -> General -> About -> Name)
-    public static var hostName: String { return try! Sysctl.string(for: [CTL_KERN, KERN_HOSTNAME]) }
+    public static var hostName: String {
+        return try! Sysctl.string(for: [CTL_KERN, KERN_HOSTNAME])
+    }
 
     /// e.g. "x86_64" or "N71mAP"
     /// NOTE: this is *corrected* on iOS devices to fetch hw.model
@@ -141,29 +143,45 @@ public enum Sysctl {
     }
 
     /// e.g. "8" or "2"
-    public static var activeCPUs: Int32 { return try! Sysctl.value(ofType: Int32.self, forKeys: [CTL_HW, HW_AVAILCPU]) }
+    public static var activeCPUs: Int32 {
+        return try! Sysctl.value(ofType: Int32.self, forKeys: [CTL_HW, HW_AVAILCPU])
+    }
 
     /// e.g. "15.3.0" or "15.0.0"
-    public static var osRelease: String { return try! Sysctl.string(for: [CTL_KERN, KERN_OSRELEASE]) }
+    public static var osRelease: String {
+        return try! Sysctl.string(for: [CTL_KERN, KERN_OSRELEASE])
+    }
 
     /// e.g. "Darwin" or "Darwin"
-    public static var osType: String { return try! Sysctl.string(for: [CTL_KERN, KERN_OSTYPE]) }
+    public static var osType: String {
+        return try! Sysctl.string(for: [CTL_KERN, KERN_OSTYPE])
+    }
 
     /// e.g. "15D21" or "13D20"
-    public static var osVersion: String { return try! Sysctl.string(for: [CTL_KERN, KERN_OSVERSION]) }
+    public static var osVersion: String {
+        return try! Sysctl.string(for: [CTL_KERN, KERN_OSVERSION])
+    }
 
     /// e.g. "Darwin Kernel Version 15.3.0: Thu Dec 10 18:40:58 PST 2015; root:xnu-3248.30.4~1/RELEASE_X86_64" or
     /// "Darwin Kernel Version 15.0.0: Wed Dec  9 22:19:38 PST 2015; root:xnu-3248.31.3~2/RELEASE_ARM64_S8000"
-    public static var version: String { return try! Sysctl.string(for: [CTL_KERN, KERN_VERSION]) }
+    public static var version: String {
+        return try! Sysctl.string(for: [CTL_KERN, KERN_VERSION])
+    }
 
     #if os(macOS)
         /// e.g. 199506 (not available on iOS)
-        public static var osRev: Int32 { return try! Sysctl.value(ofType: Int32.self, forKeys: [CTL_KERN, KERN_OSREV]) }
+        public static var osRev: Int32 {
+            return try! Sysctl.value(ofType: Int32.self, forKeys: [CTL_KERN, KERN_OSREV])
+        }
 
         /// e.g. 2659000000 (not available on iOS)
-        public static var cpuFreq: Int64 { return try! Sysctl.value(ofType: Int64.self, forName: "hw.cpufrequency") }
+        public static var cpuFreq: Int64 {
+            return try! Sysctl.value(ofType: Int64.self, forName: "hw.cpufrequency")
+        }
 
         /// e.g. 25769803776 (not available on iOS)
-        public static var memSize: UInt64 { return try! Sysctl.value(ofType: UInt64.self, forKeys: [CTL_HW, HW_MEMSIZE]) }
+        public static var memSize: UInt64 {
+            return try! Sysctl.value(ofType: UInt64.self, forKeys: [CTL_HW, HW_MEMSIZE])
+        }
     #endif
 }

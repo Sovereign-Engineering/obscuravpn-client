@@ -109,10 +109,12 @@ struct ObscuraToggle: View {
                 do {
                     let exitSelector = self.getVpnStatus()?.lastExit ?? .any
                     try await self.startupModel.appState?.enableTunnel(
-                        TunnelArgs(exit: exitSelector))
+                        TunnelArgs(exit: exitSelector)
+                    )
                 } catch {
                     logger.error(
-                        "Failed to connect from status menu toggle \(error, privacy: .public)")
+                        "Failed to connect from status menu toggle \(error, privacy: .public)"
+                    )
                     self.toggleLabel = ToggleLabels.notConnected
                 }
                 self.allowToggleSync = true
@@ -128,9 +130,9 @@ struct ObscuraToggle: View {
                 || self.toggleLabel == .connecting)
     }
 
-    // we're implicitly creating a (calculated) minimum width here with
-    //   - .fixedSize(...)
-    //   - Spacer(minLength: 54)
+    /// we're implicitly creating a (calculated) minimum width here with
+    ///   - .fixedSize(...)
+    ///   - Spacer(minLength: 54)
     var body: some View {
         let toggleDisabled = self.toggleLabel == ToggleLabels.disconnecting
         // Separate the presentation from the function to avoid
@@ -187,7 +189,9 @@ struct ObscuraToggle: View {
                     // This avoids bugs where the toggle is the component driving a vpn status change
                     // E.g. The vpnStatus reports disconnected and the user starts a connection through the toggle
                     //  -> Show the connecting state until the new vpnStatus rather than showing a disconnected state
-                    if vpnStatus.version == self.vpnStatusId { return }
+                    if vpnStatus.version == self.vpnStatusId {
+                        return
+                    }
                     self.vpnStatusId = vpnStatus.version
                     switch vpnStatus.vpnStatus {
                     case .connected:
@@ -218,7 +222,8 @@ struct ObscuraToggle: View {
                         takeBreak = false
                     } catch {
                         logger.error(
-                            "Failed to get exit list in ObscuraToggle: \(error, privacy: .public)")
+                            "Failed to get exit list in ObscuraToggle: \(error, privacy: .public)"
+                        )
                     }
                 }
                 if takeBreak {

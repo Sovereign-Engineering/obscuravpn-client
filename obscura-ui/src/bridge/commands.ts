@@ -94,7 +94,7 @@ export async function setNavigationView(view: NavigationView): Promise<void> {
 }
 
 export function login(accountId: AccountId, validate = false) {
-    return jsonFfiCmd('login', { accountId, validate });
+    return jsonFfiCmd('login', { accountId, validate }, 65_000);
 }
 
 export function logout() {

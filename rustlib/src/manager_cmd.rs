@@ -93,9 +93,11 @@ impl From<&ApiError> for ManagerCmdErrorCode {
                     ApiErrorKind::SignupLimitExceeded { pow_challenge: _ } => Self::ApiSignupLimitExceeded,
                     ApiErrorKind::InvalidAccountId {} => Self::ApiInvalidAccountId,
                     ApiErrorKind::AccountExpired {}
+                    | ApiErrorKind::AdminNnnCaseNotFound {}
                     | ApiErrorKind::AllFriendCodesClaimed {}
                     | ApiErrorKind::AlreadyReferred {}
                     | ApiErrorKind::BadRequest {}
+                    | ApiErrorKind::IneligibleForFriendCodes {}
                     | ApiErrorKind::IneligibleForReferral {}
                     | ApiErrorKind::InternalError {}
                     | ApiErrorKind::InvalidReferralCode {}
@@ -110,6 +112,7 @@ impl From<&ApiError> for ManagerCmdErrorCode {
                     | ApiErrorKind::NnnSubmissionsClosed {}
                     | ApiErrorKind::NnnUnavailable {}
                     | ApiErrorKind::PayloadTooLarge {}
+                    | ApiErrorKind::RelayUnavailable {}
                     | ApiErrorKind::TunnelLimitExceeded {}
                     | ApiErrorKind::WgKeyRotationRequired {}
                     | ApiErrorKind::Unknown(_) => Self::ApiError,

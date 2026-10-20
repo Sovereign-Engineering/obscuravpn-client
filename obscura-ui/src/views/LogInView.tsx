@@ -67,7 +67,7 @@ export default function LogIn({ accountNumber, accountActive, trialAvailable }: 
             message: t('loginError-unknown'),
             color: 'red'
           });
-        }, 10_000);
+        }, 65_000);
       loginErrorTimeout.current = timeout;
       const minLoad = new Promise(resolve => setTimeout(resolve, MIN_LOAD_MS));
       try {

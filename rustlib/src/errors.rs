@@ -56,10 +56,12 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
                         NoLongerSupported {} => Self::NoLongerSupported,
                         TunnelLimitExceeded {} => Self::NoSlotsLeft,
                         RateLimitExceeded { pow_challenge: _ } => Self::ApiRateLimitExceeded,
-                        AllFriendCodesClaimed {}
+                        AdminNnnCaseNotFound {}
+                        | AllFriendCodesClaimed {}
                         | AlreadyReferred {}
                         | AssociateAccountConflict {}
                         | BadRequest {}
+                        | IneligibleForFriendCodes {}
                         | IneligibleForReferral {}
                         | InternalError {}
                         | InvalidReferralCode {}
@@ -74,6 +76,7 @@ impl From<&TunnelConnectError> for ConnectErrorCode {
                         | NnnSubmissionsClosed {}
                         | NnnUnavailable {}
                         | PayloadTooLarge {}
+                        | RelayUnavailable {}
                         | SaleNotFound {}
                         | SignupLimitExceeded { pow_challenge: _ }
                         | WgKeyRotationRequired {}

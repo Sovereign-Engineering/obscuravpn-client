@@ -183,6 +183,23 @@ public sealed partial class NotifyIconManager
         checkForUpdates.Click += (_, _) => _ = _app.Updater.CheckAndPromptAsync();
         menu.Items.Add(checkForUpdates);
 
+        if (status is { InNewAccountFlow: false, Account: { } account } && account.ExpiringSoon())
+        {
+            menu.Items.Add(new MenuFlyoutSeparator());
+            var fundAccount = new AccountMenuFlyoutItem
+            {
+                Text = "Fund your account...",
+                Subtitle = AccountExpiryText(account),
+                IsExpired = !account.IsActive,
+            };
+            fundAccount.Click += (_, _) =>
+            {
+                _app.ShowMainWindow();
+                _app.SelectNavigationView(NavigationView.Account);
+            };
+            menu.Items.Add(fundAccount);
+        }
+
         menu.Items.Add(new MenuFlyoutSeparator());
         var debugBundleStatus = OsStatus.Instance.DebugBundleStatus;
         var inProgress = debugBundleStatus.InProgress;
@@ -301,6 +318,18 @@ public sealed partial class NotifyIconManager
         sub.Items.Add(more);
 
         return sub;
+    }
+
+    static string AccountExpiryText(AccountStatus account)
+    {
+        if (!account.IsActive) return "Account is expired";
+        var days = account.DaysUntilExpiry();
+        return days switch
+        {
+            > 1 => $"Account expires in {days} days",
+            1 => "Account expires in 1 day",
+            _ => "Account expires in < 1 day",
+        };
     }
 
     static async void StartTunnel(ExitSelector exit)

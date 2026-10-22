@@ -249,6 +249,11 @@ class GetExitListArgs : IIPCCommandArg
     public string? KnownVersion { get; set; }
 }
 
+class ApiGetAccountInfoArgs : IIPCCommandArg
+{
+    public string CommandName() => "apiGetAccountInfo";
+}
+
 public class StartTunnelCommand : IObscuraCommand
 {
     private static readonly ILog Log = LogManager.GetLogger(typeof(StartTunnelCommand));

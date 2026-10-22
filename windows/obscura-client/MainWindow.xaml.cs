@@ -12,6 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
@@ -222,6 +223,10 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     readonly TaskCompletionSource _webUIReady = new();
     ElementTheme _colorScheme = ElementTheme.Default;
 
+    static readonly TimeSpan AccountCheckInterval = TimeSpan.FromMinutes(1);
+    readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _accountCheckTimer;
+    string? _lastConnectError;
+
     const uint WM_CLOSE = 0x0010;
     const uint WM_QUERYENDSESSION = 0x0011;
     const uint WM_ENDSESSION = 0x0016;
@@ -276,6 +281,17 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         OsStatus.Instance.Changed += OnOsStatusChanged;
         OnOsStatusChanged(OsStatus.Instance);
 
+        // Expiry counts down, and cached account info goes stale, without any status change
+        _accountCheckTimer = DispatcherQueue.CreateTimer();
+        _accountCheckTimer.Interval = AccountCheckInterval;
+        _accountCheckTimer.IsRepeating = true;
+        _accountCheckTimer.Tick += (_, _) => CheckAccount();
+        _accountCheckTimer.Start();
+        // The expiry badge shows text only while the pane is open
+        NavView.RegisterPropertyChangedCallback(
+            XamlNavigationView.IsPaneOpenProperty,
+            (_, _) => UpdateAccountExpiryBadge(OsStatus.Instance.ServiceStatus.Healthy?.Account));
+
         // Subclass WM_CLOSE *before* WinUI sees it. The standard AppWindow.Closing +
         // args.Cancel pattern destabilizes WebView2: each cancel-close leaves it partially
         // torn down, and the next show/focus event then NULL-derefs inside
@@ -294,9 +310,12 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         bool bundleInProgress = status.DebugBundleStatus.InProgress;
         string? bundlePath = status.DebugBundleStatus.LatestPath;
         DispatcherQueue.TryEnqueue(() => {
-            bool showNav = status.ServiceStatus.Healthy is { AccountId: not null, InNewAccountFlow: false };
+            var healthy = status.ServiceStatus.Healthy;
+            bool showNav = healthy is { AccountId: not null, InNewAccountFlow: false };
             NavView.IsPaneVisible = showNav;
             AppTitleBar.IsPaneToggleButtonVisible = showNav;
+            UpdateAccountExpiryBadge(healthy?.Account);
+            ShowAccountOnExpiredConnect(healthy);
             CreateDebugBundleButton.Content = bundleInProgress ? DebugBundle.CreatingActionText : DebugBundle.CreateActionText;
             CreateDebugBundleButton.IsEnabled = !bundleInProgress;
             DebugBundleProgressRing.IsActive = bundleInProgress;
@@ -308,6 +327,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     private void OnClosed(object sender, WindowEventArgs args)
     {
         OsStatus.Instance.Changed -= OnOsStatusChanged;
+        _accountCheckTimer.Stop();
         // Window.Close() destroys the HWND but does not release the WebView2's CoreWebView2.
         // The CoreWebView2 + DevTools event receivers are COM RCWs that keep the STA apartment
         // alive, which in turn keeps the process alive. Explicitly closing the WebView2 releases
@@ -792,6 +812,68 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     internal void SetUpdateBadgeVisible(bool visible)
     {
         UpdateAvailableBadge.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    void CheckAccount()
+    {
+        var account = OsStatus.Instance.ServiceStatus.Healthy?.Account;
+        UpdateAccountExpiryBadge(account);
+        if (account?.NeedsRefresh() == true) RefreshAccount();
+    }
+
+    static async void RefreshAccount()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        try { await IPCCommand.RunWithArgAsync(new ApiGetAccountInfoArgs(), cts.Token); }
+        catch (Exception ex) { Log.Warn($"account info refresh failed: {ex.Message}"); }
+    }
+
+    // Same thresholds and text as the macOS sidebar badge, except "exp. soon" since "expires soon" clips the label.
+    // While the pane is closed the badge overlays the icon, where only a number or "!" fits.
+    void UpdateAccountExpiryBadge(AccountStatus? account)
+    {
+        if (account?.ExpiringSoon() != true)
+        {
+            AccountExpiryBadge.Visibility = Visibility.Collapsed;
+            return;
+        }
+        var days = account.DaysUntilExpiry();
+        var critical = days <= 3;
+        if (NavView.IsPaneOpen)
+        {
+            AccountExpiryBadge.Style = (Style)RootGrid.Resources[critical ? "CriticalTextInfoBadgeStyle" : "CautionTextInfoBadgeStyle"];
+            AccountExpiryBadge.Tag = days switch
+            {
+                > 3 => "exp. soon",
+                > 0 => $"exp. in {days}d",
+                _ => account.IsActive ? "exp. today" : "expired",
+            };
+        }
+        else if (critical)
+        {
+            AccountExpiryBadge.Style = (Style)Application.Current.Resources["CriticalValueInfoBadgeStyle"];
+            // A value takes precedence over the "!" icon
+            AccountExpiryBadge.Value = days is > 0 and var left ? left : -1;
+        }
+        else
+        {
+            AccountExpiryBadge.Style = (Style)Application.Current.Resources["CautionIconInfoBadgeStyle"];
+            AccountExpiryBadge.Value = -1;
+        }
+        AccountExpiryBadge.Visibility = Visibility.Visible;
+    }
+
+    // Like macOS, bring up the account page when connecting fails on an expired account.
+    // Only on the transition, so retries and unrelated status updates don't keep stealing focus.
+    void ShowAccountOnExpiredConnect(NeStatus? status)
+    {
+        var connectError = status?.VpnStatus.ConnectError;
+        if (connectError == "accountExpired" && connectError != _lastConnectError)
+        {
+            App.Current.ShowMainWindow();
+            SelectNavigationView(NavigationView.Account);
+        }
+        _lastConnectError = connectError;
     }
 
     internal void SelectNavigationView(NavigationView view)

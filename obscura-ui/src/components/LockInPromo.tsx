@@ -20,13 +20,13 @@ function parseAccountIds(value: string): string[] {
 }
 
 export function LockInPromo() {
-  const { accountInfo } = useContext(AppContext);
+  const { accountInfo, apiServiceStatus } = useContext(AppContext);
   const [opened, setOpened] = useState(false);
   const [seenAccountIds, setSeenAccountIds] = useCookie(LOCK_IN_PROMO_SEEN, '');
   const [bannerSeenAccountIds, setBannerSeenAccountIds] = useCookie(LOCK_IN_BANNER_SEEN, '');
 
   const accountId = accountInfo ? accountIdToString(accountInfo.id) : null;
-  const eligible = accountInfo?.nnn != null;
+  const eligible = accountInfo !== null && accountInfo.nnn === null && apiServiceStatus?.nnn.submissions_open === true;
   const popupSeen = accountId !== null && parseAccountIds(seenAccountIds).includes(accountId);
   const bannerSeen = accountId !== null && parseAccountIds(bannerSeenAccountIds).includes(accountId);
 

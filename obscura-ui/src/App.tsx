@@ -11,6 +11,7 @@ import * as commands from './bridge/commands';
 import { HAS_NE_VPN_STATUS, IS_HANDHELD_DEVICE, logReactError, PLATFORM, Platform, useSystemChecks } from './bridge/SystemProvider';
 import { AppContext, AppStatus, ConnectionInProgress, connectionIsIdle, getEffectiveOsStatus, latestAppStatus, linuxDegradation, NavigationView, NEVPNStatus, OsStatus, OsStatusWVpnStatus, windowsDegradation } from './common/appContext';
 import commonClasses from './common/common.module.css';
+import { ServiceStatusOutput } from './common/api';
 import { fmt } from './common/fmt';
 import { NotificationId } from './common/notifIds';
 import { useAsync } from './common/useAsync';
@@ -50,7 +51,8 @@ export default function () {
   const [appStatus, setStatus] = useState<AppStatus | null>(null);
   const [osStatus, setOsStatus] = useState<OsStatus | null>(null);
   const [isProcessingPayment, setPaymentProcessing] = useState(false);
-  const [trialAvailable, setTrialAvailable] = useState<boolean | null>(null);
+  const [apiServiceStatus, setApiServiceStatus] = useState<ServiceStatusOutput | null>(null);
+  const [apiServiceStatusLoaded, setApiServiceStatusLoaded] = useState(false);
   const ignoreConnectingErrors = useRef(false);
 
   const routes: View[] = [
@@ -248,7 +250,10 @@ export default function () {
   }, []);
 
   useEffect(() => {
-    commands.getServiceStatus().then(status => setTrialAvailable(status.free_trial.available)).catch(() => setTrialAvailable(false));
+    commands.getServiceStatus()
+      .then(setApiServiceStatus)
+      .catch(() => setApiServiceStatus(null))
+      .finally(() => setApiServiceStatusLoaded(true));
   }, []);
 
   useEffect(() => {
@@ -339,7 +344,7 @@ export default function () {
   const windowsDegraded = windowsDegradation(osStatus?.serviceStatus);
   const showLogin = !isLoggedIn || !!showAccountCreation;
   // The trial flag must resolve before the login button paints, otherwise the label flashes.
-  if (fetchingStatuses || linuxDegraded || windowsDegraded || (showLogin && trialAvailable === null)) {
+  if (fetchingStatuses || linuxDegraded || windowsDegraded || (showLogin && !apiServiceStatusLoaded)) {
     const effectiveOsStatus = osStatus === null ? null : { ...osStatus, osVpnStatus: getEffectiveOsStatus(osStatus, appStatus) };
     return <SplashScreen osStatus={effectiveOsStatus} linuxDegradation={linuxDegraded} windowsDegradation={windowsDegraded} />;
   }
@@ -348,6 +353,7 @@ export default function () {
 
   const appContext = {
     accountInfo: accountInfo ?? null,
+    apiServiceStatus,
     appStatus,
     connectionInProgress,
     osStatus: { ...osStatus, osVpnStatus },
@@ -365,7 +371,7 @@ export default function () {
   if (showLogin) {
     return (
       <AppContext.Provider value={appContext}>
-        <LogIn accountNumber={appStatus.accountId} accountActive={accountInfo?.active} trialAvailable={trialAvailable ?? false} />
+        <LogIn accountNumber={appStatus.accountId} accountActive={accountInfo?.active} trialAvailable={apiServiceStatus?.free_trial.available ?? false} />
       </AppContext.Provider>
     );
   }

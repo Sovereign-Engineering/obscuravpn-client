@@ -2,7 +2,7 @@ import { createContext, useContext } from 'react';
 import { ExitSelector, ExitSelectorCity, TunnelArgs } from '../bridge/commands';
 import { HAS_NE_VPN_STATUS } from '../bridge/SystemProvider';
 import { AccountId } from './accountUtils';
-import { AccountInfo, Exit } from './api';
+import { AccountInfo, Exit, ServiceStatusOutput } from './api';
 
 export enum NEVPNStatus {
     Invalid = 'invalid',
@@ -223,6 +223,7 @@ interface IAppContext {
     osStatus: OsStatusWVpnStatus,
     showOfflineUI: boolean,
     accountInfo: AccountInfo | null,
+    apiServiceStatus: ServiceStatusOutput | null,
     connectionInProgress: ConnectionInProgress,
     isProcessingPayment: boolean,
     setPaymentProcessing: (value: boolean) => void

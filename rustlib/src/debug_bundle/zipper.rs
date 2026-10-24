@@ -20,7 +20,7 @@ impl Zipper {
         let mut dst = dst_parent.join(&name);
         dst.set_extension("zip");
         tracing::debug!(message_id = "tpKqzGkz", ?dst, "starting archive");
-        let writer = ZipWriter::new(File::create(&dst)?);
+        let writer = ZipWriter::new(File::create_new(&dst)?);
         Ok(Self {
             name,
             dst,

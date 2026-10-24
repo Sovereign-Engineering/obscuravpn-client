@@ -11,6 +11,17 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!--
+      Signature-level permission: the platform only grants it to packages signed with our
+      certificate. MainActivity refuses privileged deep links unless the sender holds it, as
+      defense-in-depth behind the removal of externally-reachable privileged paths.
+    -->
+    <permission
+        android:name="${applicationId}.permission.TRUSTED_DEEP_LINK"
+        android:label="@string/app_name"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="${applicationId}.permission.TRUSTED_DEEP_LINK" />
+
     <application
         android:name=".App"
         android:allowBackup="true"
@@ -39,6 +50,11 @@
                 <action android:name="android.intent.action.MAIN" />
             </intent-filter>
 
+            <!--
+              Deep-link entry point. Note: browsers can reach the activity through this filter, so
+              externally supplied URIs are never trusted — privileged paths additionally require
+              internal provenance; see `MainActivity.handleIntent`.
+            -->
             <intent-filter>
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />

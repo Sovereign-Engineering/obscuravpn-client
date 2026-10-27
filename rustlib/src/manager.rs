@@ -350,6 +350,7 @@ impl Manager {
         bundle_info: BundleInfo,
         android_cache_dir: Option<Utf8PathBuf>,
     ) -> anyhow::Result<String> {
+        anyhow::ensure!(cfg!(target_os = "android"), "unsupported OS");
         let log_dir = self.log_persistence.as_ref().map(LogPersistence::log_dir).map(ToOwned::to_owned);
         let debug_info = self.get_debug_info().await;
         tokio::task::spawn_blocking(move || create_debug_bundle(user_feedback, bundle_info, debug_info, log_dir, android_cache_dir).map(Into::into))

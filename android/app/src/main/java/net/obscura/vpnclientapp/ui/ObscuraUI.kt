@@ -226,11 +226,20 @@ class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet?
         }
     }
 
-    fun handleObscuraUri(mainActivity: MainActivity, uri: Uri) {
-        log.debug("handling deep link $uri")
+    fun handleObscuraUri(mainActivity: MainActivity, uri: Uri, deepLinkOrigin: DeepLinkOrigin) {
+        log.debug("handling deep link $uri (origin: $deepLinkOrigin)")
         try {
+            // Only in-app launches (our own notification PendingIntents or senders holding our
+            // signature-level permission) may trigger privileged actions or views. Anything else
+            // arriving over the exported VIEW filter is limited to navigation-only paths; see
+            // NAVIGATION_ONLY_DEEP_LINKS for the allowlist rationale.
+            val isPrivilegedOrigin = deepLinkOrigin == DeepLinkOrigin.Internal
             when (val path = uri.path!!.drop(1)) {
                 PATH_REQUEST_VPN_START -> {
+                    if (!isPrivilegedOrigin) {
+                        log.warn("ignoring unprivileged deep link $uri")
+                        return
+                    }
                     this.bottomNavigation.selectedItemId = R.id.nav_connection
                     mainActivity.lifecycleScope.launch {
                         mainActivity.vpnPermissionRequestManager.requestVpnStart(null).onFailure {
@@ -239,11 +248,28 @@ class ObscuraUI @JvmOverloads constructor(context: Context, attrs: AttributeSet?
                     }
                 }
                 else -> {
-                    this.setNavigationView(jsonConfig.decodeFromString<OsStatus.NavigationView>("\"$path\""))
+                    val navigationView =
+                        jsonConfig.decodeFromString<OsStatus.NavigationView>("\"$path\"")
+                    if (navigationView !in NAVIGATION_ONLY_DEEP_LINKS) {
+                        log.warn("ignoring deep link to privileged view $navigationView")
+                        return
+                    }
+                    this.setNavigationView(navigationView)
                 }
             }
         } catch (e: Throwable) {
             log.error("invalid deep link $uri: ${e.message}", tr = e)
         }
+    }
+
+    private companion object {
+        /**
+         * Views an external deep link may navigate to. This excludes [OsStatus.NavigationView.Developer]:
+         * while it currently only exposes diagnostics, a diagnostics surface is privileged by
+         * policy (it can leak account/network details), so a developer page deep link must not be
+         * triggerable from outside the app. All remaining views are plain navigation.
+         */
+        val NAVIGATION_ONLY_DEEP_LINKS: Set<OsStatus.NavigationView> =
+            OsStatus.NavigationView.entries.filterNot { it == OsStatus.NavigationView.Developer }.toSet()
     }
 }

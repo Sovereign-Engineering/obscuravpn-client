@@ -9,12 +9,12 @@
 	<key>provisioningProfiles</key>
 	<dict>
 		<key>net.obscura.vpn-client-app</key>
-		<string>Developer ID: VPN Client App</string>
+		<string>Developer ID: VPN Client App (G2)</string>
 		<key>net.obscura.vpn-client-app.system-network-extension</key>
-		<string>Developer ID: System Network Extension</string>
+		<string>Developer ID: System Network Extension (G2)</string>
 	</dict>
 	<key>signingCertificate</key>
-	<string>Developer ID Application</string>
+	<string>7850FC90C09E6421B663479840A0273A6DBB10D2</string>
 	<key>signingStyle</key>
 	<string>manual</string>
 	<key>teamID</key>

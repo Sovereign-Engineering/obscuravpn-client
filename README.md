@@ -38,8 +38,8 @@ The network extension manages the virtual device and maintains the tunnel using 
 1. [Enable system extension developer mode](#enabling-system-extension-developer-mode)
 1. Setup Developer ID provisioning profile and codesigning for `Prod Client` build scheme
     1. Go to https://developer.apple.com/account/resources/profiles/list
-        - Download "Developer ID: System Network Extension"
-        - Download "Developer ID: VPN Client App"
+        - Download "Developer ID: System Network Extension (G2)"
+        - Download "Developer ID: VPN Client App (G2)"
     1. Install both provisioning profiles by double-clicking them.
     1. Ask Carl to send the Developer ID codesigning certificate and the corresponding password
     1. Double click the certificate, enter the password, and install it to your "login" keychain which you need to select in the password input screen

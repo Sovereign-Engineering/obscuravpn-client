@@ -53,11 +53,28 @@ pub struct ClientLoginArgs {
     pub offline: bool,
 }
 
-#[derive(Args, Debug)]
-pub struct ClientConnectArgs {}
+/// Options that bound how long a command waits for the service.
+#[derive(Args, Debug, Default, Clone, Copy)]
+pub struct WaitArgs {
+    /// Return as soon as the service accepts the request, without waiting for the tunnel state.
+    #[arg(long, conflicts_with = "timeout")]
+    pub no_wait: bool,
+    /// Give up after this many seconds. The outcome is unknown when the deadline expires.
+    #[arg(long, value_parser = clap::value_parser!(u64).range(1..=3600))]
+    pub timeout: Option<u64>,
+}
 
-#[derive(Args, Debug)]
-pub struct ClientDisconnectArgs {}
+#[derive(Args, Debug, Default)]
+pub struct ClientConnectArgs {
+    #[command(flatten)]
+    pub wait: WaitArgs,
+}
+
+#[derive(Args, Debug, Default)]
+pub struct ClientDisconnectArgs {
+    #[command(flatten)]
+    pub wait: WaitArgs,
+}
 
 #[derive(Args, Debug)]
 pub struct ClientStatusArgs {
@@ -67,12 +84,43 @@ pub struct ClientStatusArgs {
     #[arg(long)]
     /// Print full JSON status instead of summary.
     pub json: bool,
+    #[arg(long, conflicts_with = "json")]
+    /// Print one compact JSON status per line, for machine-readable streams.
+    pub json_lines: bool,
+    #[arg(long)]
+    /// Don't refresh the account information; report only what the service already knows.
+    pub local: bool,
 }
 
 #[derive(Args, Debug)]
 pub struct ClientDebugBundleArgs {
     /// Message for the Obscura team, included in the debug bundle.
     pub feedback: String,
+}
+
+#[derive(Args, Debug, Default)]
+pub struct ClientLocationsListArgs {
+    /// Print the catalogue as JSON instead of a human-readable list.
+    #[arg(long)]
+    pub json: bool,
+    /// Give up after this many seconds. Defaults to 5 seconds.
+    #[arg(long, value_parser = clap::value_parser!(u64).range(1..=3600))]
+    pub timeout: Option<u64>,
+}
+
+#[derive(Args, Debug, Default)]
+pub struct ClientLocationsRefreshArgs {
+    /// Give up after this many seconds. Defaults to 30 seconds.
+    #[arg(long, value_parser = clap::value_parser!(u64).range(1..=3600))]
+    pub timeout: Option<u64>,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum LocationsCommand {
+    /// List the exits in the catalogue the service has cached.
+    List(ClientLocationsListArgs),
+    /// Fetch the exit catalogue from the API and update the cache.
+    Refresh(ClientLocationsRefreshArgs),
 }
 
 #[derive(Subcommand, Debug)]
@@ -88,6 +136,9 @@ pub enum ClientCommand {
     Disconnect(ClientDisconnectArgs),
     /// Show account and VPN status.
     Status(ClientStatusArgs),
+    /// Show the exit catalogue.
+    #[command(subcommand)]
+    Locations(LocationsCommand),
     #[cfg(target_os = "linux")]
     /// Create a debug bundle and print its path.
     DebugBundle(ClientDebugBundleArgs),
@@ -229,7 +280,7 @@ async fn run_service(_args: ServiceArgs, _log_persistence: Option<LogPersistence
 async fn run_client(args: ClientCommand) {
     if let Err(error) = client::run(args).await {
         eprintln!("{}", error);
-        exit(1)
+        exit(error.exit_code())
     }
 }
 

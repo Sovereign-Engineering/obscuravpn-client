@@ -53,11 +53,28 @@ pub struct ClientLoginArgs {
     pub offline: bool,
 }
 
-#[derive(Args, Debug)]
-pub struct ClientConnectArgs {}
+/// Options that bound how long a command waits for the service.
+#[derive(Args, Debug, Default, Clone, Copy)]
+pub struct WaitArgs {
+    /// Return as soon as the service accepts the request, without waiting for the tunnel state.
+    #[arg(long, conflicts_with = "timeout")]
+    pub no_wait: bool,
+    /// Give up after this many seconds. The outcome is unknown when the deadline expires.
+    #[arg(long, value_parser = clap::value_parser!(u64).range(1..=3600))]
+    pub timeout: Option<u64>,
+}
 
-#[derive(Args, Debug)]
-pub struct ClientDisconnectArgs {}
+#[derive(Args, Debug, Default)]
+pub struct ClientConnectArgs {
+    #[command(flatten)]
+    pub wait: WaitArgs,
+}
+
+#[derive(Args, Debug, Default)]
+pub struct ClientDisconnectArgs {
+    #[command(flatten)]
+    pub wait: WaitArgs,
+}
 
 #[derive(Args, Debug)]
 pub struct ClientStatusArgs {

@@ -38,6 +38,23 @@ locations, and the WireGuard public keys of the connected exit and entry relay.
 Select the fields you need before writing status output to a log, a file, or a
 ticket.
 
+## Waiting for a connection
+
+`connect` and `disconnect` wait until the service reaches the requested state.
+`--no-wait` returns as soon as the service accepts the request, so a script can
+observe the change with `status` instead of blocking. `--timeout SECONDS`
+bounds the whole operation, including sending the request and waiting for the
+state. `--no-wait` and `--timeout` cannot be used together.
+
+With `--timeout`, a connection error does not end the wait. The service keeps
+retrying, so the CLI waits until the tunnel connects or the deadline expires.
+Without `--timeout`, a connection error ends the wait with code 7.
+
+A timeout is reported with exit code 6. The outcome is unknown at that point,
+because the service may still apply the requested state. Read the status
+instead of repeating the command: the CLI never sends a compensating
+disconnect and never retries the request.
+
 ## Exit codes
 
 | Code | Meaning |
@@ -48,6 +65,7 @@ ticket.
 | 3 | Service is not running |
 | 4 | Operator permission denied |
 | 5 | CLI and service releases differ |
+| 6 | Operation timed out; the outcome is unknown |
 | 7 | Service reported a connection error for the requested tunnel |
 
 Service-reported failures keep code 1. IPC failures that previously returned 1

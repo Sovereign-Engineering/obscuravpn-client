@@ -1,9 +1,13 @@
 use super::*;
-use crate::{Cli, ClientCommand, ClientStatusArgs, Command};
+use crate::{Cli, ClientCommand, ClientConnectArgs, ClientDisconnectArgs, ClientStatusArgs, Command};
 use clap::Parser;
+use obscuravpn_api::types::{CityCode, CountryCode, OneExit, OneRelay, WgPubkey};
 use obscuravpn_client::config::feature_flags::FeatureFlags;
 use obscuravpn_client::errors::ConnectErrorCode;
 use obscuravpn_client::network_config::DnsContentBlock;
+use obscuravpn_client::quicwg::TransportKind;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use uuid::Uuid;
 
 fn status_args(args: &[&str]) -> ClientStatusArgs {
@@ -12,6 +16,62 @@ fn status_args(args: &[&str]) -> ClientStatusArgs {
         panic!("expected a status command, got {:?}", cli.command);
     };
     status_args
+}
+
+fn connect_args(args: &[&str]) -> ClientConnectArgs {
+    let cli = Cli::try_parse_from(args).expect("failed to parse arguments");
+    let Command::Client(ClientCommand::Connect(connect_args)) = cli.command else {
+        panic!("expected a connect command, got {:?}", cli.command);
+    };
+    connect_args
+}
+
+fn disconnect_args(args: &[&str]) -> ClientDisconnectArgs {
+    let cli = Cli::try_parse_from(args).expect("failed to parse arguments");
+    let Command::Client(ClientCommand::Disconnect(disconnect_args)) = cli.command else {
+        panic!("expected a disconnect command, got {:?}", cli.command);
+    };
+    disconnect_args
+}
+
+/// The exit a synthetic connected status reports.
+fn synthetic_exit(id: &str, country_code: &str, city_code: &str) -> OneExit {
+    OneExit {
+        id: id.to_string(),
+        city_code: CityCode { country_code: CountryCode(country_code.to_string()), city_code: city_code.to_string() },
+        city_name: city_code.to_string(),
+        provider_id: format!("{country_code}-{city_code}-wg-301"),
+        provider_url: "https://provider.invalid".to_string(),
+        provider_name: "Provider".to_string(),
+        provider_homepage_url: "https://provider.invalid".to_string(),
+        datacenter_id: 1,
+        tier: 1,
+    }
+}
+
+/// The relay a synthetic connected status reports.
+fn synthetic_relay(country_code: &str, city_code: &str) -> OneRelay {
+    OneRelay {
+        id: format!("{city_code}-relay"),
+        city_code: CityCode { country_code: CountryCode(country_code.to_string()), city_code: city_code.to_string() },
+        city_name: city_code.to_string(),
+        preferred_exits: Vec::new(),
+        ip_v4: std::net::Ipv4Addr::new(192, 0, 2, 1),
+        ports: vec![443],
+        tls_cert: Vec::new(),
+    }
+}
+
+/// A status that reports a connected tunnel at the given exit.
+fn connected_status(exit: OneExit) -> VpnStatus {
+    VpnStatus::Connected {
+        tunnel_args: TunnelArgs { exit: ExitSelector::Any {} },
+        exit,
+        relay: synthetic_relay("US", "nyc"),
+        client_public_key: WgPubkey([0u8; 32]),
+        exit_public_key: WgPubkey([1u8; 32]),
+        transport: TransportKind::Quic,
+    }
 }
 
 fn synthetic_status() -> Status {
@@ -116,6 +176,21 @@ fn cli_connect_wait_ends_when_the_target_changes() {
     assert_eq!(track_target(&VpnStatus::Disconnected {}, &target, true).unwrap_err().exit_code(), 1);
     // A disconnect is not tracked.
     assert!(track_target(&other, &None, true).is_ok());
+}
+
+#[test]
+fn cli_timeout_keeps_waiting_through_connection_errors() {
+    let target = Some(TunnelArgs::default());
+    let failing = VpnStatus::Connecting {
+        tunnel_args: TunnelArgs::default(),
+        connect_error: Some(ConnectErrorCode::NoInternet),
+        reconnecting: false,
+    };
+    // The service keeps retrying, so under a deadline the error is progress, not the end of the wait.
+    assert!(!wait_finished(&failing, &target, true).unwrap());
+    assert_eq!(wait_finished(&failing, &target, false).unwrap_err().exit_code(), 7);
+    // A deadline does not change how a reached target is detected.
+    assert!(wait_finished(&VpnStatus::Disconnected {}, &None, true).unwrap());
 }
 
 #[test]
@@ -254,4 +329,119 @@ fn cli_json_lines_are_records() {
         std::io::ErrorKind::BrokenPipe,
     ))));
     assert!(is_broken_pipe(&broken_json), "a closed pipe during encoding ends the stream");
+}
+
+#[test]
+fn cli_connect_wait_flags() {
+    let args = connect_args(&["obscura", "connect"]);
+    assert!(!args.wait.no_wait);
+    assert_eq!(args.wait.timeout, None);
+
+    let args = connect_args(&["obscura", "connect", "--no-wait"]);
+    assert!(args.wait.no_wait);
+    assert_eq!(args.wait.timeout, None);
+
+    let args = connect_args(&["obscura", "connect", "--timeout", "10"]);
+    assert!(!args.wait.no_wait);
+    assert_eq!(args.wait.timeout, Some(10));
+
+    let args = disconnect_args(&["obscura", "disconnect"]);
+    assert!(!args.wait.no_wait);
+    assert_eq!(args.wait.timeout, None);
+
+    let args = disconnect_args(&["obscura", "disconnect", "--no-wait"]);
+    assert!(args.wait.no_wait);
+    assert_eq!(args.wait.timeout, None);
+
+    let args = disconnect_args(&["obscura", "disconnect", "--timeout", "30"]);
+    assert!(!args.wait.no_wait);
+    assert_eq!(args.wait.timeout, Some(30));
+
+    assert!(
+        Cli::try_parse_from(["obscura", "connect", "--no-wait", "--timeout", "10"]).is_err(),
+        "--no-wait and --timeout must not be usable together"
+    );
+    assert!(
+        Cli::try_parse_from(["obscura", "disconnect", "--no-wait", "--timeout", "10"]).is_err(),
+        "--no-wait and --timeout must not be usable together"
+    );
+    for invalid in ["0", "3601", "abc", "-1"] {
+        assert!(
+            Cli::try_parse_from(["obscura", "connect", "--timeout", invalid]).is_err(),
+            "--timeout {invalid} must be rejected"
+        );
+    }
+    assert!(Cli::try_parse_from(["obscura", "connect", "--timeout", "3600"]).is_ok());
+}
+
+#[test]
+fn cli_target_match_requires_matching_exit() {
+    let status = connected_status(synthetic_exit("NYC-001", "US", "nyc"));
+
+    let matching = Some(TunnelArgs { exit: ExitSelector::Exit { id: "NYC-001".into() } });
+    assert!(target_reached(&status, &matching).unwrap());
+    let other_exit = Some(TunnelArgs { exit: ExitSelector::Exit { id: "CHI-002".into() } });
+    assert!(!target_reached(&status, &other_exit).unwrap());
+    let matching_country = Some(TunnelArgs { exit: ExitSelector::Country { country_code: CountryCode("US".into()) } });
+    assert!(target_reached(&status, &matching_country).unwrap());
+    let other_country = Some(TunnelArgs { exit: ExitSelector::Country { country_code: CountryCode("CA".into()) } });
+    assert!(!target_reached(&status, &other_country).unwrap());
+
+    // A disconnected service only satisfies a disconnect target.
+    assert!(!target_reached(&VpnStatus::Disconnected {}, &matching).unwrap());
+    assert!(target_reached(&VpnStatus::Disconnected {}, &None).unwrap());
+}
+
+#[test]
+fn cli_target_state_commands() {
+    match set_tunnel_args_command(&connect_target()) {
+        ManagerCmd::SetTunnelArgs { args, active } => {
+            assert_eq!(active, Some(true));
+            assert!(matches!(args, Some(TunnelArgs { exit: ExitSelector::Any {} })));
+        }
+        other => panic!("unexpected command: {other:?}"),
+    }
+    match set_tunnel_args_command(&None) {
+        ManagerCmd::SetTunnelArgs { args, active } => {
+            assert_eq!(active, Some(false));
+            assert!(args.is_none());
+        }
+        other => panic!("unexpected command: {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn cli_timeout_stops_the_wait_without_resubmitting() {
+    let submissions = Arc::new(AtomicUsize::new(0));
+    let counter = Arc::clone(&submissions);
+    let timeout = Timeout::new(0);
+    let submit = run_with_deadline(Some(timeout), OperationStep::Submit, async move {
+        counter.fetch_add(1, Ordering::SeqCst);
+        Ok(())
+    });
+    let wait = run_with_deadline(Some(timeout), OperationStep::Wait, std::future::pending::<Result<(), ClientError>>());
+    let error = apply_target_state(submit, Some(wait)).await.unwrap_err();
+    assert_eq!(error.exit_code(), 6);
+    assert_eq!(
+        submissions.load(Ordering::SeqCst),
+        1,
+        "a timed out operation must not send the mutation again"
+    );
+    assert!(
+        error.to_string().contains("waiting for the target state"),
+        "the error names the step that ran out of time: {error}"
+    );
+}
+
+#[tokio::test]
+async fn cli_no_wait_skips_the_status_wait() {
+    let submissions = Arc::new(AtomicUsize::new(0));
+    let counter = Arc::clone(&submissions);
+    let submit = async move {
+        counter.fetch_add(1, Ordering::SeqCst);
+        Ok(())
+    };
+    let result = apply_target_state(submit, None::<std::future::Pending<Result<(), ClientError>>>).await;
+    assert!(result.is_ok());
+    assert_eq!(submissions.load(Ordering::SeqCst), 1);
 }

@@ -1,4 +1,4 @@
-use crate::{ClientCommand, ClientDebugBundleArgs, ClientLoginArgs, ClientStatusArgs};
+use crate::{ClientCommand, ClientDebugBundleArgs, ClientLoginArgs, ClientStatusArgs, WaitArgs};
 use anyhow::Context;
 use chrono::{MappedLocalTime, TimeZone};
 use obscuravpn_api::types::{AccountId, AccountInfo};
@@ -8,7 +8,9 @@ use obscuravpn_client::linux::ipc::{LinuxIpcError, run_command};
 use obscuravpn_client::linux::ui_log_dir;
 use obscuravpn_client::manager::{Status, TunnelArgs, VpnStatus};
 use obscuravpn_client::manager_cmd::{ManagerCmd, ManagerCmdErrorCode};
+use std::future::Future;
 use std::io::Write;
+use std::time::Duration;
 
 #[cfg(test)]
 mod tests;
@@ -33,6 +35,10 @@ pub enum ClientError {
     TunnelFailed(String),
     #[error("The service moved off the requested target while waiting and is now {0}. Another client may have changed it.")]
     TargetChanged(String),
+    #[error(
+        "Timed out after {seconds}s while {step}. The service may still apply the requested state; check the status instead of repeating the command."
+    )]
+    TimedOut { seconds: u64, step: &'static str },
 }
 
 impl ClientError {
@@ -43,6 +49,7 @@ impl ClientError {
             Self::VersionMismatch { .. } => 5,
             Self::TunnelFailed(_) => 7,
             Self::TargetChanged(_) => 1,
+            Self::TimedOut { .. } => 6,
             Self::ApiUnreachable | Self::Unexpected(_) | Self::MalformedAccountId | Self::NotLoggedIn => 1,
         }
     }
@@ -81,8 +88,8 @@ pub async fn run(cmd: ClientCommand) -> Result<(), ClientError> {
     match cmd {
         ClientCommand::AddOperator { users } => crate::add_operator::run_add_operator(users).await,
         ClientCommand::Login(args) => login(args).await,
-        ClientCommand::Connect(_args) => go_to_target_state(Some(TunnelArgs { exit: ExitSelector::Any {} })).await,
-        ClientCommand::Disconnect(_args) => go_to_target_state(None).await,
+        ClientCommand::Connect(args) => go_to_target_state(args.wait, connect_target()).await,
+        ClientCommand::Disconnect(args) => go_to_target_state(args.wait, None).await,
         ClientCommand::Status(args) => status(args).await,
         ClientCommand::DebugBundle(args) => debug_bundle(args).await,
     }
@@ -270,22 +277,131 @@ async fn login(args: ClientLoginArgs) -> Result<(), ClientError> {
     Ok(())
 }
 
-async fn go_to_target_state(target_state: Option<TunnelArgs>) -> Result<(), ClientError> {
-    run_command::<()>(ManagerCmd::SetTunnelArgs { args: target_state.clone(), active: Some(target_state.is_some()) }).await??;
+/// Asks the service to reach the target state, optionally without waiting for it.
+async fn go_to_target_state(wait: WaitArgs, target_state: Option<TunnelArgs>) -> Result<(), ClientError> {
+    let timeout = wait.timeout.map(Timeout::new);
+    let submit = run_with_deadline(timeout, OperationStep::Submit, submit_tunnel_args(&target_state));
+    let wait_for_state = if wait.no_wait {
+        None
+    } else {
+        Some(run_with_deadline(
+            timeout,
+            OperationStep::Wait,
+            await_target_state(&target_state, timeout.is_some()),
+        ))
+    };
+    let result = apply_target_state(submit, wait_for_state).await;
+    if wait.no_wait && result.is_ok() {
+        eprintln!("request accepted; not waiting for the target state");
+    }
+    result
+}
+
+/// The step of a connection operation, used to report where a timeout happened.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum OperationStep {
+    /// Sending the requested state to the service.
+    Submit,
+    /// Waiting for the service to reach the requested state.
+    Wait,
+}
+
+impl OperationStep {
+    /// Describes the step, for the timeout error message.
+    fn description(&self) -> &'static str {
+        match self {
+            Self::Submit => "submitting the target state",
+            Self::Wait => "waiting for the target state",
+        }
+    }
+}
+
+/// The deadline of a connection operation.
+#[derive(Debug, Clone, Copy)]
+struct Timeout {
+    /// The requested timeout, in seconds.
+    seconds: u64,
+    /// The instant the operation has to be finished by.
+    deadline: tokio::time::Instant,
+}
+
+impl Timeout {
+    fn new(seconds: u64) -> Self {
+        let deadline = tokio::time::Instant::now()
+            .checked_add(Duration::from_secs(seconds))
+            .unwrap_or_else(tokio::time::Instant::now);
+        Self { seconds, deadline }
+    }
+}
+
+/// Runs an operation, giving up when the deadline expires.
+async fn run_with_deadline<F>(timeout: Option<Timeout>, step: OperationStep, operation: F) -> Result<(), ClientError>
+where
+    F: Future<Output = Result<(), ClientError>>,
+{
+    let Some(timeout) = timeout else {
+        return operation.await;
+    };
+    match tokio::time::timeout_at(timeout.deadline, operation).await {
+        Ok(result) => result,
+        Err(_) => Err(ClientError::TimedOut { seconds: timeout.seconds, step: step.description() }),
+    }
+}
+
+/// Sends the requested state once and, unless the caller opted out of waiting, waits for the service to reach it.
+async fn apply_target_state<S, W>(submit: S, wait: Option<W>) -> Result<(), ClientError>
+where
+    S: Future<Output = Result<(), ClientError>>,
+    W: Future<Output = Result<(), ClientError>>,
+{
+    submit.await?;
+    match wait {
+        Some(wait) => wait.await,
+        None => Ok(()),
+    }
+}
+
+/// Sends the requested state to the service. The request is sent exactly once.
+async fn submit_tunnel_args(target_state: &Option<TunnelArgs>) -> Result<(), ClientError> {
+    run_command::<()>(set_tunnel_args_command(target_state)).await??;
     eprintln!("updated target state");
+    Ok(())
+}
+
+/// The command that sets the requested tunnel state.
+fn set_tunnel_args_command(target_state: &Option<TunnelArgs>) -> ManagerCmd {
+    ManagerCmd::SetTunnelArgs { args: target_state.clone(), active: Some(target_state.is_some()) }
+}
+
+/// The target state of a connection request: any exit.
+fn connect_target() -> Option<TunnelArgs> {
+    Some(TunnelArgs { exit: ExitSelector::Any {} })
+}
+
+/// Waits until the service reaches the target state.
+async fn await_target_state(target_state: &Option<TunnelArgs>, deadline: bool) -> Result<(), ClientError> {
     let mut known_version = None;
     let mut target_taken_up = false;
     loop {
         let status: Status = run_command(ManagerCmd::GetStatus { known_version }).await??;
         known_version = Some(status.version);
         eprintln!("{}", vpn_status_summary(&status.vpn_status));
-        if target_reached(&status.vpn_status, &target_state)? {
+        if wait_finished(&status.vpn_status, target_state, deadline)? {
             break;
         }
-        target_taken_up = track_target(&status.vpn_status, &target_state, target_taken_up)?;
+        target_taken_up = track_target(&status.vpn_status, target_state, target_taken_up)?;
     }
     eprintln!("reached target state");
     Ok(())
+}
+
+/// Whether the wait is over. Under a deadline a connection error is progress, because the service keeps
+/// retrying until the deadline expires. Without a deadline the error ends the wait, so the CLI cannot wait forever.
+fn wait_finished(vpn_status: &VpnStatus, target_state: &Option<TunnelArgs>, deadline: bool) -> Result<bool, ClientError> {
+    match target_reached(vpn_status, target_state) {
+        Err(ClientError::TunnelFailed(_)) if deadline => Ok(false),
+        result => result,
+    }
 }
 
 fn target_reached(vpn_status: &VpnStatus, target_state: &Option<TunnelArgs>) -> Result<bool, ClientError> {

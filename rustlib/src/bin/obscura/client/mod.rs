@@ -8,6 +8,7 @@ use obscuravpn_client::linux::ipc::{LinuxIpcError, run_command};
 use obscuravpn_client::linux::ui_log_dir;
 use obscuravpn_client::manager::{Status, TunnelArgs, VpnStatus};
 use obscuravpn_client::manager_cmd::{ManagerCmd, ManagerCmdErrorCode};
+use std::io::Write;
 
 #[cfg(test)]
 mod tests;
@@ -97,31 +98,74 @@ async fn debug_bundle(args: ClientDebugBundleArgs) -> Result<(), ClientError> {
 }
 
 async fn status(args: ClientStatusArgs) -> Result<(), ClientError> {
-    let get_account_info_result: Result<AccountInfo, _> = run_command(ManagerCmd::ApiGetAccountInfo {}).await?;
-    match get_account_info_result {
-        Ok(account_info) => {
-            if !args.json {
-                println!("Account is {}.", account_info_summary(&account_info))
+    let source = status_source(args.local);
+    let account_summary = match source {
+        StatusSource::WithAccountRefresh => {
+            let get_account_info_result: Result<AccountInfo, _> = run_command(ManagerCmd::ApiGetAccountInfo {}).await?;
+            match get_account_info_result {
+                Ok(account_info) => Some(account_info_summary(&account_info)),
+                Err(error) => {
+                    eprintln!("Failed to update account info: {}", ClientError::from(error));
+                    None
+                }
             }
         }
-        Err(error) => eprintln!("Failed to update account info: {}", ClientError::from(error)),
-    }
+        StatusSource::LocalOnly => None,
+    };
+    let mut stdout = std::io::stdout();
+    write_account_summary(source, account_summary.as_deref(), args.json, &mut stdout)?;
     let mut known_version = None;
     loop {
         let status: Status = run_command(ManagerCmd::GetStatus { known_version }).await??;
         known_version = Some(status.version);
-        if args.json {
-            let json = serde_json::to_string_pretty(&status)
-                .map_err(anyhow::Error::new)
-                .context("JSON encoding failed")?;
-            println!("{json}");
-        } else {
-            println!("VPN is {}.", vpn_status_summary(&status.vpn_status));
-        }
+        write_status(&status, args.json, &mut stdout)?;
         if !args.follow {
             break Ok(());
         }
     }
+}
+
+/// Where the reported status information comes from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum StatusSource {
+    /// Ask the service to refresh the account information before reporting the status.
+    WithAccountRefresh,
+    /// Report only what the service already knows, without asking it to refresh the account.
+    LocalOnly,
+}
+
+/// Selects the status source from the `--local` flag.
+fn status_source(local: bool) -> StatusSource {
+    if local {
+        StatusSource::LocalOnly
+    } else {
+        StatusSource::WithAccountRefresh
+    }
+}
+
+/// Writes the account summary line, unless the output is JSON or the account was not refreshed.
+fn write_account_summary<W: Write>(source: StatusSource, account_summary: Option<&str>, json: bool, out: &mut W) -> Result<(), ClientError> {
+    if source != StatusSource::WithAccountRefresh || json {
+        return Ok(());
+    }
+    let Some(account_summary) = account_summary else {
+        return Ok(());
+    };
+    writeln!(out, "Account is {account_summary}.").map_err(anyhow::Error::new)?;
+    Ok(())
+}
+
+/// Writes the status as JSON, or as a human-readable summary.
+fn write_status<W: Write>(status: &Status, json: bool, out: &mut W) -> Result<(), ClientError> {
+    if json {
+        let json = serde_json::to_string_pretty(status)
+            .map_err(anyhow::Error::new)
+            .context("JSON encoding failed")?;
+        writeln!(out, "{json}").map_err(anyhow::Error::new)?;
+    } else {
+        writeln!(out, "VPN is {}.", vpn_status_summary(&status.vpn_status)).map_err(anyhow::Error::new)?;
+    }
+    Ok(())
 }
 
 async fn login(args: ClientLoginArgs) -> Result<(), ClientError> {

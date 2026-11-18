@@ -3,6 +3,18 @@
 Run `obscura --help` for commands. The CLI uses the service's operator-group
 authorization and requires the same release as the running daemon.
 
+## Status
+
+`obscura status` prints the account summary and the VPN state. It first asks
+the service to refresh the account information, which needs a round-trip to the
+API and reports a failure when the API is unreachable.
+
+`obscura status --local` skips that refresh and reports only what the service
+already knows. The service is never asked to refresh the account, so the command
+does not wait for an API round-trip. The JSON output is byte-for-byte identical
+with and without `--local`; only the human-readable `Account is ...` line is
+dropped.
+
 ## Exit codes
 
 | Code | Meaning |

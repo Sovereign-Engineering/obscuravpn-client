@@ -28,7 +28,7 @@ mod backoff_test;
 pub mod android;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 pub mod apple;
-mod cached_value;
+pub mod cached_value;
 mod constants;
 pub mod debug_bundle;
 mod dns;

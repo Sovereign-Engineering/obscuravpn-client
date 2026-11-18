@@ -55,6 +55,34 @@ because the service may still apply the requested state. Read the status
 instead of repeating the command: the CLI never sends a compensating
 disconnect and never retries the request.
 
+## The exit catalogue
+
+`obscura locations list` prints the exits the service has cached. The list is
+sorted by country, then city, then exit ID, and it labels the exit ID and the
+provider ID separately:
+
+```
+US  nyc  exit NYC-001  New York  provider us-nyc-wg-301
+```
+
+`obscura locations list --json` prints the service's cache wrapper, not a
+flattened list: `version` is a base64 string, `last_updated` is the unix time
+in seconds, and the exits are under `value.exits`. The wrapper is preserved so
+that the CLI output matches the payload an API consumer sees. This schema is
+not frozen; the command preserves today's bytes.
+
+The service waits for a catalogue to exist, so the read is bounded: it waits at
+most 5 seconds, and `--timeout SECONDS` sets another limit between 1 and 3600.
+When the limit expires, the command reports exit code 6 and names
+`obscura locations refresh` as the next step. A read never refreshes the
+catalogue.
+
+`obscura locations refresh` is the explicit network operation: it asks the
+service to fetch the catalogue from the API and update its cache. It waits at
+most 30 seconds, and `--timeout SECONDS` sets another limit between 1 and 3600.
+A refresh that times out reports exit code 6; the catalogue may or may not have
+been updated, so read it with `locations list` instead of refreshing again.
+
 ## Exit codes
 
 | Code | Meaning |
@@ -71,6 +99,10 @@ disconnect and never retries the request.
 Service-reported failures keep code 1. IPC failures that previously returned 1
 now use codes 3–5, so scripts checking specifically for 1 need updating.
 Scripts checking for any nonzero result still detect failure.
+
+Code 6 covers the connection timeouts and the catalogue timeouts. A timed-out
+catalogue read leaves the cache unchanged; a timed-out catalogue refresh may
+have updated it.
 
 `connect` waits for a matching connected tunnel. A reported connection error
 ends the wait with code 7. The service keeps retrying the connection after

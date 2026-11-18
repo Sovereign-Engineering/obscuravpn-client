@@ -1,7 +1,12 @@
-use crate::{ClientCommand, ClientDebugBundleArgs, ClientLoginArgs, ClientStatusArgs, WaitArgs};
+use crate::{
+    ClientCommand, ClientDebugBundleArgs, ClientLocationsListArgs, ClientLocationsRefreshArgs, ClientLoginArgs, ClientStatusArgs, LocationsCommand,
+    WaitArgs,
+};
 use anyhow::Context;
 use chrono::{MappedLocalTime, TimeZone};
-use obscuravpn_api::types::{AccountId, AccountInfo};
+use obscuravpn_api::cmd::ExitList;
+use obscuravpn_api::types::{AccountId, AccountInfo, OneExit};
+use obscuravpn_client::cached_value::CachedValue;
 use obscuravpn_client::exit_selection::ExitSelector;
 use obscuravpn_client::linux::debug_bundle::create_combined_debug_bundle;
 use obscuravpn_client::linux::ipc::{LinuxIpcError, run_command};
@@ -10,6 +15,7 @@ use obscuravpn_client::manager::{Status, TunnelArgs, VpnStatus};
 use obscuravpn_client::manager_cmd::{ManagerCmd, ManagerCmdErrorCode};
 use std::future::Future;
 use std::io::Write;
+use std::sync::Arc;
 use std::time::Duration;
 
 #[cfg(test)]
@@ -39,6 +45,12 @@ pub enum ClientError {
         "Timed out after {seconds}s while {step}. The service may still apply the requested state; check the status instead of repeating the command."
     )]
     TimedOut { seconds: u64, step: &'static str },
+    #[error("The exit catalogue is not available. Run `obscura locations refresh` to fetch the exits from the API, then run this command again.")]
+    CatalogueUnavailable,
+    #[error(
+        "Timed out after {seconds}s while refreshing the exit catalogue. The catalogue may or may not have been updated; run `obscura locations list` to check."
+    )]
+    CatalogueRefreshTimedOut { seconds: u64 },
 }
 
 impl ClientError {
@@ -50,6 +62,7 @@ impl ClientError {
             Self::TunnelFailed(_) => 7,
             Self::TargetChanged(_) => 1,
             Self::TimedOut { .. } => 6,
+            Self::CatalogueUnavailable | Self::CatalogueRefreshTimedOut { .. } => 6,
             Self::ApiUnreachable | Self::Unexpected(_) | Self::MalformedAccountId | Self::NotLoggedIn => 1,
         }
     }
@@ -91,8 +104,140 @@ pub async fn run(cmd: ClientCommand) -> Result<(), ClientError> {
         ClientCommand::Connect(args) => go_to_target_state(args.wait, connect_target()).await,
         ClientCommand::Disconnect(args) => go_to_target_state(args.wait, None).await,
         ClientCommand::Status(args) => status(args).await,
+        ClientCommand::Locations(command) => locations(command).await,
         ClientCommand::DebugBundle(args) => debug_bundle(args).await,
     }
+}
+
+/// The exit catalogue the service has cached.
+type ExitCatalogue = CachedValue<Arc<ExitList>>;
+
+/// The time a catalogue read waits before the catalogue is reported as unavailable.
+const CATALOGUE_READ_TIMEOUT_SECONDS: u64 = 5;
+
+/// The time a catalogue refresh waits before it is reported as timed out.
+const CATALOGUE_REFRESH_TIMEOUT_SECONDS: u64 = 30;
+
+/// Lists the cached exits, or refreshes the catalogue from the API.
+async fn locations(command: LocationsCommand) -> Result<(), ClientError> {
+    match command {
+        LocationsCommand::List(args) => locations_list(args).await,
+        LocationsCommand::Refresh(args) => locations_refresh(args).await,
+    }
+}
+
+/// Prints the exit catalogue the service has cached.
+async fn locations_list(args: ClientLocationsListArgs) -> Result<(), ClientError> {
+    let timeout = Timeout::new(args.timeout.unwrap_or(CATALOGUE_READ_TIMEOUT_SECONDS));
+    let catalogue = read_catalogue(timeout).await?;
+    if args.json {
+        write_catalogue_json_to_stdout(&catalogue)
+    } else {
+        write_catalogue_text_to_stdout(&catalogue)
+    }
+}
+
+/// Asks the service to fetch the exit catalogue from the API.
+async fn locations_refresh(args: ClientLocationsRefreshArgs) -> Result<(), ClientError> {
+    let timeout = Timeout::new(args.timeout.unwrap_or(CATALOGUE_REFRESH_TIMEOUT_SECONDS));
+    refresh_catalogue(timeout).await?;
+    eprintln!("refreshed the exit catalogue");
+    Ok(())
+}
+
+/// Reads the cached exit catalogue. The service waits for a catalogue to exist, so the read is bounded.
+async fn read_catalogue(timeout: Timeout) -> Result<ExitCatalogue, ClientError> {
+    read_catalogue_with(timeout, run_command(catalogue_read_command())).await
+}
+
+/// Reads the cached exit catalogue under a deadline.
+async fn read_catalogue_with<F>(timeout: Timeout, request: F) -> Result<ExitCatalogue, ClientError>
+where
+    F: Future<Output = Result<Result<ExitCatalogue, ManagerCmdErrorCode>, LinuxIpcError>>,
+{
+    match tokio::time::timeout_at(timeout.deadline, request).await {
+        Ok(result) => Ok(result??),
+        Err(_) => Err(ClientError::CatalogueUnavailable),
+    }
+}
+
+/// Asks the service to fetch the exit catalogue from the API, under a deadline.
+async fn refresh_catalogue(timeout: Timeout) -> Result<(), ClientError> {
+    refresh_catalogue_with(timeout, run_command::<()>(catalogue_refresh_command())).await
+}
+
+/// Asks the service to fetch the exit catalogue from the API, under a deadline.
+async fn refresh_catalogue_with<F>(timeout: Timeout, request: F) -> Result<(), ClientError>
+where
+    F: Future<Output = Result<Result<(), ManagerCmdErrorCode>, LinuxIpcError>>,
+{
+    match tokio::time::timeout_at(timeout.deadline, request).await {
+        Ok(result) => {
+            result??;
+            Ok(())
+        }
+        Err(_) => Err(ClientError::CatalogueRefreshTimedOut { seconds: timeout.seconds }),
+    }
+}
+
+/// The command that reads the cached exit catalogue.
+fn catalogue_read_command() -> ManagerCmd {
+    ManagerCmd::GetExitList { known_version: None }
+}
+
+/// The command that refreshes the exit catalogue from the API.
+fn catalogue_refresh_command() -> ManagerCmd {
+    ManagerCmd::RefreshExitList { freshness: Duration::ZERO }
+}
+
+/// Writes the exit catalogue as a human-readable list, sorted by country, city and exit ID.
+fn write_catalogue_text<W: Write>(catalogue: &ExitCatalogue, out: &mut W) -> Result<(), ClientError> {
+    let mut exits: Vec<&OneExit> = catalogue.value.exits.iter().collect();
+    exits.sort_by(|left, right| {
+        let left_key = (&left.city_code.country_code.0, &left.city_code.city_code, &left.id);
+        let right_key = (&right.city_code.country_code.0, &right.city_code.city_code, &right.id);
+        left_key.cmp(&right_key)
+    });
+    if exits.is_empty() {
+        writeln!(
+            out,
+            "The exit catalogue is empty. Run `obscura locations refresh` to fetch the exits from the API."
+        )
+        .map_err(anyhow::Error::new)?;
+        return Ok(());
+    }
+    for exit in exits {
+        writeln!(
+            out,
+            "{}  {}  exit {}  {}  provider {}",
+            exit.city_code.country_code.0, exit.city_code.city_code, exit.id, exit.city_name, exit.provider_id
+        )
+        .map_err(anyhow::Error::new)?;
+    }
+    Ok(())
+}
+
+/// Writes the exit catalogue as JSON, in the shape the service serializes it.
+fn write_catalogue_json<W: Write>(catalogue: &ExitCatalogue, out: &mut W) -> Result<(), ClientError> {
+    let json = serde_json::to_string_pretty(catalogue)
+        .map_err(anyhow::Error::new)
+        .context("JSON encoding failed")?;
+    writeln!(out, "{json}").map_err(anyhow::Error::new)?;
+    Ok(())
+}
+
+/// Writes the exit catalogue as a human-readable list to stdout.
+fn write_catalogue_text_to_stdout(catalogue: &ExitCatalogue) -> Result<(), ClientError> {
+    let stdout = std::io::stdout();
+    let mut out = stdout.lock();
+    write_catalogue_text(catalogue, &mut out)
+}
+
+/// Writes the exit catalogue as JSON to stdout.
+fn write_catalogue_json_to_stdout(catalogue: &ExitCatalogue) -> Result<(), ClientError> {
+    let stdout = std::io::stdout();
+    let mut out = stdout.lock();
+    write_catalogue_json(catalogue, &mut out)
 }
 
 async fn debug_bundle(args: ClientDebugBundleArgs) -> Result<(), ClientError> {

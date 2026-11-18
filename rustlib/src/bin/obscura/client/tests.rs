@@ -1,13 +1,19 @@
 use super::*;
-use crate::{Cli, ClientCommand, ClientConnectArgs, ClientDisconnectArgs, ClientStatusArgs, Command};
+use crate::{
+    Cli, ClientCommand, ClientConnectArgs, ClientDisconnectArgs, ClientLocationsListArgs, ClientLocationsRefreshArgs, ClientStatusArgs, Command,
+    LocationsCommand,
+};
 use clap::Parser;
+use obscuravpn_api::cmd::ExitList;
 use obscuravpn_api::types::{CityCode, CountryCode, OneExit, OneRelay, WgPubkey};
+use obscuravpn_client::cached_value::CachedValue;
 use obscuravpn_client::config::feature_flags::FeatureFlags;
 use obscuravpn_client::errors::ConnectErrorCode;
 use obscuravpn_client::network_config::DnsContentBlock;
 use obscuravpn_client::quicwg::TransportKind;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::SystemTime;
 use uuid::Uuid;
 
 fn status_args(args: &[&str]) -> ClientStatusArgs {
@@ -32,6 +38,46 @@ fn disconnect_args(args: &[&str]) -> ClientDisconnectArgs {
         panic!("expected a disconnect command, got {:?}", cli.command);
     };
     disconnect_args
+}
+
+fn locations_list_args(args: &[&str]) -> ClientLocationsListArgs {
+    let cli = Cli::try_parse_from(args).expect("failed to parse arguments");
+    let Command::Client(ClientCommand::Locations(LocationsCommand::List(list_args))) = cli.command else {
+        panic!("expected a locations list command, got {:?}", cli.command);
+    };
+    list_args
+}
+
+fn locations_refresh_args(args: &[&str]) -> ClientLocationsRefreshArgs {
+    let cli = Cli::try_parse_from(args).expect("failed to parse arguments");
+    let Command::Client(ClientCommand::Locations(LocationsCommand::Refresh(refresh_args))) = cli.command else {
+        panic!("expected a locations refresh command, got {:?}", cli.command);
+    };
+    refresh_args
+}
+
+/// The exit catalogue the service reports.
+fn synthetic_catalogue(exits: Vec<OneExit>) -> ExitCatalogue {
+    CachedValue {
+        version: b"catalogue-version".to_vec(),
+        last_updated: SystemTime::UNIX_EPOCH,
+        value: Arc::new(ExitList { exits }),
+    }
+}
+
+/// An exit with the identifiers the catalogue reports: an exit ID and a provider ID.
+fn synthetic_catalogue_exit(id: &str, country_code: &str, city_code: &str, city_name: &str, provider_id: &str) -> OneExit {
+    OneExit {
+        id: id.to_string(),
+        city_code: CityCode { country_code: CountryCode(country_code.to_string()), city_code: city_code.to_string() },
+        city_name: city_name.to_string(),
+        provider_id: provider_id.to_string(),
+        provider_url: "https://provider.invalid".to_string(),
+        provider_name: "Provider".to_string(),
+        provider_homepage_url: "https://provider.invalid".to_string(),
+        datacenter_id: 1,
+        tier: 1,
+    }
 }
 
 /// The exit a synthetic connected status reports.
@@ -444,4 +490,199 @@ async fn cli_no_wait_skips_the_status_wait() {
     let result = apply_target_state(submit, None::<std::future::Pending<Result<(), ClientError>>>).await;
     assert!(result.is_ok());
     assert_eq!(submissions.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+fn cli_locations_commands() {
+    let args = locations_list_args(&["obscura", "locations", "list"]);
+    assert!(!args.json);
+    assert_eq!(args.timeout, None);
+
+    let args = locations_list_args(&["obscura", "locations", "list", "--json"]);
+    assert!(args.json);
+    assert_eq!(args.timeout, None);
+
+    let args = locations_list_args(&["obscura", "locations", "list", "--timeout", "30"]);
+    assert_eq!(args.timeout, Some(30));
+
+    let args = locations_refresh_args(&["obscura", "locations", "refresh"]);
+    assert_eq!(args.timeout, None);
+
+    let args = locations_refresh_args(&["obscura", "locations", "refresh", "--timeout", "60"]);
+    assert_eq!(args.timeout, Some(60));
+
+    for invalid in ["0", "3601", "abc", "-1"] {
+        assert!(
+            Cli::try_parse_from(["obscura", "locations", "list", "--timeout", invalid]).is_err(),
+            "locations list --timeout {invalid} must be rejected"
+        );
+        assert!(
+            Cli::try_parse_from(["obscura", "locations", "refresh", "--timeout", invalid]).is_err(),
+            "locations refresh --timeout {invalid} must be rejected"
+        );
+    }
+    assert!(Cli::try_parse_from(["obscura", "locations", "list", "--timeout", "3600"]).is_ok());
+    assert!(Cli::try_parse_from(["obscura", "locations", "refresh", "--timeout", "3600"]).is_ok());
+
+    assert!(
+        Cli::try_parse_from(["obscura", "locations", "list", "surplus"]).is_err(),
+        "surplus arguments must be rejected"
+    );
+    assert!(
+        Cli::try_parse_from(["obscura", "locations", "refresh", "surplus"]).is_err(),
+        "surplus arguments must be rejected"
+    );
+    assert!(Cli::try_parse_from(["obscura", "locations"]).is_err(), "locations requires a subcommand");
+    assert!(
+        Cli::try_parse_from(["obscura", "locations", "unknown"]).is_err(),
+        "locations only accepts the known subcommands"
+    );
+}
+
+#[test]
+fn cli_locations_text_output() {
+    let catalogue = synthetic_catalogue(vec![
+        synthetic_catalogue_exit("NYC-001", "US", "nyc", "New York", "us-nyc-wg-301"),
+        synthetic_catalogue_exit("CHI-002", "US", "chi", "Chicago", "us-chi-wg-302"),
+        synthetic_catalogue_exit("MUC-003", "DE", "muc", "München", "de-muc-wg-303"),
+        synthetic_catalogue_exit("ZRH-004", "CH", "zrh", "Zürich", "ch-zrh-wg-304"),
+    ]);
+
+    let mut out = Vec::new();
+    write_catalogue_text(&catalogue, &mut out).unwrap();
+    let text = String::from_utf8(out).unwrap();
+    let lines: Vec<&str> = text.lines().collect();
+    assert_eq!(lines.len(), 4, "every exit is reported: {text}");
+
+    // The list is sorted by country, then city, then exit ID.
+    assert!(lines[0].starts_with("CH"), "{text}");
+    assert!(lines[1].starts_with("DE"), "{text}");
+    assert!(lines[2].starts_with("US  chi"), "{text}");
+    assert!(lines[3].starts_with("US  nyc"), "{text}");
+
+    // The exit ID and the provider ID are labeled separately.
+    assert!(lines[3].contains("exit NYC-001"), "{text}");
+    assert!(lines[3].contains("provider us-nyc-wg-301"), "{text}");
+
+    // A non-ASCII city name is reported as it is.
+    assert!(lines[0].contains("Zürich"), "{text}");
+    assert!(lines[1].contains("München"), "{text}");
+}
+
+#[test]
+fn cli_locations_text_output_separates_cities_with_the_same_code() {
+    let catalogue = synthetic_catalogue(vec![
+        synthetic_catalogue_exit("NYC-001", "US", "nyc", "New York", "us-nyc-wg-301"),
+        synthetic_catalogue_exit("NYC-002", "CA", "nyc", "New York", "ca-nyc-wg-302"),
+    ]);
+
+    let mut out = Vec::new();
+    write_catalogue_text(&catalogue, &mut out).unwrap();
+    let text = String::from_utf8(out).unwrap();
+    let lines: Vec<&str> = text.lines().collect();
+    assert_eq!(lines.len(), 2, "both exits are reported: {text}");
+    assert!(lines[0].starts_with("CA  nyc"), "{text}");
+    assert!(lines[1].starts_with("US  nyc"), "{text}");
+}
+
+#[test]
+fn cli_locations_json_output_is_the_cache_wrapper() {
+    let catalogue = synthetic_catalogue(vec![synthetic_catalogue_exit("NYC-001", "US", "nyc", "New York", "us-nyc-wg-301")]);
+
+    let mut out = Vec::new();
+    write_catalogue_json(&catalogue, &mut out).unwrap();
+    let value: serde_json::Value = serde_json::from_slice(&out).expect("the catalogue must be one JSON value");
+
+    assert!(value.get("version").is_some(), "the cache wrapper carries the version: {value}");
+    assert!(value.get("last_updated").is_some(), "the cache wrapper carries the update time: {value}");
+    let exits = value
+        .get("value")
+        .and_then(|value| value.get("exits"))
+        .and_then(|exits| exits.as_array())
+        .expect("the exits are under value.exits");
+    assert_eq!(exits.len(), 1);
+    assert_eq!(exits[0].get("id").and_then(|id| id.as_str()), Some("NYC-001"));
+    assert!(text_ends_with_newline(&out));
+}
+
+#[test]
+fn cli_locations_empty_catalogue_names_the_next_step() {
+    let catalogue = synthetic_catalogue(Vec::new());
+
+    let mut out = Vec::new();
+    write_catalogue_text(&catalogue, &mut out).unwrap();
+    let text = String::from_utf8(out).unwrap();
+    assert!(text.contains("locations refresh"), "an empty catalogue must name the next step: {text}");
+
+    let mut json = Vec::new();
+    write_catalogue_json(&catalogue, &mut json).unwrap();
+    let value: serde_json::Value = serde_json::from_slice(&json).unwrap();
+    let exits = value
+        .get("value")
+        .and_then(|value| value.get("exits"))
+        .and_then(|exits| exits.as_array())
+        .expect("the exits are under value.exits");
+    assert!(exits.is_empty());
+}
+
+#[test]
+fn cli_locations_cache_read_and_refresh_are_different_requests() {
+    match catalogue_read_command() {
+        ManagerCmd::GetExitList { known_version } => {
+            assert!(known_version.is_none(), "the cache is read without waiting for a new version");
+        }
+        other => panic!("unexpected command: {other:?}"),
+    }
+    match catalogue_refresh_command() {
+        ManagerCmd::RefreshExitList { freshness } => {
+            assert_eq!(freshness, Duration::ZERO, "the refresh always asks for the current catalogue");
+        }
+        other => panic!("unexpected command: {other:?}"),
+    }
+}
+
+#[test]
+fn cli_catalogue_errors_are_reported_as_timeouts() {
+    assert_eq!(ClientError::CatalogueUnavailable.exit_code(), 6);
+    assert_eq!(ClientError::CatalogueRefreshTimedOut { seconds: 30 }.exit_code(), 6);
+    assert!(
+        ClientError::CatalogueUnavailable.to_string().contains("locations refresh"),
+        "an unavailable catalogue must name the next step"
+    );
+    assert!(
+        ClientError::CatalogueRefreshTimedOut { seconds: 30 }
+            .to_string()
+            .contains("exit catalogue"),
+        "a refresh timeout must name what was being refreshed"
+    );
+}
+
+#[tokio::test]
+async fn cli_catalogue_read_reports_an_unavailable_catalogue() {
+    let timeout = Timeout::new(0);
+    let error = read_catalogue_with(timeout, std::future::pending()).await.unwrap_err();
+    assert_eq!(error.exit_code(), 6);
+    assert!(
+        error.to_string().contains("locations refresh"),
+        "an unavailable catalogue must name the next step: {error}"
+    );
+}
+
+#[tokio::test]
+async fn cli_catalogue_refresh_timeout_does_not_retry() {
+    let requests = Arc::new(AtomicUsize::new(0));
+    let counter = Arc::clone(&requests);
+    let timeout = Timeout::new(0);
+    let request = async move {
+        counter.fetch_add(1, Ordering::SeqCst);
+        std::future::pending::<Result<Result<(), ManagerCmdErrorCode>, LinuxIpcError>>().await
+    };
+    let error = refresh_catalogue_with(timeout, request).await.unwrap_err();
+    assert_eq!(error.exit_code(), 6);
+    assert_eq!(requests.load(Ordering::SeqCst), 1, "a refresh is sent exactly once");
+}
+
+/// Returns true when the output ends with a newline.
+fn text_ends_with_newline(output: &[u8]) -> bool {
+    output.last() == Some(&b'\n')
 }

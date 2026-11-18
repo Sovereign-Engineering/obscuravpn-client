@@ -98,6 +98,31 @@ pub struct ClientDebugBundleArgs {
     pub feedback: String,
 }
 
+#[derive(Args, Debug, Default)]
+pub struct ClientLocationsListArgs {
+    /// Print the catalogue as JSON instead of a human-readable list.
+    #[arg(long)]
+    pub json: bool,
+    /// Give up after this many seconds. Defaults to 5 seconds.
+    #[arg(long, value_parser = clap::value_parser!(u64).range(1..=3600))]
+    pub timeout: Option<u64>,
+}
+
+#[derive(Args, Debug, Default)]
+pub struct ClientLocationsRefreshArgs {
+    /// Give up after this many seconds. Defaults to 30 seconds.
+    #[arg(long, value_parser = clap::value_parser!(u64).range(1..=3600))]
+    pub timeout: Option<u64>,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum LocationsCommand {
+    /// List the exits in the catalogue the service has cached.
+    List(ClientLocationsListArgs),
+    /// Fetch the exit catalogue from the API and update the cache.
+    Refresh(ClientLocationsRefreshArgs),
+}
+
 #[derive(Subcommand, Debug)]
 pub enum ClientCommand {
     #[cfg(target_os = "linux")]
@@ -111,6 +136,9 @@ pub enum ClientCommand {
     Disconnect(ClientDisconnectArgs),
     /// Show account and VPN status.
     Status(ClientStatusArgs),
+    /// Show the exit catalogue.
+    #[command(subcommand)]
+    Locations(LocationsCommand),
     #[cfg(target_os = "linux")]
     /// Create a debug bundle and print its path.
     DebugBundle(ClientDebugBundleArgs),

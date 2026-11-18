@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
-    Cli, ClientCommand, ClientConnectArgs, ClientDisconnectArgs, ClientLocationsListArgs, ClientLocationsRefreshArgs, ClientStatusArgs, Command,
-    LocationsCommand, WaitArgs,
+    AllowBlock, Cli, ClientCommand, ClientConnectArgs, ClientDisconnectArgs, ClientLocationsListArgs, ClientLocationsRefreshArgs, ClientStatusArgs,
+    Command, LocationsCommand, OnOff, WaitArgs,
 };
 use clap::Parser;
 use obscuravpn_api::cmd::ExitList;
@@ -54,6 +54,22 @@ fn locations_refresh_args(args: &[&str]) -> ClientLocationsRefreshArgs {
         panic!("expected a locations refresh command, got {:?}", cli.command);
     };
     refresh_args
+}
+
+fn auto_connect_args(args: &[&str]) -> AutoConnectCommand {
+    let cli = Cli::try_parse_from(args).expect("failed to parse arguments");
+    let Command::Client(ClientCommand::AutoConnect(command)) = cli.command else {
+        panic!("expected an auto-connect command, got {:?}", cli.command);
+    };
+    command
+}
+
+fn lan_args(args: &[&str]) -> LanCommand {
+    let cli = Cli::try_parse_from(args).expect("failed to parse arguments");
+    let Command::Client(ClientCommand::Lan(command)) = cli.command else {
+        panic!("expected a lan command, got {:?}", cli.command);
+    };
+    command
 }
 
 /// The exit catalogue the service reports.
@@ -892,4 +908,185 @@ async fn cli_selection_lookup_expiry_does_not_connect() {
 /// Returns true when the output ends with a newline.
 fn text_ends_with_newline(output: &[u8]) -> bool {
     output.last() == Some(&b'\n')
+}
+
+#[test]
+fn cli_setting_commands_parse() {
+    let AutoConnectCommand::Get(get) = auto_connect_args(&["obscura", "auto-connect", "get"]) else {
+        panic!("expected an auto-connect get command");
+    };
+    assert!(!get.json);
+    let AutoConnectCommand::Get(get) = auto_connect_args(&["obscura", "auto-connect", "get", "--json"]) else {
+        panic!("expected an auto-connect get command");
+    };
+    assert!(get.json);
+    let AutoConnectCommand::Set(set) = auto_connect_args(&["obscura", "auto-connect", "set", "on"]) else {
+        panic!("expected an auto-connect set command");
+    };
+    assert_eq!(set.value, OnOff::On);
+    let AutoConnectCommand::Set(set) = auto_connect_args(&["obscura", "auto-connect", "set", "off"]) else {
+        panic!("expected an auto-connect set command");
+    };
+    assert_eq!(set.value, OnOff::Off);
+
+    let LanCommand::Get(get) = lan_args(&["obscura", "lan", "get"]) else {
+        panic!("expected a lan get command");
+    };
+    assert!(!get.json);
+    let LanCommand::Get(get) = lan_args(&["obscura", "lan", "get", "--json"]) else {
+        panic!("expected a lan get command");
+    };
+    assert!(get.json);
+    let LanCommand::Set(set) = lan_args(&["obscura", "lan", "set", "allow"]) else {
+        panic!("expected a lan set command");
+    };
+    assert_eq!(set.value, AllowBlock::Allow);
+    let LanCommand::Set(set) = lan_args(&["obscura", "lan", "set", "block"]) else {
+        panic!("expected a lan set command");
+    };
+    assert_eq!(set.value, AllowBlock::Block);
+}
+
+#[test]
+fn cli_setting_commands_reject_bad_input() {
+    for args in [
+        vec!["obscura", "auto-connect"],
+        vec!["obscura", "auto-connect", "bogus"],
+        vec!["obscura", "auto-connect", "set"],
+        vec!["obscura", "auto-connect", "set", "yes"],
+        vec!["obscura", "auto-connect", "set", "on", "extra"],
+        vec!["obscura", "lan"],
+        vec!["obscura", "lan", "bogus"],
+        vec!["obscura", "lan", "set"],
+        vec!["obscura", "lan", "set", "yes"],
+        vec!["obscura", "lan", "set", "allow", "extra"],
+    ] {
+        assert!(Cli::try_parse_from(&args).is_err(), "expected {args:?} to be rejected");
+    }
+}
+
+#[test]
+fn cli_setting_commands_map_to_the_service_commands() {
+    match ServiceSetting::AutoConnect.command(true) {
+        ManagerCmd::SetAutoConnect { enable } => assert!(enable),
+        other => panic!("expected SetAutoConnect, got {other:?}"),
+    }
+    match ServiceSetting::AutoConnect.command(false) {
+        ManagerCmd::SetAutoConnect { enable } => assert!(!enable),
+        other => panic!("expected SetAutoConnect, got {other:?}"),
+    }
+    match ServiceSetting::LocalNetworkAccess.command(true) {
+        ManagerCmd::SetLocalNetworkAccess { enable } => assert!(enable),
+        other => panic!("expected SetLocalNetworkAccess, got {other:?}"),
+    }
+    match ServiceSetting::LocalNetworkAccess.command(false) {
+        ManagerCmd::SetLocalNetworkAccess { enable } => assert!(!enable),
+        other => panic!("expected SetLocalNetworkAccess, got {other:?}"),
+    }
+}
+
+#[test]
+fn cli_setting_get_only_reads_the_status() {
+    match status_command() {
+        ManagerCmd::GetStatus { known_version } => assert!(known_version.is_none()),
+        other => panic!("expected GetStatus, got {other:?}"),
+    }
+}
+
+#[test]
+fn cli_setting_json_is_a_named_projection() {
+    let mut out = Vec::new();
+    write_setting(ServiceSetting::AutoConnect, true, true, &mut out).unwrap();
+    assert_eq!(String::from_utf8(out).unwrap(), "{\"autoConnect\":true}\n");
+
+    let mut out = Vec::new();
+    write_setting(ServiceSetting::AutoConnect, true, false, &mut out).unwrap();
+    assert_eq!(String::from_utf8(out).unwrap(), "{\"autoConnect\":false}\n");
+
+    let mut out = Vec::new();
+    write_setting(ServiceSetting::LocalNetworkAccess, true, true, &mut out).unwrap();
+    assert_eq!(String::from_utf8(out).unwrap(), "{\"localNetworkAccess\":true}\n");
+
+    let mut out = Vec::new();
+    write_setting(ServiceSetting::LocalNetworkAccess, true, false, &mut out).unwrap();
+    assert_eq!(String::from_utf8(out).unwrap(), "{\"localNetworkAccess\":false}\n");
+}
+
+#[test]
+fn cli_setting_text_states_the_value() {
+    let mut out = Vec::new();
+    write_setting(ServiceSetting::AutoConnect, false, true, &mut out).unwrap();
+    assert_eq!(String::from_utf8(out).unwrap(), "Auto-connect is on.\n");
+
+    let mut out = Vec::new();
+    write_setting(ServiceSetting::AutoConnect, false, false, &mut out).unwrap();
+    assert_eq!(String::from_utf8(out).unwrap(), "Auto-connect is off.\n");
+
+    let mut out = Vec::new();
+    write_setting(ServiceSetting::LocalNetworkAccess, false, true, &mut out).unwrap();
+    assert_eq!(String::from_utf8(out).unwrap(), "Local network access is allowed.\n");
+
+    let mut out = Vec::new();
+    write_setting(ServiceSetting::LocalNetworkAccess, false, false, &mut out).unwrap();
+    assert_eq!(String::from_utf8(out).unwrap(), "Local network access is blocked.\n");
+}
+
+#[tokio::test]
+async fn cli_setting_get_reads_the_status_without_mutation() {
+    let requests = Arc::new(AtomicUsize::new(0));
+    let counter = Arc::clone(&requests);
+    let mut status = synthetic_status();
+    status.auto_connect = true;
+    status.local_network_access = false;
+
+    let request = |command: ManagerCmd| {
+        let counter = Arc::clone(&counter);
+        let status = status.clone();
+        async move {
+            counter.fetch_add(1, Ordering::SeqCst);
+            match command {
+                ManagerCmd::GetStatus { known_version: None } => Ok(Ok(status)),
+                other => panic!("a get must only read the status, got {other:?}"),
+            }
+        }
+    };
+
+    let auto_connect = setting_get_with(ServiceSetting::AutoConnect, request).await.unwrap();
+    assert!(auto_connect);
+    let local_network = setting_get_with(ServiceSetting::LocalNetworkAccess, request).await.unwrap();
+    assert!(!local_network);
+    assert_eq!(requests.load(Ordering::SeqCst), 2, "a get sends exactly one request");
+}
+
+#[tokio::test]
+async fn cli_setting_set_sends_one_request() {
+    let requests = Arc::new(AtomicUsize::new(0));
+    let counter = Arc::clone(&requests);
+    let request = move |command: ManagerCmd| {
+        let counter = Arc::clone(&counter);
+        async move {
+            counter.fetch_add(1, Ordering::SeqCst);
+            match command {
+                ManagerCmd::SetAutoConnect { enable: true } => Ok(Ok(())),
+                other => panic!("a set must only change the setting, got {other:?}"),
+            }
+        }
+    };
+    setting_set_with(ServiceSetting::AutoConnect, true, request).await.unwrap();
+    assert_eq!(requests.load(Ordering::SeqCst), 1, "a set sends exactly one request");
+}
+
+#[tokio::test]
+async fn cli_setting_failures_use_the_generic_exit_code() {
+    let error = setting_set_with(ServiceSetting::LocalNetworkAccess, true, |_command| async {
+        Ok(Err(ManagerCmdErrorCode::Other))
+    })
+    .await
+    .unwrap_err();
+    assert_eq!(error.exit_code(), 1);
+
+    let error = setting_get_with(ServiceSetting::AutoConnect, |_command| async { Ok(Err(ManagerCmdErrorCode::Other)) })
+        .await
+        .unwrap_err();
+    assert_eq!(error.exit_code(), 1);
 }

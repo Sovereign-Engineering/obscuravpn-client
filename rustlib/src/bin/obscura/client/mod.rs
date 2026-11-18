@@ -1,6 +1,6 @@
 use crate::{
-    ClientCommand, ClientConnectArgs, ClientDebugBundleArgs, ClientLocationsListArgs, ClientLocationsRefreshArgs, ClientLoginArgs, ClientStatusArgs,
-    LocationsCommand, WaitArgs,
+    AutoConnectCommand, ClientCommand, ClientConnectArgs, ClientDebugBundleArgs, ClientLocationsListArgs, ClientLocationsRefreshArgs,
+    ClientLoginArgs, ClientStatusArgs, LanCommand, LocationsCommand, WaitArgs,
 };
 use anyhow::Context;
 use chrono::{MappedLocalTime, TimeZone};
@@ -111,6 +111,8 @@ pub async fn run(cmd: ClientCommand) -> Result<(), ClientError> {
         ClientCommand::Disconnect(args) => go_to_target_state(args.wait, None).await,
         ClientCommand::Status(args) => status(args).await,
         ClientCommand::Locations(command) => locations(command).await,
+        ClientCommand::AutoConnect(command) => auto_connect(command).await,
+        ClientCommand::Lan(command) => lan(command).await,
         ClientCommand::DebugBundle(args) => debug_bundle(args).await,
     }
 }
@@ -259,6 +261,132 @@ fn write_catalogue_json_to_stdout(catalogue: &ExitCatalogue) -> Result<(), Clien
     let stdout = std::io::stdout();
     let mut out = stdout.lock();
     write_catalogue_json(catalogue, &mut out)
+}
+
+/// A setting of the service that the CLI can read and change.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ServiceSetting {
+    /// Whether the service connects automatically.
+    AutoConnect,
+    /// Whether the tunnel may reach the local network.
+    LocalNetworkAccess,
+}
+
+impl ServiceSetting {
+    /// The name of the setting, as it is reported.
+    fn label(&self) -> &'static str {
+        match self {
+            Self::AutoConnect => "Auto-connect",
+            Self::LocalNetworkAccess => "Local network access",
+        }
+    }
+
+    /// The state of the setting, as it is reported.
+    fn state(&self, value: bool) -> &'static str {
+        match (self, value) {
+            (Self::AutoConnect, true) => "on",
+            (Self::AutoConnect, false) => "off",
+            (Self::LocalNetworkAccess, true) => "allowed",
+            (Self::LocalNetworkAccess, false) => "blocked",
+        }
+    }
+
+    /// The value of the setting, as the service reports it.
+    fn value(&self, status: &Status) -> bool {
+        match self {
+            Self::AutoConnect => status.auto_connect,
+            Self::LocalNetworkAccess => status.local_network_access,
+        }
+    }
+
+    /// The JSON projection of the setting.
+    fn json(&self, value: bool) -> serde_json::Value {
+        match self {
+            Self::AutoConnect => serde_json::json!({ "autoConnect": value }),
+            Self::LocalNetworkAccess => serde_json::json!({ "localNetworkAccess": value }),
+        }
+    }
+
+    /// The command that changes the setting.
+    fn command(&self, value: bool) -> ManagerCmd {
+        match self {
+            Self::AutoConnect => ManagerCmd::SetAutoConnect { enable: value },
+            Self::LocalNetworkAccess => ManagerCmd::SetLocalNetworkAccess { enable: value },
+        }
+    }
+}
+
+/// Reports or changes the automatic connection.
+async fn auto_connect(command: AutoConnectCommand) -> Result<(), ClientError> {
+    match command {
+        AutoConnectCommand::Get(args) => setting_get(ServiceSetting::AutoConnect, args.json).await,
+        AutoConnectCommand::Set(args) => setting_set(ServiceSetting::AutoConnect, args.value.enabled()).await,
+    }
+}
+
+/// Reports or changes the access to the local network.
+async fn lan(command: LanCommand) -> Result<(), ClientError> {
+    match command {
+        LanCommand::Get(args) => setting_get(ServiceSetting::LocalNetworkAccess, args.json).await,
+        LanCommand::Set(args) => setting_set(ServiceSetting::LocalNetworkAccess, args.value.enabled()).await,
+    }
+}
+
+/// The command that reads the status the settings are reported in.
+fn status_command() -> ManagerCmd {
+    ManagerCmd::GetStatus { known_version: None }
+}
+
+/// Reads a setting. The only request is the status read, so a read never changes a setting.
+async fn setting_get_with<F, R>(setting: ServiceSetting, request: F) -> Result<bool, ClientError>
+where
+    F: FnOnce(ManagerCmd) -> R,
+    R: Future<Output = Result<Result<Status, ManagerCmdErrorCode>, LinuxIpcError>>,
+{
+    let status = request(status_command()).await??;
+    Ok(setting.value(&status))
+}
+
+/// Changes a setting. The only request is the setting command, so a change never touches the tunnel.
+async fn setting_set_with<F, R>(setting: ServiceSetting, value: bool, request: F) -> Result<(), ClientError>
+where
+    F: FnOnce(ManagerCmd) -> R,
+    R: Future<Output = Result<Result<(), ManagerCmdErrorCode>, LinuxIpcError>>,
+{
+    request(setting.command(value)).await??;
+    Ok(())
+}
+
+/// Reads a setting from the service and reports it.
+async fn setting_get(setting: ServiceSetting, json: bool) -> Result<(), ClientError> {
+    let value = setting_get_with(setting, run_command).await?;
+    write_setting_to_stdout(setting, json, value)
+}
+
+/// Changes a setting in the service and reports the new state.
+async fn setting_set(setting: ServiceSetting, value: bool) -> Result<(), ClientError> {
+    setting_set_with(setting, value, run_command).await?;
+    write_setting_to_stdout(setting, false, value)
+}
+
+/// Writes a setting as JSON, or as a human-readable line.
+fn write_setting<W: Write>(setting: ServiceSetting, json: bool, value: bool, out: &mut W) -> Result<(), ClientError> {
+    if json {
+        let json = serde_json::to_string(&setting.json(value))
+            .map_err(anyhow::Error::new)
+            .context("JSON encoding failed")?;
+        writeln!(out, "{json}").map_err(anyhow::Error::new)?;
+    } else {
+        writeln!(out, "{} is {}.", setting.label(), setting.state(value)).map_err(anyhow::Error::new)?;
+    }
+    Ok(())
+}
+
+/// Writes a setting to stdout.
+fn write_setting_to_stdout(setting: ServiceSetting, json: bool, value: bool) -> Result<(), ClientError> {
+    let stdout = std::io::stdout();
+    let mut out = stdout.lock();
+    write_setting(setting, json, value, &mut out)
 }
 
 async fn debug_bundle(args: ClientDebugBundleArgs) -> Result<(), ClientError> {

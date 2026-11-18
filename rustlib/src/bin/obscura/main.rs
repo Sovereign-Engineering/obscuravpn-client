@@ -1,5 +1,5 @@
 use camino::Utf8PathBuf;
-use clap::{ArgAction, Args, Parser, Subcommand};
+use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 use obscuravpn_client::logging::{self, LogPersistence};
 use obscuravpn_client::version::release_version;
 use std::process::exit;
@@ -159,6 +159,78 @@ pub enum LocationsCommand {
     Refresh(ClientLocationsRefreshArgs),
 }
 
+/// A setting that is either on or off.
+#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OnOff {
+    /// Turn the setting on.
+    On,
+    /// Turn the setting off.
+    Off,
+}
+
+impl OnOff {
+    /// Whether the setting is turned on.
+    pub fn enabled(&self) -> bool {
+        matches!(self, Self::On)
+    }
+}
+
+/// A setting that either allows or blocks something.
+#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AllowBlock {
+    /// Allow the access.
+    Allow,
+    /// Block the access.
+    Block,
+}
+
+impl AllowBlock {
+    /// Whether the access is allowed.
+    pub fn enabled(&self) -> bool {
+        matches!(self, Self::Allow)
+    }
+}
+
+/// Options for reading a setting.
+#[derive(Args, Debug, Default, PartialEq, Eq)]
+pub struct ClientSettingGetArgs {
+    /// Print the setting as JSON instead of a human-readable line.
+    #[arg(long)]
+    pub json: bool,
+}
+
+/// The value to give the automatic connection.
+#[derive(Args, Debug, PartialEq, Eq)]
+pub struct ClientAutoConnectSetArgs {
+    /// Turn the automatic connection on or off.
+    pub value: OnOff,
+}
+
+/// The value to give the local network access.
+#[derive(Args, Debug, PartialEq, Eq)]
+pub struct ClientLanSetArgs {
+    /// Allow or block access to the local network.
+    pub value: AllowBlock,
+}
+
+/// The automatic connection commands.
+#[derive(Subcommand, Debug)]
+pub enum AutoConnectCommand {
+    /// Report whether the service connects automatically.
+    Get(ClientSettingGetArgs),
+    /// Turn the automatic connection on or off.
+    Set(ClientAutoConnectSetArgs),
+}
+
+/// The local network access commands.
+#[derive(Subcommand, Debug)]
+pub enum LanCommand {
+    /// Report whether the tunnel may reach the local network.
+    Get(ClientSettingGetArgs),
+    /// Allow or block access to the local network.
+    Set(ClientLanSetArgs),
+}
+
 #[derive(Subcommand, Debug)]
 pub enum ClientCommand {
     #[cfg(target_os = "linux")]
@@ -175,6 +247,12 @@ pub enum ClientCommand {
     /// Show the exit catalogue.
     #[command(subcommand)]
     Locations(LocationsCommand),
+    /// Show or change the automatic connection.
+    #[command(subcommand)]
+    AutoConnect(AutoConnectCommand),
+    /// Show or change the access to the local network.
+    #[command(subcommand)]
+    Lan(LanCommand),
     #[cfg(target_os = "linux")]
     /// Create a debug bundle and print its path.
     DebugBundle(ClientDebugBundleArgs),

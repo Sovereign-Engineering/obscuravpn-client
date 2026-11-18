@@ -113,6 +113,41 @@ reports exit code 6. Without it, the lookup waits at most 5 seconds, like
 `obscura locations list` does. A connection without a selection never reads the
 catalogue.
 
+## Settings
+
+`obscura auto-connect` and `obscura lan` read and change the settings the
+service already has:
+
+```
+obscura auto-connect get
+obscura auto-connect set on
+obscura auto-connect set off
+obscura lan get
+obscura lan set allow
+obscura lan set block
+```
+
+A read reports the value the service has. `obscura auto-connect get` prints
+`Auto-connect is on.` and `obscura lan get` prints `Local network access is
+allowed.` With `--json` a read prints a named projection with only that
+setting in it: `{"autoConnect":true}` or `{"localNetworkAccess":true}`.
+
+A read asks the service for the same status that `obscura status --local`
+reports. It never asks the service to refresh the account information, so it
+does not wait for an API round-trip, and it never changes a setting.
+
+A change sends the setting to the service, which stores it the way the
+desktop app does. The command changes that setting and nothing else: it does
+not connect, disconnect, restart the service or write the configuration file,
+and it never asks for elevated rights. A failure that the service reports
+exits with code 1, and a denied permission exits with code 4, like the other
+commands.
+
+Local network access is a routing decision. Allowing it changes the routes and
+the firewall rules of the tunnel, so a change can alter the network policy of
+a tunnel that is already connected. The command reports the state it set; it
+does not decide whether that is acceptable for the network it runs on.
+
 ## Exit codes
 
 | Code | Meaning |

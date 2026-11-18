@@ -1,5 +1,5 @@
 use camino::Utf8PathBuf;
-use clap::{ArgAction, Args, Parser, Subcommand};
+use clap::{ArgAction, Args, Parser, Subcommand, ValueEnum};
 use obscuravpn_client::logging::{self, LogPersistence};
 use obscuravpn_client::version::release_version;
 use std::process::exit;
@@ -53,11 +53,64 @@ pub struct ClientLoginArgs {
     pub offline: bool,
 }
 
-#[derive(Args, Debug)]
-pub struct ClientConnectArgs {}
+/// Options that bound how long a command waits for the service.
+#[derive(Args, Debug, Default, Clone, Copy)]
+pub struct WaitArgs {
+    /// Return as soon as the service accepts the request, without waiting for the tunnel state.
+    #[arg(long, conflicts_with = "timeout")]
+    pub no_wait: bool,
+    /// Give up after this many seconds. The outcome is unknown when the deadline expires.
+    #[arg(long, value_parser = clap::value_parser!(u64).range(1..=3600))]
+    pub timeout: Option<u64>,
+}
 
-#[derive(Args, Debug)]
-pub struct ClientDisconnectArgs {}
+/// The exit to connect to. The selection is resolved against the catalogue the service has cached.
+#[derive(Args, Debug, Default)]
+pub struct SelectionArgs {
+    /// Connect to an exit in this country, given as a two-letter country code such as "SE".
+    #[arg(long, value_parser = parse_country_code)]
+    pub country: Option<String>,
+    /// Connect to an exit in this city, in the country given by --country.
+    #[arg(long, value_parser = parse_selection_value, requires = "country")]
+    pub city: Option<String>,
+    /// Connect to this exit, given as an exit ID such as "NYC-001".
+    #[arg(long, value_parser = parse_selection_value, conflicts_with_all = ["country", "city"])]
+    pub exit: Option<String>,
+}
+
+/// Rejects a blank value and a value with control characters.
+fn parse_selection_value(value: &str) -> Result<String, String> {
+    if value.trim().is_empty() {
+        return Err("the value must not be blank".to_string());
+    }
+    if value.chars().any(char::is_control) {
+        return Err("the value must not contain control characters".to_string());
+    }
+    Ok(value.to_string())
+}
+
+/// Rejects a country code that is not two ASCII letters.
+fn parse_country_code(value: &str) -> Result<String, String> {
+    let value = parse_selection_value(value)?;
+    if value.len() != 2 || !value.chars().all(|character| character.is_ascii_alphabetic()) {
+        return Err("a country code is two ASCII letters, such as \"SE\"".to_string());
+    }
+    Ok(value)
+}
+
+#[derive(Args, Debug, Default)]
+pub struct ClientConnectArgs {
+    #[command(flatten)]
+    pub selection: SelectionArgs,
+    #[command(flatten)]
+    pub wait: WaitArgs,
+}
+
+#[derive(Args, Debug, Default)]
+pub struct ClientDisconnectArgs {
+    #[command(flatten)]
+    pub wait: WaitArgs,
+}
 
 #[derive(Args, Debug)]
 pub struct ClientStatusArgs {
@@ -67,12 +120,185 @@ pub struct ClientStatusArgs {
     #[arg(long)]
     /// Print full JSON status instead of summary.
     pub json: bool,
+    #[arg(long, conflicts_with = "json")]
+    /// Print one compact JSON status per line, for machine-readable streams.
+    pub json_lines: bool,
+    #[arg(long)]
+    /// Don't refresh the account information; report only what the service already knows.
+    pub local: bool,
 }
 
 #[derive(Args, Debug)]
 pub struct ClientDebugBundleArgs {
     /// Message for the Obscura team, included in the debug bundle.
     pub feedback: String,
+}
+
+#[derive(Args, Debug, Default)]
+pub struct ClientLocationsListArgs {
+    /// Print the catalogue as JSON instead of a human-readable list.
+    #[arg(long)]
+    pub json: bool,
+    /// Give up after this many seconds. Defaults to 5 seconds.
+    #[arg(long, value_parser = clap::value_parser!(u64).range(1..=3600))]
+    pub timeout: Option<u64>,
+}
+
+#[derive(Args, Debug, Default)]
+pub struct ClientLocationsRefreshArgs {
+    /// Give up after this many seconds. Defaults to 30 seconds.
+    #[arg(long, value_parser = clap::value_parser!(u64).range(1..=3600))]
+    pub timeout: Option<u64>,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum LocationsCommand {
+    /// List the exits in the catalogue the service has cached.
+    List(ClientLocationsListArgs),
+    /// Fetch the exit catalogue from the API and update the cache.
+    Refresh(ClientLocationsRefreshArgs),
+}
+
+/// A setting that is either on or off.
+#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OnOff {
+    /// Turn the setting on.
+    On,
+    /// Turn the setting off.
+    Off,
+}
+
+impl OnOff {
+    /// Whether the setting is turned on.
+    pub fn enabled(&self) -> bool {
+        matches!(self, Self::On)
+    }
+}
+
+/// A setting that either allows or blocks something.
+#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AllowBlock {
+    /// Allow the access.
+    Allow,
+    /// Block the access.
+    Block,
+}
+
+impl AllowBlock {
+    /// Whether the access is allowed.
+    pub fn enabled(&self) -> bool {
+        matches!(self, Self::Allow)
+    }
+}
+
+/// Options for reading a setting.
+#[derive(Args, Debug, Default, PartialEq, Eq)]
+pub struct ClientSettingGetArgs {
+    /// Print the setting as JSON instead of a human-readable line.
+    #[arg(long)]
+    pub json: bool,
+}
+
+/// The value to give the automatic connection.
+#[derive(Args, Debug, PartialEq, Eq)]
+pub struct ClientAutoConnectSetArgs {
+    /// Turn the automatic connection on or off.
+    pub value: OnOff,
+}
+
+/// The value to give the local network access.
+#[derive(Args, Debug, PartialEq, Eq)]
+pub struct ClientLanSetArgs {
+    /// Allow or block access to the local network.
+    pub value: AllowBlock,
+}
+
+/// The automatic connection commands.
+#[derive(Subcommand, Debug)]
+pub enum AutoConnectCommand {
+    /// Report whether the service connects automatically.
+    Get(ClientSettingGetArgs),
+    /// Turn the automatic connection on or off.
+    Set(ClientAutoConnectSetArgs),
+}
+
+/// The local network access commands.
+#[derive(Subcommand, Debug)]
+pub enum LanCommand {
+    /// Report whether the tunnel may reach the local network.
+    Get(ClientSettingGetArgs),
+    /// Allow or block access to the local network.
+    Set(ClientLanSetArgs),
+}
+
+/// Where the tunnel resolves names.
+#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DnsMode {
+    /// Use the DNS server of the tunnel.
+    Default,
+    /// Use the DNS servers the system is configured with.
+    System,
+}
+
+impl DnsMode {
+    /// Whether the mode uses the system's DNS servers.
+    pub fn uses_system_dns(&self) -> bool {
+        matches!(self, Self::System)
+    }
+}
+
+/// The DNS mode to set.
+#[derive(Args, Debug, PartialEq, Eq)]
+pub struct ClientDnsModeArgs {
+    /// Use the tunnel's DNS server or the system's DNS servers.
+    pub value: DnsMode,
+}
+
+/// The complete set of content blockers. Every option is required, so an omitted
+/// option cannot silently clear a blocker that is turned on.
+#[derive(Args, Debug, PartialEq, Eq)]
+pub struct ClientDnsBlockSetArgs {
+    /// Block ads.
+    #[arg(long, required = true)]
+    pub ads: OnOff,
+    /// Block trackers.
+    #[arg(long, required = true)]
+    pub trackers: OnOff,
+    /// Block malware.
+    #[arg(long, required = true)]
+    pub malware: OnOff,
+    /// Block adult content.
+    #[arg(long, required = true)]
+    pub adult: OnOff,
+    /// Block gambling.
+    #[arg(long, required = true)]
+    pub gambling: OnOff,
+    /// Block social media.
+    #[arg(long, required = true)]
+    pub social_media: OnOff,
+}
+
+/// The content blocking commands.
+#[derive(Subcommand, Debug)]
+pub enum DnsBlockCommand {
+    /// Replace every content blocker at once.
+    ///
+    /// The service selects the content blocking DNS server only when the exit's provider is
+    /// Mullvad VPN. A configured blocker does not prove that it filters the current
+    /// connection, or that it overrides the system's DNS servers.
+    Set(ClientDnsBlockSetArgs),
+}
+
+/// The DNS commands.
+#[derive(Subcommand, Debug)]
+pub enum DnsCommand {
+    /// Report the DNS mode and the content blockers.
+    Get(ClientSettingGetArgs),
+    /// Use the tunnel's DNS server or the system's DNS servers.
+    Mode(ClientDnsModeArgs),
+    /// Change the content blockers.
+    #[command(subcommand)]
+    Block(DnsBlockCommand),
 }
 
 #[derive(Subcommand, Debug)]
@@ -88,6 +314,18 @@ pub enum ClientCommand {
     Disconnect(ClientDisconnectArgs),
     /// Show account and VPN status.
     Status(ClientStatusArgs),
+    /// Show the exit catalogue.
+    #[command(subcommand)]
+    Locations(LocationsCommand),
+    /// Show or change the automatic connection.
+    #[command(subcommand)]
+    AutoConnect(AutoConnectCommand),
+    /// Show or change the access to the local network.
+    #[command(subcommand)]
+    Lan(LanCommand),
+    /// Show or change the DNS mode and the content blockers.
+    #[command(subcommand)]
+    Dns(DnsCommand),
     #[cfg(target_os = "linux")]
     /// Create a debug bundle and print its path.
     DebugBundle(ClientDebugBundleArgs),
@@ -229,7 +467,7 @@ async fn run_service(_args: ServiceArgs, _log_persistence: Option<LogPersistence
 async fn run_client(args: ClientCommand) {
     if let Err(error) = client::run(args).await {
         eprintln!("{}", error);
-        exit(1)
+        exit(error.exit_code())
     }
 }
 

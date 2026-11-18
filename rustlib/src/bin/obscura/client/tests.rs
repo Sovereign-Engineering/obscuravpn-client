@@ -127,6 +127,19 @@ fn cli_wait_preserves_pending_and_disconnected_states() {
     assert!(target_reached(&VpnStatus::Disconnected {}, &None).unwrap());
 }
 
+/// A writer that fails every write, to check that output errors are reported.
+struct FailingWriter;
+
+impl std::io::Write for FailingWriter {
+    fn write(&mut self, _buf: &[u8]) -> std::io::Result<usize> {
+        Err(std::io::Error::other("write failed"))
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Err(std::io::Error::other("flush failed"))
+    }
+}
+
 #[test]
 fn cli_status_local_flag() {
     let args = status_args(&["obscura", "status", "--local"]);
@@ -153,23 +166,92 @@ fn cli_local_status_keeps_json_schema() {
     let status = synthetic_status();
 
     let mut local = Vec::new();
-    write_account_summary(StatusSource::LocalOnly, Some("active"), true, &mut local).unwrap();
-    write_status(&status, true, &mut local).unwrap();
+    write_account_summary(StatusSource::LocalOnly, Some("active"), StatusOutput::Json, &mut local).unwrap();
+    write_status(&status, StatusOutput::Json, &mut local).unwrap();
     let mut default = Vec::new();
-    write_account_summary(StatusSource::WithAccountRefresh, Some("active"), true, &mut default).unwrap();
-    write_status(&status, true, &mut default).unwrap();
+    write_account_summary(StatusSource::WithAccountRefresh, Some("active"), StatusOutput::Json, &mut default).unwrap();
+    write_status(&status, StatusOutput::Json, &mut default).unwrap();
     assert_eq!(local, default, "the JSON output must not depend on the account refresh");
     assert!(!String::from_utf8(local).unwrap().contains("Account is"));
 
     let mut local_text = Vec::new();
-    write_account_summary(StatusSource::LocalOnly, Some("active"), false, &mut local_text).unwrap();
-    write_status(&status, false, &mut local_text).unwrap();
+    write_account_summary(StatusSource::LocalOnly, Some("active"), StatusOutput::Text, &mut local_text).unwrap();
+    write_status(&status, StatusOutput::Text, &mut local_text).unwrap();
     let local_text = String::from_utf8(local_text).unwrap();
     assert!(!local_text.contains("Account is"), "the account line must be absent in local mode");
     assert!(local_text.contains("VPN is "));
 
     let mut default_text = Vec::new();
-    write_account_summary(StatusSource::WithAccountRefresh, Some("active"), false, &mut default_text).unwrap();
-    write_status(&status, false, &mut default_text).unwrap();
+    write_account_summary(StatusSource::WithAccountRefresh, Some("active"), StatusOutput::Text, &mut default_text).unwrap();
+    write_status(&status, StatusOutput::Text, &mut default_text).unwrap();
     assert!(String::from_utf8(default_text).unwrap().contains("Account is active."));
+}
+
+#[test]
+fn cli_status_flags() {
+    let args = status_args(&["obscura", "status"]);
+    assert!(!args.json);
+    assert!(!args.json_lines);
+    assert!(!args.follow);
+    assert_eq!(status_output(args.json, args.json_lines), StatusOutput::Text);
+
+    let args = status_args(&["obscura", "status", "--json"]);
+    assert!(args.json);
+    assert!(!args.json_lines);
+    assert_eq!(status_output(args.json, args.json_lines), StatusOutput::Json);
+
+    let args = status_args(&["obscura", "status", "--json", "--follow"]);
+    assert!(args.json);
+    assert!(!args.json_lines);
+    assert!(args.follow);
+
+    let args = status_args(&["obscura", "status", "--json-lines"]);
+    assert!(!args.json);
+    assert!(args.json_lines);
+    assert_eq!(status_output(args.json, args.json_lines), StatusOutput::JsonLines);
+
+    let args = status_args(&["obscura", "status", "--json-lines", "--follow"]);
+    assert!(args.json_lines);
+    assert!(args.follow);
+    assert_eq!(status_output(args.json, args.json_lines), StatusOutput::JsonLines);
+
+    assert!(
+        Cli::try_parse_from(["obscura", "status", "--json", "--json-lines"]).is_err(),
+        "--json and --json-lines must not be usable together"
+    );
+}
+
+#[test]
+fn cli_json_lines_are_records() {
+    let mut status = synthetic_status();
+    status.api_url = "https://api.obscura.invalid\nsecond line".to_string();
+    let other = synthetic_status();
+
+    let mut out = Vec::new();
+    write_status(&status, StatusOutput::JsonLines, &mut out).unwrap();
+    write_status(&other, StatusOutput::JsonLines, &mut out).unwrap();
+
+    let text = String::from_utf8(out).unwrap();
+    let lines: Vec<&str> = text.lines().collect();
+    assert_eq!(lines.len(), 2, "each record must be exactly one physical line");
+    for line in &lines {
+        serde_json::from_str::<serde_json::Value>(line).expect("each line must be a JSON value");
+    }
+    assert!(lines[0].contains("\\n"), "a newline inside a string must stay escaped");
+    assert!(text.ends_with('\n'), "every record must end with a newline");
+
+    let mut summary = Vec::new();
+    write_account_summary(StatusSource::WithAccountRefresh, Some("active"), StatusOutput::JsonLines, &mut summary).unwrap();
+    assert!(summary.is_empty(), "a JSON Lines stream must not contain the account line");
+
+    let mut failing = FailingWriter;
+    let error = write_status(&status, StatusOutput::JsonLines, &mut failing).unwrap_err();
+    assert!(!is_broken_pipe(&error), "a failing writer is not a broken pipe");
+
+    let broken = ClientError::Unexpected(anyhow::Error::new(std::io::Error::from(std::io::ErrorKind::BrokenPipe)));
+    assert!(is_broken_pipe(&broken), "a closed pipe ends the stream");
+    let broken_json = ClientError::Unexpected(anyhow::Error::new(serde_json::Error::io(std::io::Error::from(
+        std::io::ErrorKind::BrokenPipe,
+    ))));
+    assert!(is_broken_pipe(&broken_json), "a closed pipe during encoding ends the stream");
 }

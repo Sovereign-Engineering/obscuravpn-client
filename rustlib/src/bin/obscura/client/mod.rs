@@ -99,6 +99,7 @@ async fn debug_bundle(args: ClientDebugBundleArgs) -> Result<(), ClientError> {
 
 async fn status(args: ClientStatusArgs) -> Result<(), ClientError> {
     let source = status_source(args.local);
+    let output = status_output(args.json, args.json_lines);
     let account_summary = match source {
         StatusSource::WithAccountRefresh => {
             let get_account_info_result: Result<AccountInfo, _> = run_command(ManagerCmd::ApiGetAccountInfo {}).await?;
@@ -112,13 +113,19 @@ async fn status(args: ClientStatusArgs) -> Result<(), ClientError> {
         }
         StatusSource::LocalOnly => None,
     };
-    let mut stdout = std::io::stdout();
-    write_account_summary(source, account_summary.as_deref(), args.json, &mut stdout)?;
+    write_account_summary_to_stdout(source, account_summary.as_deref(), output)?;
     let mut known_version = None;
     loop {
         let status: Status = run_command(ManagerCmd::GetStatus { known_version }).await??;
         known_version = Some(status.version);
-        write_status(&status, args.json, &mut stdout)?;
+        match write_status_to_stdout(&status, output) {
+            Ok(()) => {}
+            Err(error) if is_broken_pipe(&error) => {
+                // The consumer closed the stream, which ends a followed stream normally.
+                break Ok(());
+            }
+            Err(error) => return Err(error),
+        }
         if !args.follow {
             break Ok(());
         }
@@ -143,9 +150,36 @@ fn status_source(local: bool) -> StatusSource {
     }
 }
 
-/// Writes the account summary line, unless the output is JSON or the account was not refreshed.
-fn write_account_summary<W: Write>(source: StatusSource, account_summary: Option<&str>, json: bool, out: &mut W) -> Result<(), ClientError> {
-    if source != StatusSource::WithAccountRefresh || json {
+/// The format a status report is written in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum StatusOutput {
+    /// A human-readable summary.
+    Text,
+    /// One pretty-printed JSON object.
+    Json,
+    /// One compact JSON object per line, for machine-readable streams.
+    JsonLines,
+}
+
+/// Selects the output format from the output flags.
+fn status_output(json: bool, json_lines: bool) -> StatusOutput {
+    if json_lines {
+        StatusOutput::JsonLines
+    } else if json {
+        StatusOutput::Json
+    } else {
+        StatusOutput::Text
+    }
+}
+
+/// Writes the account summary line, unless the output is not human-readable or the account was not refreshed.
+fn write_account_summary<W: Write>(
+    source: StatusSource,
+    account_summary: Option<&str>,
+    output: StatusOutput,
+    out: &mut W,
+) -> Result<(), ClientError> {
+    if source != StatusSource::WithAccountRefresh || output != StatusOutput::Text {
         return Ok(());
     }
     let Some(account_summary) = account_summary else {
@@ -155,17 +189,59 @@ fn write_account_summary<W: Write>(source: StatusSource, account_summary: Option
     Ok(())
 }
 
-/// Writes the status as JSON, or as a human-readable summary.
-fn write_status<W: Write>(status: &Status, json: bool, out: &mut W) -> Result<(), ClientError> {
-    if json {
-        let json = serde_json::to_string_pretty(status)
-            .map_err(anyhow::Error::new)
-            .context("JSON encoding failed")?;
-        writeln!(out, "{json}").map_err(anyhow::Error::new)?;
-    } else {
-        writeln!(out, "VPN is {}.", vpn_status_summary(&status.vpn_status)).map_err(anyhow::Error::new)?;
+/// Writes the account summary line to stdout.
+fn write_account_summary_to_stdout(source: StatusSource, account_summary: Option<&str>, output: StatusOutput) -> Result<(), ClientError> {
+    let stdout = std::io::stdout();
+    let mut out = stdout.lock();
+    write_account_summary(source, account_summary, output, &mut out)
+}
+
+/// Writes the status as JSON, as a JSON Lines record, or as a human-readable summary.
+fn write_status<W: Write>(status: &Status, output: StatusOutput, out: &mut W) -> Result<(), ClientError> {
+    match output {
+        StatusOutput::Text => {
+            writeln!(out, "VPN is {}.", vpn_status_summary(&status.vpn_status)).map_err(anyhow::Error::new)?;
+        }
+        StatusOutput::Json => {
+            let json = serde_json::to_string_pretty(status)
+                .map_err(anyhow::Error::new)
+                .context("JSON encoding failed")?;
+            writeln!(out, "{json}").map_err(anyhow::Error::new)?;
+        }
+        StatusOutput::JsonLines => {
+            write_json_line(out, status)?;
+        }
     }
     Ok(())
+}
+
+/// Writes one status record to stdout.
+fn write_status_to_stdout(status: &Status, output: StatusOutput) -> Result<(), ClientError> {
+    let stdout = std::io::stdout();
+    let mut out = stdout.lock();
+    write_status(status, output, &mut out)
+}
+
+/// Writes one compact JSON record followed by a newline.
+fn write_json_line<W: Write, T: serde::Serialize>(writer: &mut W, value: &T) -> anyhow::Result<()> {
+    serde_json::to_writer(&mut *writer, value)?;
+    writer.write_all(b"\n")?;
+    writer.flush()?;
+    Ok(())
+}
+
+/// Returns true when the error is a broken pipe, which means the consumer closed the output stream.
+fn is_broken_pipe(error: &ClientError) -> bool {
+    let ClientError::Unexpected(error) = error else {
+        return false;
+    };
+    if let Some(error) = error.downcast_ref::<std::io::Error>() {
+        return error.kind() == std::io::ErrorKind::BrokenPipe;
+    }
+    if let Some(error) = error.downcast_ref::<serde_json::Error>() {
+        return error.io_error_kind() == Some(std::io::ErrorKind::BrokenPipe);
+    }
+    false
 }
 
 async fn login(args: ClientLoginArgs) -> Result<(), ClientError> {

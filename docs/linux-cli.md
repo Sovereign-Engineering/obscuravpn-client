@@ -15,6 +15,29 @@ does not wait for an API round-trip. The JSON output is byte-for-byte identical
 with and without `--local`; only the human-readable `Account is ...` line is
 dropped.
 
+## Output formats
+
+`obscura status` prints a human-readable summary. `--json` prints the status
+payload the service reports, as one pretty-printed JSON object. `--json-lines`
+prints the same payload as one compact JSON object per line, one physical line
+per record. `--json` and `--json-lines` cannot be used together.
+
+`--json-lines` is the machine-readable stream format. With `--follow` it prints
+one record per status change the service publishes. `--json --follow` prints
+repeated pretty-printed objects back to back, which is not a parseable stream.
+
+The payload keeps the service's own shape: the outer fields are camelCase while
+the exit and relay fields inside them are snake_case. This schema is not
+frozen; these commands preserve today's bytes so that scripts written against
+them keep working.
+
+The status payload is sensitive. It carries the account identifier, the
+account's referral code and funding and subscription details, the configured
+API URL, the enabled feature flags and their keys, the pinned and last-chosen
+locations, and the WireGuard public keys of the connected exit and entry relay.
+Select the fields you need before writing status output to a log, a file, or a
+ticket.
+
 ## Exit codes
 
 | Code | Meaning |

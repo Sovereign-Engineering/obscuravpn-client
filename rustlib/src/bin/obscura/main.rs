@@ -67,6 +67,9 @@ pub struct ClientStatusArgs {
     #[arg(long)]
     /// Print full JSON status instead of summary.
     pub json: bool,
+    #[arg(long, conflicts_with = "json")]
+    /// Print one compact JSON status per line, for machine-readable streams.
+    pub json_lines: bool,
     #[arg(long)]
     /// Don't refresh the account information; report only what the service already knows.
     pub local: bool,

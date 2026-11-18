@@ -1,6 +1,6 @@
 use crate::{
-    AutoConnectCommand, ClientCommand, ClientConnectArgs, ClientDebugBundleArgs, ClientLocationsListArgs, ClientLocationsRefreshArgs,
-    ClientLoginArgs, ClientStatusArgs, LanCommand, LocationsCommand, WaitArgs,
+    AutoConnectCommand, ClientCommand, ClientConnectArgs, ClientDebugBundleArgs, ClientDnsBlockSetArgs, ClientLocationsListArgs,
+    ClientLocationsRefreshArgs, ClientLoginArgs, ClientStatusArgs, DnsBlockCommand, DnsCommand, DnsMode, LanCommand, LocationsCommand, WaitArgs,
 };
 use anyhow::Context;
 use chrono::{MappedLocalTime, TimeZone};
@@ -13,6 +13,7 @@ use obscuravpn_client::linux::ipc::{LinuxIpcError, run_command};
 use obscuravpn_client::linux::ui_log_dir;
 use obscuravpn_client::manager::{Status, TunnelArgs, VpnStatus};
 use obscuravpn_client::manager_cmd::{ManagerCmd, ManagerCmdErrorCode};
+use obscuravpn_client::network_config::{DnsContentBlock, DnsContentBlockConfig};
 use std::future::Future;
 use std::io::Write;
 use std::sync::Arc;
@@ -113,6 +114,7 @@ pub async fn run(cmd: ClientCommand) -> Result<(), ClientError> {
         ClientCommand::Locations(command) => locations(command).await,
         ClientCommand::AutoConnect(command) => auto_connect(command).await,
         ClientCommand::Lan(command) => lan(command).await,
+        ClientCommand::Dns(command) => dns(command).await,
         ClientCommand::DebugBundle(args) => debug_bundle(args).await,
     }
 }
@@ -387,6 +389,123 @@ fn write_setting_to_stdout(setting: ServiceSetting, json: bool, value: bool) -> 
     let stdout = std::io::stdout();
     let mut out = stdout.lock();
     write_setting(setting, json, value, &mut out)
+}
+
+/// The DNS settings of the service, as `obscura dns get` reports them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DnsSettings {
+    use_system_dns: bool,
+    #[serde(rename = "dnsContentBlock")]
+    block: DnsContentBlock,
+}
+
+/// Reports or changes the DNS mode and the content blockers.
+async fn dns(command: DnsCommand) -> Result<(), ClientError> {
+    let stdout = std::io::stdout();
+    match command {
+        DnsCommand::Get(args) => {
+            let settings = dns_get_with(run_command).await?;
+            write_dns(&settings, args.json, &mut stdout.lock())
+        }
+        DnsCommand::Mode(args) => {
+            dns_set_mode_with(args.value, run_command).await?;
+            write_dns_mode(args.value.uses_system_dns(), &mut stdout.lock())
+        }
+        DnsCommand::Block(DnsBlockCommand::Set(args)) => {
+            let config = content_block(&args);
+            dns_set_block_with(config, run_command).await?;
+            write_content_block(config, &mut stdout.lock())
+        }
+    }
+}
+
+/// The command that changes the DNS mode.
+fn dns_mode_command(mode: DnsMode) -> ManagerCmd {
+    ManagerCmd::SetUseSystemDns { enable: mode.uses_system_dns() }
+}
+
+/// The command that replaces every content blocker.
+fn content_block_command(config: DnsContentBlockConfig) -> ManagerCmd {
+    ManagerCmd::SetDnsContentBlock { value: DnsContentBlock::from_config(config) }
+}
+
+/// The content blockers the arguments name.
+fn content_block(args: &ClientDnsBlockSetArgs) -> DnsContentBlockConfig {
+    DnsContentBlockConfig {
+        ad: args.ads.enabled(),
+        tracker: args.trackers.enabled(),
+        malware: args.malware.enabled(),
+        adult: args.adult.enabled(),
+        gambling: args.gambling.enabled(),
+        social_media: args.social_media.enabled(),
+    }
+}
+
+/// Reads the DNS settings. The only request is the status read, so a read never changes a setting.
+async fn dns_get_with<F, R>(request: F) -> Result<DnsSettings, ClientError>
+where
+    F: FnOnce(ManagerCmd) -> R,
+    R: Future<Output = Result<Result<Status, ManagerCmdErrorCode>, LinuxIpcError>>,
+{
+    let status = request(status_command()).await??;
+    Ok(DnsSettings { use_system_dns: status.use_system_dns, block: status.dns_content_block })
+}
+
+/// Changes the DNS mode. The only request is the mode command, so the content blockers stay as they are.
+async fn dns_set_mode_with<F, R>(mode: DnsMode, request: F) -> Result<(), ClientError>
+where
+    F: FnOnce(ManagerCmd) -> R,
+    R: Future<Output = Result<Result<(), ManagerCmdErrorCode>, LinuxIpcError>>,
+{
+    request(dns_mode_command(mode)).await??;
+    Ok(())
+}
+
+/// Replaces the content blockers. The only request is the blocker command, so the DNS mode stays as it is.
+async fn dns_set_block_with<F, R>(config: DnsContentBlockConfig, request: F) -> Result<(), ClientError>
+where
+    F: FnOnce(ManagerCmd) -> R,
+    R: Future<Output = Result<Result<(), ManagerCmdErrorCode>, LinuxIpcError>>,
+{
+    request(content_block_command(config)).await??;
+    Ok(())
+}
+
+/// Writes the DNS settings as JSON, or as human-readable lines.
+fn write_dns<W: Write>(settings: &DnsSettings, json: bool, out: &mut W) -> Result<(), ClientError> {
+    if json {
+        let json = serde_json::to_string(settings)
+            .map_err(anyhow::Error::new)
+            .context("JSON encoding failed")?;
+        writeln!(out, "{json}").map_err(anyhow::Error::new)?;
+        return Ok(());
+    }
+    write_dns_mode(settings.use_system_dns, out)?;
+    write_content_block(settings.block.config(), out)
+}
+
+/// Writes the DNS mode as a human-readable line.
+fn write_dns_mode<W: Write>(use_system_dns: bool, out: &mut W) -> Result<(), ClientError> {
+    let mode = if use_system_dns { "system" } else { "default" };
+    writeln!(out, "DNS mode is {mode}.").map_err(anyhow::Error::new)?;
+    Ok(())
+}
+
+/// Writes every content blocker as a human-readable line.
+fn write_content_block<W: Write>(config: DnsContentBlockConfig, out: &mut W) -> Result<(), ClientError> {
+    for (label, enabled) in [
+        ("Ads", config.ad),
+        ("Trackers", config.tracker),
+        ("Malware", config.malware),
+        ("Adult content", config.adult),
+        ("Gambling", config.gambling),
+        ("Social media", config.social_media),
+    ] {
+        let state = if enabled { "on" } else { "off" };
+        writeln!(out, "{label} blocking is {state}.").map_err(anyhow::Error::new)?;
+    }
+    Ok(())
 }
 
 async fn debug_bundle(args: ClientDebugBundleArgs) -> Result<(), ClientError> {

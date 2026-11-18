@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
     AllowBlock, Cli, ClientCommand, ClientConnectArgs, ClientDisconnectArgs, ClientLocationsListArgs, ClientLocationsRefreshArgs, ClientStatusArgs,
-    Command, LocationsCommand, OnOff, WaitArgs,
+    Command, DnsBlockCommand, DnsCommand, DnsMode, LocationsCommand, OnOff, WaitArgs,
 };
 use clap::Parser;
 use obscuravpn_api::cmd::ExitList;
@@ -9,7 +9,7 @@ use obscuravpn_api::types::{CityCode, CountryCode, OneExit, OneRelay, WgPubkey};
 use obscuravpn_client::cached_value::CachedValue;
 use obscuravpn_client::config::feature_flags::FeatureFlags;
 use obscuravpn_client::errors::ConnectErrorCode;
-use obscuravpn_client::network_config::DnsContentBlock;
+use obscuravpn_client::network_config::{DnsContentBlock, DnsContentBlockConfig};
 use obscuravpn_client::quicwg::TransportKind;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -1088,5 +1088,296 @@ async fn cli_setting_failures_use_the_generic_exit_code() {
     let error = setting_get_with(ServiceSetting::AutoConnect, |_command| async { Ok(Err(ManagerCmdErrorCode::Other)) })
         .await
         .unwrap_err();
+    assert_eq!(error.exit_code(), 1);
+}
+
+fn dns_args(args: &[&str]) -> DnsCommand {
+    let cli = Cli::try_parse_from(args).expect("failed to parse arguments");
+    let Command::Client(ClientCommand::Dns(command)) = cli.command else {
+        panic!("expected a dns command, got {:?}", cli.command);
+    };
+    command
+}
+
+/// The options of the content blockers, in the order they are reported.
+const DNS_BLOCK_OPTIONS: [&str; 6] = ["--ads", "--trackers", "--malware", "--adult", "--gambling", "--social-media"];
+
+/// The arguments of a content block command, with the given option set to the given value.
+fn dns_block_command<'a>(option: &'a str, value: &'a str) -> Vec<&'a str> {
+    let mut command = vec!["obscura", "dns", "block", "set"];
+    for other in DNS_BLOCK_OPTIONS {
+        if other == option {
+            continue;
+        }
+        command.extend([other, "off"]);
+    }
+    command.extend([option, value]);
+    command
+}
+
+#[test]
+fn cli_dns_commands_parse() {
+    let DnsCommand::Get(get) = dns_args(&["obscura", "dns", "get"]) else {
+        panic!("expected a dns get command");
+    };
+    assert!(!get.json);
+    let DnsCommand::Get(get) = dns_args(&["obscura", "dns", "get", "--json"]) else {
+        panic!("expected a dns get command");
+    };
+    assert!(get.json);
+
+    let DnsCommand::Mode(mode) = dns_args(&["obscura", "dns", "mode", "default"]) else {
+        panic!("expected a dns mode command");
+    };
+    assert_eq!(mode.value, DnsMode::Default);
+    assert!(!mode.value.uses_system_dns());
+    let DnsCommand::Mode(mode) = dns_args(&["obscura", "dns", "mode", "system"]) else {
+        panic!("expected a dns mode command");
+    };
+    assert_eq!(mode.value, DnsMode::System);
+    assert!(mode.value.uses_system_dns());
+
+    let DnsCommand::Block(DnsBlockCommand::Set(set)) = dns_args(&[
+        "obscura",
+        "dns",
+        "block",
+        "set",
+        "--ads",
+        "on",
+        "--trackers",
+        "off",
+        "--malware",
+        "on",
+        "--adult",
+        "off",
+        "--gambling",
+        "off",
+        "--social-media",
+        "on",
+    ]) else {
+        panic!("expected a dns block set command");
+    };
+    assert_eq!(set.ads, OnOff::On);
+    assert_eq!(set.trackers, OnOff::Off);
+    assert_eq!(set.malware, OnOff::On);
+    assert_eq!(set.adult, OnOff::Off);
+    assert_eq!(set.gambling, OnOff::Off);
+    assert_eq!(set.social_media, OnOff::On);
+}
+
+#[test]
+fn cli_dns_block_requires_every_option() {
+    for missing in DNS_BLOCK_OPTIONS {
+        let mut command = vec!["obscura", "dns", "block", "set"];
+        for option in DNS_BLOCK_OPTIONS {
+            if option == missing {
+                continue;
+            }
+            command.extend([option, "off"]);
+        }
+        assert!(
+            Cli::try_parse_from(&command).is_err(),
+            "{missing} must be required, so an omitted option cannot clear an existing selection"
+        );
+    }
+}
+
+#[test]
+fn cli_dns_block_rejects_invalid_values() {
+    for option in DNS_BLOCK_OPTIONS {
+        for value in ["yes", "true", "1", ""] {
+            let command = dns_block_command(option, value);
+            assert!(Cli::try_parse_from(&command).is_err(), "{option} {value:?} must be rejected");
+        }
+    }
+}
+
+#[test]
+fn cli_dns_commands_reject_bad_input() {
+    for args in [
+        vec!["obscura", "dns"],
+        vec!["obscura", "dns", "bogus"],
+        vec!["obscura", "dns", "get", "extra"],
+        vec!["obscura", "dns", "mode"],
+        vec!["obscura", "dns", "mode", "bogus"],
+        vec!["obscura", "dns", "mode", "default", "extra"],
+        vec!["obscura", "dns", "block"],
+        vec!["obscura", "dns", "block", "bogus"],
+        vec!["obscura", "dns", "block", "set"],
+    ] {
+        assert!(Cli::try_parse_from(&args).is_err(), "expected {args:?} to be rejected");
+    }
+}
+
+#[test]
+fn cli_dns_commands_map_to_the_service_commands() {
+    match dns_mode_command(DnsMode::Default) {
+        ManagerCmd::SetUseSystemDns { enable } => assert!(!enable, "the default mode uses the tunnel's own DNS"),
+        other => panic!("expected SetUseSystemDns, got {other:?}"),
+    }
+    match dns_mode_command(DnsMode::System) {
+        ManagerCmd::SetUseSystemDns { enable } => assert!(enable, "the system mode uses the system's DNS"),
+        other => panic!("expected SetUseSystemDns, got {other:?}"),
+    }
+
+    let block = DnsContentBlockConfig { ad: true, tracker: false, malware: true, adult: false, gambling: false, social_media: true };
+    match content_block_command(block) {
+        ManagerCmd::SetDnsContentBlock { value } => {
+            assert_eq!(value, DnsContentBlock::from_config(block));
+            assert_eq!(value.config(), block, "the settings survive the round trip");
+        }
+        other => panic!("expected SetDnsContentBlock, got {other:?}"),
+    }
+}
+
+#[test]
+fn cli_dns_block_arguments_become_the_content_block() {
+    let DnsCommand::Block(DnsBlockCommand::Set(set)) = dns_args(&[
+        "obscura",
+        "dns",
+        "block",
+        "set",
+        "--ads",
+        "on",
+        "--trackers",
+        "off",
+        "--malware",
+        "on",
+        "--adult",
+        "off",
+        "--gambling",
+        "off",
+        "--social-media",
+        "on",
+    ]) else {
+        panic!("expected a dns block set command");
+    };
+    assert_eq!(
+        content_block(&set),
+        DnsContentBlockConfig { ad: true, tracker: false, malware: true, adult: false, gambling: false, social_media: true }
+    );
+
+    let DnsCommand::Block(DnsBlockCommand::Set(set)) = dns_args(&[
+        "obscura",
+        "dns",
+        "block",
+        "set",
+        "--ads",
+        "off",
+        "--trackers",
+        "off",
+        "--malware",
+        "off",
+        "--adult",
+        "off",
+        "--gambling",
+        "off",
+        "--social-media",
+        "off",
+    ]) else {
+        panic!("expected a dns block set command");
+    };
+    assert_eq!(content_block(&set), DnsContentBlockConfig::default());
+}
+
+#[test]
+fn cli_dns_get_projects_the_settings() {
+    let settings = DnsSettings {
+        use_system_dns: true,
+        block: DnsContentBlock::from_config(DnsContentBlockConfig { ad: true, ..Default::default() }),
+    };
+
+    let mut out = Vec::new();
+    write_dns(&settings, true, &mut out).unwrap();
+    assert_eq!(
+        String::from_utf8(out).unwrap(),
+        "{\"useSystemDns\":true,\"dnsContentBlock\":{\"ad\":true,\"tracker\":false,\"malware\":false,\"adult\":false,\"gambling\":false,\"socialMedia\":false}}\n"
+    );
+
+    let mut out = Vec::new();
+    write_dns(&settings, false, &mut out).unwrap();
+    let text = String::from_utf8(out).unwrap();
+    assert!(text.contains("DNS mode is system."), "{text}");
+    assert!(text.contains("Ads blocking is on."), "{text}");
+    for label in ["Trackers", "Malware", "Adult content", "Gambling", "Social media"] {
+        assert!(text.contains(&format!("{label} blocking is off.")), "{text}");
+    }
+}
+
+#[tokio::test]
+async fn cli_dns_get_reads_the_status_without_mutation() {
+    let requests = Arc::new(AtomicUsize::new(0));
+    let counter = Arc::clone(&requests);
+    let mut status = synthetic_status();
+    status.use_system_dns = false;
+    status.dns_content_block = DnsContentBlock::from_config(DnsContentBlockConfig { social_media: true, ..Default::default() });
+
+    let request = |command: ManagerCmd| {
+        let counter = Arc::clone(&counter);
+        let status = status.clone();
+        async move {
+            counter.fetch_add(1, Ordering::SeqCst);
+            match command {
+                ManagerCmd::GetStatus { known_version: None } => Ok(Ok(status)),
+                other => panic!("a get must only read the status, got {other:?}"),
+            }
+        }
+    };
+
+    let settings = dns_get_with(request).await.unwrap();
+    assert!(!settings.use_system_dns);
+    assert!(settings.block.config().social_media);
+    assert_eq!(requests.load(Ordering::SeqCst), 1, "a get sends exactly one request");
+}
+
+#[tokio::test]
+async fn cli_dns_mode_does_not_change_the_blockers() {
+    let requests = Arc::new(AtomicUsize::new(0));
+    let counter = Arc::clone(&requests);
+    let request = move |command: ManagerCmd| {
+        let counter = Arc::clone(&counter);
+        async move {
+            counter.fetch_add(1, Ordering::SeqCst);
+            match command {
+                ManagerCmd::SetUseSystemDns { enable: true } => Ok(Ok(())),
+                other => panic!("a DNS mode change must not touch the content blockers, got {other:?}"),
+            }
+        }
+    };
+    dns_set_mode_with(DnsMode::System, request).await.unwrap();
+    assert_eq!(requests.load(Ordering::SeqCst), 1, "a mode change sends exactly one request");
+}
+
+#[tokio::test]
+async fn cli_dns_block_does_not_change_the_mode_or_the_lan_state() {
+    let requests = Arc::new(AtomicUsize::new(0));
+    let counter = Arc::clone(&requests);
+    let request = move |command: ManagerCmd| {
+        let counter = Arc::clone(&counter);
+        async move {
+            counter.fetch_add(1, Ordering::SeqCst);
+            match command {
+                ManagerCmd::SetDnsContentBlock { .. } => Ok(Ok(())),
+                other => panic!("a content block change must not touch the DNS mode or the LAN state, got {other:?}"),
+            }
+        }
+    };
+    dns_set_block_with(DnsContentBlockConfig::default(), request).await.unwrap();
+    assert_eq!(requests.load(Ordering::SeqCst), 1, "a block change sends exactly one request");
+}
+
+#[tokio::test]
+async fn cli_dns_failures_use_the_generic_exit_code() {
+    let error = dns_set_mode_with(DnsMode::System, |_command| async { Ok(Err(ManagerCmdErrorCode::Other)) })
+        .await
+        .unwrap_err();
+    assert_eq!(error.exit_code(), 1);
+
+    let error = dns_set_block_with(DnsContentBlockConfig::default(), |_command| async { Ok(Err(ManagerCmdErrorCode::Other)) })
+        .await
+        .unwrap_err();
+    assert_eq!(error.exit_code(), 1);
+
+    let error = dns_get_with(|_command| async { Ok(Err(ManagerCmdErrorCode::Other)) }).await.unwrap_err();
     assert_eq!(error.exit_code(), 1);
 }

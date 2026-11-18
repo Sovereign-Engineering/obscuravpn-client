@@ -231,6 +231,76 @@ pub enum LanCommand {
     Set(ClientLanSetArgs),
 }
 
+/// Where the tunnel resolves names.
+#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DnsMode {
+    /// Use the DNS server of the tunnel.
+    Default,
+    /// Use the DNS servers the system is configured with.
+    System,
+}
+
+impl DnsMode {
+    /// Whether the mode uses the system's DNS servers.
+    pub fn uses_system_dns(&self) -> bool {
+        matches!(self, Self::System)
+    }
+}
+
+/// The DNS mode to set.
+#[derive(Args, Debug, PartialEq, Eq)]
+pub struct ClientDnsModeArgs {
+    /// Use the tunnel's DNS server or the system's DNS servers.
+    pub value: DnsMode,
+}
+
+/// The complete set of content blockers. Every option is required, so an omitted
+/// option cannot silently clear a blocker that is turned on.
+#[derive(Args, Debug, PartialEq, Eq)]
+pub struct ClientDnsBlockSetArgs {
+    /// Block ads.
+    #[arg(long, required = true)]
+    pub ads: OnOff,
+    /// Block trackers.
+    #[arg(long, required = true)]
+    pub trackers: OnOff,
+    /// Block malware.
+    #[arg(long, required = true)]
+    pub malware: OnOff,
+    /// Block adult content.
+    #[arg(long, required = true)]
+    pub adult: OnOff,
+    /// Block gambling.
+    #[arg(long, required = true)]
+    pub gambling: OnOff,
+    /// Block social media.
+    #[arg(long, required = true)]
+    pub social_media: OnOff,
+}
+
+/// The content blocking commands.
+#[derive(Subcommand, Debug)]
+pub enum DnsBlockCommand {
+    /// Replace every content blocker at once.
+    ///
+    /// The service selects the content blocking DNS server only when the exit's provider is
+    /// Mullvad VPN. A configured blocker does not prove that it filters the current
+    /// connection, or that it overrides the system's DNS servers.
+    Set(ClientDnsBlockSetArgs),
+}
+
+/// The DNS commands.
+#[derive(Subcommand, Debug)]
+pub enum DnsCommand {
+    /// Report the DNS mode and the content blockers.
+    Get(ClientSettingGetArgs),
+    /// Use the tunnel's DNS server or the system's DNS servers.
+    Mode(ClientDnsModeArgs),
+    /// Change the content blockers.
+    #[command(subcommand)]
+    Block(DnsBlockCommand),
+}
+
 #[derive(Subcommand, Debug)]
 pub enum ClientCommand {
     #[cfg(target_os = "linux")]
@@ -253,6 +323,9 @@ pub enum ClientCommand {
     /// Show or change the access to the local network.
     #[command(subcommand)]
     Lan(LanCommand),
+    /// Show or change the DNS mode and the content blockers.
+    #[command(subcommand)]
+    Dns(DnsCommand),
     #[cfg(target_os = "linux")]
     /// Create a debug bundle and print its path.
     DebugBundle(ClientDebugBundleArgs),

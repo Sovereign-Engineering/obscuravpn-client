@@ -77,7 +77,40 @@ pub struct DnsContentBlock {
     social_media: bool,
 }
 
+/// The content blockers of a `DnsContentBlock`, with named fields so callers cannot mix up their order.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct DnsContentBlockConfig {
+    pub ad: bool,
+    pub tracker: bool,
+    pub malware: bool,
+    pub adult: bool,
+    pub gambling: bool,
+    pub social_media: bool,
+}
+
 impl DnsContentBlock {
+    pub fn from_config(config: DnsContentBlockConfig) -> Self {
+        Self {
+            ad: config.ad,
+            tracker: config.tracker,
+            malware: config.malware,
+            adult: config.adult,
+            gambling: config.gambling,
+            social_media: config.social_media,
+        }
+    }
+
+    pub fn config(self) -> DnsContentBlockConfig {
+        DnsContentBlockConfig {
+            ad: self.ad,
+            tracker: self.tracker,
+            malware: self.malware,
+            adult: self.adult,
+            gambling: self.gambling,
+            social_media: self.social_media,
+        }
+    }
+
     fn mullvad_dns_ip(self) -> Option<Ipv4Addr> {
         let bitset = u8::from(self.ad)
             | (u8::from(self.tracker) << 1)
@@ -167,5 +200,64 @@ impl OsNetworkConfig {
             #[cfg(target_os = "linux")]
             wireguard_bypass,
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dns_content_block_uses_the_documented_keys() {
+        let block = DnsContentBlock::from_config(DnsContentBlockConfig {
+            ad: true,
+            tracker: false,
+            malware: true,
+            adult: false,
+            gambling: true,
+            social_media: false,
+        });
+        let json = serde_json::to_value(block).expect("the content block serializes");
+        assert_eq!(
+            json,
+            serde_json::json!({
+                "ad": true,
+                "tracker": false,
+                "malware": true,
+                "adult": false,
+                "gambling": true,
+                "socialMedia": false,
+            })
+        );
+    }
+
+    #[test]
+    fn dns_content_block_address_uses_the_documented_bit_order() {
+        let address = |config: DnsContentBlockConfig| DnsContentBlock::from_config(config).mullvad_dns_ip();
+        assert_eq!(
+            address(DnsContentBlockConfig { ad: true, ..Default::default() }),
+            Some(Ipv4Addr::new(100, 64, 0, 1))
+        );
+        assert_eq!(
+            address(DnsContentBlockConfig { tracker: true, ..Default::default() }),
+            Some(Ipv4Addr::new(100, 64, 0, 2))
+        );
+        assert_eq!(
+            address(DnsContentBlockConfig { malware: true, ..Default::default() }),
+            Some(Ipv4Addr::new(100, 64, 0, 4))
+        );
+        assert_eq!(
+            address(DnsContentBlockConfig { adult: true, ..Default::default() }),
+            Some(Ipv4Addr::new(100, 64, 0, 8))
+        );
+        assert_eq!(
+            address(DnsContentBlockConfig { gambling: true, ..Default::default() }),
+            Some(Ipv4Addr::new(100, 64, 0, 16))
+        );
+        assert_eq!(
+            address(DnsContentBlockConfig { social_media: true, ..Default::default() }),
+            Some(Ipv4Addr::new(100, 64, 0, 32))
+        );
+        assert_eq!(address(DnsContentBlockConfig::default()), None, "no blocker means no blocking address");
     }
 }

@@ -148,6 +148,36 @@ the firewall rules of the tunnel, so a change can alter the network policy of
 a tunnel that is already connected. The command reports the state it set; it
 does not decide whether that is acceptable for the network it runs on.
 
+## DNS
+
+`obscura dns` reads and changes the DNS mode and the content blockers:
+
+```
+obscura dns get
+obscura dns mode default
+obscura dns mode system
+obscura dns block set --ads on --trackers on --malware on --adult off --gambling off --social-media off
+```
+
+`obscura dns get` prints the mode and one line per blocker, such as `DNS mode
+is default.` and `Ads blocking is on.` With `--json` it prints
+`{"useSystemDns":false,"dnsContentBlock":{"ad":true,"tracker":true,"malware":true,"adult":false,"gambling":false,"socialMedia":false}}`.
+Like the other reads, it uses the local status and never changes a setting.
+
+`default` uses the tunnel's DNS server and `system` uses the DNS servers the
+system is configured with. Changing the mode leaves the content blockers as
+they are.
+
+`obscura dns block set` replaces every blocker at once, so all six options are
+required. An omitted option is an error rather than a silent `off`, which
+would clear a blocker another app turned on. The command sends one request
+and does not touch the DNS mode or local network access. The last writer
+wins, as for the other settings.
+
+The service selects its content blocking DNS server only when the exit's
+provider is Mullvad VPN. A configured blocker is not proof that it filters the
+current connection, or that it overrides the system's DNS servers.
+
 ## Exit codes
 
 | Code | Meaning |

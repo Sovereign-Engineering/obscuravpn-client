@@ -8,6 +8,10 @@ use obscuravpn_client::linux::ipc::{LinuxIpcError, run_command};
 use obscuravpn_client::linux::ui_log_dir;
 use obscuravpn_client::manager::{Status, TunnelArgs, VpnStatus};
 use obscuravpn_client::manager_cmd::{ManagerCmd, ManagerCmdErrorCode};
+use std::io::Write;
+
+#[cfg(test)]
+mod tests;
 
 #[derive(thiserror::Error, Debug)]
 pub enum ClientError {
@@ -23,8 +27,25 @@ pub enum ClientError {
     MalformedAccountId,
     #[error("Not logged in.")]
     NotLoggedIn,
-    #[error("The running Obscura VPN service does not match this app version ({app_version}).")]
+    #[error("The CLI ({app_version}) and running Obscura VPN service ({service_version}) are different releases; install matching versions.")]
     VersionMismatch { service_version: String, app_version: String },
+    #[error("The connection attempt failed: {0}. The service keeps retrying; run `obscura disconnect` to stop it.")]
+    TunnelFailed(String),
+    #[error("The service moved off the requested target while waiting and is now {0}. Another client may have changed it.")]
+    TargetChanged(String),
+}
+
+impl ClientError {
+    pub fn exit_code(&self) -> i32 {
+        match self {
+            Self::NoService => 3,
+            Self::InsufficientPermissions => 4,
+            Self::VersionMismatch { .. } => 5,
+            Self::TunnelFailed(_) => 7,
+            Self::TargetChanged(_) => 1,
+            Self::ApiUnreachable | Self::Unexpected(_) | Self::MalformedAccountId | Self::NotLoggedIn => 1,
+        }
+    }
 }
 
 impl From<ManagerCmdErrorCode> for ClientError {
@@ -77,31 +98,74 @@ async fn debug_bundle(args: ClientDebugBundleArgs) -> Result<(), ClientError> {
 }
 
 async fn status(args: ClientStatusArgs) -> Result<(), ClientError> {
-    let get_account_info_result: Result<AccountInfo, _> = run_command(ManagerCmd::ApiGetAccountInfo {}).await?;
-    match get_account_info_result {
-        Ok(account_info) => {
-            if !args.json {
-                println!("Account is {}.", account_info_summary(&account_info))
+    let source = status_source(args.local);
+    let account_summary = match source {
+        StatusSource::WithAccountRefresh => {
+            let get_account_info_result: Result<AccountInfo, _> = run_command(ManagerCmd::ApiGetAccountInfo {}).await?;
+            match get_account_info_result {
+                Ok(account_info) => Some(account_info_summary(&account_info)),
+                Err(error) => {
+                    eprintln!("Failed to update account info: {}", ClientError::from(error));
+                    None
+                }
             }
         }
-        Err(error) => eprintln!("Failed to update account info: {}", ClientError::from(error)),
-    }
+        StatusSource::LocalOnly => None,
+    };
+    let mut stdout = std::io::stdout();
+    write_account_summary(source, account_summary.as_deref(), args.json, &mut stdout)?;
     let mut known_version = None;
     loop {
         let status: Status = run_command(ManagerCmd::GetStatus { known_version }).await??;
         known_version = Some(status.version);
-        if args.json {
-            let json = serde_json::to_string_pretty(&status)
-                .map_err(anyhow::Error::new)
-                .context("JSON encoding failed")?;
-            println!("{json}");
-        } else {
-            println!("VPN is {}.", vpn_status_summary(&status.vpn_status));
-        }
+        write_status(&status, args.json, &mut stdout)?;
         if !args.follow {
             break Ok(());
         }
     }
+}
+
+/// Where the reported status information comes from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum StatusSource {
+    /// Ask the service to refresh the account information before reporting the status.
+    WithAccountRefresh,
+    /// Report only what the service already knows, without asking it to refresh the account.
+    LocalOnly,
+}
+
+/// Selects the status source from the `--local` flag.
+fn status_source(local: bool) -> StatusSource {
+    if local {
+        StatusSource::LocalOnly
+    } else {
+        StatusSource::WithAccountRefresh
+    }
+}
+
+/// Writes the account summary line, unless the output is JSON or the account was not refreshed.
+fn write_account_summary<W: Write>(source: StatusSource, account_summary: Option<&str>, json: bool, out: &mut W) -> Result<(), ClientError> {
+    if source != StatusSource::WithAccountRefresh || json {
+        return Ok(());
+    }
+    let Some(account_summary) = account_summary else {
+        return Ok(());
+    };
+    writeln!(out, "Account is {account_summary}.").map_err(anyhow::Error::new)?;
+    Ok(())
+}
+
+/// Writes the status as JSON, or as a human-readable summary.
+fn write_status<W: Write>(status: &Status, json: bool, out: &mut W) -> Result<(), ClientError> {
+    if json {
+        let json = serde_json::to_string_pretty(status)
+            .map_err(anyhow::Error::new)
+            .context("JSON encoding failed")?;
+        writeln!(out, "{json}").map_err(anyhow::Error::new)?;
+    } else {
+        writeln!(out, "VPN is {}.", vpn_status_summary(&status.vpn_status)).map_err(anyhow::Error::new)?;
+    }
+    Ok(())
 }
 
 async fn login(args: ClientLoginArgs) -> Result<(), ClientError> {
@@ -134,18 +198,50 @@ async fn go_to_target_state(target_state: Option<TunnelArgs>) -> Result<(), Clie
     run_command::<()>(ManagerCmd::SetTunnelArgs { args: target_state.clone(), active: Some(target_state.is_some()) }).await??;
     eprintln!("updated target state");
     let mut known_version = None;
+    let mut target_taken_up = false;
     loop {
         let status: Status = run_command(ManagerCmd::GetStatus { known_version }).await??;
         known_version = Some(status.version);
         eprintln!("{}", vpn_status_summary(&status.vpn_status));
-        match (&status.vpn_status, &target_state) {
-            (VpnStatus::Connected { exit, .. }, Some(TunnelArgs { exit: exit_selector })) if exit_selector.matches(exit) => break,
-            (VpnStatus::Disconnected {}, None) => break,
-            _ => {}
+        if target_reached(&status.vpn_status, &target_state)? {
+            break;
         }
+        target_taken_up = track_target(&status.vpn_status, &target_state, target_taken_up)?;
     }
     eprintln!("reached target state");
     Ok(())
+}
+
+fn target_reached(vpn_status: &VpnStatus, target_state: &Option<TunnelArgs>) -> Result<bool, ClientError> {
+    match (vpn_status, target_state) {
+        (VpnStatus::Connected { exit, .. }, Some(TunnelArgs { exit: exit_selector })) => Ok(exit_selector.matches(exit)),
+        (VpnStatus::Disconnected {}, None) => Ok(true),
+        (VpnStatus::Connecting { tunnel_args, connect_error: Some(_), .. }, Some(target)) if tunnel_args == target => {
+            Err(ClientError::TunnelFailed(vpn_status_summary(vpn_status)))
+        }
+        _ => Ok(false),
+    }
+}
+
+/// Reports whether the service has taken up the connect target, and fails once it moves off it, so a target
+/// another client replaced cannot keep the CLI waiting forever. The first statuses after a request can still
+/// describe the previous target, so only a move after the service took up this one counts. A disconnect is not
+/// tracked: its target state has no arguments to compare.
+fn track_target(vpn_status: &VpnStatus, target_state: &Option<TunnelArgs>, taken_up: bool) -> Result<bool, ClientError> {
+    let Some(target) = target_state else {
+        return Ok(taken_up);
+    };
+    let current = match vpn_status {
+        VpnStatus::Connecting { tunnel_args, .. } | VpnStatus::Connected { tunnel_args, .. } => Some(tunnel_args),
+        VpnStatus::Disconnected {} => None,
+    };
+    if current == Some(target) {
+        return Ok(true);
+    }
+    if taken_up {
+        return Err(ClientError::TargetChanged(vpn_status_summary(vpn_status)));
+    }
+    Ok(false)
 }
 
 fn vpn_status_summary(vpn_status: &VpnStatus) -> String {

@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
     Cli, ClientCommand, ClientConnectArgs, ClientDisconnectArgs, ClientLocationsListArgs, ClientLocationsRefreshArgs, ClientStatusArgs, Command,
-    LocationsCommand,
+    LocationsCommand, WaitArgs,
 };
 use clap::Parser;
 use obscuravpn_api::cmd::ExitList;
@@ -660,7 +660,9 @@ fn cli_catalogue_errors_are_reported_as_timeouts() {
 #[tokio::test]
 async fn cli_catalogue_read_reports_an_unavailable_catalogue() {
     let timeout = Timeout::new(0);
-    let error = read_catalogue_with(timeout, std::future::pending()).await.unwrap_err();
+    let error = read_catalogue_with(timeout, ClientError::CatalogueUnavailable, std::future::pending())
+        .await
+        .unwrap_err();
     assert_eq!(error.exit_code(), 6);
     assert!(
         error.to_string().contains("locations refresh"),
@@ -680,6 +682,211 @@ async fn cli_catalogue_refresh_timeout_does_not_retry() {
     let error = refresh_catalogue_with(timeout, request).await.unwrap_err();
     assert_eq!(error.exit_code(), 6);
     assert_eq!(requests.load(Ordering::SeqCst), 1, "a refresh is sent exactly once");
+}
+
+#[test]
+fn cli_connect_selection_flags() {
+    let args = connect_args(&["obscura", "connect"]);
+    assert!(args.selection.country.is_none());
+    assert!(args.selection.city.is_none());
+    assert!(args.selection.exit.is_none());
+
+    let args = connect_args(&["obscura", "connect", "--country", "SE"]);
+    assert_eq!(args.selection.country.as_deref(), Some("SE"));
+    assert!(args.selection.city.is_none());
+
+    let args = connect_args(&["obscura", "connect", "--country", "se", "--city", "sto"]);
+    assert_eq!(args.selection.country.as_deref(), Some("se"));
+    assert_eq!(args.selection.city.as_deref(), Some("sto"));
+
+    let args = connect_args(&["obscura", "connect", "--exit", "NYC-001"]);
+    assert_eq!(args.selection.exit.as_deref(), Some("NYC-001"));
+
+    // The selection works together with the wait flags.
+    let args = connect_args(&["obscura", "connect", "--country", "SE", "--timeout", "10"]);
+    assert_eq!(args.selection.country.as_deref(), Some("SE"));
+    assert_eq!(args.wait.timeout, Some(10));
+
+    // A city needs a country.
+    assert!(
+        Cli::try_parse_from(["obscura", "connect", "--city", "sto"]).is_err(),
+        "a city requires a country"
+    );
+
+    // An exit cannot be combined with a country or a city.
+    for extra in [
+        &["--country", "SE"][..],
+        &["--city", "sto"][..],
+        &["--country", "SE", "--city", "sto"][..],
+    ] {
+        let mut command = vec!["obscura", "connect", "--exit", "NYC-001"];
+        command.extend(extra);
+        assert!(Cli::try_parse_from(command).is_err(), "an exit cannot be combined with {extra:?}");
+    }
+
+    // A country code is two ASCII letters.
+    for invalid in ["", " ", "S", "usa", "S1", "SÉ", "SE "] {
+        assert!(
+            Cli::try_parse_from(["obscura", "connect", "--country", invalid]).is_err(),
+            "--country {invalid:?} must be rejected"
+        );
+    }
+    assert!(Cli::try_parse_from(["obscura", "connect", "--country", "se"]).is_ok());
+
+    // Blank values and values with control characters are rejected.
+    for invalid in ["", " ", "\t", "sto\n", "sto\u{7}"] {
+        assert!(
+            Cli::try_parse_from(["obscura", "connect", "--city", invalid]).is_err(),
+            "--city {invalid:?} must be rejected"
+        );
+        assert!(
+            Cli::try_parse_from(["obscura", "connect", "--exit", invalid]).is_err(),
+            "--exit {invalid:?} must be rejected"
+        );
+    }
+}
+
+#[test]
+fn cli_requested_exit_follows_the_flags() {
+    assert_eq!(requested_exit(None, None, None), RequestedExit::Any);
+    assert_eq!(
+        requested_exit(Some("SE"), None, None),
+        RequestedExit::Country { country_code: "SE".into() }
+    );
+    assert_eq!(
+        requested_exit(Some("SE"), Some("sto"), None),
+        RequestedExit::City { country_code: "SE".into(), city_code: "sto".into() }
+    );
+    assert_eq!(requested_exit(None, None, Some("NYC-001")), RequestedExit::Exit { id: "NYC-001".into() });
+}
+
+#[test]
+fn cli_selection_resolves_against_the_catalogue() {
+    let catalogue = synthetic_catalogue(vec![
+        synthetic_catalogue_exit("NYC-001", "US", "nyc", "New York", "us-nyc-wg-301"),
+        synthetic_catalogue_exit("CHI-002", "US", "chi", "Chicago", "us-chi-wg-302"),
+        synthetic_catalogue_exit("MUC-003", "DE", "muc", "München", "de-muc-wg-303"),
+    ]);
+
+    // An exit ID resolves to the exit, not to the provider that serves it.
+    let selector = resolve_selection(&catalogue, &RequestedExit::Exit { id: "NYC-001".into() }).unwrap();
+    assert_eq!(selector, ExitSelector::Exit { id: "NYC-001".into() });
+    assert!(
+        resolve_selection(&catalogue, &RequestedExit::Exit { id: "us-nyc-wg-301".into() }).is_err(),
+        "a provider ID is not an exit ID"
+    );
+
+    // A country resolves to the canonical country code in the catalogue.
+    let selector = resolve_selection(&catalogue, &RequestedExit::Country { country_code: "us".into() }).unwrap();
+    assert_eq!(selector, ExitSelector::Country { country_code: CountryCode("US".into()) });
+
+    // A city resolves to the canonical city code in the catalogue.
+    let selector = resolve_selection(&catalogue, &RequestedExit::City { country_code: "us".into(), city_code: "NYC".into() }).unwrap();
+    assert_eq!(
+        selector,
+        ExitSelector::City { city_code: CityCode { country_code: CountryCode("US".into()), city_code: "nyc".into() } }
+    );
+
+    // A value that matches no exit fails.
+    for requested in [
+        RequestedExit::Exit { id: "UNKNOWN-999".into() },
+        RequestedExit::Country { country_code: "ZZ".into() },
+        RequestedExit::City { country_code: "US".into(), city_code: "atl".into() },
+    ] {
+        let error = resolve_selection(&catalogue, &requested).unwrap_err();
+        assert_eq!(error.exit_code(), 1);
+        assert!(error.to_string().contains("locations list"), "the error names the next step: {error}");
+    }
+}
+
+#[test]
+fn cli_selection_needs_a_catalogue_entry() {
+    let catalogue = synthetic_catalogue(Vec::new());
+
+    for requested in [
+        RequestedExit::Country { country_code: "US".into() },
+        RequestedExit::City { country_code: "US".into(), city_code: "nyc".into() },
+        RequestedExit::Exit { id: "NYC-001".into() },
+    ] {
+        let error = resolve_selection(&catalogue, &requested).unwrap_err();
+        assert_eq!(error.exit_code(), 1);
+        assert!(error.to_string().contains("locations list"), "the error names the next step: {error}");
+    }
+
+    // Any exit needs no catalogue.
+    assert_eq!(resolve_selection(&catalogue, &RequestedExit::Any).unwrap(), ExitSelector::Any {});
+}
+
+#[test]
+fn cli_selection_lookup_uses_the_requested_deadline() {
+    let (deadline, error) = selection_lookup(None);
+    assert_eq!(deadline.seconds, CATALOGUE_READ_TIMEOUT_SECONDS);
+    assert!(matches!(error, ClientError::CatalogueUnavailable));
+
+    let timeout = Timeout::new(30);
+    let (deadline, error) = selection_lookup(Some(timeout));
+    assert_eq!(deadline.deadline, timeout.deadline, "the lookup shares the deadline of the operation");
+    assert!(matches!(error, ClientError::SelectionLookupTimedOut { seconds: 30 }));
+}
+
+#[tokio::test]
+async fn cli_connect_without_a_selector_reads_no_catalogue() {
+    let reads = Arc::new(AtomicUsize::new(0));
+    let mutations = Arc::new(AtomicUsize::new(0));
+    let read_counter = Arc::clone(&reads);
+    let mutation_counter = Arc::clone(&mutations);
+
+    let read = move |_timeout: Option<Timeout>| {
+        read_counter.fetch_add(1, Ordering::SeqCst);
+        async { Err(ClientError::CatalogueUnavailable) }
+    };
+    let submit = move |target: Option<TunnelArgs>| {
+        mutation_counter.fetch_add(1, Ordering::SeqCst);
+        async move {
+            assert!(
+                matches!(target, Some(TunnelArgs { exit: ExitSelector::Any {} })),
+                "a connect without a selector uses any exit"
+            );
+            Ok(())
+        }
+    };
+
+    let result = connect_with(&RequestedExit::Any, WaitArgs { no_wait: true, timeout: None }, None, read, submit).await;
+    assert!(result.is_ok());
+    assert_eq!(
+        reads.load(Ordering::SeqCst),
+        0,
+        "a connect without a selector must not read the catalogue"
+    );
+    assert_eq!(mutations.load(Ordering::SeqCst), 1);
+}
+
+#[tokio::test]
+async fn cli_selection_lookup_expiry_does_not_connect() {
+    let reads = Arc::new(AtomicUsize::new(0));
+    let mutations = Arc::new(AtomicUsize::new(0));
+    let read_counter = Arc::clone(&reads);
+    let mutation_counter = Arc::clone(&mutations);
+
+    let read = move |timeout: Option<Timeout>| {
+        read_counter.fetch_add(1, Ordering::SeqCst);
+        async move {
+            let (deadline, timeout_error) = selection_lookup(timeout);
+            read_catalogue_with(deadline, timeout_error, std::future::pending()).await
+        }
+    };
+    let submit = move |_target: Option<TunnelArgs>| {
+        mutation_counter.fetch_add(1, Ordering::SeqCst);
+        async { Ok(()) }
+    };
+
+    let requested = RequestedExit::Country { country_code: "SE".into() };
+    let error = connect_with(&requested, WaitArgs { no_wait: true, timeout: None }, Some(Timeout::new(0)), read, submit)
+        .await
+        .unwrap_err();
+    assert_eq!(error.exit_code(), 6);
+    assert_eq!(reads.load(Ordering::SeqCst), 1);
+    assert_eq!(mutations.load(Ordering::SeqCst), 0, "a failed lookup must not change the tunnel");
 }
 
 /// Returns true when the output ends with a newline.

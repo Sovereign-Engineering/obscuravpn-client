@@ -64,8 +64,44 @@ pub struct WaitArgs {
     pub timeout: Option<u64>,
 }
 
+/// The exit to connect to. The selection is resolved against the catalogue the service has cached.
+#[derive(Args, Debug, Default)]
+pub struct SelectionArgs {
+    /// Connect to an exit in this country, given as a two-letter country code such as "SE".
+    #[arg(long, value_parser = parse_country_code)]
+    pub country: Option<String>,
+    /// Connect to an exit in this city, in the country given by --country.
+    #[arg(long, value_parser = parse_selection_value, requires = "country")]
+    pub city: Option<String>,
+    /// Connect to this exit, given as an exit ID such as "NYC-001".
+    #[arg(long, value_parser = parse_selection_value, conflicts_with_all = ["country", "city"])]
+    pub exit: Option<String>,
+}
+
+/// Rejects a blank value and a value with control characters.
+fn parse_selection_value(value: &str) -> Result<String, String> {
+    if value.trim().is_empty() {
+        return Err("the value must not be blank".to_string());
+    }
+    if value.chars().any(char::is_control) {
+        return Err("the value must not contain control characters".to_string());
+    }
+    Ok(value.to_string())
+}
+
+/// Rejects a country code that is not two ASCII letters.
+fn parse_country_code(value: &str) -> Result<String, String> {
+    let value = parse_selection_value(value)?;
+    if value.len() != 2 || !value.chars().all(|character| character.is_ascii_alphabetic()) {
+        return Err("a country code is two ASCII letters, such as \"SE\"".to_string());
+    }
+    Ok(value)
+}
+
 #[derive(Args, Debug, Default)]
 pub struct ClientConnectArgs {
+    #[command(flatten)]
+    pub selection: SelectionArgs,
     #[command(flatten)]
     pub wait: WaitArgs,
 }

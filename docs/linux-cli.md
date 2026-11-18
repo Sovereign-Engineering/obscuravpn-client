@@ -83,6 +83,36 @@ most 30 seconds, and `--timeout SECONDS` sets another limit between 1 and 3600.
 A refresh that times out reports exit code 6; the catalogue may or may not have
 been updated, so read it with `locations list` instead of refreshing again.
 
+## Choosing a location
+
+`obscura connect` connects to any exit. The selection flags narrow that down:
+
+```
+obscura connect --country SE
+obscura connect --country se --city sto
+obscura connect --exit NYC-001
+```
+
+`--city` needs `--country`. `--exit` cannot be combined with `--country` or
+`--city`. A country code is two ASCII letters. A blank value, or a value with
+control characters, is rejected before the command runs.
+
+The selection is resolved against the catalogue the service has cached, so run
+`obscura locations refresh` first when it is empty. `--country` and `--city`
+are matched ignoring case, and the command sends the canonical values from the
+catalogue. `--exit` is matched exactly, against the exit ID, not the provider
+ID: `us-nyc-wg-301` in the example above is a provider ID and is not an exit.
+
+A selection that no exit matches fails with exit code 1, before the tunnel is
+changed: the command sends no request to change the tunnel. The message names
+`obscura locations list` as the next step.
+
+The catalogue lookup shares the deadline of the operation. With `--timeout
+SECONDS` the lookup is bounded by that deadline, and a lookup that expires
+reports exit code 6. Without it, the lookup waits at most 5 seconds, like
+`obscura locations list` does. A connection without a selection never reads the
+catalogue.
+
 ## Exit codes
 
 | Code | Meaning |
@@ -100,9 +130,9 @@ Service-reported failures keep code 1. IPC failures that previously returned 1
 now use codes 3–5, so scripts checking specifically for 1 need updating.
 Scripts checking for any nonzero result still detect failure.
 
-Code 6 covers the connection timeouts and the catalogue timeouts. A timed-out
-catalogue read leaves the cache unchanged; a timed-out catalogue refresh may
-have updated it.
+Code 6 covers the connection timeouts, the catalogue timeouts and the
+catalogue lookup of a connect request. A timed-out catalogue read leaves the
+cache unchanged; a timed-out catalogue refresh may have updated it.
 
 `connect` waits for a matching connected tunnel. A reported connection error
 ends the wait with code 7. The service keeps retrying the connection after

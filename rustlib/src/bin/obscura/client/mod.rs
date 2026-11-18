@@ -1,6 +1,6 @@
 use crate::{
-    ClientCommand, ClientDebugBundleArgs, ClientLocationsListArgs, ClientLocationsRefreshArgs, ClientLoginArgs, ClientStatusArgs, LocationsCommand,
-    WaitArgs,
+    ClientCommand, ClientConnectArgs, ClientDebugBundleArgs, ClientLocationsListArgs, ClientLocationsRefreshArgs, ClientLoginArgs, ClientStatusArgs,
+    LocationsCommand, WaitArgs,
 };
 use anyhow::Context;
 use chrono::{MappedLocalTime, TimeZone};
@@ -51,6 +51,10 @@ pub enum ClientError {
         "Timed out after {seconds}s while refreshing the exit catalogue. The catalogue may or may not have been updated; run `obscura locations list` to check."
     )]
     CatalogueRefreshTimedOut { seconds: u64 },
+    #[error("No exit in the catalogue matches {requested}. Run `obscura locations list` to see the available exits.")]
+    UnknownSelection { requested: String },
+    #[error("Timed out after {seconds}s while looking up the exit in the catalogue. Run `obscura locations list` to see the available exits.")]
+    SelectionLookupTimedOut { seconds: u64 },
 }
 
 impl ClientError {
@@ -63,6 +67,8 @@ impl ClientError {
             Self::TargetChanged(_) => 1,
             Self::TimedOut { .. } => 6,
             Self::CatalogueUnavailable | Self::CatalogueRefreshTimedOut { .. } => 6,
+            Self::SelectionLookupTimedOut { .. } => 6,
+            Self::UnknownSelection { .. } => 1,
             Self::ApiUnreachable | Self::Unexpected(_) | Self::MalformedAccountId | Self::NotLoggedIn => 1,
         }
     }
@@ -101,7 +107,7 @@ pub async fn run(cmd: ClientCommand) -> Result<(), ClientError> {
     match cmd {
         ClientCommand::AddOperator { users } => crate::add_operator::run_add_operator(users).await,
         ClientCommand::Login(args) => login(args).await,
-        ClientCommand::Connect(args) => go_to_target_state(args.wait, connect_target()).await,
+        ClientCommand::Connect(args) => connect(args).await,
         ClientCommand::Disconnect(args) => go_to_target_state(args.wait, None).await,
         ClientCommand::Status(args) => status(args).await,
         ClientCommand::Locations(command) => locations(command).await,
@@ -147,17 +153,32 @@ async fn locations_refresh(args: ClientLocationsRefreshArgs) -> Result<(), Clien
 
 /// Reads the cached exit catalogue. The service waits for a catalogue to exist, so the read is bounded.
 async fn read_catalogue(timeout: Timeout) -> Result<ExitCatalogue, ClientError> {
-    read_catalogue_with(timeout, run_command(catalogue_read_command())).await
+    read_catalogue_with(timeout, ClientError::CatalogueUnavailable, run_command(catalogue_read_command())).await
 }
 
-/// Reads the cached exit catalogue under a deadline.
-async fn read_catalogue_with<F>(timeout: Timeout, request: F) -> Result<ExitCatalogue, ClientError>
+/// Reads the cached exit catalogue under a deadline, reporting the given error when the deadline expires.
+async fn read_catalogue_with<F>(timeout: Timeout, timeout_error: ClientError, request: F) -> Result<ExitCatalogue, ClientError>
 where
     F: Future<Output = Result<Result<ExitCatalogue, ManagerCmdErrorCode>, LinuxIpcError>>,
 {
     match tokio::time::timeout_at(timeout.deadline, request).await {
         Ok(result) => Ok(result??),
-        Err(_) => Err(ClientError::CatalogueUnavailable),
+        Err(_) => Err(timeout_error),
+    }
+}
+
+/// Reads the catalogue for a connect request. The deadline of the operation bounds the lookup; without
+/// one the catalogue's own default applies.
+async fn read_catalogue_for_selection(timeout: Option<Timeout>) -> Result<ExitCatalogue, ClientError> {
+    let (deadline, timeout_error) = selection_lookup(timeout);
+    read_catalogue_with(deadline, timeout_error, run_command(catalogue_read_command())).await
+}
+
+/// The deadline and the error of the catalogue lookup a connect request makes.
+fn selection_lookup(timeout: Option<Timeout>) -> (Timeout, ClientError) {
+    match timeout {
+        Some(timeout) => (timeout, ClientError::SelectionLookupTimedOut { seconds: timeout.seconds }),
+        None => (Timeout::new(CATALOGUE_READ_TIMEOUT_SECONDS), ClientError::CatalogueUnavailable),
     }
 }
 
@@ -425,7 +446,21 @@ async fn login(args: ClientLoginArgs) -> Result<(), ClientError> {
 /// Asks the service to reach the target state, optionally without waiting for it.
 async fn go_to_target_state(wait: WaitArgs, target_state: Option<TunnelArgs>) -> Result<(), ClientError> {
     let timeout = wait.timeout.map(Timeout::new);
-    let submit = run_with_deadline(timeout, OperationStep::Submit, submit_tunnel_args(&target_state));
+    go_to_target_state_with(wait, target_state, timeout, submit_tunnel_args).await
+}
+
+/// Asks the service to reach the target state under a deadline that also covers the steps before it.
+async fn go_to_target_state_with<S, M>(
+    wait: WaitArgs,
+    target_state: Option<TunnelArgs>,
+    timeout: Option<Timeout>,
+    submit: S,
+) -> Result<(), ClientError>
+where
+    S: FnOnce(Option<TunnelArgs>) -> M,
+    M: Future<Output = Result<(), ClientError>>,
+{
+    let submit = run_with_deadline(timeout, OperationStep::Submit, submit(target_state.clone()));
     let wait_for_state = if wait.no_wait {
         None
     } else {
@@ -440,6 +475,46 @@ async fn go_to_target_state(wait: WaitArgs, target_state: Option<TunnelArgs>) ->
         eprintln!("request accepted; not waiting for the target state");
     }
     result
+}
+
+/// Connects the tunnel, to any exit or to the exit the user chose.
+async fn connect(args: ClientConnectArgs) -> Result<(), ClientError> {
+    let timeout = args.wait.timeout.map(Timeout::new);
+    let requested = requested_exit(
+        args.selection.country.as_deref(),
+        args.selection.city.as_deref(),
+        args.selection.exit.as_deref(),
+    );
+    connect_with(&requested, args.wait, timeout, read_catalogue_for_selection, submit_tunnel_args).await
+}
+
+/// Connects the tunnel to the requested exit. The catalogue is read before the tunnel is changed, so a
+/// selection that matches no exit leaves the tunnel alone.
+async fn connect_with<R, F, S, M>(requested: &RequestedExit, wait: WaitArgs, timeout: Option<Timeout>, read: R, submit: S) -> Result<(), ClientError>
+where
+    R: FnOnce(Option<Timeout>) -> F,
+    F: Future<Output = Result<ExitCatalogue, ClientError>>,
+    S: FnOnce(Option<TunnelArgs>) -> M,
+    M: Future<Output = Result<(), ClientError>>,
+{
+    let target = resolve_target(requested, timeout, read).await?;
+    go_to_target_state_with(wait, target, timeout, submit).await
+}
+
+/// Resolves the requested exit into the target state of the connection.
+async fn resolve_target<R, F>(requested: &RequestedExit, timeout: Option<Timeout>, read: R) -> Result<Option<TunnelArgs>, ClientError>
+where
+    R: FnOnce(Option<Timeout>) -> F,
+    F: Future<Output = Result<ExitCatalogue, ClientError>>,
+{
+    match requested {
+        RequestedExit::Any => Ok(connect_target()),
+        requested => {
+            let catalogue = read(timeout).await?;
+            let selector = resolve_selection(&catalogue, requested)?;
+            Ok(Some(TunnelArgs { exit: selector }))
+        }
+    }
 }
 
 /// The step of a connection operation, used to report where a timeout happened.
@@ -507,8 +582,8 @@ where
 }
 
 /// Sends the requested state to the service. The request is sent exactly once.
-async fn submit_tunnel_args(target_state: &Option<TunnelArgs>) -> Result<(), ClientError> {
-    run_command::<()>(set_tunnel_args_command(target_state)).await??;
+async fn submit_tunnel_args(target_state: Option<TunnelArgs>) -> Result<(), ClientError> {
+    run_command::<()>(set_tunnel_args_command(&target_state)).await??;
     eprintln!("updated target state");
     Ok(())
 }
@@ -521,6 +596,88 @@ fn set_tunnel_args_command(target_state: &Option<TunnelArgs>) -> ManagerCmd {
 /// The target state of a connection request: any exit.
 fn connect_target() -> Option<TunnelArgs> {
     Some(TunnelArgs { exit: ExitSelector::Any {} })
+}
+
+/// The exit the user asked to connect to.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum RequestedExit {
+    /// Any exit.
+    Any,
+    /// An exit in a country.
+    Country { country_code: String },
+    /// An exit in a city.
+    City { country_code: String, city_code: String },
+    /// One specific exit.
+    Exit { id: String },
+}
+
+/// The exit the user asked for, from the selection flags.
+fn requested_exit(country: Option<&str>, city: Option<&str>, exit: Option<&str>) -> RequestedExit {
+    if let Some(exit) = exit {
+        return RequestedExit::Exit { id: exit.to_string() };
+    }
+    match (country, city) {
+        (Some(country), Some(city)) => RequestedExit::City { country_code: country.to_string(), city_code: city.to_string() },
+        (Some(country), None) => RequestedExit::Country { country_code: country.to_string() },
+        // A city without a country is rejected by the argument parser.
+        _ => RequestedExit::Any,
+    }
+}
+
+/// Resolves the requested exit against the catalogue, using the canonical values of the matched exit.
+fn resolve_selection(catalogue: &ExitCatalogue, requested: &RequestedExit) -> Result<ExitSelector, ClientError> {
+    match requested {
+        RequestedExit::Any => Ok(ExitSelector::Any {}),
+        RequestedExit::Country { country_code } => {
+            let matched = catalogue
+                .value
+                .exits
+                .iter()
+                .find(|exit| equals_ignoring_case(&exit.city_code.country_code.0, country_code))
+                .ok_or_else(|| unknown_selection(requested))?;
+            Ok(ExitSelector::Country { country_code: matched.city_code.country_code.clone() })
+        }
+        RequestedExit::City { country_code, city_code } => {
+            let matched = catalogue
+                .value
+                .exits
+                .iter()
+                .find(|exit| {
+                    equals_ignoring_case(&exit.city_code.country_code.0, country_code) && equals_ignoring_case(&exit.city_code.city_code, city_code)
+                })
+                .ok_or_else(|| unknown_selection(requested))?;
+            Ok(ExitSelector::City { city_code: matched.city_code.clone() })
+        }
+        RequestedExit::Exit { id } => {
+            let matched = catalogue
+                .value
+                .exits
+                .iter()
+                .find(|exit| exit.id == *id)
+                .ok_or_else(|| unknown_selection(requested))?;
+            Ok(ExitSelector::Exit { id: matched.id.clone() })
+        }
+    }
+}
+
+/// Compares two strings, ignoring their case.
+fn equals_ignoring_case(left: &str, right: &str) -> bool {
+    left.to_lowercase() == right.to_lowercase()
+}
+
+/// The error for a selection that no exit in the catalogue matches.
+fn unknown_selection(requested: &RequestedExit) -> ClientError {
+    ClientError::UnknownSelection { requested: describe_selection(requested) }
+}
+
+/// Describes the requested exit, for an error message.
+fn describe_selection(requested: &RequestedExit) -> String {
+    match requested {
+        RequestedExit::Any => "any exit".to_string(),
+        RequestedExit::Country { country_code } => format!("country \"{country_code}\""),
+        RequestedExit::City { country_code, city_code } => format!("city \"{city_code}\" in country \"{country_code}\""),
+        RequestedExit::Exit { id } => format!("exit \"{id}\""),
+    }
 }
 
 /// Waits until the service reaches the target state.

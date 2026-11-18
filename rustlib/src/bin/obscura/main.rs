@@ -229,7 +229,7 @@ async fn run_service(_args: ServiceArgs, _log_persistence: Option<LogPersistence
 async fn run_client(args: ClientCommand) {
     if let Err(error) = client::run(args).await {
         eprintln!("{}", error);
-        exit(1)
+        exit(error.exit_code())
     }
 }
 

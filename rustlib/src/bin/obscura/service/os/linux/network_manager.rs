@@ -1,3 +1,4 @@
+use crate::service::os::linux::Ipv6Support;
 use obscuravpn_client::config::{LocalNetworkAccess, TailscaleBypass, WireGuardBypass};
 use obscuravpn_client::net::NetworkInterface;
 use obscuravpn_client::network_config::{DnsContentBlock, OsNetworkConfig};
@@ -79,13 +80,13 @@ pub async fn detect() -> bool {
     version >= MIN_VERSION
 }
 
-pub async fn set_dns(tun: &NetworkInterface, network_config: &OsNetworkConfig) -> Result<(), ()> {
+pub async fn set_dns(tun: &NetworkInterface, network_config: &OsNetworkConfig, ipv6_support: Ipv6Support) -> Result<(), ()> {
     let (nm_proxy, _nm_version) = NetworkManagerProxy::connect().await?;
     let proxy = nm_proxy.device_proxy(tun).await?;
-    apply_device_settings(tun, &proxy, network_config, true).await
+    apply_device_settings(tun, &proxy, network_config, true, ipv6_support).await
 }
 
-pub async fn reset_dns(tun: &NetworkInterface) -> Result<(), ()> {
+pub async fn reset_dns(tun: &NetworkInterface, ipv6_support: Ipv6Support) -> Result<(), ()> {
     let (nm_proxy, _nm_version) = NetworkManagerProxy::connect().await?;
     let proxy = nm_proxy.device_proxy(tun).await?;
     let network_config = OsNetworkConfig::dummy(
@@ -95,7 +96,7 @@ pub async fn reset_dns(tun: &NetworkInterface) -> Result<(), ()> {
         TailscaleBypass::Disabled,
         WireGuardBypass::Disabled,
     );
-    apply_device_settings(tun, &proxy, &network_config, false).await
+    apply_device_settings(tun, &proxy, &network_config, false, ipv6_support).await
 }
 
 async fn apply_device_settings(
@@ -103,12 +104,13 @@ async fn apply_device_settings(
     proxy: &DeviceProxy<'static>,
     network_config: &OsNetworkConfig,
     enable_dns: bool,
+    ipv6_support: Ipv6Support,
 ) -> Result<(), ()> {
     /// Setting this flag on Device.Reapply prevents removal of externally added IP addresses and routes. This does not seem to be respected if the ipv4 or ipv6 section of the applied settings are removed entirely or if the method is changed. See https://networkmanager.dev/docs/api/latest/gdbus-org.freedesktop.NetworkManager.Device.html#gdbus-method-org-freedesktop-NetworkManager-Device.Reapply
     /// Some versions of NetworkManager remove all IPs and move the device to unmanaged otherwise (e.g. 1.52.1 on Debian 13).
     const PRESERVE_EXTERNAL_IP: u32 = 0x1;
 
-    let settings = build_device_settings(tun, network_config, enable_dns).map_err(|error| {
+    let settings = build_device_settings(tun, network_config, enable_dns, ipv6_support).map_err(|error| {
         tracing::error!(
             message_id = "jj3NwH49",
             ?error,
@@ -131,6 +133,7 @@ fn build_device_settings(
     tun: &NetworkInterface,
     network_config: &OsNetworkConfig,
     enable_dns: bool,
+    ipv6_support: Ipv6Support,
 ) -> Result<HashMap<String, HashMap<String, zbus::zvariant::OwnedValue>>, zbus::zvariant::Error> {
     // See
     // - https://networkmanager.dev/docs/api/latest/nm-settings-nmcli.html
@@ -196,6 +199,11 @@ fn build_device_settings(
         ipv4_settings.insert("dns".into(), Value::from(dns_addresses_v4).try_into()?);
         ipv6_settings.insert("dns".into(), Value::from(dns_addresses_v6).try_into()?);
     }
+
+    let ipv6_settings = match ipv6_support {
+        Ipv6Support::Available => ipv6_settings,
+        Ipv6Support::Disabled => HashMap::from([("method".into(), Str::from_static("disabled").into())]),
+    };
 
     Ok(HashMap::from([
         ("connection".into(), connection_settings),

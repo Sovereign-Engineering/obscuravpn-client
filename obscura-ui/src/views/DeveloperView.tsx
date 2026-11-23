@@ -1,14 +1,12 @@
-import { Accordion, Autocomplete, Button, Group, JsonInput, Stack, Text, TextInput, Title, useMantineColorScheme } from '@mantine/core';
+import { Accordion, Button, Group, JsonInput, Stack, Text, TextInput, Title, useMantineColorScheme } from '@mantine/core';
 import { useInterval } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import Cookies from 'js-cookie';
 import { useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as commands from '../bridge/commands';
 import { jsonFfiCmd } from "../bridge/commands";
 import { Platform, PLATFORM } from '../bridge/SystemProvider';
 import { AppContext, NavigationView } from '../common/appContext';
-import { localStorageGet, LocalStorageKey } from '../common/localStorage';
 import { errMsg, showErrorNotification } from '../common/utils';
 import DevSendCommand from '../components/DevSendCommand';
 import DevSetApiUrl from '../components/DevSetApiUrl';
@@ -17,9 +15,9 @@ export default function DeveloperViewer() {
     const { t } = useTranslation();
     const { vpnConnected, connectionInProgress, appStatus, osStatus } = useContext(AppContext);
     const [trafficStats, setTrafficStats] = useState({});
-    const cookieToDeleteRef = useRef<HTMLInputElement | null>(null);
     const apiHostAlternate = useRef<HTMLInputElement | null>(null);
     const sniRelayRef = useRef<HTMLInputElement | null>(null);
+    const localStorageKeyToDeleteRef = useRef<HTMLInputElement | null>(null);
 
     const trafficStatsInterval = useInterval(async () => {
         setTrafficStats(await commands.getTrafficStats());
@@ -31,9 +29,6 @@ export default function DeveloperViewer() {
             trafficStatsInterval.stop();
         };
     }, []);
-
-    const [localStorageKey, setLocalStorageKey] = useState('');
-    const [localStorageValue, setLocalStorageValue] = useState<string | null>(null);
 
     const { colorScheme } = useMantineColorScheme();
 
@@ -127,20 +122,14 @@ export default function DeveloperViewer() {
         <Title order={4}>Exit Servers</Title>
         <DevSendCommand />
         <Button onClick={() => commands.setInNewAccountFlow(true)}>setInNewAccountFlow</Button>
-        <Title order={4}>Cookies</Title>
-        <Text>{JSON.stringify(Cookies.get(), null, 4)}</Text>
-        <Group>
-            <TextInput ref={cookieToDeleteRef} placeholder='cookieName' />
-            <Button onClick={() => {
-                if (cookieToDeleteRef.current !== null) Cookies.remove(cookieToDeleteRef.current.value)
-            }}>Delete Cookie</Button>
-        </Group>
         <Title order={4}>Local Storage</Title>
-        <Group align='end'>
-          <Autocomplete onChange={setLocalStorageKey} label='local storage key' data={Object.values(LocalStorageKey)} />
-          <Button onClick={() => setLocalStorageValue(localStorageGet(localStorageKey as LocalStorageKey))}>Get</Button>
+        <Text>{JSON.stringify({ ...window.localStorage }, null, 4)}</Text>
+        <Group>
+            <TextInput ref={localStorageKeyToDeleteRef} placeholder='localStorageKey' />
+            <Button onClick={() => {
+                if (localStorageKeyToDeleteRef.current !== null) window.localStorage.removeItem(localStorageKeyToDeleteRef.current.value)
+            }}>Delete Local Storage Key</Button>
         </Group>
-        <JsonInput value={localStorageValue ?? 'null'} contentEditable={false} />
         <Button onClick={ () => jsonFfiCmd("terminateProcess", {})}>kill tunnel manager process</Button>
         <Button onClick={async () => {
             const targetView = NavigationView.Help;

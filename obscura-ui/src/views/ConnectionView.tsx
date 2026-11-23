@@ -15,7 +15,7 @@ import commonClasses from '../common/common.module.css';
 import { exitCityEquals, exitLocation, exitsSortComparator } from '../common/exitUtils';
 import { KeyedSet } from '../common/KeyedSet';
 import { useExitList } from '../common/useExitList';
-import { useCookie } from '../common/utils';
+import { LocalStorageKey, useLocalStorage } from '../common/localStorage';
 import BoltBadgeAuto from '../components/BoltBadgeAuto';
 import { CColorSchemeContext } from '../components/CachedColorScheme';
 import { Flag } from '../components/CountryFlag';
@@ -384,7 +384,7 @@ function Mascot() {
     const [connectingIndex, toggleConnectingDeco] = useToggle([0, 1, 2, 3, 3, 3, 3]);
     // want to show celebratory mascot the first time the user uses the app
     const isTransitioning = useIsTransitioning();
-    const [connectedBefore, setConnectedBefore] = useCookie('connected-before', ConnectedBefore.NEVER);
+    const [connectedBefore, setConnectedBefore] = useLocalStorage(LocalStorageKey.ConnectedBefore, ConnectedBefore.NEVER);
 
     useEffect(() => {
         if (vpnConnected) {

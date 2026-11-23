@@ -1,5 +1,4 @@
 import { useMantineTheme } from '@mantine/core';
-import Cookies from 'js-cookie';
 import localforage from 'localforage';
 import { Dispatch, ForwardedRef, RefCallback, SetStateAction, useEffect, useLayoutEffect, useState } from 'react';
 import { fmt } from './fmt';
@@ -12,18 +11,6 @@ export { localforage };
 export const HEADER_TITLE = 'Obscura VPN';
 export const IS_DEVELOPMENT = import.meta.env.MODE === 'development';
 export const MIN_LOAD_MS = 400;
-
-export function useCookie(key: string, defaultValue: string, options: Cookies.CookieAttributes = { expires: 365000, sameSite: 'lax', path: '/' }): [string, Dispatch<SetStateAction<string>>] {
-    // cookie expires in a millenia
-    // sameSite != 'strict' because the cookie is not read for sensitive actions
-    // synchronous
-    const cookieValue = Cookies.get(key);
-    const [state, setState] = useState(cookieValue || defaultValue);
-    useEffect(() => {
-        Cookies.set(key, state, options);
-    }, [state]);
-    return [state, setState];
-}
 
 // show browser / native notification
 export function notify(title: string, body?: string) {

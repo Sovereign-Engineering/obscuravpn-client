@@ -5,15 +5,12 @@ import { MdArrowForward, MdClose } from 'react-icons/md';
 import { accountIdToString } from '../common/accountUtils';
 import { AppContext } from '../common/appContext';
 import { LOCK_IN_CREDIT } from '../common/links';
-import { useCookie } from '../common/utils';
+import { LocalStorageKey, useLocalStorage } from '../common/localStorage';
 import DecoAccent from '../res/deco/deco-bit-accent.svg?react';
 import JailDeco from '../res/lockin/jail-deco.svg?react';
 import Wordmark from '../res/lockin/wordmark.svg?react';
 import { ConfirmationDialog } from './ConfirmationDialog';
 import classes from './LockInPromo.module.css';
-
-const LOCK_IN_PROMO_SEEN = 'lock-in-promo-seen';
-const LOCK_IN_BANNER_SEEN = 'lock-in-banner-seen';
 
 function parseAccountIds(value: string): string[] {
   return value.split(',').filter(Boolean);
@@ -22,8 +19,8 @@ function parseAccountIds(value: string): string[] {
 export function LockInPromo() {
   const { accountInfo, apiServiceStatus } = useContext(AppContext);
   const [opened, setOpened] = useState(false);
-  const [seenAccountIds, setSeenAccountIds] = useCookie(LOCK_IN_PROMO_SEEN, '');
-  const [bannerSeenAccountIds, setBannerSeenAccountIds] = useCookie(LOCK_IN_BANNER_SEEN, '');
+  const [seenAccountIds, setSeenAccountIds] = useLocalStorage(LocalStorageKey.LockInPromoSeen, '');
+  const [bannerSeenAccountIds, setBannerSeenAccountIds] = useLocalStorage(LocalStorageKey.LockInBannerSeen, '');
 
   const accountId = accountInfo ? accountIdToString(accountInfo.id) : null;
   const eligible = accountInfo !== null && accountInfo.nnn === null && apiServiceStatus?.nnn.submissions_open === true;
@@ -38,14 +35,14 @@ export function LockInPromo() {
 
   const closePopup = () => {
     setOpened(false);
-    if (accountId === null || popupSeen) {
+    if (!accountId || popupSeen) {
       return;
     }
     setSeenAccountIds([...parseAccountIds(seenAccountIds), accountId].join(','));
   };
 
   const closeBanner = () => {
-    if (accountId === null || bannerSeen) {
+    if (!accountId || bannerSeen) {
       return;
     }
     setBannerSeenAccountIds([...parseAccountIds(bannerSeenAccountIds), accountId].join(','));

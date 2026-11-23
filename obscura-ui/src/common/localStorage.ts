@@ -1,5 +1,18 @@
+import { Dispatch, SetStateAction, useEffect, useState } from 'react';
+
 export enum LocalStorageKey {
-    CustomApiUrls = "customApiUrls"
+    CustomApiUrls = "customApiUrls",
+    ConnectedBefore = "connected-before",
+    LockInPromoSeen = "lock-in-promo-seen",
+    LockInBannerSeen = "lock-in-banner-seen",
+}
+
+export function useLocalStorage(key: LocalStorageKey, defaultValue: string): [string, Dispatch<SetStateAction<string>>] {
+    const [state, setState] = useState(() => localStorageGet(key) || defaultValue);
+    useEffect(() => {
+        localStorageSet(key, state);
+    }, [key, state]);
+    return [state, setState];
 }
 
 export function getCustomApiUrls(): string[] {

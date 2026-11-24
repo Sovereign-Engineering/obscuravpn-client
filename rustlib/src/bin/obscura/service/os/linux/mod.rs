@@ -17,6 +17,8 @@ use crate::service::os::linux::routes::traffic_capture_routes::{enable_src_valid
 use crate::service::os::linux::service_lock::ServiceLock;
 use crate::service::os::linux::tun::Tun;
 use bytes::Bytes;
+use nix::errno::Errno;
+use nix::sys::socket::{AddressFamily, SockFlag, SockType, socket};
 use obscuravpn_client::manager_cmd::{ManagerCmd, ManagerCmdErrorCode, ManagerCmdOk, PeerUid};
 use obscuravpn_client::net::NetworkInterface;
 use obscuravpn_client::network_config::OsNetworkConfig;
@@ -26,6 +28,28 @@ pub use start_error::LinuxServiceStartError;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use tokio::sync::Mutex;
 use tokio::sync::watch::{Receiver, Sender};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Ipv6Support {
+    Available,
+    Disabled,
+}
+
+impl Ipv6Support {
+    fn detect() -> Result<Self, LinuxServiceStartError> {
+        match socket(AddressFamily::Inet6, SockType::Datagram, SockFlag::SOCK_CLOEXEC, None) {
+            Ok(_socket) => Ok(Self::Available),
+            Err(Errno::EAFNOSUPPORT) => {
+                tracing::warn!(message_id = "Ghowroaq", "IPv6 is disabled in the kernel, configuring IPv4 only");
+                Ok(Self::Disabled)
+            }
+            Err(error) => {
+                tracing::error!(message_id = "GND8E0Tt", ?error, "failed to probe kernel IPv6 support: {error}");
+                Err(anyhow::Error::new(error).context("failed to probe kernel IPv6 support").into())
+            }
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TrafficPolicy {
@@ -43,6 +67,7 @@ pub enum TrafficPolicy {
 
 pub struct LinuxOsImpl {
     tun: Tun,
+    ipv6_support: Ipv6Support,
     nft: Mutex<NftTable>,
     routing: Sender<TrafficPolicy>,
     preferred_network_interface: Receiver<Option<NetworkInterface>>,
@@ -63,8 +88,9 @@ impl LinuxOsImpl {
         let mut fd_store = FdStore::take_from_systemd();
         let nft = NftTable::create_or_adopt(&mut fd_store).map_err(|()| LinuxServiceStartError::NftablesSetup)?;
         fd_store.remove_unclaimed();
-        let tun = Tun::create().map_err(|()| LinuxServiceStartError::TunSetup)?;
-        let routing = spawn_route_enforcer(tun.interface()).await;
+        let ipv6_support = Ipv6Support::detect()?;
+        let tun = Tun::create(ipv6_support).map_err(|()| LinuxServiceStartError::TunSetup)?;
+        let routing = spawn_route_enforcer(tun.interface(), ipv6_support).await;
         let preferred_network_interface = watch_preferred_network_interface().await;
         let _ = enable_src_valid_mark();
         notify_ready();
@@ -72,6 +98,7 @@ impl LinuxOsImpl {
             _lock: lock,
             ipc,
             tun,
+            ipv6_support,
             nft: Mutex::new(nft),
             routing,
             preferred_network_interface,
@@ -109,7 +136,7 @@ impl Os for LinuxOsImpl {
             tracing::error!(message_id = "bK3wNr8T", ?error, "route enforcer is not running");
         }));
         match choose_dns_manager(self.dns_manager_arg).await? {
-            DnsManager::NetworkManager => result = result.and(network_manager::set_dns(&tun, &network_config).await),
+            DnsManager::NetworkManager => result = result.and(network_manager::set_dns(&tun, &network_config, self.ipv6_support).await),
             dns_manager => {
                 if dns_manager.is_resolved() {
                     if network_config.use_system_dns {
@@ -121,7 +148,10 @@ impl Os for LinuxOsImpl {
             }
         }
         result = result.and(self.nft.lock().await.apply_ruleset(policy, &tun.name).await);
-        result = result.and(self.tun.set_config(network_config.mtu, network_config.ipv4, network_config.ipv6));
+        result = result.and(
+            self.tun
+                .set_config(network_config.mtu, network_config.ipv4, network_config.ipv6, self.ipv6_support),
+        );
         *current_network_config = result.map(|_| Some(network_config));
 
         self.tun.spawn_read_task(tunnel);
@@ -136,14 +166,14 @@ impl Os for LinuxOsImpl {
             tracing::error!(message_id = "fZ8pQm2W", ?error, "route enforcer is not running");
         }));
         match choose_dns_manager(self.dns_manager_arg).await? {
-            DnsManager::NetworkManager => result = result.and(network_manager::reset_dns(&tun).await),
+            DnsManager::NetworkManager => result = result.and(network_manager::reset_dns(&tun, self.ipv6_support).await),
             dns_manager => {
                 if dns_manager.is_resolved() {
                     result = result.and(resolved::reset_dns(&tun).await);
                 }
             }
         }
-        result = result.and(self.tun.set_dummy_config());
+        result = result.and(self.tun.set_dummy_config(self.ipv6_support));
         result = result.and(self.nft.lock().await.apply_ruleset(TrafficPolicy::Disengage, &tun.name).await);
         *current_network_config = result.map(|_| None);
         result

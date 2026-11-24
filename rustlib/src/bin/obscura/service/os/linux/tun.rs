@@ -1,3 +1,4 @@
+use crate::service::os::linux::Ipv6Support;
 use bytes::Bytes;
 use ipnetwork::Ipv6Network;
 use obscuravpn_client::config::{LocalNetworkAccess, TailscaleBypass, WireGuardBypass};
@@ -24,7 +25,7 @@ pub struct Tun {
 }
 
 impl Tun {
-    pub fn create() -> Result<Self, ()> {
+    pub fn create(ipv6_support: Ipv6Support) -> Result<Self, ()> {
         tracing::info!(message_id = "6JEntSBS", name = TUN_NAME, "creating tun device");
         let dev = tun_rs::DeviceBuilder::new()
             .name(TUN_NAME.to_string())
@@ -46,7 +47,7 @@ impl Tun {
         })?;
         let tun = Self { dev: Arc::new(dev), interface_index, read_task: Mutex::new(None) };
         // NetworkManager classifies new TUN devices without assigned IPs as `NM_DEVICE_STATE_UNMANAGED` instead of just externally connected and refuses all device configuration interactions. As initial state this is harmless in tested versions, but avoiding the state is simpler and may be safer.
-        tun.set_dummy_config()?;
+        tun.set_dummy_config(ipv6_support)?;
         tun.dev.enabled(true).map_err(|error| {
             tracing::error!(message_id = "O2sZ95mQ", ?error, "failed to bring up new tun device");
         })?;
@@ -94,7 +95,7 @@ impl Tun {
         }
     }
 
-    pub fn set_dummy_config(&self) -> Result<(), ()> {
+    pub fn set_dummy_config(&self, ipv6_support: Ipv6Support) -> Result<(), ()> {
         let network_config = OsNetworkConfig::dummy(
             DnsContentBlock::default(),
             false,
@@ -102,10 +103,10 @@ impl Tun {
             TailscaleBypass::Disabled,
             WireGuardBypass::Disabled,
         );
-        self.set_config(network_config.mtu, network_config.ipv4, network_config.ipv6)
+        self.set_config(network_config.mtu, network_config.ipv4, network_config.ipv6, ipv6_support)
     }
 
-    pub fn set_config(&self, mtu: u16, ipv4: Ipv4Addr, ipv6: Ipv6Network) -> Result<(), ()> {
+    pub fn set_config(&self, mtu: u16, ipv4: Ipv4Addr, ipv6: Ipv6Network, ipv6_support: Ipv6Support) -> Result<(), ()> {
         let mut result = Ok(());
 
         // Add new IPs before removing the current ones. This prevents having no addresses on the device temporarily, which may trigger automatic network manager device state changes with unintended side effects on DNS and routes.
@@ -120,14 +121,19 @@ impl Tun {
             tracing::error!(message_id = "cY11X3I6", ?error, address = ?ipv4, "failed to add IPv4 tun address");
             result = Err(());
         }
-        if let Err(error) = std::fs::write(format!("/proc/sys/net/ipv6/conf/{TUN_NAME}/disable_ipv6"), "0") {
-            tracing::error!(message_id = "kr6uCx2I", ?error, "failed to enable IPv6 on tun device");
-        }
-        if let Err(error) = self.dev.add_address_v6(ipv6.network(), ipv6.prefix())
-            && error.kind() != AlreadyExists
-        {
-            tracing::error!(message_id = "wHod6P2h", ?error, address = ?ipv6, "failed to add IPv6 tun address");
-            result = Err(());
+        match ipv6_support {
+            Ipv6Support::Available => {
+                if let Err(error) = std::fs::write(format!("/proc/sys/net/ipv6/conf/{TUN_NAME}/disable_ipv6"), "0") {
+                    tracing::error!(message_id = "kr6uCx2I", ?error, "failed to enable IPv6 on tun device");
+                }
+                if let Err(error) = self.dev.add_address_v6(ipv6.network(), ipv6.prefix())
+                    && error.kind() != AlreadyExists
+                {
+                    tracing::error!(message_id = "wHod6P2h", ?error, address = ?ipv6, "failed to add IPv6 tun address");
+                    result = Err(());
+                }
+            }
+            Ipv6Support::Disabled => {}
         }
 
         match self.dev.addresses() {
@@ -135,7 +141,10 @@ impl Tun {
                 for address in addresses {
                     let keep = match address {
                         IpAddr::V4(address) => address == ipv4,
-                        IpAddr::V6(address) => ipv6.contains(address),
+                        IpAddr::V6(address) => match ipv6_support {
+                            Ipv6Support::Available => ipv6.contains(address),
+                            Ipv6Support::Disabled => false,
+                        },
                     };
                     if keep {
                         continue;

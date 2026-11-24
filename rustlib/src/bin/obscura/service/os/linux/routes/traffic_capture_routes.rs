@@ -25,7 +25,7 @@
 //! default dev obscuravpn proto 111
 //! ```
 
-use crate::service::os::linux::TrafficPolicy;
+use crate::service::os::linux::{Ipv6Support, TrafficPolicy};
 use futures::StreamExt;
 use obscuravpn_client::net::{FWMARK, NetworkInterface};
 use obscuravpn_client::tokio::AbortOnDrop;
@@ -52,7 +52,7 @@ const RULE_PREF_RESOLVER: u32 = 14999;
 const RULE_PREF_SUPPRESS: u32 = 15000;
 const RULE_PREF_CAPTURE: u32 = 15001;
 
-pub async fn spawn_route_enforcer(tun: NetworkInterface) -> Sender<TrafficPolicy> {
+pub async fn spawn_route_enforcer(tun: NetworkInterface, ipv6_support: Ipv6Support) -> Sender<TrafficPolicy> {
     let (sender, mut receiver) = channel(TrafficPolicy::Disengage);
     tokio::spawn(async move {
         let mut desired = receiver.clone();
@@ -62,14 +62,14 @@ pub async fn spawn_route_enforcer(tun: NetworkInterface) -> Sender<TrafficPolicy
                     tracing::warn!(message_id = "kD6mWv2H", "route enforcer sender dropped/closed");
                     return;
                 }
-                Err(()) = enforce_routing(&tun, &mut desired) => sleep(ROUTE_ENFORCER_ERROR_BACKOFF).await,
+                Err(()) = enforce_routing(&tun, ipv6_support, &mut desired) => sleep(ROUTE_ENFORCER_ERROR_BACKOFF).await,
             }
         }
     });
     sender
 }
 
-async fn enforce_routing(tun: &NetworkInterface, desired: &mut Receiver<TrafficPolicy>) -> Result<Infallible, ()> {
+async fn enforce_routing(tun: &NetworkInterface, ipv6_support: Ipv6Support, desired: &mut Receiver<TrafficPolicy>) -> Result<Infallible, ()> {
     const RTNLGRP_IPV6_RULE: u32 = 19;
     const RTMGRP_IPV6_RULE: u32 = 1 << (RTNLGRP_IPV6_RULE - 1);
     const GROUPS: u32 = RTMGRP_IPV4_ROUTE | RTMGRP_IPV6_ROUTE | RTMGRP_IPV4_RULE | RTMGRP_IPV6_RULE;
@@ -85,8 +85,8 @@ async fn enforce_routing(tun: &NetworkInterface, desired: &mut Receiver<TrafficP
     loop {
         while let Ok(Some(_)) = messages.try_next() {}
         let policy = desired.borrow_and_update().clone();
-        if routing_dirty(&handle, tun, &policy).await? {
-            apply_routing(&handle, tun, &policy).await?;
+        if routing_dirty(&handle, tun, ipv6_support, &policy).await? {
+            apply_routing(&handle, tun, ipv6_support, &policy).await?;
             sleep(ROUTE_ENFORCER_APPLY_COOLDOWN).await;
             continue;
         }
@@ -102,7 +102,13 @@ async fn enforce_routing(tun: &NetworkInterface, desired: &mut Receiver<TrafficP
     }
 }
 
-const FAMILIES: [(IpVersion, AddressFamily); 2] = [(IpVersion::V4, AddressFamily::Inet), (IpVersion::V6, AddressFamily::Inet6)];
+fn families(ipv6_support: Ipv6Support) -> impl Iterator<Item = (IpVersion, AddressFamily)> {
+    let ipv6 = match ipv6_support {
+        Ipv6Support::Available => Some((IpVersion::V6, AddressFamily::Inet6)),
+        Ipv6Support::Disabled => None,
+    };
+    [(IpVersion::V4, AddressFamily::Inet)].into_iter().chain(ipv6)
+}
 
 fn wanted_resolver_rules(policy: &TrafficPolicy, family: AddressFamily) -> BTreeSet<IpAddr> {
     match policy {
@@ -119,10 +125,10 @@ fn wanted_resolver_rules(policy: &TrafficPolicy, family: AddressFamily) -> BTree
     }
 }
 
-async fn routing_dirty(handle: &rtnetlink::Handle, tun: &NetworkInterface, policy: &TrafficPolicy) -> Result<bool, ()> {
+async fn routing_dirty(handle: &rtnetlink::Handle, tun: &NetworkInterface, ipv6_support: Ipv6Support, policy: &TrafficPolicy) -> Result<bool, ()> {
     let engaged = matches!(policy, TrafficPolicy::Engage { .. });
     let mut dirty = false;
-    for (ip_version, family) in FAMILIES {
+    for (ip_version, family) in families(ipv6_support) {
         let (mut have_suppress_rule, mut have_capture_rule, mut have_capture_route) = (false, false, false);
         let mut have_resolver_rules = BTreeSet::new();
         let mut rule_dump = handle.rule().get(ip_version.clone()).execute();
@@ -164,9 +170,9 @@ async fn routing_dirty(handle: &rtnetlink::Handle, tun: &NetworkInterface, polic
     Ok(dirty)
 }
 
-async fn apply_routing(handle: &rtnetlink::Handle, tun: &NetworkInterface, policy: &TrafficPolicy) -> Result<(), ()> {
+async fn apply_routing(handle: &rtnetlink::Handle, tun: &NetworkInterface, ipv6_support: Ipv6Support, policy: &TrafficPolicy) -> Result<(), ()> {
     let engaged = matches!(policy, TrafficPolicy::Engage { .. });
-    for (ip_version, family) in FAMILIES {
+    for (ip_version, family) in families(ipv6_support) {
         loop {
             match handle.rule().del(any_resolver_rule(family)).execute().await {
                 Ok(()) => {}

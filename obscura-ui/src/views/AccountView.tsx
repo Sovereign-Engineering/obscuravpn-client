@@ -5,12 +5,13 @@ import React, { useContext, useEffect } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { BsQuestionSquareFill } from 'react-icons/bs';
 import { FaRotateRight } from 'react-icons/fa6';
-import { IoLogOutOutline, IoNuclear } from 'react-icons/io5';
+import { IoGift, IoLogOutOutline, IoNuclear } from 'react-icons/io5';
 import { MdOutlineWifiOff } from 'react-icons/md';
 import * as commands from '../bridge/commands';
 import { IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
+import { getAccountPaymentState, SubscriptionType } from '../common/accountPaymentState';
 import * as ObscuraAccount from '../common/accountUtils';
-import { AccountInfo, accountIsExpired, accountTimeRemaining, hasActiveSubscription, hasAppleSubscription, hasCredit, isRenewing, paidUntil, useReRenderWhenExpired } from '../common/api';
+import { hasAppleSubscription, hasCredit, timeRemainingUntil, usePollAccountAtExpiry } from '../common/api';
 import { AppContext, NEVPNStatus } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { normalizeError, showErrorNotification } from '../common/utils';
@@ -101,35 +102,38 @@ export default function Account() {
   </>;
 }
 
-interface AccountStatusProps {
-  accountInfo: AccountInfo,
-}
+const EXPIRES_SOON_DAYS = 10;
+const EXPIRES_VERY_SOON_DAYS = 5;
 
 function AccountStatusCard() {
-  const { appStatus } = useContext(AppContext);
+  const { appStatus, pollAccount } = useContext(AppContext);
   const { account } = appStatus;
 
-  useReRenderWhenExpired(account);
+  usePollAccountAtExpiry(account, pollAccount);
 
   if (account === null) return <AccountInfoUnavailable />;
 
-  const accountInfo = account.account_info;
-  const creditExpiresAt = accountInfo.top_up?.credit_expires_at;
-  const topupExpires = creditExpiresAt !== undefined ? new Date(creditExpiresAt * 1000) : undefined;
-  const topUpActive = topupExpires !== undefined && topupExpires.getTime() > new Date().getTime();
-  if (accountIsExpired(accountInfo)) {
-    return <AccountExpired />
-  } else if (isRenewing(accountInfo) && topUpActive) {
-    return <AccountPaidUpSubscriptionActive accountInfo={accountInfo} />
-  } else if (isRenewing(accountInfo)) {
-    return <SubscriptionActive accountInfo={accountInfo} />
-  } else if (hasActiveSubscription(accountInfo)) {
-    return <SubscriptionPaused accountInfo={accountInfo} />
+  const paymentState = getAccountPaymentState(account.account_info);
+  switch (paymentState.kind) {
+    case 'notStarted':
+      return <AccountNotStarted freeMonthOnNextPayment={paymentState.freeMonthOnNextPayment} />;
+    case 'expired':
+      return <AccountExpired failedSubscription={paymentState.failedSubscription} />;
+    case 'freeTrial':
+      return <AccountFreeTrial endsAt={paymentState.endsAt} />;
+    case 'renewing':
+      return <SubscriptionActive renewsAt={paymentState.renewsAt} extraCreditMonths={paymentState.extraCreditMonths} />;
+    case 'cancelled':
+      return <SubscriptionCanceled expiresAt={paymentState.expiresAt} />;
+    case 'subscriptionAfterTopUp':
+      return <SubscriptionAfterTopUp topUpEndsAt={paymentState.topUpEndsAt} />;
+    case 'expires':
+      if (timeRemainingUntil(paymentState.expiresAt).days < EXPIRES_SOON_DAYS)
+        return <AccountExpiringSoon expiresAt={paymentState.expiresAt} />;
+      return <AccountPaidUp expiresAt={paymentState.expiresAt} />;
+    case 'active':
+      return <AccountActive />;
   }
-  const { days: daysLeft } = accountTimeRemaining(accountInfo);
-  if (daysLeft < 10)
-    return <AccountExpiringSoon accountInfo={accountInfo} />;
-  return <AccountPaidUp accountInfo={accountInfo} />
 }
 
 function AccountInfoUnavailable() {
@@ -147,68 +151,123 @@ function AccountInfoUnavailable() {
   );
 }
 
-function AccountPaidUpSubscriptionActive({ accountInfo }: AccountStatusProps) {
+function SubscriptionAfterTopUp({ topUpEndsAt }: { topUpEndsAt: Date }) {
   const { t } = useTranslation();
-  const topupExpires = new Date(accountInfo.top_up!.credit_expires_at * 1000);
-  const endDate = topupExpires.toLocaleDateString();
+  const endDate = topUpEndsAt.toLocaleDateString();
   return (
     <AccountStatusCardTemplate
       icon={<PaidUpSubscriptionActive />}
-      heading={t('account-SubscriptionActive')}
-      subtitle={<Text size='sm' c='dimmed'>{t('account-SubscriptionWillStart', { endDate })}</Text>}
+      heading={t('account-UsingTopUp', { endDate })}
+      subtitle={<Text size='sm' c='dimmed'>{t('account-SubscriptionPending')}</Text>}
     />
   );
 }
 
-function SubscriptionActive({ accountInfo }: AccountStatusProps) {
+function SubscriptionActive({ renewsAt, extraCreditMonths }: { renewsAt: Date, extraCreditMonths: number | undefined }) {
   const { t } = useTranslation();
-  const accountPaidUntil = paidUntil(accountInfo);
-  const { days: daysLeft } = accountTimeRemaining(accountInfo);
+  const { days: daysLeft } = timeRemainingUntil(renewsAt);
   const tOptions = {
     count: daysLeft,
-    endDate: accountPaidUntil!.toLocaleDateString(),
+    endDate: renewsAt.toLocaleDateString(),
     context: `${daysLeft}`
   };
   return (
     <AccountStatusCardTemplate
       icon={<SubscriptionActiveBadge />}
       heading={t('account-SubscriptionActive')}
-      subtitle={<Text size='sm' c='dimmed'>{t('account-SubscriptionRenewsOn', tOptions)}</Text>}
+      subtitle={
+        <Stack gap={0}>
+          <Text size='sm' c='dimmed'>{t('account-SubscriptionRenewsOn', tOptions)}</Text>
+          {extraCreditMonths !== undefined && <Text size='sm' c='dimmed'>{t('account-ExtraCredit', { count: extraCreditMonths })}</Text>}
+        </Stack>
+      }
     />
   );
 }
 
-function SubscriptionPaused({ accountInfo }: AccountStatusProps) {
+function SubscriptionCanceled({ expiresAt }: { expiresAt: Date }) {
   const { t } = useTranslation();
-  const accountPaidUntil = paidUntil(accountInfo);
-  const endDate = accountPaidUntil!.toLocaleDateString();
+  const endDate = expiresAt.toLocaleDateString();
   return (
     <AccountStatusCardTemplate
       icon={<SubscriptionPausedBadge />}
-      heading={t('account-SubscriptionPaused')}
-      subtitle={<Text size='sm' c='dimmed'>{t('account-SubscriptionAutoRenewSubtitle', { endDate })}</Text>}
+      heading={t('account-SubscriptionCanceled')}
+      subtitle={<Text size='sm' c='dimmed'>{t('account-SubscriptionCanceledSubtitle', { endDate })}</Text>}
     />
   );
 }
 
-function AccountExpired() {
+function AccountNotStarted({ freeMonthOnNextPayment }: { freeMonthOnNextPayment: boolean }) {
   const { t } = useTranslation();
   return (
     <AccountStatusCardTemplate
       icon={<AccountExpiredBadge />}
-      heading={t('account-Expired')}
-      subtitle={<Text size='sm' c='dimmed'>{t('continueUsingObscura')}</Text>}
+      heading={t('account-NotStarted')}
+      subtitle={freeMonthOnNextPayment && <Text size='sm' c='dimmed'>{t('account-ReferralBonus')}</Text>}
     />
   );
 }
 
-function AccountPaidUp({ accountInfo }: AccountStatusProps) {
+function AccountExpired({ failedSubscription }: { failedSubscription: SubscriptionType | undefined }) {
   const { t } = useTranslation();
-  const accountPaidUntil = paidUntil(accountInfo);
-  const { days: daysLeft } = accountTimeRemaining(accountInfo);
+  if (failedSubscription === undefined) {
+    return (
+      <AccountStatusCardTemplate
+        icon={<AccountExpiredBadge />}
+        heading={t('account-Expired')}
+        subtitle={<Text size='sm' c='dimmed'>{t('continueUsingObscura')}</Text>}
+      />
+    );
+  }
+  // The user must correct a failed Apple or Google payment in the store.
+  let correction = t('continueUsingObscura');
+  if (failedSubscription === 'apple') {
+    correction = t('account-UpdatePaymentMethod', { store: t('App Store') });
+  } else if (failedSubscription === 'google') {
+    correction = t('account-UpdatePaymentMethod', { store: t('Play Store') });
+  }
+  return (
+    <AccountStatusCardTemplate
+      icon={<AccountExpiredBadge />}
+      heading={t('account-ExpiredPaymentFailed')}
+      subtitle={
+        <Stack gap={0}>
+          <Text size='sm'>{t('account-PaymentFailed')}</Text>
+          <Text size='sm' c='dimmed'>{correction}</Text>
+        </Stack>
+      }
+    />
+  );
+}
+
+function AccountFreeTrial({ endsAt }: { endsAt: Date }) {
+  const { t } = useTranslation();
+  return (
+    <AccountStatusCardTemplate
+      icon={<ThemeIcon size={32} radius={8} color='blue.6' m={2}><IoGift size={18} /></ThemeIcon>}
+      heading={t('account-FreeTrial')}
+      subtitle={<Text size='sm' c='dimmed'>{t('account-FreeTrialEndsOn', { endDate: endsAt.toLocaleDateString() })}</Text>}
+    />
+  );
+}
+
+function AccountActive() {
+  const { t } = useTranslation();
+  return (
+    <AccountStatusCardTemplate
+      icon={<PaidUpBadge />}
+      heading={t('Account is active')}
+      subtitle={null}
+    />
+  );
+}
+
+function AccountPaidUp({ expiresAt }: { expiresAt: Date }) {
+  const { t } = useTranslation();
+  const { days: daysLeft } = timeRemainingUntil(expiresAt);
   const tOptions = {
     count: daysLeft,
-    endDate: accountPaidUntil!.toLocaleDateString(),
+    endDate: expiresAt.toLocaleDateString(),
     context: `${daysLeft}`
   };
   return (
@@ -220,22 +279,20 @@ function AccountPaidUp({ accountInfo }: AccountStatusProps) {
   );
 }
 
-function AccountExpiringSoon({ accountInfo }: AccountStatusProps) {
+function AccountExpiringSoon({ expiresAt }: { expiresAt: Date }) {
   const { t } = useTranslation();
-  const accountPaidUntil = paidUntil(accountInfo);
-  const timeRemaining = accountTimeRemaining(accountInfo);
-  const { days, hours, minutes } = timeRemaining;
+  const { days, hours, minutes } = timeRemainingUntil(expiresAt);
 
   const { heading, subtitle } = useExpiryMessages(
     days,
     hours,
     minutes,
-    accountPaidUntil!
+    expiresAt
   );
 
   return (
     <AccountStatusCardTemplate
-      icon={days < 5 ? <PaidUpExpiringVerySoonBadge /> : <PaidUpExpiringSoonBadge />}
+      icon={days < EXPIRES_VERY_SOON_DAYS ? <PaidUpExpiringVerySoonBadge /> : <PaidUpExpiringSoonBadge />}
       heading={heading}
       subtitle={
         <Stack gap={0}>
@@ -285,7 +342,7 @@ function useExpiryMessages(
       count: days,
       endDate: accountPaidUntil.toLocaleDateString(),
     };
-    const verySoon = days < 5;
+    const verySoon = days < EXPIRES_VERY_SOON_DAYS;
     heading = t('account-DaysUntilExpiry', expiryInfo);
     subtitle = t(verySoon ? 'account-ExpiresVerySoon' : 'account-ExpiresSoon', expiryInfo);
   }

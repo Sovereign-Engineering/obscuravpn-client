@@ -9,7 +9,8 @@ import { MdLanguage, MdLaptopMac, MdOutlineWifiOff } from 'react-icons/md';
 import { ExitSelector, ExitSelectorCity } from '../bridge/commands';
 import { CONNECT_REQUIRES_ONLINE } from '../bridge/SystemProvider';
 import * as ObscuraAccount from '../common/accountUtils';
-import { accountIsExpired, Exit, getContinent, getExitCountry, useReRenderWhenExpired } from '../common/api';
+import { inactiveAccountMessage } from '../common/accountPaymentState';
+import { Exit, getContinent, getExitCountry, usePollAccountAtExpiry } from '../common/api';
 import { AppContext, ConnectionInProgress, getCityFromStatus, isConnecting, NEVPNStatus, PinnedLocation, useIsConnecting, useIsTransitioning } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { exitCityEquals, exitLocation, exitsSortComparator } from '../common/exitUtils';
@@ -50,7 +51,7 @@ const BUTTON_WIDTH = 320;
 
 export default function Connection() {
     const { t } = useTranslation();
-    const { vpnConnected, initiatingExitSelector, connectionInProgress, osStatus, appStatus, showOfflineUI } = useContext(AppContext);
+    const { vpnConnected, initiatingExitSelector, connectionInProgress, osStatus, appStatus, showOfflineUI, pollAccount } = useContext(AppContext);
     const connectionTransition = useIsTransitioning();
 
     const { account } = appStatus;
@@ -59,12 +60,12 @@ export default function Connection() {
     });
     const accountInfo = account?.account_info ?? null;
 
-    useReRenderWhenExpired(account);
+    usePollAccountAtExpiry(account, pollAccount);
 
     const targetCity = getCityFromStatus(appStatus.vpnStatus);
     const specificInitiation = !(initiatingExitSelector === undefined || 'any' in initiatingExitSelector);
     const isCityConnect = (targetCity !== undefined || specificInitiation);
-    const accountHasExpired = accountInfo !== null && accountIsExpired(accountInfo);
+    const inactiveMessage = accountInfo !== null && !accountInfo.active ? inactiveAccountMessage(accountInfo) : null;
 
     /* If quick connect is used, don't show the combobox while connecting to avoid confusion.
       This is because we don't want the user to think they are connecting to the last chosen location.
@@ -75,7 +76,7 @@ export default function Connection() {
     */
     const showLocationSelect = (isCityConnect || (
       osStatus.osVpnStatus !== NEVPNStatus.Connecting && connectionInProgress !== ConnectionInProgress.Connecting
-    )) && (vpnConnected || accountInfo !== null && !accountHasExpired);
+    )) && (vpnConnected || accountInfo !== null && accountInfo.active);
     /* The primary button is hidden in the following scenarios:
       1) connected
       2) not connecting via quick connect (i.e. connecting to a user-selected location)
@@ -84,7 +85,7 @@ export default function Connection() {
     const primaryButtonShown = !(vpnConnected || (isCityConnect && osStatus.osVpnStatus !== NEVPNStatus.Disconnected) || osStatus.osVpnStatus === NEVPNStatus.Disconnecting);
 
     const getTitle = () => {
-        if (accountHasExpired) return t('account-Expired');
+        if (inactiveMessage !== null) return t(inactiveMessage.title);
         if (connectionTransition) {
             const sampleExit = targetCity && exitList?.find(e => e.city_code == targetCity.city_code && e.country_code == targetCity.country_code);
 
@@ -106,7 +107,7 @@ export default function Connection() {
 
     const Subtitle = () => {
         if (vpnConnected && !connectionTransition) return t('enjoyObscura');
-        if (accountHasExpired) return t('continueUsingObscura');
+        if (inactiveMessage !== null) return inactiveMessage.subtitle !== undefined ? t(inactiveMessage.subtitle) : '';
         if (connectionTransition) return t('pleaseWaitAMoment');
         if (showOfflineUI) return t('connectToInternet');
         if (accountInfo === null) return '';
@@ -121,7 +122,7 @@ export default function Connection() {
                 <Space h={40} />
                 <Mascot />
                 <Stack align='center' gap={primaryButtonShown ? 0 : 20} mt={primaryButtonShown ? 0 : 20} justify='space-around'>
-                    <Title order={2} fw={600}>{getTitle()}</Title>
+                    <Title order={2} ta='center' fw={600}>{getTitle()}</Title>
                     <Title order={4} ta='center' mt={5} mih='xl' fw={350} className={classes.subtitle}>{Subtitle()}</Title>
                 </Stack>
                 <Space h='xs' />
@@ -155,7 +156,6 @@ function PrimaryConnectButton() {
   const inConnectingState = useIsConnecting();
 
   const accountInfo = account?.account_info ?? null;
-  const accountHasExpired = accountInfo !== null && accountIsExpired(accountInfo);
 
   const targetCity = getCityFromStatus(appStatus.vpnStatus);
   const specificInitiation = !(initiatingExitSelector === undefined || 'any' in initiatingExitSelector);
@@ -165,7 +165,7 @@ function PrimaryConnectButton() {
     return <Button w={BUTTON_WIDTH} {...theme.other.buttonDisconnectProps} mt={5} onClick={vpnDisconnect}>{t('Cancel Connecting')}</Button>;
   }
 
-  if (!vpnConnected && accountInfo !== null && accountHasExpired) {
+  if (!vpnConnected && accountInfo !== null && !accountInfo.active) {
     return <Button component='a' href={ObscuraAccount.APP_ACCOUNT_TAB}>{t('ManageAccount')}</Button>;
   }
 
@@ -424,7 +424,7 @@ function Mascot() {
         if (showOfflineUI) return MascotDead;
         if (vpnConnected) return connectedBefore === ConnectedBefore.FIRST_CONNECT ? MascotConnectedFirstTime : MascotConnected;
         if (accountInfo === null) return MascotValidating;
-        if (accountIsExpired(accountInfo)) return MascotDead;
+        if (!accountInfo.active) return MascotDead;
         return MascotNotConnected;
     };
     const ActiveMascot = getMascot();

@@ -1,5 +1,5 @@
 import { getCountryData, ICountryData, TContinentCode, TCountryCode } from "countries-list";
-import { useEffect, useReducer } from 'react';
+import { useEffect } from 'react';
 import { AccountId } from "./accountUtils";
 import { AccountStatus } from './appContext';
 
@@ -30,6 +30,15 @@ export function getExitCountry(exit: Exit): ICountryData {
   return getCountry(exit.country_code);
 }
 
+// seconds since unix epoch
+export interface ApiTimestamp {
+    readonly ApiTimestampTag: unique symbol;
+}
+
+export function apiTimestampToDate(timestamp: ApiTimestamp): Date {
+    return new Date((timestamp as any as number) * 1000);
+}
+
 export interface AccountInfo {
     id: AccountId,
     active: boolean,
@@ -37,15 +46,28 @@ export interface AccountInfo {
     apple_subscription: AppleSubscriptionInfo | null,
     google_subscription: GoogleSubscriptionInfo | null,
     stripe_subscription: StripeSubscriptionInfo | null,
-    auto_renews: number | null,
-    current_expiry: number | null,
+    auto_renews: ApiTimestamp | null,
+    current_expiry: ApiTimestamp | null,
+    free_month_on_next_payment: boolean,
     free_trial: FreeTrialInfo | null,
+    has_paid: boolean,
     nnn: NnnCaseInfo | null,
+    primary_funding: FundingMethod | null,
+}
+
+export const enum FundingMethod {
+    APPLE_SUBSCRIPTION = "apple_subscription",
+    FREE_TRIAL = "free_trial",
+    GOOGLE_SUBSCRIPTION = "google_subscription",
+    STRIPE_SUBSCRIPTION = "stripe_subscription",
+    TOP_UP = "top_up",
+    // The native client sends this value for a funding method that it does not know.
+    UNKNOWN = "unknown",
 }
 
 export interface FreeTrialInfo {
     active: boolean,
-    expires_at: number,
+    expires_at: ApiTimestamp,
 }
 
 export type NnnShareId = string;
@@ -72,52 +94,26 @@ export interface NnnStatus {
 }
 
 export interface TopUpInfo {
-    credit_expires_at: number,
+    active: boolean,
+    credit_expires_at: ApiTimestamp,
 }
 
 export function hasCredit(accountInfo: AccountInfo | undefined): boolean {
-    const expires = accountInfo?.top_up?.credit_expires_at || 0;
-    return new Date(expires * 1000).getTime() > new Date().getTime();
+    const creditExpiresAt = accountInfo?.top_up?.credit_expires_at;
+    return creditExpiresAt !== undefined && apiTimestampToDate(creditExpiresAt).getTime() > new Date().getTime();
 }
 
 export interface StripeSubscriptionInfo {
     active: boolean,
     status: StripeSubscriptionStatus,
-    current_period_start: number,
-    current_period_end: number,
+    current_period_start: ApiTimestamp,
+    current_period_end: ApiTimestamp,
     cancel_at_period_end: boolean,
 }
 
 // returns if a subscription is active, regardless about renewal status
 export function hasActiveSubscription(account: AccountInfo): boolean {
-    if (hasStripeSubscription(account)) {
-        return true;
-    }
-    if (hasAppleSubscription(account)) {
-        return true;
-    }
-    if (hasGoogleSubscription(account)) {
-        return true;
-    }
-    return false;
-}
-
-export function isRenewing(account: AccountInfo): boolean {
-  return account.auto_renews !== null;
-}
-
-/// Returns the end of the current payment period.
-///
-/// Note that if the account has a renewing subscription it can stay active for longer.
-export function paidUntil(account: AccountInfo): Date | null {
-  const autoRenewDate = account.auto_renews || 0;
-  const currentExpiry = account.current_expiry || 0;
-  const maxExpiry = Math.max(autoRenewDate, currentExpiry);
-  return maxExpiry > 0 ? new Date(maxExpiry * 1000) : null;
-}
-
-export function accountIsExpired(accountInfo: AccountInfo): boolean {
-  return !accountInfo.active;
+    return hasStripeSubscription(account) || hasAppleSubscription(account) || hasGoogleSubscription(account);
 }
 
 // TimeRemaining is represented in parts of a whole
@@ -127,12 +123,11 @@ export interface TimeRemaining {
     minutes: number;
 }
 
-/// Returns a human representation of the time left on an account.
+/// Returns a human representation of the time left until a date. A date in the past has no time left.
 ///
 /// Note that there is funny rounding on this number, it MUST NOT be used for computation.
-export function accountTimeRemaining(account: AccountInfo): TimeRemaining {
-  const expiry = paidUntil(account);
-  const remainingMs = expiry !== null ? expiry.getTime() - Date.now() : 0;
+export function timeRemainingUntil(date: Date): TimeRemaining {
+  const remainingMs = Math.max(date.getTime() - Date.now(), 0);
   let remainingSeconds = Math.floor(remainingMs / 1000);
 
   const days = Math.floor(remainingMs / 1000 / 3600 / 24);
@@ -175,7 +170,7 @@ export interface AppleSubscriptionInfo {
     active: boolean,
     status: AppleSubscriptionStatus,
     auto_renew_status: boolean,
-    renewal_date: number,
+    renewal_date: ApiTimestamp,
 }
 
 export function hasAppleSubscription(accountInfo: AccountInfo | undefined): boolean {
@@ -200,26 +195,36 @@ export interface GoogleSubscriptionInfo {
   status: GoogleSubscriptionStatus,
   active: boolean,
   auto_renew_status: boolean,
-  expires_at: number | null,
+  expires_at: ApiTimestamp | null,
 }
 
 export function hasGoogleSubscription(accountInfo: AccountInfo | undefined): boolean {
   return accountInfo?.google_subscription?.active === true;
 }
 
-/**
- * Force the component to re-render when an account is expected to expire
- */
-export function useReRenderWhenExpired(account: AccountStatus | null) {
-  const [, forceUpdate] = useReducer(x => x + 1, 0);
+const MAX_TIMEOUT_MS = 2 ** 31 - 1;
+// The API can report an active account after current_expiry
+const EXPIRED_RECHECK_MS = 5 * 60 * 1000;
 
+/**
+ * Poll the account when an active account is expected to expire
+ */
+export function usePollAccountAtExpiry(account: AccountStatus | null, pollAccount: () => Promise<void>) {
   useEffect(() => {
-    if (account !== null) {
-      const expiryDate = paidUntil(account.account_info);
-      if (expiryDate !== null && !accountIsExpired(account.account_info)) {
-        const timeoutId = setTimeout(forceUpdate, expiryDate.getTime() - (new Date()).getTime());
-        return () => clearTimeout(timeoutId);
-      }
-    }
+    const currentExpiry = account?.account_info.current_expiry ?? null;
+    if (account === null || currentExpiry === null || !account.account_info.active) return;
+
+    const expiryMs = apiTimestampToDate(currentExpiry).getTime();
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const schedule = () => {
+      const untilExpiryMs = expiryMs - Date.now();
+      const delayMs = untilExpiryMs > 0 ? Math.min(untilExpiryMs, MAX_TIMEOUT_MS) : EXPIRED_RECHECK_MS;
+      timeoutId = setTimeout(() => {
+        if (Date.now() >= expiryMs) void pollAccount();
+        schedule();
+      }, delayMs);
+    };
+    schedule();
+    return () => clearTimeout(timeoutId);
   }, [account?.last_updated_sec]);
 }

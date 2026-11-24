@@ -7,7 +7,8 @@ import { Trans, useTranslation } from 'react-i18next';
 import { BsPin, BsPinFill, BsSearch, BsShieldFillCheck, BsShieldFillExclamation } from 'react-icons/bs';
 import * as commands from '../bridge/commands';
 import { CONNECT_REQUIRES_ONLINE, IS_HANDHELD_DEVICE } from '../bridge/SystemProvider';
-import { accountIsExpired, Exit, getContinent, getExitCountry } from '../common/api';
+import { inactiveAccountMessage } from '../common/accountPaymentState';
+import { Exit, getContinent, getExitCountry } from '../common/api';
 import { AppContext, ConnectionInProgress, getCityFromArgs, getCityFromStatus, NEVPNStatus } from '../common/appContext';
 import commonClasses from '../common/common.module.css';
 import { exitCityEquals, exitLocation, exitsSortComparator } from '../common/exitUtils';
@@ -226,8 +227,8 @@ function LocationCard({ exit, connected, showLastChosen = false, onSelect, toggl
         togglePin(exit);
     };
 
-    const isAccountExpired = accountInfo ? accountIsExpired(accountInfo) : false;
-    const disableClick = osStatus.osVpnStatus === NEVPNStatus.Disconnecting || (showOfflineUI && CONNECT_REQUIRES_ONLINE) || isAccountExpired;
+    const inactiveMessage = accountInfo !== null && !accountInfo.active ? inactiveAccountMessage(accountInfo) : null;
+    const disableClick = osStatus.osVpnStatus === NEVPNStatus.Disconnecting || (showOfflineUI && CONNECT_REQUIRES_ONLINE) || inactiveMessage !== null;
     const cardClasses = [];
     if (connected) cardClasses.push(classes.locationCardConnected);
     else if (!connected && osStatus.osVpnStatus !== NEVPNStatus.Disconnecting && (exitCityEquals(getCityFromStatus(appStatus.vpnStatus), exit) || exitCityEquals(getCityFromArgs(initiatingExitSelector), exit))) {
@@ -235,7 +236,7 @@ function LocationCard({ exit, connected, showLastChosen = false, onSelect, toggl
     }
     else if (disableClick) cardClasses.push(classes.locationCardDisabled);
     else if (!connected) cardClasses.push(classes.locationCardNotConnected);
-    const cardTitle = (!connected && !disableClick) ? t('clickToConnect') : (isAccountExpired ? t('account-Expired') : undefined);
+    const cardTitle = (!connected && !disableClick) ? t('clickToConnect') : (inactiveMessage !== null ? t(inactiveMessage.title) : undefined);
 
     return (
         <Card shadow='xs' title={cardTitle} className={cardClasses.join(' ')} withBorder padding='xs' radius='md' w='100%' onClick={(connected || disableClick) ? undefined : onSelect}>
@@ -327,9 +328,9 @@ function VpnStatusCard() {
         return showOfflineUI ? t('connectToInternet') : t('obscuraNotConnected');
     };
 
-    const isAccountExpired = accountInfo ? accountIsExpired(accountInfo) : false;
+    const inactiveMessage = accountInfo !== null && !accountInfo.active ? inactiveAccountMessage(accountInfo) : null;
     const allowCancel = connectionInProgress === ConnectionInProgress.Connecting || connectionInProgress === ConnectionInProgress.Reconnecting;
-    const btnDisabled = !allowCancel && (connectionInProgress === ConnectionInProgress.Disconnecting || connectionInProgress === ConnectionInProgress.ChangingLocations || (showOfflineUI && CONNECT_REQUIRES_ONLINE) || isAccountExpired);
+    const btnDisabled = !allowCancel && (connectionInProgress === ConnectionInProgress.Disconnecting || connectionInProgress === ConnectionInProgress.ChangingLocations || (showOfflineUI && CONNECT_REQUIRES_ONLINE) || inactiveMessage !== null);
     const buttonDisconnectProps = ((allowCancel || vpnConnected) && !btnDisabled) ? theme.other.buttonDisconnectProps : {};
 
     const getButtonContent = () => {
@@ -342,7 +343,7 @@ function VpnStatusCard() {
     const btnTitle = () => {
         if (!btnDisabled) return;
         if (showOfflineUI) return t('noInternet');
-        if (isAccountExpired) return t('account-Expired');
+        if (inactiveMessage !== null) return t(inactiveMessage.title);
         return t('busyConnection');
     };
 

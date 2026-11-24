@@ -3,7 +3,7 @@ import { useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as commands from '../bridge/commands';
 import * as ObscuraAccount from '../common/accountUtils';
-import { AccountInfo, AppleSubscriptionStatus, GoogleSubscriptionStatus, hasActiveSubscription, hasAppleSubscription, hasGoogleSubscription, StripeSubscriptionStatus } from '../common/api';
+import { AccountInfo, apiTimestampToDate, AppleSubscriptionStatus, GoogleSubscriptionStatus, hasActiveSubscription, hasAppleSubscription, hasGoogleSubscription, StripeSubscriptionStatus } from '../common/api';
 import { AppContext, SubscriptionProductModel } from '../common/appContext';
 import { TranslationKey } from '../translations/i18n';
 import { ButtonLink } from './ButtonLink';
@@ -308,7 +308,7 @@ function useBuildSections(accountInfo: AccountInfo): Section[] {
 
   // Top Up Section
   if (accountInfo.top_up) {
-    const topUpDate = new Date(accountInfo.top_up.credit_expires_at * 1000);
+    const topUpDate = apiTimestampToDate(accountInfo.top_up.credit_expires_at);
     sections.push(
       [
         <InfoRow title={t('Top Up')} importance='high' />,
@@ -323,16 +323,19 @@ function useBuildSections(accountInfo: AccountInfo): Section[] {
       <InfoRow title={t('subscribedOnWeb')} importance='high' />,
       <InfoRow title={t('Status')} importance='medium' data={t(`stripeStatus-${sub.status}`)} dataColor={getStripeStatusColor(sub.status)} />,
       <InfoRow title={t('Source')} importance='medium' data={new URL(ObscuraAccount.OBSCURA_WEBPAGE).hostname} />,
-      <InfoRow title={t('Period Start')} importance='medium' data={new Date(sub.current_period_start * 1000).toLocaleDateString()} />,
-      <InfoRow title={t('Period End')} importance='medium' data={new Date(sub.current_period_end * 1000).toLocaleDateString()} />,
+      <InfoRow title={t('Period Start')} importance='medium' data={apiTimestampToDate(sub.current_period_start).toLocaleDateString()} />,
+      <InfoRow title={t('Period End')} importance='medium' data={apiTimestampToDate(sub.current_period_end).toLocaleDateString()} />,
       <InfoRow title={t('cancelAtEnd')} importance='medium' data={sub.cancel_at_period_end ? t('Yes') : t('No')} />,
     ]);
   }
 
+  // Do not offer a subscription while a subscription from a different source is active.
+  const canSubscribe = !hasActiveSubscription(accountInfo);
+
   if (accountInfo.apple_subscription) {
     const appleSub = accountInfo.apple_subscription;
     const section = [];
-    if (appleSubscriptionProduct) {
+    if (appleSubscriptionProduct && (hasAppleSubscription(accountInfo) || canSubscribe)) {
       section.push(<AppleSubscriptionProductCard product={appleSubscriptionProduct} subscribed={hasAppleSubscription(accountInfo)} />);
     }
     section.push(
@@ -341,10 +344,10 @@ function useBuildSections(accountInfo: AccountInfo): Section[] {
       <InfoRow title={t('Auto-Renewal')} importance='medium' data={appleSub.auto_renew_status ? t('Enabled') : t('Disabled')} />,
     )
     if (appleSub.auto_renew_status) {
-      section.push(<InfoRow title={t('Renewal Date')} importance='medium' data={new Date(appleSub.renewal_date * 1000).toLocaleDateString()} />);
+      section.push(<InfoRow title={t('Renewal Date')} importance='medium' data={apiTimestampToDate(appleSub.renewal_date).toLocaleDateString()} />);
     }
     sections.push(section);
-  } else if (appleSubscriptionProduct && !hasActiveSubscription(accountInfo)) {
+  } else if (appleSubscriptionProduct && canSubscribe) {
     sections.push([
       <AppleSubscriptionProductCard product={appleSubscriptionProduct} subscribed={false} />,
     ]);
@@ -353,7 +356,7 @@ function useBuildSections(accountInfo: AccountInfo): Section[] {
   if (accountInfo.google_subscription) {
     const googleSub = accountInfo.google_subscription;
     const section = [];
-    if (osStatus.playBilling) {
+    if (osStatus.playBilling && (hasGoogleSubscription(accountInfo) || canSubscribe)) {
       section.push(<GoogleSubscriptionProductCard subscribed={hasGoogleSubscription(accountInfo)} />);
     }
     section.push(
@@ -362,10 +365,10 @@ function useBuildSections(accountInfo: AccountInfo): Section[] {
       <InfoRow title={t('Auto-Renewal')} importance='medium' data={googleSub.auto_renew_status ? t('Enabled') : t('Disabled')} />,
     )
     if (googleSub.auto_renew_status && googleSub.expires_at !== null) {
-      section.push(<InfoRow title={t('Renewal Date')} importance='medium' data={new Date(googleSub.expires_at * 1000).toLocaleDateString()} />);
+      section.push(<InfoRow title={t('Renewal Date')} importance='medium' data={apiTimestampToDate(googleSub.expires_at).toLocaleDateString()} />);
     }
     sections.push(section);
-  } else if (osStatus.playBilling && !hasActiveSubscription(accountInfo)) {
+  } else if (osStatus.playBilling && canSubscribe) {
     sections.push([
       <GoogleSubscriptionProductCard subscribed={false} />,
     ]);

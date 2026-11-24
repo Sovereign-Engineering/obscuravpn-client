@@ -7,6 +7,7 @@ import * as commands from '../bridge/commands';
 import { jsonFfiCmd } from "../bridge/commands";
 import { Platform, PLATFORM } from '../bridge/SystemProvider';
 import { AppContext, NavigationView } from '../common/appContext';
+import { removeLocalStorage } from '../common/localStorage';
 import { errMsg, showErrorNotification } from '../common/utils';
 import DevSendCommand from '../components/DevSendCommand';
 import DevSetApiUrl from '../components/DevSetApiUrl';
@@ -127,7 +128,7 @@ export default function DeveloperViewer() {
         <Group>
             <TextInput ref={localStorageKeyToDeleteRef} placeholder='localStorageKey' />
             <Button onClick={() => {
-                if (localStorageKeyToDeleteRef.current !== null) window.localStorage.removeItem(localStorageKeyToDeleteRef.current.value)
+                if (localStorageKeyToDeleteRef.current !== null) removeLocalStorage(localStorageKeyToDeleteRef.current.value)
             }}>Delete Local Storage Key</Button>
         </Group>
         <Button onClick={ () => jsonFfiCmd("terminateProcess", {})}>kill tunnel manager process</Button>

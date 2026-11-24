@@ -1,4 +1,4 @@
-import { Dispatch, SetStateAction, useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
 export enum LocalStorageKey {
     CustomApiUrls = "customApiUrls",
@@ -7,35 +7,32 @@ export enum LocalStorageKey {
     LockInBannerSeen = "lock-in-banner-seen",
 }
 
-export function useLocalStorage(key: LocalStorageKey, defaultValue: string): [string, Dispatch<SetStateAction<string>>] {
-    const [state, setState] = useState(() => localStorageGet(key) || defaultValue);
-    useEffect(() => {
-        localStorageSet(key, state);
-    }, [key, state]);
-    return [state, setState];
+const listeners = new Set<() => void>();
+
+export function useLocalStorage(key: LocalStorageKey, defaultValue: string): [string, (value: string) => void] {
+    const value = useSyncExternalStore(listener => {
+        const subscription = () => listener();
+        listeners.add(subscription);
+        window.addEventListener('storage', subscription);
+        return () => {
+            listeners.delete(subscription);
+            window.removeEventListener('storage', subscription);
+        };
+    }, () => getLocalStorage(key) ?? defaultValue);
+
+    return [value, value => setLocalStorage(key, value)];
 }
 
-export function getCustomApiUrls(): string[] {
-    const customApiUrlsExist = localStorageGet(LocalStorageKey.CustomApiUrls);
-    return JSON.parse(customApiUrlsExist ?? '[]');
+export function getLocalStorage(key: LocalStorageKey) {
+    return window.localStorage.getItem(key);
 }
 
-export function setCustomApiUrls(customApiUrls: string[]): string | null {
-  return localStorageSet(LocalStorageKey.CustomApiUrls, JSON.stringify(customApiUrls));
-}
-
-export function localStorageGet(key: LocalStorageKey): string | null {
-    return window.localStorage.getItem(key)
-}
-
-export function localStorageSet(key: LocalStorageKey, value: string): string | null {
-    let prev = localStorageGet(key);
+export function setLocalStorage(key: LocalStorageKey, value: string) {
     window.localStorage.setItem(key, value);
-    return prev
+    listeners.forEach(listener => listener());
 }
 
-export function localStorageRemove(key: LocalStorageKey): string | null {
-    let prev = localStorageGet(key);
-    window.localStorage.removeItem(key)
-    return prev
+export function removeLocalStorage(key: string) {
+    window.localStorage.removeItem(key);
+    listeners.forEach(listener => listener());
 }

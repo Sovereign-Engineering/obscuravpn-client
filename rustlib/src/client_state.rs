@@ -19,7 +19,10 @@ use crate::{
     errors::RelaySelectionError,
     quicwg::QuicWgConn,
 };
-use crate::{quicwg::TUNNEL_MTU, relay_selection::race_relay_handshakes};
+use crate::{
+    quicwg::TUNNEL_MTU,
+    relay_selection::{RelayCandidate, race_relay_handshakes},
+};
 use boringtun::x25519::{PublicKey, StaticSecret};
 use obscuravpn_api::cmd::{CacheWgKey, ETagCmd, ExitList, ListExits2};
 use obscuravpn_api::types::{AccountId, AccountInfo, AuthToken, OneExit};
@@ -431,7 +434,7 @@ impl ClientStateHandle {
             r
         });
 
-        let (closest_relay, handshaking) = self.select_relay(network_interface).await?;
+        let selected_relay = self.select_relay(network_interface).await?;
 
         let exit_list = if let Some(l) = self.get_cached_exit_list() {
             l
@@ -440,7 +443,7 @@ impl ClientStateHandle {
         };
 
         let exit = selection_state
-            .select_next_exit(exit_selector, &exit_list.value.exits, &closest_relay)
+            .select_next_exit(exit_selector, &exit_list.value.exits, &selected_relay.relay)
             .map(|e| e.id.clone());
         let Some(exit) = exit else {
             tracing::error!(
@@ -462,11 +465,12 @@ impl ClientStateHandle {
         let (wg_private_key, wg_public_key) =
             self.change(|inner| inner.config.change(|config| config.wireguard_key_cache.use_key_pair(&inner.wg_key_store)));
         tracing::info!(
-            message_id = "Ahv4Eequ",
             client.pubkey =% wg_public_key,
             exit.id = exit,
-            relay.id = closest_relay.id,
-            relay.ip_v4 =% closest_relay.ip_v4,
+            message_id = "Ahv4Eequ",
+            relay.id = selected_relay.relay.id,
+            relay.ip_v4 =% selected_relay.relay.ip_v4,
+            relay.port = selected_relay.port,
             tunnel.id =% tunnel_id,
             "creating tunnel",
         );
@@ -475,7 +479,7 @@ impl ClientStateHandle {
             id: Some(tunnel_id),
             label: None,
             wg_pubkey: wg_public_key,
-            relay: Some(closest_relay.id.clone()),
+            relay: Some(selected_relay.relay.id.clone()),
             exit: Some(exit.clone()),
         };
         let tunnel = match self.api_request(cmd).await {
@@ -500,16 +504,16 @@ impl ClientStateHandle {
             },
         };
 
-        if tunnel.relay.id != closest_relay.id {
+        if tunnel.relay.id != selected_relay.relay.id {
             return Err(TunnelConnectError::UnexpectedRelay);
         }
         let TunnelConfig::Obfuscated(config) = tunnel.config else {
             return Err(TunnelConnectError::UnexpectedTunnelKind);
         };
-        Ok((tunnel_id, config, wg_private_key, tunnel.exit, tunnel.relay, handshaking))
+        Ok((tunnel_id, config, wg_private_key, tunnel.exit, tunnel.relay, selected_relay.handshaking))
     }
 
-    pub async fn select_relay(&self, network_interface: Option<&NetworkInterface>) -> Result<(OneRelay, QuicWgConnHandshaking), TunnelConnectError> {
+    pub async fn select_relay(&self, network_interface: Option<&NetworkInterface>) -> Result<RelayCandidate, TunnelConnectError> {
         let this = self.clone();
         let relay_update = tokio::spawn(async move {
             let r = this.maybe_update_relays(Duration::from_secs(60)).await;
@@ -556,11 +560,11 @@ impl ClientStateHandle {
         let mut deadline = start + Duration::from_secs(30);
 
         let mut relays_connected_successfully = BTreeSet::new();
-        let mut best_candidate = None;
+        let mut best_candidate: Option<RelayCandidate> = None;
 
         loop {
             let next = timeout_at(deadline.into(), racing_handshakes.next()).await;
-            let (relay, port, rtt, handshaking) = match next {
+            let candidate = match next {
                 Ok(Some(n)) => n,
                 Ok(None) => {
                     tracing::info!(message_id = "aeY9Acha", "all relay handshake attempts finished",);
@@ -576,20 +580,20 @@ impl ClientStateHandle {
                     break;
                 }
             };
-            relays_connected_successfully.insert(relay.id.clone());
+            relays_connected_successfully.insert(candidate.relay.id.clone());
 
-            let rejected = if best_candidate.as_ref().is_some_and(|(_, _, best_rtt, _)| *best_rtt < rtt) {
-                Some(handshaking)
+            let rejected = if let Some(best) = &best_candidate
+                && best.is_better_than(&candidate)
+            {
+                Some(candidate)
             } else {
                 // Only wait for 3x the time it took to find the best candidate. The chance that future relays have better RTT is minimal and it wastes time and increases the chance that we hang for a long time waiting on unreachable relays.
                 deadline = start + min(start.elapsed() * 3, Duration::from_secs(5));
 
-                best_candidate
-                    .replace((relay, port, rtt, handshaking))
-                    .map(|(_, _, _, replaced)| replaced)
+                best_candidate.replace(candidate)
             };
             if let Some(rejected) = rejected {
-                spawn(rejected.abandon());
+                spawn(rejected.handshaking.abandon());
             }
 
             if relays_connected_successfully.len() >= 5 {
@@ -598,13 +602,19 @@ impl ClientStateHandle {
                 break;
             }
         }
-        let Some((relay, port, rtt, handshaking)) = best_candidate else {
+        let Some(selected) = best_candidate else {
             racing_handshakes.abandon().await;
             return Err(RelaySelectionError::NoSuccess.into());
         };
         spawn(racing_handshakes.abandon());
-        tracing::info!(message_id = "Xdbn2PYb", relay.id, port, rtt_ms = rtt.as_millis(), "selected relay");
-        Ok((relay, handshaking))
+        tracing::info!(
+            message_id = "Xdbn2PYb",
+            relay.id = selected.relay.id,
+            relay.port = selected.port,
+            relay.rtt_ms = selected.rtt.as_millis(),
+            "selected relay",
+        );
+        Ok(selected)
     }
 
     pub fn make_unauthenticated_api_client(&self) -> Result<Client<Unauthenticated>, ApiError> {

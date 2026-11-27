@@ -53,11 +53,64 @@ pub struct ClientLoginArgs {
     pub offline: bool,
 }
 
-#[derive(Args, Debug)]
-pub struct ClientConnectArgs {}
+/// Options that bound how long a command waits for the service.
+#[derive(Args, Debug, Default, Clone, Copy)]
+pub struct WaitArgs {
+    /// Return as soon as the service accepts the request, without waiting for the tunnel state.
+    #[arg(long, conflicts_with = "timeout")]
+    pub no_wait: bool,
+    /// Give up after this many seconds. The outcome is unknown when the deadline expires.
+    #[arg(long, value_parser = clap::value_parser!(u64).range(1..=3600))]
+    pub timeout: Option<u64>,
+}
 
-#[derive(Args, Debug)]
-pub struct ClientDisconnectArgs {}
+/// The exit to connect to. The selection is resolved against the catalogue the service has cached.
+#[derive(Args, Debug, Default)]
+pub struct SelectionArgs {
+    /// Connect to an exit in this country, given as a two-letter country code such as "SE".
+    #[arg(long, value_parser = parse_country_code)]
+    pub country: Option<String>,
+    /// Connect to an exit in this city, in the country given by --country.
+    #[arg(long, value_parser = parse_selection_value, requires = "country")]
+    pub city: Option<String>,
+    /// Connect to this exit, given as an exit ID such as "NYC-001".
+    #[arg(long, value_parser = parse_selection_value, conflicts_with_all = ["country", "city"])]
+    pub exit: Option<String>,
+}
+
+/// Rejects a blank value and a value with control characters.
+fn parse_selection_value(value: &str) -> Result<String, String> {
+    if value.trim().is_empty() {
+        return Err("the value must not be blank".to_string());
+    }
+    if value.chars().any(char::is_control) {
+        return Err("the value must not contain control characters".to_string());
+    }
+    Ok(value.to_string())
+}
+
+/// Rejects a country code that is not two ASCII letters.
+fn parse_country_code(value: &str) -> Result<String, String> {
+    let value = parse_selection_value(value)?;
+    if value.len() != 2 || !value.chars().all(|character| character.is_ascii_alphabetic()) {
+        return Err("a country code is two ASCII letters, such as \"SE\"".to_string());
+    }
+    Ok(value)
+}
+
+#[derive(Args, Debug, Default)]
+pub struct ClientConnectArgs {
+    #[command(flatten)]
+    pub selection: SelectionArgs,
+    #[command(flatten)]
+    pub wait: WaitArgs,
+}
+
+#[derive(Args, Debug, Default)]
+pub struct ClientDisconnectArgs {
+    #[command(flatten)]
+    pub wait: WaitArgs,
+}
 
 #[derive(Args, Debug)]
 pub struct ClientStatusArgs {
@@ -67,12 +120,43 @@ pub struct ClientStatusArgs {
     #[arg(long)]
     /// Print full JSON status instead of summary.
     pub json: bool,
+    #[arg(long, conflicts_with = "json")]
+    /// Print one compact JSON status per line, for machine-readable streams.
+    pub json_lines: bool,
+    #[arg(long)]
+    /// Don't refresh the account information; report only what the service already knows.
+    pub local: bool,
 }
 
 #[derive(Args, Debug)]
 pub struct ClientDebugBundleArgs {
     /// Message for the Obscura team, included in the debug bundle.
     pub feedback: String,
+}
+
+#[derive(Args, Debug, Default)]
+pub struct ClientLocationsListArgs {
+    /// Print the catalogue as JSON instead of a human-readable list.
+    #[arg(long)]
+    pub json: bool,
+    /// Give up after this many seconds. Defaults to 5 seconds.
+    #[arg(long, value_parser = clap::value_parser!(u64).range(1..=3600))]
+    pub timeout: Option<u64>,
+}
+
+#[derive(Args, Debug, Default)]
+pub struct ClientLocationsRefreshArgs {
+    /// Give up after this many seconds. Defaults to 30 seconds.
+    #[arg(long, value_parser = clap::value_parser!(u64).range(1..=3600))]
+    pub timeout: Option<u64>,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum LocationsCommand {
+    /// List the exits in the catalogue the service has cached.
+    List(ClientLocationsListArgs),
+    /// Fetch the exit catalogue from the API and update the cache.
+    Refresh(ClientLocationsRefreshArgs),
 }
 
 #[derive(Subcommand, Debug)]
@@ -88,6 +172,9 @@ pub enum ClientCommand {
     Disconnect(ClientDisconnectArgs),
     /// Show account and VPN status.
     Status(ClientStatusArgs),
+    /// Show the exit catalogue.
+    #[command(subcommand)]
+    Locations(LocationsCommand),
     #[cfg(target_os = "linux")]
     /// Create a debug bundle and print its path.
     DebugBundle(ClientDebugBundleArgs),
@@ -229,7 +316,7 @@ async fn run_service(_args: ServiceArgs, _log_persistence: Option<LogPersistence
 async fn run_client(args: ClientCommand) {
     if let Err(error) = client::run(args).await {
         eprintln!("{}", error);
-        exit(1)
+        exit(error.exit_code())
     }
 }
 

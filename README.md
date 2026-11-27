@@ -411,6 +411,9 @@ container as the release):
 - `contrib/bin/linux_run_cli.sh`: builds and runs the `obscura` CLI, passing its arguments through.
 - `contrib/bin/linux_run_service.sh`: builds and runs the `obscura` system service the GUI and CLI talk to.
 
+See [docs/linux-cli.md](docs/linux-cli.md) for the CLI's exit codes and the
+contract scripts can rely on.
+
 ### Supported distributions
 
 The released packages support:

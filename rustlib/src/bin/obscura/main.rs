@@ -53,11 +53,28 @@ pub struct ClientLoginArgs {
     pub offline: bool,
 }
 
-#[derive(Args, Debug)]
-pub struct ClientConnectArgs {}
+/// Options that bound how long a command waits for the service.
+#[derive(Args, Debug, Default, Clone, Copy)]
+pub struct WaitArgs {
+    /// Return as soon as the service accepts the request, without waiting for the tunnel state.
+    #[arg(long, conflicts_with = "timeout")]
+    pub no_wait: bool,
+    /// Give up after this many seconds. The outcome is unknown when the deadline expires.
+    #[arg(long, value_parser = clap::value_parser!(u64).range(1..=3600))]
+    pub timeout: Option<u64>,
+}
 
-#[derive(Args, Debug)]
-pub struct ClientDisconnectArgs {}
+#[derive(Args, Debug, Default)]
+pub struct ClientConnectArgs {
+    #[command(flatten)]
+    pub wait: WaitArgs,
+}
+
+#[derive(Args, Debug, Default)]
+pub struct ClientDisconnectArgs {
+    #[command(flatten)]
+    pub wait: WaitArgs,
+}
 
 #[derive(Args, Debug)]
 pub struct ClientStatusArgs {
@@ -67,6 +84,12 @@ pub struct ClientStatusArgs {
     #[arg(long)]
     /// Print full JSON status instead of summary.
     pub json: bool,
+    #[arg(long, conflicts_with = "json")]
+    /// Print one compact JSON status per line, for machine-readable streams.
+    pub json_lines: bool,
+    #[arg(long)]
+    /// Don't refresh the account information; report only what the service already knows.
+    pub local: bool,
 }
 
 #[derive(Args, Debug)]
@@ -229,7 +252,7 @@ async fn run_service(_args: ServiceArgs, _log_persistence: Option<LogPersistence
 async fn run_client(args: ClientCommand) {
     if let Err(error) = client::run(args).await {
         eprintln!("{}", error);
-        exit(1)
+        exit(error.exit_code())
     }
 }
 

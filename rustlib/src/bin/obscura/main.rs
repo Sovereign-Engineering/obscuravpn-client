@@ -67,6 +67,9 @@ pub struct ClientStatusArgs {
     #[arg(long)]
     /// Print full JSON status instead of summary.
     pub json: bool,
+    #[arg(long)]
+    /// Don't refresh the account information; report only what the service already knows.
+    pub local: bool,
 }
 
 #[derive(Args, Debug)]
@@ -229,7 +232,7 @@ async fn run_service(_args: ServiceArgs, _log_persistence: Option<LogPersistence
 async fn run_client(args: ClientCommand) {
     if let Err(error) = client::run(args).await {
         eprintln!("{}", error);
-        exit(1)
+        exit(error.exit_code())
     }
 }
 

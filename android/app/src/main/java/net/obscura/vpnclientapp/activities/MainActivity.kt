@@ -3,21 +3,25 @@ package net.obscura.vpnclientapp.activities
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Bundle
 import android.os.IBinder
 import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import net.obscura.lib.util.Logger
+import net.obscura.vpnclientapp.BuildConfig
 import net.obscura.vpnclientapp.R
 import net.obscura.vpnclientapp.services.IObscuraVpnService
 import net.obscura.vpnclientapp.services.bindVpnService
 import net.obscura.vpnclientapp.services.unbindVpnService
 import net.obscura.vpnclientapp.ui.BillingFacade
+import net.obscura.vpnclientapp.ui.DeepLinkOrigin
 import net.obscura.vpnclientapp.ui.ObscuraUI
 import net.obscura.vpnclientapp.ui.OsStatus
 import net.obscura.vpnclientapp.ui.OsStatusManager
@@ -25,6 +29,13 @@ import net.obscura.vpnclientapp.ui.PreferencesManager
 import net.obscura.vpnclientapp.ui.VpnPermissionRequestManager
 
 private val log = Logger(MainActivity::class)
+
+/**
+ * Signature-level custom permission held only by apps signed with our signing key (i.e. us).
+ * Senders that were granted it are trusted to drive *privileged* deep links, such as
+ * `requestVpnStart`.
+ */
+const val PERMISSION_TRUSTED_DEEP_LINK = "${BuildConfig.APPLICATION_ID}.permission.TRUSTED_DEEP_LINK"
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity(), ServiceConnection {
@@ -38,7 +49,28 @@ class MainActivity : AppCompatActivity(), ServiceConnection {
     private var isFreshLaunch: Boolean = true
     private var isVpnServiceBound: Boolean = false
 
-    private fun handleIntent(intent: Intent?) = intent?.data?.let { uri -> this.ui.handleObscuraUri(this, uri) }
+    private fun handleIntent(intent: Intent?) {
+        if (intent == null || intent.data == null) return
+
+        // The platform only grants a signature-level permission if the sender's signing
+        // certificate matches ours (kernel/PMS-enforced); third-party apps and browsers can
+        // neither hold nor cause this grant, and cannot forge it via intent extras. Our own
+        // notification PendingIntents satisfy this because the manifest declares and uses this
+        // permission itself.
+        val isInternalOrigin =
+            ContextCompat.checkSelfPermission(this, PERMISSION_TRUSTED_DEEP_LINK) ==
+                PackageManager.PERMISSION_GRANTED
+
+        val deepLinkOrigin =
+            if (isInternalOrigin) {
+                DeepLinkOrigin.Internal
+            } else {
+                DeepLinkOrigin.External
+            }
+
+        log.debug("deep-link origin: $deepLinkOrigin")
+        this.ui.handleObscuraUri(this, intent.data!!, deepLinkOrigin)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         log.trace("onCreate")
@@ -82,6 +114,9 @@ class MainActivity : AppCompatActivity(), ServiceConnection {
     override fun onNewIntent(intent: Intent) {
         log.trace("onNewIntent")
         super.onNewIntent(intent)
+        // Mirror the platform contract: referrer/state only reflect a new intent after
+        // `setIntent`; we derive provenance from the incoming intent itself.
+        this.setIntent(intent)
         this.handleIntent(intent)
     }
 

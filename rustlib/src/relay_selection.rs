@@ -9,6 +9,29 @@ use tokio::time::timeout;
 
 const ABANDON_GRACE_PERIOD: Duration = Duration::from_secs(1);
 
+// Port 53 (DNS) is frequently throttled.
+const PORT_53_RTT_PENALTY: Duration = Duration::from_millis(5);
+
+pub struct RelayCandidate {
+    pub handshaking: QuicWgConnHandshaking,
+    pub port: u16,
+    pub relay: OneRelay,
+    pub rtt: Duration,
+}
+
+impl RelayCandidate {
+    pub fn is_better_than(&self, other: &Self) -> bool {
+        self.weighted_rtt() < other.weighted_rtt()
+    }
+
+    fn weighted_rtt(&self) -> Duration {
+        match self.port {
+            53 => self.rtt.saturating_add(PORT_53_RTT_PENALTY),
+            _ => self.rtt,
+        }
+    }
+}
+
 pub struct RelayHandshakeRace {
     tasks: JoinSet<(Result<(QuicWgConnHandshaking, Duration), QuicWgConnectError>, OneRelay, u16)>,
 }
@@ -42,7 +65,7 @@ impl RelayHandshakeRace {
         let _ = timeout(ABANDON_GRACE_PERIOD, async move { while abandons.join_next().await.is_some() {} }).await;
     }
 
-    pub async fn next(&mut self) -> Option<(OneRelay, u16, Duration, QuicWgConnHandshaking)> {
+    pub async fn next(&mut self) -> Option<RelayCandidate> {
         while let Some(task_result) = self.tasks.join_next().await {
             let Ok((result, relay, port)) = task_result else { continue };
             match result {
@@ -50,18 +73,18 @@ impl RelayHandshakeRace {
                     tracing::info!(
                         message_id = "7NCuscqm",
                         relay.id,
-                        port,
-                        rtt_ms = rtt.as_millis(),
+                        relay.port = port,
+                        relay.rtt_ms = rtt.as_millis(),
                         "successfully started handshake with relay"
                     );
-                    return Some((relay, port, rtt, handshaking));
+                    return Some(RelayCandidate { handshaking, port, relay, rtt });
                 }
                 Err(error) => {
                     tracing::warn!(
                         message_id = "Drl0nTSh",
                         ?error,
                         relay.id,
-                        port,
+                        relay.port = port,
                         "failed to connect during relay selection"
                     );
                 }
